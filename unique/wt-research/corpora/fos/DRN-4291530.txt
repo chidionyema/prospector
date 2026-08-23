@@ -1,0 +1,161 @@
+DRN-4291530
+The complaint
+Mr L complains that Policywave Limited referred him to an accident management company
+(“AMC”) for credit hire and repair when his car was damaged, who didn’t handle his claim
+well.
+What happened
+Mr L’s car was hit by a third party driver so he called Policywave to claim for the damage the
+accident caused to his car. Policywave referred the matter to an AMC who would repair Mr
+L’s car and arrange a hire car while his was in for repair. Mr L said he wasn’t given a choice
+and the AMC’s role wasn’t properly explained to him.
+He’s also complained about the quality of repairs carried out by the AMC. In particular, he’s 
+said his car hadn’t been repaired using a manufacturing approved repairer and parts. Mr L 
+said this has invalidated the warranty of his car and affected its value because it can no 
+longer be sold as “manufacturer approved” when he decides to trade it in.
+Policywave reviewed Mr L’s complaint and didn’t uphold it. They said the AMC is a specialist 
+in claims involving driving instructors like Mr L. Policywave also confirmed the AMC is
+appointed to handle the first notification of loss calls on its behalf, but that the repairs to his
+car were not carried out under his motor insurance policy. Because of this, Policywave
+said they weren’t responsible for the repairs completed by the AMC.
+Unhappy with Policywave’s response, Mr L referred his complaint here. He said he thought
+the AMC were Policywave’s “accident claims team” and that by being told they’d claim
+directly from the third party’s insurer, he thought it was his own insurer who was claiming
+from the third party.
+I issued a provisional decision on 27 July 2023 where I said: 
+“The responsibilities of Policywave
+Before I address the merits of this complaint, I think it’s first important to set out the different
+parties involved and Policywave’s responsibilities, to make clear what I can and cannot look
+at in this decision.
+Policywave explained that they appointed the AMC to log customer claims and explain
+customers’ claim options. So, when Mr L called Policywave to report the damage to his car,
+he was transferred to the AMC to handle the call on Policywave’s behalf. This means the
+AMC was acting as Policywave’s agent. So Policywave are responsible for the AMC’s
+actions or omissions during this call when they discussed Mr L’s claim options and referred
+him for credit hire and repair.
+However, Policywave’s responsibility for the AMC’s actions is limited to when the AMC were
+acting on Policywave’s behalf - and Policywave are not directly responsible for any actions
+or omissions of the AMC outside of this. In other words, the AMC was acting in its own
+capacity when handling Mr L’s claim – not on behalf of Policywave. And I don’t have the
+
+jurisdiction to consider the actions of the AMC.
+So, to be clear, I am only considering what happened during the call between Mr L and the
+AMC (acting on Policywave’s behalf) when he was referred for credit hire and repair,
+and whether the AMC, as Policywave’s agent, met the required standards.
+The relevant regulatory and other requirements
+As Mr L’s insurance broker, Policywave were obliged to provide Mr L with information that
+was clear, fair and not misleading, in line with their obligations under Principle 7 of the FCA
+Handbook: Communications with clients (see PRIN 2.1R The Principles) and ICOBS 2.2.2R
+(Clear, fair and not misleading rule). In the circumstances of this case, this means that when
+Mr L contacted Policywave to tell them about his ‘non-fault’ claim for damage to his car,
+Policywave ought to have provided him with clear information about his options, so he could
+decide how best to proceed with getting his car repaired.
+I appreciate Policywave appointed the AMC to fulfil this task on their behalf, and I don’t think
+there’s anything wrong in appointing a third party to do this. But, in line with ICOBS 2.5.3G, a
+firm cannot delegate its responsibility under the regulatory system when relying on others – it
+retains regulatory responsibility for achieving the outcome required. This means Policywave
+are ultimately still responsible for making sure their regulatory obligations are met by any
+third parties acting on their behalf.
+Under Principle 6 (PRIN 2.1R) Policywave were also required to pay due regard to the
+interests of Mr L as their customer and treat him fairly. And in line with the Customer’s best
+interests rule under ICOBS 2.5.-1R, Policywave were required to act honestly, fairly, and
+professionally in accordance with the best interests of their customer. And, if any
+recommendations were made, Policywave were required to take reasonable care to ensure
+the suitability of their advice, in line with Principle 9 (PRIN2.1R).
+If I find the AMC didn’t meet these regulatory requirements during the call when they referred
+Mr L for credit hire and repair then Policywave would be held responsible.
+The referral
+I’ve reviewed the contents of the referral call Mr L had with the AMC and also the e-mail that
+was sent to him following this call. In the call there is no mention Mr L is stepping outside of
+his regulated insurance contract or what the implications of this may be.
+The e-mail sent to Mr L after the call which confirmed the AMC are dealing with the claim
+goes on to say:
+“You do have the option to claim through your own insurance rather than
+the other drivers if you wish to. The repairs maybe authorised slightly
+quicker, however you maybe required to pay your excess and any no
+claims discount could be affected until they can recover their costs back
+at the end of the claim.”
+While I agree this e-mail does explain Mr L could claim through his own insurance, I’m not
+satisfied it goes far enough to explain the differences to Mr L about how he can arrange for
+the repairs to his car so he can make an informed choice. I say this because it doesn’t let Mr
+L know that by continuing with the AMC he’s stepping outside of a regulated insurance
+contract, that he will need to enter a credit agreement for the repairs to his car and the hire
+car, that Policywave or his insurer aren’t responsible for the actions of the AMC or that he
+could ultimately be held responsible for the credit hire charges and that any recourse he may
+have if things go wrong aren’t the same as he gets through his regulated insurance contract.
+As I’m satisfied the referral was poor, I’ve looked at the implications of the poor referral on 
+Mr L. I asked our investigator to ask Mr L what he would have done if Policywave had given 
+him sufficient information as set out above. Mr L has explained that if he had been given the
+option of using the AMC knowing it wouldn’t have used manufacturing approved parts then
+he would have used the manufacturer’s AMC, because he said he has done before.
+I’ve therefore looked at whether the AMC could have used manufacturing parts and whether
+this is something Policywave should have known. When considering this I can see that
+Policywave wouldn’t know which garage the AMC would send Mr L’s car too and so would
+have directed Mr L to discuss who the repairing garage would be with the AMC, as it’s not
+something it has control over. When Policywave referred Mr L outside of his regulated
+insurance contract, I’m satisfied it would be fair and reasonable for Policywave to have let Mr
+L know he would need to speak with the AMC about which garage would repair his car, as
+it’s not something Policywave would know or have control over.
+So, to be clear, I’m satisfied Policywave didn’t give Mr L clear, fair and not misleading
+information, but if it had he would still have agreed to use an AMC because he’s said he
+would have used one - albeit a different one to who Policywave referred him to. So, while Mr
+L is unhappy with how the AMC dealt with the repairs to his car, I’m not satisfied that is
+something Policywave is responsible for.
+However due to Policywave referring Mr L to this AMC, he now has the unnecessary distress
+and inconvenience of sorting out the issues with his car, which he wouldn’t have had if he’d
+used a manufacturing AMC as it would have used manufacturing approved parts. So, when
+considering this along with the unnecessary distress and inconvenience Policywave caused
+by the poor referral, I’m satisfied £500 is a fair and reasonable amount for Policywave to pay
+Mr L to compensate him for this.”
+Both Policywave and Mr L responded to my provisional decision. Policywave said that the 
+AMC is their approved call handler and so don’t agree Mr L was stepping outside of his 
+contract of insurance. Policywave said the AMC carries out repairs on behalf of the insurer 
+and so don’t think Mr L stepped outside the contract of insurance except for the provision of 
+credit hire. As the AMC also carries out repairs on behalf of Mr L’s insurance policy 
+Policywave don’t think Mr L would be in any different position to he would be now in regard 
+to the repairs. Policywave also said when Mr L claimed previously, he didn’t use a 
+manufacturing AMC, it said he used the same AMC he used for this claim but without any 
+issues. 
+Mr L responded and said the AMC are also the repairing garage and that as Policywave 
+referred him to the AMC then Policywave should be responsible for the repairs. Mr L also 
+said that due to the age of his car Policywave would know it needs to be repaired with 
+manufacturing approved parts and Policywave would have known the AMC wouldn’t do this. 
+Mr L also said if he accepts my decision then it may prevent him taking legal action in 
+relation to the repairs.  
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+In response to Policywave’s comments, I would like to clarify that I’m aware of the capacity 
+of the AMC when taking calls on behalf of Policywave, as explained in my provisional 
+decision. While the AMC might also repair vehicles on behalf of the insurer, this still means 
+Mr L stepped outside of his insurance contract when the AMC repaired his car. I say this 
+because Mr L didn’t claim on his motor insurance policy, and so while his car was repaired 
+by the same garage his insurer would have used, Mr L’s insurer is not responsible for the 
+repairs as they weren’t done on Mr L’s insurer’s behalf. I’m therefore satisfied Mr L did step 
+outside his contract of insurance for credit repair and hire. 
+If the AMC had repaired Mr L’s car on behalf of his insurer, this service would be able to 
+consider the quality of repairs. In particular, whether the repairer carried out the repairs using 
+manufacturing approved parts and methods. I’m therefore satisfied Mr L has additional 
+unnecessary distress and inconvenience to sort out the issues he has with the repairs, as 
+this service is unable to consider the repairs against Mr L’s insurer. 
+I’ve also considered Mr L’s comments. While I understand he feels Policywave should be 
+responsible for the AMC’s actions, in relation to the repair, for the reasons explained above 
+I’m satisfied the AMC were acting in their own right when repairing Mr L’s car. I also 
+understand Mr L said Policywave should be aware the AMC wouldn’t use manufacturing 
+approved parts to repair his car and so shouldn’t have referred him to them. As explained 
+above, if this had been raised with Policywave, given the repair is outside of his policy I think 
+it would be fair and reasonable for Policywave to have directed Mr L to the repairer to 
+discuss how it would be repaired. I’m therefore not going to tell Policywave to do anything 
+else. 
+Mr L has also said by accepting my decision it may prevent him taking further legal action 
+through the courts. As we’re an alternative to the courts, if my final decision is accepted it 
+would be legally binding. Therefore if Mr L wishes to take further legal action he would need 
+to consider the impact accepting my final decision may have before doing so.
+My final decision
+For the reasons explained above and in my provisional decision, my final decision is that I 
+uphold this complaint. I require Policywave Limited to pay Mr L £500 for the distress and
+inconvenience caused.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr L to accept or 
+reject my decision before 13 September 2023.
+ 
+Alex Newman
+Ombudsman

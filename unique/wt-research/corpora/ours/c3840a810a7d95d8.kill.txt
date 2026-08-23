@@ -1,0 +1,17 @@
+FixedHours Claim — the zero-hours worker's tool that turns your shifts into a permanent contract legally.
+
+A self-serve web app that tracks your agency work pattern and automatically generates a binding request for a fixed-hours contract under UK law.
+
+Many young workers on zero-hour contracts with agencies don't know that after 26 weeks they can request a fixed work pattern, and the agency must respond reasonably. This tool makes it easy: the worker inputs their shift history (or syncs a calendar), and the app calculates eligibility under the Agency Workers Regulations 2010 and the Good Work Plan. It then generates a formal letter to the agency with the precise statutory wording, and if ignored, a complaint template to the Employment Agency Standards Inspectorate. The tool is self-serve, charging £19 per request. It encodes legal expertise that a typical worker would spend hours researching or paying a solicitor for.
+
+The individual agency worker (gen_z_worker) pays directly for the tool, because it helps them move from unpredictable hours to stable earnings.
+
+The UK government has strengthened agency worker rights recently, and there is growing public scrutiny on insecure work, but awareness of these specific entitlements is low. The tool capitalises on this gap, using a repeatable SaaS model to automate a previously manual legal process.
+
+The passages show zero-hours work at a record high and note persistent 'one-sided flexibility' that favours employers, so the condition exists at scale. They do not show workers suffering acutely enough to pay for a fix now, and one survey finding of little job-satisfaction difference undercuts that acuteness without proving anyone is buying such a remedy.
+
+The passages describe how zero-hours contracts work, list related pay rights, note government reform consultations, and touch Gen Z work attitudes or pensions in passing. None of them say whether agency workers can or will spend money on a paid tool to request fixed hours.
+
+The passages either discuss agency-worker law for professionals or general guides, or give generic digital-marketing copy, and never show how individual agency workers would be reached or sold a paid self-serve tool. Nothing here describes an executable channel, forcing mechanism, or low-friction path to that buyer.
+
+The passages state that employment rights exist in law with qualifying periods, that employment-law services sit in the unreserved legal market, and that only six reserved activities require authorisation. Nothing in those passages shows that a self-serve tool helping workers assert those rights via eligibility checks and formal request letters must break the law to earn its fee.

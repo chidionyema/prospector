@@ -1,0 +1,13 @@
+The Site Surplus Scout.
+
+A solo operator uses a predictive inventory model to alert local tradespeople to surplus building materials from major construction sites, pocketing the margin with zero site disruption.
+
+Site managers face escalating waste-disposal costs and ESG mandates but lack time to sell leftover materials. A solo broker armed with a proprietary database of material-offloading patterns and project lifecycles can predict surplus, build exclusive relationships, and generate a spread by matching supply with cost-conscious tradespeople—creating a defensible data moat that grows with each transaction.
+
+Manual tradespeople (plumbers, joiners, electricians) purchasing half-price surplus materials directly from the broker.
+
+The UK landfill tax escalator and mandatory Scope 3 waste reporting for large contractors force them to find off-takers; meanwhile, material price inflation makes tradespeople desperate for legitimate discounts, and WhatsApp bots enable instant, low-touch alerts.
+
+The passages show an active UK market for reclaiming and reselling leftover construction materials: a materials exchange platform reports saving construction organisations hundreds of thousands of pounds through reuse [42ae731a4451943b], councils are releasing surplus stock from public and private developments for reuse [24c967011f5044eb], and a marketplace exists specifically for finding and selling free, cheap and leftover building materials [50008218a77654c6].
+
+The passages name several existing services doing exactly this: Globechain, described as the world's largest marketplace for reusing surplus materials and already engaged by a major UK developer (British Land), plus the Excess Materials Exchange ($5M funded) and CMEx for business-to-business trading of leftover construction materials, and Gumtree, which already runs a UK second-hand building materials and supplies category.

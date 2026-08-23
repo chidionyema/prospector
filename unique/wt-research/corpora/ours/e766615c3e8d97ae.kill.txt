@@ -1,0 +1,21 @@
+Placement fee recovery for UK digital agencies.
+
+Fixed-fee recovery of the placement fee your agency is owed when a client hires a freelancer you placed there, using Companies House filings to prove the breach.
+
+The UK digital agency places a subcontractor (typically a freelance AI engineer, designer, or developer) at a client site under a back-to-back agreement. The agency contract almost always carries a placement-fee clause: if the client hires the subcontractor directly within 12 months, the client pays the agency 15-25% of the subcontractor's first-year salary. In practice, the client hires the subcontractor quietly and never tells the agency. The agency loses £5,000-£25,000 per placement and has no easy way to know.
+
+This productised service, run at a fixed monthly monitoring fee plus a contingency percentage on recovered amounts, watches every placement the agency has registered. It cross-references Companies House director-appointment filings (public under the Companies Act 2006), the client's published job pages, and LinkedIn job-change signals against the agency's placement list. When a breach is detected, the service drafts a breach letter on the agency's letterhead that cites the exact contract clause and demand, sends it to the client's accounts payable, and escalates to a Money Claims Online filing at HM Courts if the client does not respond within 30 days.
+
+What makes this work is the continuous monitoring combined with contract-specific drafting. The agency does not currently watch for this kind of breach because each subcontractor sits at a different client, the signals are scattered across Companies House, careers pages, and LinkedIn, and the agency has no time. A service that watches all of them in one place, against one public source, gets paid faster than the agency could alone.
+
+Companies House is the public source that makes this viable. Every UK director appointment is filed at Companies House within 14 days and is queryable through the Companies House API and the PSC (Persons with Significant Control) register. A subcontractor who becomes a director or shareholder of the client company within 12 months of placement is a provable breach of the placement-fee clause.
+
+This is not a debt collector or a solicitor. Debt collectors are reactive; you must hand them the debt and the contract. Solicitors charge by the hour. This product is proactive, fixed-fee, and uses a publicly verifiable trigger that the agency does not have the time to watch themselves.
+
+Owner of a UK digital agency that places subcontractors at client sites. Typically 5-30 staff. 50-200 placements per year. Lost placement-fee revenue: £50,000-£250,000 per year per agency. The owner is the budget holder because the recovery is back-office admin they do not have time to run themselves, and the lost fee hits their margin directly.
+
+AI agencies rely heavily on freelance subcontractors (40-60% of delivery cost). The shift to remote and contract work since 2020 has made placements the norm. UK Companies House filings are now fully digitised and accessible via API. Enterprise clients are aggressively hiring contractor talent directly to cut agency margin, especially in AI where talent is scarce and poaching is rampant. The Construction Industry Scheme has long given subcontractors preferential-payment rights; digital agencies have no equivalent.
+
+The passages confirm that UK recruitment agencies charge introduction fees and that disputes over who is owed such a fee are common and frustrating (3ea40074a360e55f, 51d7653f526791a0, d82e5cdfc0ddac90), but every dispute described is between two or more agencies claiming the same fee from a hirer, not a client quietly hiring a placed subcontractor direct and dodging the fee.
+
+Tempest Financial already sells UK recruitment agencies recovery of exactly this loss, naming 'backdoor hires' alongside unpaid placement fees as its specialism, and Roythornes Solicitors and Sterling Debt Recovery both market placement-fee recovery to the same buyer [795a4f8693a95c87][f3c3bac424cf994d][41971a26235d43f5]; the monitoring half is likewise already sold off the shelf, with several vendors offering per-company Companies House alerts on director and PSC changes within the hour or via webhook [54561d68e25083c0][df52cf37af43de8a][f17af38682ec400e].

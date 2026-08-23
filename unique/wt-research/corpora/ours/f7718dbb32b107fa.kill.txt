@@ -1,0 +1,21 @@
+HSE Fee for Intervention exposure for UK manufacturers.
+
+Predicts which UK manufacturing sites will trigger HSE Fee for Intervention charges next quarter, so operations managers cut the risk of paying out.
+
+The plain version: an operations manager at a UK factory wants to know whether the next HSE inspector visit will turn into a Fee for Intervention notice. They pay a monthly subscription for a per-site FFI exposure score, ranked against similar UK sites in the same four-digit industry code.
+
+Why it works: FFI is charged by HSE whenever an inspector finds a material breach, at £169 per hour of inspector time. HSE's published statistics show more than £73 million recovered in 2024/25. Sites cannot easily predict when FFI will fire because the inspector chooses when to invoice. The product pulls HSE's published Notices & Prosecutions feed, the RIDDOR dataset on data.gov.uk, and the industry-code geography of every UK premises, then gives a per-site exposure score. The buyer is the operations manager at a UK manufacturer with three to fifteen UK sites - the persona who loses sleep over unexpected ten-thousand-pound FFI bills that never appeared in the budget.
+
+Why it holds: the data is publicly published, but the cross-industry correlation, the threshold scoring and the not-yet-prosecuted infringement signals produce a feed that no regulator and no incumbent EHS vendor currently computes. HSE publishes raw feeds; the operations manager needs the ranked call. The asset compounds each time a new FFI outcome appears in the public feed.
+
+Operations managers at UK manufacturing businesses with three to fifteen sites. Industries under HSE pressure include food processing, fabricated metals, chemicals, plastic products and waste management.
+
+FFI cost recovery was £73m+ in 2024/25, up from £53m in 2022/23, and HSE inspector numbers were extended through to 2027 under the pre-election plan. Mid-market UK manufacturers sit in the weight of that trend with no dedicated tool.
+
+The passages confirm FFI is an active, real cost charged at £188/hour (7422b43ae0a47538, 45b4538d137dd7c8) and that a professional services market already exists around FFI response, dispute and prevention (08323ed7a16f0bae), proving the pain is acute enough that duty-holders pay for help with it.
+
+The passages describe EHS software offerings and UK manufacturing trends but do not address whether operations managers at UK manufacturers with 3–15 sites have budget or motive to pay £79.99 for an FFI exposure prediction tool. The only manufacturer-finance data is about insolvencies in printing/reproduction (2022) and general M&A activity, neither of which speaks to the specific buyer segment's willingness or ability to pay.
+
+The passages confirm FFI exists as an HSE mechanism (e532677292c20ad4) and the UK jurisdiction (1af2b0e0901998a3), but none of them establish whether a low-friction route to UK manufacturing operations managers exists — no passage addresses EHS vendor channels, trade associations, industry directories, self-serve platforms, or any other distribution path to these buyers.
+
+No passage addresses HSE Fee for Intervention, the terms of use of HSE's published Notices & Prosecutions feed or the RIDDOR dataset, or whether commercial predictive analytics built on these public UK government datasets is permitted. The passages concern US open data, UK Universal Credit, driving licences, and generic definitions of prosecution, none of which speak to the legality of this product's margin.

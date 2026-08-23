@@ -1,0 +1,25 @@
+QuietRig, silent ex-datacentre GPUs for home AI.
+
+QuietRig sells silent, tested ex-datacentre GPUs to UK developers running local AI, with power presets timed to cheap electricity hours.
+
+UK indie developers running local large language models on their own machines — using tools like Ollama, llama.cpp or vLLM instead of paying for cloud GPU time — are buying secondhand enterprise cards such as the Nvidia P40, A4000 or V100 straight off eBay or Alibaba. These cards were built for rack-mounted servers with forced airflow, so raw they are loud, run hot, and often draw more power than a home office breaker or a flat's electricity bill can comfortably absorb.
+
+QuietRig is a UK-based ecommerce brand that buys these decommissioned cards in bulk under the WEEE Regulations 2013 (which govern the legal resale of electronic equipment retired from UK and EU datacentres), bin-tests every unit under sustained load, 3D-prints and fits a custom quiet-acoustic shroud, and flashes a power-limit firmware profile before selling the finished card direct through its own Shopify store and Amazon UK listing.
+
+The real trick is the firmware presets: each card ships with named profiles tuned to specific UK time-of-use tariffs — for example an 'Octopus Agile' profile that throttles the card to near-idle during expensive peak hours and unlocks full power only in the cheap overnight window Octopus publishes each day. A developer plugs it in, picks their tariff from a dropdown in the bundled utility, and the card behaves accordingly with no manual scheduling.
+
+This borrows the way solar-battery brands sell hardware pre-configured to a household's specific energy tariff, and applies the same idea to secondhand AI compute — fusing the local-LLM hardware boom with the UK's own time-of-use electricity market, something no generic GPU reseller bothers to touch.
+
+Each unit sells for a fixed margin over acquisition and refurbishment cost, with a 90-day warranty that a marketplace listing never offers, and repeat sales come from developers upgrading to bigger cards as their local models grow.
+
+UK indie software developers and small AI/ML hobbyist-engineers who want to run local models for side projects or small SaaS products without a recurring cloud GPU bill, and who care about noise and electricity cost because they work from a home office or a flat.
+
+Local LLM tooling matured fast through 2025 and 2026, making home inference genuinely viable for solo developers. At the same time hyperscalers' 2024-2025 datacentre refresh cycles pushed a wave of secondhand enterprise GPUs onto resale markets at prices individuals can afford, and UK tariffs like Octopus Agile made time-of-use electricity pricing something an ordinary household account can actually access, not just industrial users.
+
+Passages show active, current engagement with local-LLM hardware setup by budget-conscious developers ([3673d94ab46145e5], [a811bb75adf1d200]) alongside real spending on cloud GPU alternatives with wide price variance ([34c47e48480b4b74], [1124b3521e9d6687], [f6a5ef4947aff577]), confirming people are already paying to solve GPU-access-for-inference problems now, even if none mention QuietRig's specific quiet/tariff-aware angle.
+
+No passage speaks to UK developers' budget or willingness to pay a fixed hardware price; the survey-site, app-builder, and Russian-text passages are unrelated, and the cloud-GPU-rental passages only compare renting versus buying in general, saying nothing about affordability of this specific purchase.
+
+Amazon Renewed and Back Market show established marketplaces already exist for selling tested, warrantied refurbished electronics directly to consumers, which QuietRig could list on or mirror as a channel to reach buyers.
+
+None of the passages address whether reselling refurbished ex-datacentre GPUs with modified firmware in the UK is lawful — they cover unrelated regulations (nutrition, Russia sanctions), Nvidia monitoring tools, and an export-compliant China GPU variant, none touching WEEE resale rules or firmware/warranty terms.

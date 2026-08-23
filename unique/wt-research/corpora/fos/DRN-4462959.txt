@@ -1,0 +1,179 @@
+DRN-4462959
+The complaint
+Mr H complains that Gain Credit LLC trading as Lending Stream (“Lending Stream”) gave 
+him loans without carrying out the correct affordability checks.  
+What happened
+A summary of Mr H’s borrowing can be found in the table below.
+loan 
+number
+loan 
+amount
+agreement date repayment date Largest monthly 
+repayment per loan 
+1 £600.00 27/02/2017 01/08/2017 £254.40
+2 £140.00 06/05/2017 03/09/2017 £60.48
+3 £200.00 16/06/2017 Sold £84.80
+4 £500.00 06/08/2017 Sold £212.00
+5 £180.00 11/08/2017 Sold £76.32
+The largest repayment column is the largest payment due for a particular loan. However, 
+where loans overlapped the cost will be more. For example, the largest repayment due when 
+loans 1 and 2 were running at the same time was £281.28.
+Mr H had some difficulties repaying his final three loans and Lending Stream has explained 
+these were sold to a third-party debt purchaser. 
+Following Mr H’s complaint, Lending Stream wrote to him to explain why it wasn’t going to 
+uphold the complaint about loans 1 to 4.  But Lending Stream did accept for loan 5:
+“although this loan was affordable, we have thought about the number of loans and the 
+time between each loan being taken out. We can see that it might not have been a good 
+idea for us to make this loan.”
+So, it agreed to:
+Refund the interest Mr H had paid towards loan 5 and to that sum it would add 8% 
+simple interest and then deduct the required tax at a rate of 20%.
+Use this refund to offset any outstanding balance. 
+Any adverse information about loan 5 is to be removed from Mr H’s credit file. 
+Unhappy with this response, Mr H referred the complaint to the Financial Ombudsman. 
+The case was then considered by an investigator and she firstly said the offer 
+Lending Stream had made was in line with what would’ve been recommended had we 
+upheld the complaint about loan 5. So, she didn’t consider the loan further.  
+Secondly, she didn’t uphold the complaint about loans 1 - 4 because Lending Stream had 
+carried out proportionate checks which showed the loans to be potentially affordable. There 
+also wasn’t anything else to suggest the loans were unsustainable for him. 
+
+Mr H didn’t agree with the assessment because loans 3 – 5 were sold and he now has a 
+County Court Judgement (CCJ) recorded against him and he has incurred additional court 
+fees.  The complaint has then been passed to me to resolve. 
+Later, further enquires were made with both Mr H and Lending Stream about the CCJs and 
+both parties confirmed it was the third-party debt purchaser who applied for and was granted 
+a CCJ. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Lending Stream had to assess the lending to check if Mr H could afford to pay back the 
+amounts he’d borrowed without undue difficulty. It needed to do this in a way which was 
+proportionate to the circumstances of the application. Lending Stream’s checks could’ve 
+taken into account a number of different things, such as how much was being lent, the size 
+of the repayments, and Mr H’s income and expenditure. 
+With this in mind, I think in the early stages of a lending relationship, less thorough checks 
+might have been proportionate. But certain factors might suggest Lending Stream should 
+have done more to establish that any lending was sustainable for Mr H. These factors 
+include:
+Mr H having a low income (reflecting that it could be more difficult to make any
+loan repayments to a given loan amount from a lower level of income);
+The amounts to be repaid being especially high (reflecting that it could be more
+difficult to meet a higher repayment from a particular level of income);
+Mr H having a large number of loans and/or having these loans over a long
+period of time (reflecting the risk that repeated refinancing may signal that the
+borrowing had become, or was becoming, unsustainable);
+Mr H coming back for loans shortly after previous borrowing had been repaid
+(also suggestive of the borrowing becoming unsustainable).
+There may even come a point where the lending history and pattern of lending itself clearly 
+demonstrates that the lending was unsustainable for Mr H. The investigator didn’t consider 
+this applied in Mr H’s complaint and I would agree, given the number of loans and the sums 
+lent. 
+Lending Stream was required to establish whether Mr H could sustainably repay the loans – 
+not just whether he technically had enough money to make his repayments. Having enough 
+money to make the repayments could of course be an indicator that Mr H was able to repay 
+his loans sustainably. But it doesn’t automatically follow that this was the case. 
+I’ve considered all the arguments, evidence and information provided in this context, and
+thought about what this means for Mr H’s complaint.
+Loans 1 - 4
+As part of his application for these loans, Mr H declared a monthly income of £1,560 for 
+loans 1 and 2 and then £1,760 for loans 3 and 4. Lending Stream says it didn’t feel it needed 
+to make any adjustments to this income figure based on what it knew about Mr H.  
+Mr H also declared monthly outgoings of £1,100 for loan 1 and £1,200 for loan 2, £1,025 for 
+loan 3 and finally £875 per month for loan 4. For each of these loans these figures were 
+broken down as either “normal expenses” or “credit specific expenses”. So, for example, 
+loan 1 Mr H declared £825 as his “normal” living costs with £275 being attributed to his credit 
+commitments. 
+Lending Stream also said it looked at other information such as statistics that relate to the 
+general population and it considered how much people typically spend with their income. 
+Having carried out this further check, Lending Stream added an additional £74 per month to 
+Mr H’s declared expenditure for loans 3 and 4 only. 
+Before each loan was approved Lending Stream also carried out a credit search and it has 
+provided the Financial Ombudsman with a summary spreadsheet of the results it received 
+from the credit reference agency. I want to add that, although Lending Stream carried out a 
+credit search, there isn’t a regulatory requirement to do one, let alone one to a specific 
+standard.
+Lending Stream was also entitled to rely on the information it was given by the credit 
+reference agency. So, I’ve looked at the results to see whether there was anything contained 
+within it that would’ve either prompted Lending Stream to have carried out further checks or 
+possibly have declined Mr H’s application.
+Lending Stream hasn’t been able to provide the credit check results for loans 3 or 4, but 
+given the proximity of these loans to loans 1 and 2, I think it’s likely, given the absences of 
+other information that the results were similar.  
+Having looked at the credit check results, in my view there wasn’t anything that would’ve 
+prompted Lending Stream to have carried out further checks before either loan was 
+advanced. 
+For these loans it knew Mr H had an active mortgage with a balance of £97,000. Lending 
+also knew that no credit accounts were in delinquency it’s fair to conclude that these 
+repayments were being made without any difficulty.  
+Lending Stream knew for loan 1 that Mr H had 7 active credit accounts with total outstanding 
+balances of £1,300 and by loan 2, there were 8 active accounts with a total balance of 
+£2,200.
+For these Lending Stream was told that Mr H had 6 defaults but the most recent one was 
+recorded 23 months before the first loan was approved. So clearly, around two years before 
+these loans Mr H had some difficulties to the extent that credit accounts defaulted. But as 
+there wasn’t any recent adverse payment information it would’ve been reasonable for 
+Lending Stream to have concluded that whatever difficulties Mr H previously had, had now 
+passed. 
+Overall, there wasn’t any signs, from the credit check to indicate Mr H was in financial 
+difficulties, or to have prompted Lending Stream to carry out further checks at the time of 
+loans 1-4 being approved.  
+Given it was early on in the lending relationship, I think it was reasonable for Lending Stream 
+to have relied on the information Mr H provided to it – which showed he had sufficient 
+disposable income to afford the repayments. There also wasn’t anything to suggest that 
+Mr H was having either current financial difficulties or to indicate the loan repayments would 
+be unsustainable for him. 
+Taking everything into account, I do no not uphold Mr H’s complaint about these loans. 
+Loan 5
+Lending Stream has also accepted, in the final response letter that this loan ought to not 
+have been provided – I therefore don’t need to make a finding on whether Lending Stream 
+did anything wrong when it advanced the and so this loan is no longer in dispute. 
+In addition, the redress Lending Stream has proposed is in line with what the 
+Financial Ombudsmen would’ve recommended, if it was decided the loan ought to not have 
+been granted. 
+I’ve set out below what Lending Stream has agreed to do to put things right as a fair 
+outcome for the complaint.
+Other consideration 
+I understand from Mr H that he has an agreement in place with the debt purchaser and is 
+currently repaying these loans at the rate of £5 per month. 
+Lending Stream sold loans 3 – 5 to a third-party debt purchaser, and this was something the 
+credit agreements, that Mr H signed allowed Lending Stream to do, and so I can’t say an 
+error was made when the debts were sold. It is therefore also correct to say that the decision 
+to seek a CCJ wasn’t something Lending Stream was involved with. 
+I know Mr M is unhappy because he has incurred additional fees and charges as a result of 
+the CCJ. But, as Lending Stream had no part in the decision to seek the CCJ then I can’t 
+fairly hold it liable for the any charges that may have been added. In addition, certain fees 
+are allowed to be charged on top of the debt but this is part of the CCJ process and not 
+something for me to become involved with. 
+So, as Lending Stream didn’t seek the CCJ I can’t ask it to refund any charges especially 
+because I don’t think an error was made in relation to loans 3 and 4. I have no power to get 
+the judgement set aside as we are an informal alternative to the courts.  
+This also mean Lending Stream can’t request for the CCJ to be set aside or make any 
+adjustments to the credit report about the CCJ. This is because firstly, it wasn’t party to the 
+CCJ being awarded and secondly, because a court has decided the CCJ was an appropriate 
+course of action the Financial Ombudsman wouldn’t look to interfere in the judgement. 
+Putting things right
+Lending Stream needs to do the following which it has already agreed to do for loan 5 only If 
+the redress has already been paid, Lending Stream won’t need to carry it out. I’ve taken the 
+below redress as outlined in the final response letter. 
+Lending Stream has said it has sold the outstanding debts then if it can, it should buy these 
+back (for upheld loans) if it is able to do so and then take the following steps. If Lending 
+Stream isn’t able to buy loan 5 back then it should liaise with the new debt owner to achieve 
+the results outlined below. And I’ve explained above, why above the limitations I have with 
+relations to the CCJ. 
+A. Refund the interest and fees Mr H has paid Lending Stream for loan 5. 
+B. Pay 8% simple interest on this account and then withhold 20% tax.*
+C. Apply this total towards the outstanding balance that Mr H has with Lending Stream. 
+D. Remove any adverse credit file data in relation to loan 5. 
+*HM Revenue & Customs requires Lending Stream to deduct tax from this interest. 
+Lending Stream should give Mr H a certificate showing how much tax it has deducted, if he 
+asks for one.
+My final decision
+Gain Credit LLC has already made an offer for loan 5 as outline in the final response letter to 
+settle the complaint and I think this offer is fair in all the circumstances of the complaint.
+So, my decision is that Gain Credit LLC should pay the offer it has already agreed to pay.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr H to accept or 
+reject my decision before 15 February 2024.
+ 
+Robert Walker
+Ombudsman

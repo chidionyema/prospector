@@ -1,0 +1,21 @@
+Heritage Harvest Assessment Service.
+
+A productized service that evaluates an elderly retiree's garden or land for heritage crop potential, monetizing underutilized assets by connecting to high-end culinary and botanical markets.
+
+Lens: broaden — elderly retirees with large gardens have idle land that can produce niche, high-value heritage crops (e.g., rare apples, heirloom vegetables) for premium markets (chefs, artisan food makers), but lack time, knowledge, or mobility to commercialize. The solo agent can offer a fixed-fee assessment package (soil test, crop recommendation, market match) that unlocks a new income stream for the retiree with minimal effort from them.
+
+Retirees aged 60-75 owning gardens or small plots (0.5-2 acres) with budget authority over their property, motivated by extra income for healthcare or gifts.
+
+Rising demand for heritage and local produce in foodie markets, combined with retirees' desire to asset-optimize under fixed incomes. No dedicated service exists for this demographic.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+The passage provides only a company name and website for 'Propagate' and 'GreatWonder Farm', but no details about their services to determine if they are an incumbent in the proposed space.
+
+The passage discusses the financial challenges of farmers and the Farmland Stock Exchange, which is unrelated to the solvency of retirees aged 60-75 with gardens, who are the target payers for the Heritage Harvest Assessment Service. Thus, the passage does not address the question of payer solvency for the candidate.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+The passage states that a new legal report details how farmers can 'lawfully' establish an organic heritage seed network. This directly supports the claim that activities related to heritage crops, like those in the candidate's service, can operate within legal bounds.
+
+The passage states that 'Low Consumer Awareness Makes Market-Based Conservation Challenging,' indicating a lack of acute demand or willingness to pay for heritage crops, which refutes the claim of a real and acute problem that people are paying to solve.

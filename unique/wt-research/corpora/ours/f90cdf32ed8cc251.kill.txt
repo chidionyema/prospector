@@ -1,0 +1,23 @@
+Bilingual ad preflight for Texas creative agencies.
+
+A Texas creative agency owner gets an AI first pass plus bilingual review before every English and Spanish ad reaches the client.
+
+Each campaign upload triggers the service. The model performs the first-pass work of a bilingual copy editor. It checks meaning, headline length, calls to action, idioms, and omitted qualifiers. A bilingual reviewer confirms only the flagged lines. The agency receives a tracked brief and approved replacements before client approval.
+
+Agencies already pay bilingual editors, translators, and rework after an English or Spanish ad is rejected. The U.S. Census Bureau's 2022 American Community Survey Table B16001 shows the scale of multilingual Texas households. The Bureau of Labor Statistics' Occupational Employment and Wage Statistics program publishes paid wage data for interpreters and translators. Those sources establish both the audience and an already-funded adjacent role.
+
+Texas-based bilingual editors who already sell overflow review form the acquisition channel. They send agencies a fixed sample, and satisfied agencies return each month with another campaign. Every approved correction, client term, and rejected phrase builds a private English-Spanish issue history.
+
+It sinks if reviewers reject most model flags or clients treat machine translation as sufficient. A new provider starts with translation software, but not those agency-specific decisions.
+
+The owner of a three-to-20-person Texas creative agency that handles several English-Spanish campaigns each month. That owner already pays bilingual copy editors, translators, and reshoot time.
+
+The 2022 American Community Survey gives agencies an official planning base for multilingual campaigns, while capable translation models make a human-reviewed first pass economical. Agencies can test a fixed sample without changing their campaign process.
+
+The passages cover Spanish-language learning resources and Hispanic/Latino demographic definitions but never address Texas creative agencies, advertising preflight workflows, or whether agencies currently pay for bilingual copy review of English-Spanish ads. Nothing in the passages establishes that the pain is real and acute enough that agencies pay to solve it now.
+
+The passages define the word 'small' and describe a nanoscience journal; none address Texas creative agencies, bilingual advertising budgets, or whether agency owners can afford a £79.99 service, so payer solvency cannot be assessed.
+
+The passages provide only general Texas geography, information about the Scottish band Texas, and generic freelance marketplace descriptions (Upwork, Freelance.ru); none establish that Texas-based bilingual editors form a reachable acquisition channel or that any specific low-friction route to Texas creative agency owners exists.
+
+None of the passages address the legality of a bilingual ad preflight service for Texas creative agencies; the FTC and Facebook passages concern consumer protection and account recovery, and the remaining passages are unrelated Chinese-language tech content.

@@ -1,0 +1,88 @@
+launching at 2026-08-16T01:20:45Z
+APPLY: 61 listed pack(s) from https://api.mumchimp.com/catalog
+
+  [       no-source] 5b8720247589ae96  already converted and no pre-conversion object under its prefix — nothing to re-render from
+  [       no-source] 3d20db251950c20a  already converted and no pre-conversion object under its prefix — nothing to re-render from
+  [       converted] 0bf4d472ef2b90ad  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/0bf4d472ef2b90ad/9cb7b19f8c4af6257af0e217cf85ad3af2b0d71461da0dae45281f2226e3d842.zip
+{"timestamp": "2026-08-16 02:21:20,213", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83c\udfd7'(U+1F3D7)", "phase": "main"}
+{"timestamp": "2026-08-16 02:21:20,922", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83c\udfd7'(U+1F3D7)", "phase": "main"}
+  [       converted] a8333b00e91eec66  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/a8333b00e91eec66/a812f26fa6a55c32c840d1a2ade7815064558230a61ace8d36b292ea9378f7f6.zip
+  [       converted] a884727a1b90447c  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/a884727a1b90447c/7a01e55714ac923cb8a2b720110ceeceb33753915d2b74853fc6ce95d53b2dc2.zip
+  [       converted] 64c58072e2585c2b  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/64c58072e2585c2b/9476f03047c186b9a140786058b2cd2d80360cf9a9351f76dd51c43bc954f5c5.zip
+  [       converted] b94760e86e62585a  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/b94760e86e62585a/0cae720d412be73c89ff3eb71af7d05ffc5000f95852397808a3e2254c8c40e5.zip
+  [       converted] 904b6a0bd834ae08  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/904b6a0bd834ae08/98116cb4c731ad0d3757e2b54261355f272887282c4501c7ccf9a5dbddd0c449.zip
+  [       converted] 9e662c07c2fc308c  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/9e662c07c2fc308c/e2938d296773bd8335bc46b1e6206ec3aff7f79ae8ba7c0678267916a91dc405.zip
+  [       converted] 2abc23c3c0d05bab  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/2abc23c3c0d05bab/e361297abf318680ab51cd189f756c564f26e93ac1fb2170158827f047f0244d.zip
+  [       converted] 8d5a441749448b69  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/8d5a441749448b69/88375311fe2322307662aba22c64c52603a1ffc77e8c9e2d9e23edbfe963056e.zip
+  [       converted] 939b559421982379  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/939b559421982379/fefc646d33134333ffea424372ce8ef6fd913d2e75c5bc73005d57c3553d4afb.zip
+  [       converted] 256f0861192932ff  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/256f0861192932ff/8dc249e3149230100eb4c5f9d07dd9df58ea6a5642983ffcb34ee2fbda1c8b0c.zip
+  [       converted] ee78bd28f1919e8c  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/ee78bd28f1919e8c/5d751697634e12bb2acde529d3276b81ce2487714fbf9db057990b459fc53976.zip
+  [       converted] 224578cd860491c9  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/224578cd860491c9/fc57b9259aa1c9fa99732232225769d66fc753a60704e0fef3b82d3054070c4e.zip
+  [       converted] 82a9c38fea398376  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/82a9c38fea398376/a086f1df9bacad7f433ab3d44767fe6371c1e588ae76ba5edb7ceffc6504cef9.zip
+  [       converted] 1723d378cff66ebc  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/1723d378cff66ebc/3997fc47ca48c2a2d85239278bcc29f2f0c10758d91f2ed26ca1708ad5e0b5a1.zip
+{"timestamp": "2026-08-16 02:23:59,748", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 6 uncoverable character(s) removed: '\ud83c\udfa4'(U+1F3A4) '\ud83c\udfa5'(U+1F3A5) '\ud83d\udcac'(U+1F4AC) '\ud83d\udcc8'(U+1F4C8) '\ud83d\udd25'(U+1F525) '\ud83e\udd1d'(U+1F91D)", "phase": "main"}
+  [       converted] 736fe5aefb119af1  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/736fe5aefb119af1/a8f18d8736a6d6ea9a723f2d70e57a6e88677483cc5ed6b42012d1476f383784.zip
+  [       converted] ea773998f6a925b0  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/ea773998f6a925b0/0ce2a85b65b369c1775ff69ed37be4406cb37976be007628a1e6ecf47186ec76.zip
+  [       converted] fcf4a559f0ea0851  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/fcf4a559f0ea0851/ffd4b2c5cf0b8560b709b5303c653ddf0cf966eac28f829e88bd2ed851440c71.zip
+  [       converted] 08b22037fc2afc07  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/08b22037fc2afc07/a6db49ae635607dcd2dcee1b1d342eddf4f6c03635b67be94d4ea0583aea2c7f.zip
+  [       converted] 9c47244fd5f734b2  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/9c47244fd5f734b2/a27e941c5b7a4f0f3de9af56499c60bb836cf9cd26fb780508ea001837492bc3.zip
+  [       converted] 6778067cc84ea422  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/6778067cc84ea422/2b30b81e6486e14f519d826cca61690bc4f633ee5e27958e476cd25c9f0bbc8d.zip
+  [ already-correct] 13d41ccee9e96e2d  d3d0143f46c1b7f7c0d7f212a19889e6eb29c01588d3d565578b1d85bf400e79.zip
+{"timestamp": "2026-08-16 02:24:52,686", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\u2728'(U+2728)", "phase": "main"}
+  [       converted] e9a4c091e0db09a6  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/e9a4c091e0db09a6/68c9c01dbae62fa46476b71ef2bcbcf97c517465477c9f6965c61638286c41ec.zip
+  [       converted] cee21a292219c61a  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/cee21a292219c61a/71b12abec0ad072dd0099bfaa51b504ad467a0ced9e96635f1bc0ea986332d08.zip
+{"timestamp": "2026-08-16 02:25:07,934", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 2 uncoverable character(s) removed: '\ud83c\udde7'(U+1F1E7) '\ud83c\uddec'(U+1F1EC)", "phase": "main"}
+{"timestamp": "2026-08-16 02:25:08,482", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 2 uncoverable character(s) removed: '\ud83c\udde7'(U+1F1E7) '\ud83c\uddec'(U+1F1EC)", "phase": "main"}
+  [       converted] 871ba1e244fba2d4  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/871ba1e244fba2d4/4f13facb1bc236083e05392523b51ecc8b32e8093c7e5b16a6579ffaf4c0fbba.zip
+  [       converted] c5345daf18c5f186  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/c5345daf18c5f186/cd28d644747df1c2e63d868097725a381ad51ec1152de1f8c47c07695448e9fd.zip
+  [       converted] d6f72b9dc9a45c45  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/d6f72b9dc9a45c45/abe257a92353f19300070f38a4efeb980d08b5df449fdc0755d07243d5bfc340.zip
+  [       converted] 6171136b72015134  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/6171136b72015134/d306006d45c127cffa5a070028c629922cc3262c341a18943c80d55231324128.zip
+  [       converted] 8d5e24fbe6c1f5d3  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/8d5e24fbe6c1f5d3/2d6e7e09d7bc87935b272e00d487c0b901bd409ccf6b756e4ff59307bede7031.zip
+  [       converted] dbe0e82deb13daa2  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/dbe0e82deb13daa2/46223b937ab71d52f64fb988809eb04743db61a55b3a93f0589d584bf04ac47e.zip
+  [       converted] 36f79259569ba915  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/36f79259569ba915/be0ab6225bf69f4c7a1e782fe44bbefdf37a91a0c717db66b5bee294fa30ce82.zip
+{"timestamp": "2026-08-16 02:25:54,404", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83c\udf73'(U+1F373)", "phase": "main"}
+{"timestamp": "2026-08-16 02:25:54,797", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83c\udf73'(U+1F373)", "phase": "main"}
+  [       converted] 0cc434887c47cb9a  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/0cc434887c47cb9a/8430946803f8566d6a99e8c3192de91ec9c6c0ba4bdb84ba635c546f3090ab5f.zip
+  [       converted] d4ef1efc5328d8cf  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/d4ef1efc5328d8cf/64dc96bc787f5a671dcb6f2ea32f9e748f39b1800ac421fe350b96ee0feb17d4.zip
+  [       converted] d8aa7528aa73eabb  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/d8aa7528aa73eabb/c403d05eef089a215eb8dbf5e9fee9606cc9a4c1bfc9fe23913a73320663b50d.zip
+  [       converted] e31bceb456619111  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/e31bceb456619111/b6cbf93b367fe2357e4423733e94d778ac75e9649de2a44f47ba6e0ab919e923.zip
+  [       converted] 08dbe23f7be7af97  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/08dbe23f7be7af97/7ffffb8d4bb1860d5f3270923f3282b4c2377a4ebf11adfbea82555c0732bf5e.zip
+  [       converted] fbd10d6bdfcd5e31  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/fbd10d6bdfcd5e31/fa96c8a93d84e0da9325e8f3c4e385375f9f124f3a6bab187bcda3ff50e3fcd3.zip
+  [       converted] 48977b86df56eaac  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/48977b86df56eaac/49b7827af73aa1d0299b3a08363728fce81e9feb98c0df9316d0dc8be11c4748.zip
+  [       converted] 729098fd44756d74  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/729098fd44756d74/c2cc9e22c3d369348addc8c4a8ad7d8195a48320ad2d68204c92b317ba01d7a1.zip
+  [       converted] 0ce623e80658e97c  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/0ce623e80658e97c/b22f22b55f2b82e039e15c060042ea1782dc2baada79436bb2c7e8033c227ed4.zip
+  [       converted] 7a6c07535fd8a998  +0B, reordered reader, engine grade stripped, manifest refreshed -> packs/7a6c07535fd8a998/a11a10bb6a4777f9b089f45b8e558d4e9097830d7428a77e08ca040ebd775b18.zip
+  [       converted] c464a9ecb559d3c3  +21104B, reordered reader, engine grade stripped, manifest refreshed -> packs/c464a9ecb559d3c3/017738e345ea34c3b5d01dba288c844e91e2ea8a5b9922028d5d24bdeb5537d1.zip
+{"timestamp": "2026-08-16 02:27:26,808", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83d\ude9b'(U+1F69B)", "phase": "main"}
+{"timestamp": "2026-08-16 02:27:26,826", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83d\ude9b'(U+1F69B)", "phase": "main"}
+{"timestamp": "2026-08-16 02:27:27,089", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83d\ude9b'(U+1F69B)", "phase": "main"}
+{"timestamp": "2026-08-16 02:27:27,113", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83d\ude9b'(U+1F69B)", "phase": "main"}
+  [       converted] 60fa04b1387f0965  +19425B, reordered reader, engine grade stripped, manifest refreshed -> packs/60fa04b1387f0965/fe09f5b8e98729f8975dbff00bd21c1b3b73c0e54123db21eced41543af86deb.zip
+  [       converted] 8dbeb92cb54de87e  +17667B, reordered reader, engine grade stripped, manifest refreshed -> packs/8dbeb92cb54de87e/bce2b8eab529c03580729019972cf40a7f54de9d9a426f4ad844f2e9e8adce9e.zip
+  [       converted] 7dc94c897c7d28f4  +18873B, reordered reader, engine grade stripped, manifest refreshed -> packs/7dc94c897c7d28f4/9ba818ad5181ef8daee05b775897331d77a5ef14d75ef434448c961ac00b916d.zip
+  [       converted] 85bf91bd2895305c  +19866B, reordered reader, engine grade stripped, manifest refreshed -> packs/85bf91bd2895305c/672f4fc23a34718eeca1c94349d16ffed00798b4aa2fce1b2723f30bf9fddb02.zip
+{"timestamp": "2026-08-16 02:27:47,790", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 15 uncoverable character(s) removed: '\u0b86'(U+0B86) '\u0b95'(U+0B95) '\u0b9a'(U+0B9A) '\u0ba4'(U+0BA4) '\u0ba8'(U+0BA8) '\u0baf'(U+0BAF) '\u0bb0'(U+0BB0) '\u0bb2'(U+0BB2) '\u0bb3'(U+0BB3) '\u0bb5'(U+0BB5) '\u0bbe'(U+0BBE) '\u0bbf'(U+0BBF) '\u0bc1'(U+0BC1) '\u0bc8'(U+0BC8) '\u0bcd'(U+0BCD)", "phase": "main"}
+{"timestamp": "2026-08-16 02:27:48,489", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 15 uncoverable character(s) removed: '\u0b86'(U+0B86) '\u0b95'(U+0B95) '\u0b9a'(U+0B9A) '\u0ba4'(U+0BA4) '\u0ba8'(U+0BA8) '\u0baf'(U+0BAF) '\u0bb0'(U+0BB0) '\u0bb2'(U+0BB2) '\u0bb3'(U+0BB3) '\u0bb5'(U+0BB5) '\u0bbe'(U+0BBE) '\u0bbf'(U+0BBF) '\u0bc1'(U+0BC1) '\u0bc8'(U+0BC8) '\u0bcd'(U+0BCD)", "phase": "main"}
+  [       converted] f71ad0c4cf8b5344  +18490B, reordered reader, engine grade stripped, manifest refreshed -> packs/f71ad0c4cf8b5344/c17ed386d2f725d5ca361dde760260a04a3412f94390448b1517382bb37c111b.zip
+{"timestamp": "2026-08-16 02:27:54,010", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83d\udeb2'(U+1F6B2)", "phase": "main"}
+{"timestamp": "2026-08-16 02:27:54,873", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 2 uncoverable character(s) removed: '\ud83d\udccd'(U+1F4CD) '\ud83d\udeb2'(U+1F6B2)", "phase": "main"}
+  [       converted] 9d79ec9bd617b4c0  +15557B, reordered reader, engine grade stripped, manifest refreshed -> packs/9d79ec9bd617b4c0/a7e0cb4587ac0d6efa75e76aa873f4d5b35ffd4d1bff6cf1af6d479eaad83c88.zip
+  [       converted] 86a2b4eb9a66df28  +16332B, reordered reader, engine grade stripped, manifest refreshed -> packs/86a2b4eb9a66df28/a07f3f8ac5684a643fa805a91b53a9f058f894530cf983b912729f946718e2ca.zip
+{"timestamp": "2026-08-16 02:28:07,626", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 4 uncoverable character(s) removed: '\ud83d\udccd'(U+1F4CD) '\ud83d\udcde'(U+1F4DE) '\ud83d\udd25'(U+1F525) '\ud83d\ude9a'(U+1F69A)", "phase": "main"}
+{"timestamp": "2026-08-16 02:28:08,219", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 4 uncoverable character(s) removed: '\ud83d\udccd'(U+1F4CD) '\ud83d\udcde'(U+1F4DE) '\ud83d\udd25'(U+1F525) '\ud83d\ude9a'(U+1F69A)", "phase": "main"}
+  [       converted] 176ec4f0fb04c4a5  +16883B, reordered reader, engine grade stripped, manifest refreshed -> packs/176ec4f0fb04c4a5/ae995df19d32a283a39f8ae157770b622b49fbdc9d1ff48929fe69ed2b716d56.zip
+{"timestamp": "2026-08-16 02:28:12,668", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83d\udc3e'(U+1F43E)", "phase": "main"}
+{"timestamp": "2026-08-16 02:28:13,182", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83d\udc3e'(U+1F43E)", "phase": "main"}
+  [       converted] c0fff95b45d53f4a  +20832B, reordered reader, engine grade stripped, manifest refreshed -> packs/c0fff95b45d53f4a/5b5de8bfed2da2abd5ed5354b8ad5ea45297abd6b282fa921027ccf8b1dd9f15.zip
+  [       converted] 11e87faa54ca3684  +17188B, reordered reader, engine grade stripped, manifest refreshed -> packs/11e87faa54ca3684/c6df9d096eab5a729f8698e1b01d62fad76e9c33a44a851e283fc9697e207ef8.zip
+  [       converted] 7fc5a381ad82c1ed  +13366B, reordered reader, engine grade stripped, manifest refreshed -> packs/7fc5a381ad82c1ed/c10b3a0540abdde29de19e327fe37cfdcacb908155c6d54556f0c117c1f83334.zip
+  [       converted] a03a2ba029b408a7  +20030B, reordered reader, engine grade stripped, manifest refreshed -> packs/a03a2ba029b408a7/47cd1e7b4f1ab9734146348a9ad0716df27415793bf5eeb066ee3195a1e65865.zip
+  [       converted] 0c6c74267f7485a3  +18220B, reordered reader, engine grade stripped, manifest refreshed -> packs/0c6c74267f7485a3/c8de63dd3ddc6e286211995c314b331749cc2cde84b84db7a269857f8d6c4a41.zip
+  [       converted] 3e72d5a5f1a60068  +16277B, reordered reader, engine grade stripped, manifest refreshed -> packs/3e72d5a5f1a60068/8e8e848a9a6ef9a5c47e10d6523955448f08239360d0bc0a7d1c3a9f37468872.zip
+  [       converted] 85f8b738c8454c56  +19067B, reordered reader, engine grade stripped, manifest refreshed -> packs/85f8b738c8454c56/d2cce5bda5eb157cdc76a3bf29f392b22c3a06c859fb37c2bc10216742ed6f07.zip
+  [       converted] ac755ca1473e57fa  +19446B, reordered reader, engine grade stripped, manifest refreshed -> packs/ac755ca1473e57fa/eac4b4c80f63c181aed795d58a74c2793342bb5e4afb862164ff10126789eef1.zip
+  [       converted] 5923c35906c3930b  +15899B, reordered reader, engine grade stripped, manifest refreshed -> packs/5923c35906c3930b/9eef5dfa34e568eb34d85c16a55e273023e6f3662dc2767096951a644c9c616f.zip
+
+APPLY complete: already-correct=1, converted=58, no-source=2
+per-pack verdicts written to .backfill-logs/backfill_bundle_html.apply.json
+EXIT=0

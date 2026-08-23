@@ -1,0 +1,23 @@
+EHCP Navigator.
+
+A vertical tool that transforms a carer's raw answers into a legally structured Education, Health and Care Plan (EHCP) request, complete with local authority performance data and customized argument strategies, then tracks the entire process to appeal.
+
+Lens: first_principles – rebuild from the raw pain of navigating the opaque, adversarial EHCP process without legal training. A solo operator can compound proprietary FOI datasets (e.g., LA response times, tribunal win rates, panel composition) that generic charities will never mine nor dynamically apply to individual cases, creating a durable engine that increases success rates.
+
+Primary carers of children with special educational needs (SEN) who have been denied or are seeking an EHCP, with acute pain and solvent motivation to pay £49 one-off for a substantial increase in their chances.
+
+EHCP backlog and tribunal cases have surged post-pandemic; Local Authorities are more defensive; parent-led SEN groups on social media are highly active and ready distribution channels for a tool that offers an edge.
+
+The passages confirm EHCPs remain part of the system and will still be needed for some children despite proposed reforms, so the value of an EHCP request tool is durable.
+
+Passages describe EHCP drafting tools exclusively for councils and caseworkers (e.g., GovMetric Nexa 'helps councils', VITA 'reducing drafting time for caseworkers'), none serve parents or carers, so the parent-facing space appears underserved.
+
+Passages discuss local authority insolvency and EHCP system, not carers' ability or willingness to pay £49. No evidence provided on payer solvency.
+
+None of the provided passages discuss distribution channels, social media groups, or any route to primary carers; they focus on AI tools for local authorities and SEND reform, not on how a tool would reach paying parents.
+
+The passages provided are legislative titles and navigation snippets that do not address whether the described tool's operation is lawful or not.
+
+The passages indicate that unclear EHC plans cause worry for parents (a real problem) and that there is growing interest in tailored AI tools, but none demonstrate that carers are currently paying to solve this problem. Payment evidence is absent.
+
+The evidence confirms that unclear EHCPs cause real pain for carers (source e74fc76eaee32158), but no evidence was found that primary carers are willing or able to pay £49 for a tool to solve it. The payer_solvency check returned no supporting evidence, and the pain_reality check failed to demonstrate any existing payment for comparable solutions. Without validation that the target users will pay, the venture is not worth building.

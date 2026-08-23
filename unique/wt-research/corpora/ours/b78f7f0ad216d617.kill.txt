@@ -1,0 +1,21 @@
+TaxQuarter Planner — the printed diary built around HMRC's new quarterly filing dates for freelancers.
+
+A printed year planner that maps the UK's new quarterly tax filing dates for freelancers, sold through the maker's own online shop.
+
+From 6 April 2026, HM Revenue & Customs began requiring self-employed people earning more than £50,000 a year to keep digital records and send a tax update every quarter, under the Making Tax Digital for Income Tax rules. A second wave, covering anyone earning over £30,000, joins from April 2027. For a freelance designer, writer, developer or consultant used to doing one tax return a year, this is a real shift: four new deadlines a year instead of one, landing on odd dates — 5 July, 5 October, 5 January, 5 April — that don't map onto a normal calendar or diary.
+
+This borrows the idea of a subject-specific planner, the kind gardeners, students or new parents already buy because a general one doesn't fit their year, and applies it to the newly complicated freelance tax year. Each section leading up to a filing date carries pre-printed prompts: which receipts to gather, which income category to check, and a countdown to the deadline. It's a physical, printed product, sold through the maker's own Shopify or Etsy shop, made through print-on-demand or a local UK printer, and posted out with no factory, warehouse or stock risk.
+
+It doesn't compete with accounting software. Xero, QuickBooks and HMRC's own free tools already handle the actual filing. What it sells is the thing none of those give a freelancer: a physical object on the desk that turns four new, oddly-dated deadlines into something they can see and touch, the way a paper diary still outsells a phone reminder for people who plan that way. Reprinted each April with that year's exact dates, it's the kind of thing a freelancer might just re-buy out of habit.
+
+UK self-employed freelance designers, writers, developers and consultants who now fall into the Making Tax Digital for Income Tax bracket — over £50,000 income from April 2026, extending to over £30,000 from April 2027 — and want a simple way to track the new quarterly dates without buying full accounting software just for that.
+
+Making Tax Digital for Income Tax became mandatory for the first group of self-employed people on 6 April 2026, so this is the first tax year freelancers are actually living through the new quarterly rhythm. Confusion and searches about the new dates are at their highest right now, before habits and other products settle in.
+
+The passages show a generic planner/diary market (TikTok customization trend, UK stationery shops, wall planners) and separate content on freelancer tax write-offs and record-keeping, but none mention Making Tax Digital, quarterly filing dates, or any search/purchase behavior tied to the specific new deadline confusion the candidate targets.
+
+The passages confirm MTD for Income Tax is live now, mandatory from 6 April 2026 for sole traders/landlords over £50,000, with HMRC actively writing to affected taxpayers about two months out — evidence of a current, unfolding regulatory shift rather than a stale or already-settled one.
+
+The passages show multiple accessible print-on-demand routes (Printify, Etsy POD integrations, Inkthreadable) with no upfront cost, plus market commentary that the space is growing and not saturated, meaning a novice can realistically list and sell through these existing channels.
+
+None of the passages address the legality of print-on-demand planner sales or MTD-date reprinting; they cover unrelated VAT-checking, POD business setup, and HMRC phishing/reminder-app topics with no bearing on whether this margin requires breaking law or terms.

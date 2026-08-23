@@ -1,0 +1,13 @@
+Title 24 model audit for residential energy-modeling AI.
+
+Residential energy-modeling AI vendors get a Title 24 compliance audit and HERS-rater-ready documentation, for a fixed fee.
+
+The buyer is the ML lead or VP of product at a residential energy-modeling AI vendor selling into California's new-construction market (think cove.tool, Arc, or a newer entrant). California's Energy Commission updated Title 24 (Part 6 of Title 24 of the California Code of Regulations) residential energy standards in 2022 with a 2025 update pending. AI models that predict Home Energy Rating System (HERS) scores must match what a certified HERS rater would produce. The ML team today pays Title 24 energy-modeling consultants like EnergySoft or California Energy Specialist between $20,000 and $60,000 per Title 24 update cycle (every three years) to rebuild and validate the model.
+
+A productized service delivers the Title 24 model audit and HERS-rater documentation as a fixed-fee artifact. The buyer uploads their model's HERS-score predictions on a sample of residential new-construction projects; the service returns a Title 24 compliance report with citation and a HERS-acceptance document a licensed HERS provider can use to sign off on the AI's outputs.
+
+Each completed audit compounds a proprietary dataset of Title 24 rule-to-prediction mappings that competitors starting tomorrow would not have. The California Energy Commission publishes Title 24 text and software compliance manuals but does not validate private AI models against them. Energy-modeling consultants model buildings, not AI models, and structurally cannot ship machine-learning validation services.
+
+ML lead or VP of product at residential energy-modeling AI vendors selling into California's new-construction market (think cove.tool, Arc, or a newer entrant). They already spend $20,000-$60,000 per Title 24 update cycle on energy-modeling consultants like EnergySoft or California Energy Specialist.
+
+The California Energy Commission released the 2025 Title 24 standards package, and energy-modeling AI vendors selling into California's new-construction market must update their models to remain compliant before the new standards take effect.

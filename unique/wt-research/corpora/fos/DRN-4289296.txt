@@ -1,0 +1,197 @@
+DRN-4289296
+Complaint
+Ms P has complained that HSBC UK Bank Plc (“HSBC”) incorrectly calculated the amount 
+she needed to pay when she asked to settle her loan early in November 2021. 
+Background
+In August 2018, Ms P successfully applied for a loan for £15,000.00 from HSBC. The loan 
+had an APR of 7.9% and a term of 60 months. This meant that the total amount to be repaid 
+of £18,091.75, which included interest, fees and charges of £3,091.75, was due to be repaid 
+in a first monthly instalment of £301.48 followed by 59 monthly instalments of £301.53.
+Ms P contacted HSBC about settling her loan early in November 2021. However, she was 
+unhappy at the settlement figure she was quoted as she thought that it didn’t include enough 
+of an interest rebate given how much of the loan term was left. As a result of this, Ms P 
+decided against settling her loan and complained about the amount she was being asked to 
+repay.
+HSBC investigated Ms P’s complaint and didn’t think it had done anything wrong when 
+providing Ms P with her settlement figure. In its view, it had calculated the amount Ms P was 
+asked to pay in line with the appropriate regulations. Ms P remained dissatisfied and referred 
+her complaint to our service.
+When Ms P’s complaint was referred to one of our investigators, HSBC offered to pay Ms P 
+£200 in compensation for any distress and inconvenience this may have caused. Our 
+investigator thought that HSBC’s offer was fair and reasonable in the circumstances of the 
+case. In his view, Ms P hadn’t paid any extra interest as a result of any error in calculating 
+the settlement figure for her loan because she didn’t settle the loan early. 
+Ms P disagreed with our investigator’s assessment and asked for an ombudsman’s decision.
+My findings
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Ms P believes that at the time she requested her early settlement figure she should have 
+received an interest rebate of £1,133.64. Ms P says this is because she was due to pay 
+£3,091.75 in interest over the course of her loan. And this meant that £51.53 of her monthly 
+repayment was going towards interest and £250 towards the £15,000.00 she was initially 
+lent. As Ms P had 22 repayments left to make, this meant that £1,133.64 of her outstanding 
+balance of £7,032.01 was made up of interest she shouldn’t have to pay as a result of 
+settling her loan early.
+On the other hand HSBC said that Ms P was only entitled to an interest refund of £95.02. 
+And while it said that the settlement amount complied with the regulations in place, it hasn’t 
+really been able to demonstrate how this is the case. 
+
+I’ve carefully thought about what both Ms P and HSBC have said.  
+In truth, as Ms P didn’t settle her loan in November 2021 the amount HSBC asked her to pay 
+is no longer of critical relevance to this complaint. Nonetheless, given it’s clear that Ms P still 
+feels strongly about this matter, I’ve looked into the amount HSBC asked Ms P to pay in 
+order to settle her loan early and whether this was worked out in accordance with the 
+applicable early settlement provisions.
+The rules regarding early settlement
+I think that it would help for me to start by explaining that Section 94 of the Consumer Credit 
+Act 1974 allows a borrower to settle a regulated credit agreement – such as Ms P’s 
+agreement with HSBC - and discharge their indebtedness early. And where a consumer 
+requests to settle a credit agreement early, like Ms P requested to do here, the Consumer 
+Credit (Early Settlement) Regulations 2004 (“the regulations”) set out how a lender should 
+work out what the customer needs to pay in order to settle the amount outstanding.
+Section 5 of the regulations allows a lender to calculate a settlement for (and valid until) a 
+date 28 days after the request for a settlement figure was made. And interest would be 
+charged for this 28-day period. Furthermore, if the agreement in question has a term for 
+longer than a year, like Ms P’s five year agreement did, section 6 of the regulations allows 
+the lender to defer the settlement date, for the purposes of calculating an interest rebate, by 
+a further 30 days. 
+Therefore, as Ms P’s request was a request to settle an agreement which had an original 
+term of longer than one year early, the regulations permitted HSBC to charge interest for a 
+period of 58 days from the date of the settlement request. And this immediately means that 
+while Ms P had 22 months left to run on her loan, she wouldn’t be entitled to a rebate for the 
+interest that would have been due over that entire period.
+Amortisation - how loan repayments are applied to outstanding balances
+It’s important to note that all loans – irrespective of whether interest is added upfront or on a 
+daily basis - are based on an amortisation schedule where each instalment is made up of 
+some of the interest and charges and some of the capital advanced. And this usually means 
+that even though a monthly payment may appear relatively large - in proportion to the 
+amount borrowed - a much smaller proportion of this payment goes to repaying the capital in 
+the early stages.
+So many consumers in Ms P’s position may believe that they’ve paid off more of their loan 
+than they have due to the cash amount of the total payments made, because they’re 
+unaware of the way that their loan would be amortised and a larger proportion of the early 
+payments were going towards the interest. 
+In Ms P’s case her own calculations indicate that she believes that £250 of each of her 
+monthly repayments was going towards repaying the capital balance from the outset. And 
+the remaining £51.53 of her monthly payments was going to the interest that needed to be 
+paid. As explained, Ms P has arrived at this figure by dividing the total interest payable by 
+the number of monthly payments she had to make.  
+But I’ve explained that this isn’t the way that payments are treated. And the amortisation 
+schedule for Ms P’s loan correctly shows that £179.17 of Ms P’s first payment, which was 
+made on 28 September 2018, went towards the interest accrued since she received her 
+£15,000.00 advance on 2 August 2018. This was an unusually larger amount of interest 
+because Ms P’s first payment was made almost 2 months after her advance. 
+Nonetheless the proportion of Ms P’s second payment that went towards interest was 
+£96.38 as the capital balance owing was £14,877.69, which is £122.31 less than it was at 
+the start. And as the amount Ms P owed reduced with each payment she made, the 
+proportion of her payments that went towards repaying interest also reduced. But it would be 
+some time further down the line before only £51.53 of Ms P’s payment would be going 
+towards interest and £250 to the amount owed.
+Indeed when Ms P paid instalment number 18, in March 2020, £72.41 of this payment went 
+towards interest. And having looked at the amortisation schedule used, I’m satisfied that 
+there were no issues with HSBC’s calculations up until this point.
+Ms P’s three-month payment deferral in April 2020 and the effect it had on the outstanding 
+balance going forward
+As I understand it, Ms P successfully applied for a pandemic payment deferral in April 2020. 
+As a result she, with HSBC’s agreement, didn’t make loan repayments in April 2020,           
+May 2020 and June 2020. It’s worth noting that the regulator’s guidance did permit lenders 
+to charge interest during any pandemic payment deferrals. 
+Although this wouldn’t have made any difference to the total amount Ms P had to pay had 
+the loan run to term because HSBC simply added three extra payments at the end of the 
+term to account for the three deferred payments. Nonetheless by the time Ms P resumed her 
+loan repayments in July 2020, the amortisation schedule was thrown out of kilter by the fact 
+that interest would have accrued on a balance that hadn’t reduced in line with the initially 
+proposed schedule. 
+From what I can see, HSBC appears to have tried to correct this by apportioning £277.11 of 
+Ms P’s July 2020 payment towards interest. This may well have been what the total interest 
+amount for Ms P’s combined April 2020, May 2020, June 2020 and July 2020 payments 
+would have been. And I can to some extent understand why HSBC did this.
+However, this served to apportion a much smaller amount of Ms P’s payment to the 
+outstanding balance. And I don’t think that things were ever readjusted in a way that brought 
+the balance back in line with the initial schedule. I think that this resulted in higher proportion 
+of Ms P’s monthly repayment being allocated towards interest rather than reducing the 
+capital going forward.           
+The position when Ms P asked to settle her loan early in November 2021
+As I’ve explained, the fixed-sum nature of Ms P’s loan, which meant that no further interest 
+could be added, meant that the failure to return to the initial amortisation wouldn’t have been 
+a problem or cost Ms P more had she repaid her loan in 60 monthly instalments  - albeit 
+repaying her final instalment in November 2023. But Ms P asked to settle her loan early in 
+November 2021. And when she did so she was faced with 58 days’ worth of interest being 
+added to an unexpectedly larger outstanding capital balance. 
+HSBC’s calculations don’t appear to have corrected for this. And while, for reasons I’ve 
+already explained, I don’t agree that Ms P was entitled to an interest rebate of £1,133.64 – 
+her calculations don’t take into account amortisation, an effective extension of the term as a 
+result of the pandemic payment deferral and she’s failed to take into account that HSBC was 
+entitled to add 58 days’ worth of interest to the outstanding balance, I don’t think that 
+HSBC’s settlement figure is correct either. 
+I fail to see how an outstanding balance of £7,236.72 on a loan being settled 19 months 
+early (while Ms P might have been looking to settle her loan 22 payments ahead of schedule 
+she deferred three payments as a result of her pandemic payment deferral) was only eligible 
+for an interest rebate of £95.02 when the loan had an APR of 7.9%. 
+Indeed HSBC’s early settlement calculations show that Ms P only had £204.71 of interest to 
+pay in November 2021 despite her still owing £7,236.72, having 24 payments of £301.53 to 
+make and the loan having an APR of 7.9%. I’m afraid that HSBC’s numbers simply don’t add 
+up here.
+Why what Ms P’s settlement figure should have been in November 2021 isn’t critical to the 
+outcome of her complaint 
+Ms P didn’t pay an increased amount to settle her loan. She declined to do so when told how 
+much HSBC thought she needed to pay to settle her loan in November 2021. Ms P says that 
+she had the funds to settle her loan early and would have done so had she been provided 
+with a correct settlement figure.
+However, for reasons I’ve already explained, Ms P incorrectly believed that her settlement 
+amount should have been some £1,000.00 lower than she was asked to pay. Furthermore, 
+given the circumstances, Ms P’s correct settlement figure is likely to have been closer to the 
+amount that she was asked to pay, rather than the amount she believed she had to pay. So I 
+can’t reasonably reach the conclusion that Ms P would have settled her loan had she been 
+provided with a correct settlement figure.
+In any event, and perhaps even more importantly it’s only fair and reasonable for me to ask 
+a respondent firm to compensate a consumer for financial loss that they actually suffered, 
+rather than a loss that they could have but did not end up suffering. Ms P is effectively 
+asking us to place her in the position that she would have been had she settled her loan in 
+November 2021. And I’m satisfied that Ms P would have overpaid to settle her loan had she 
+done so at this stage.   
+But the fact remains that Ms P didn’t settle her loan in November 2021 and therefore didn’t 
+overpay – notwithstanding the fact that she may have had the funds at this time. So I’m 
+therefore satisfied that Ms P didn’t suffer a financial loss as a result of HSBC’s failure to 
+provide her with a correct early settlement figure in November 2021. In these circumstances, 
+I see no value to asking HSBC to retrospectively calculate this amount and I make no 
+direction in regard to this matter.  
+The service HSBC provided when Ms P asked to settle her loan in November 2021
+It isn’t in dispute that HSBC didn’t provide the best level of service to Ms P in                    
+November 2021 and in the period since. But HSBC has already offered to pay Ms P £200 for 
+this. Ms P hasn’t accepted HSBC’s offer and in truth it isn’t entirely clear whether this is 
+because she believes the amount to be insufficient or because of her continued unhappiness 
+at what she was asked to pay to settle her loan in November 2021.  
+In any event, I’ve considered whether HSBC’s offer of compensation for any distress and 
+inconvenience caused by its actions is fair and reasonable in all the circumstances of Ms P’s 
+complaint. 
+I do accept that Ms P has experienced an amount of frustration and annoyance as a result of 
+HSBC’s actions. I also understand why the number of errors Ms P has referred to would 
+have been upsetting and that the impact on Ms P was more than just minimal. 
+However, I do think that £200 does adequately reflect the gravity of what has happened. 
+Indeed, given Ms P’s starting point for determining how much she should have to pay to 
+settle her loan was based on a misunderstanding of the regulations and how loan payments 
+are treated, I think that she’s, in any event, likely to have been unhappy at a correctly 
+calculated early settlement figure. 
+Most importantly, the amount that HSBC has agreed to pay for any distress and 
+inconvenience caused by its actions is in line with the type of award I would make, in 
+circumstances where I were to have upheld the complaint along these lines.
+So overall, I’m satisfied that the £200 already offered is an adequate amount of 
+compensation for the distress and inconvenience Ms P experienced here – although I do 
+appreciate that Ms P doesn’t agree that this is the case. I’m therefore satisfied that what 
+HSBC has already offered to do to put things right for Ms P is fair and reasonable in all the 
+circumstances of her complaint and I leave it up to her to decide whether she wishes to 
+accept HSBC’s offer. 
+I appreciate that this will be very disappointing for Ms P – as she clearly feels strongly about 
+this matter. But I hope she’ll understand the reasons for my decision and that she’ll at least 
+feel her concerns have been listened to – particularly as she has now had an explanation of 
+how her early settlement amount should have been calculated at the time.
+My final decision
+For the reasons I’ve explained, I’m satisfied that what HSBC has already offered to do to put 
+things right for Ms P is fair and reasonable in the circumstances and I’m not requiring it to do 
+anything more or anything further.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Ms P to accept or 
+reject my decision before 20 September 2023.
+ 
+Jeshen Narayanan
+Ombudsman

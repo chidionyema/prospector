@@ -1,0 +1,13 @@
+TrainReimburse: The NHS CPD Cost Buyer.
+
+A solo-operated service that advances the upfront cost of CPD courses for NHS staff, then collects reimbursement from their trust, charging a flat fee.
+
+NHS clinical staff often need expensive CPD courses to progress but must pay £500–£2000 personally and wait 2–4 months for trust reimbursement, causing cash flow stress; by advancing the fee and taking assignment of the claim, the service captures a small fee while providing immediate relief.
+
+NHS band 5–7 clinical staff (e.g., nurses, AHPs) who want a CPD course but can't afford the upfront cost.
+
+NHS budget freezes and increased reliance on staff self‑funded CPD due to the 2024 cuts, plus the rise of specialised courses not covered by CPD budgets.
+
+Passages mention NHS CPD funding schemes and commitments to reduce financial pressures, which could challenge durability, but none directly confirm or refute that the value (cash flow gap for upfront CPD payment) is fabricated, commoditised, or evaporating. The CPD Funding passage shows an alternative, but it is not established as a total commodity that eliminates all margin.
+
+Passage 1ff023f3121067a5 describes a CPD Funding scheme that directly pays for training (courses, conferences, modules) for Nursing and AHP roles, which is the same constituency targeted by the candidate, thereby serving as an incumbent funded rival eliminating the need for an external advance service.

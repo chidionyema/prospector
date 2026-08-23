@@ -1,0 +1,23 @@
+Clinical Trial Caregiver Match.
+
+A transaction broker that matches a carer’s dependent (dementia, Parkinson’s, rare disease) with actively enrolling clinical trials, negotiating a per‑enrolment payment from the trial sponsor and handling all paperwork—turning the carer into a supplier of eligible subjects instead of a passive seeker.
+
+Carers exhaust hours searching ClinicalTrials.gov and cold‑calling sites, often missing trials with compensation or cutting‑edge care. By inverting the dynamic—the broker actively ‘sells’ the patient’s profile to trial sponsors who pay for recruitment—the carer gains access to otherwise invisible trials and the broker earns a fee from the CRO, supplementing the carer’s constrained budget.
+
+Clinical research organisations (CROs) / trial sponsors pay a finder’s fee per qualified enrolled patient; the carer may pay a small upfront vetting fee to ensure commitment.
+
+Decentralised trial models are expanding, creating a shortage of diverse, community‑based participants; at the same time, an ageing population yields more in‑home carers desperate for no‑cost treatment alternatives.
+
+The passages define 'transaction', mention carer depression interventions, and list a clinical building and diseases; none address whether the clinical trial caregiver matching value is real, durable, commoditised, or evaporating.
+
+None of the provided passages address clinical trial recruitment, caregiver matching, or any incumbents in that space. They contain only irrelevant dictionary definitions, a generic prospectus instruction, and a fragment about dementia research.
+
+No passage discusses clinical research organisation budgets, motives, or payment of finder's fees for patient enrollment. The passages only define 'transaction' and mention a study on dementia care management, which are irrelevant.
+
+No passage discusses distribution channels for clinical trial recruitment brokers or any route to CROs/trial sponsors; the cited content is either dictionary definitions or unrelated academic snippets.
+
+The passages define 'transaction' and mention care act wellbeing, but none address laws, regulations, or terms governing clinical trial recruitment brokering.
+
+The passages provide definitions of 'transaction' and an academic profile; none mention carers, clinical trial recruitment difficulties, or any indication of an acute problem people are paying to solve.
+
+No evidence in the provided passages addresses legality, unit economics, or market dominance for this model. All risks are unverifiable and thus not flagged as true.

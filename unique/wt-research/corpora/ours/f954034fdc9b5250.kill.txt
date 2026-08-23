@@ -1,0 +1,17 @@
+AI SB 253 climate disclosure drafts for California CFOs.
+
+Pulls your financial and energy data, classifies emissions by scope, and generates a first-draft SB 253 regulatory filing ready for CARB submission.
+
+California's SB 253 (Climate Corporate Accountability Act, effective 2024, first filings due 2026) requires companies with gross revenues over $1 billion that do business in California to file annual climate disclosures covering Scope 1, 2 and 3 greenhouse gas emissions, with third-party verification and financial risk assessment. The California Air Resources Board (CARB) oversees the program and will set detailed data reporting protocols. CFOs, controllers and sustainability leads at affected companies currently have no internal capacity to compile this — they pay external sustainability consultants $50,000-$200,000 per year. A service that pulls data from financial systems, classifies emissions by scope, drafts the CARB filing and maintains the annual disclosure cycle eliminates that recurring consultant cost entirely. The deliverable is a first-draft annual SB 253 filing, including GHG inventory and financial risk narrative, updated each year. The durable wedge is the structured knowledge of CARB's specific data requirements and filing format — knowledge that general-purpose AI tools do not have without significant fine-tuning on California's specific law.
+
+CFOs, controllers and sustainability leads at California companies with $1B+ gross revenues that do business in California, currently paying sustainability consultants $50,000-$200,000 per year to compile SB 253 disclosures.
+
+SB 253 passed in 2024, with first annual disclosures due in 2026 for large companies. CARB is currently developing the detailed reporting protocols. Companies are beginning to realise the scope of what they need to build internally — and the external consultant market is already quoting $50,000-$500,000 annually for this work.
+
+The passages do not address SB 253, California climate disclosure requirements, or any evidence that companies are paying $50,000-$200,000 to sustainability consultants for this work. The only tangentially relevant snippet (3c9261f5354e15f5) references an unrelated bill number (1383) mixed with baseball terminology, while the other passages concern antimony, Nike SB, online games, and Freecycle — none of which establish that affected CFOs face a real, acute pain they are spending money to solve.
+
+No passage addresses SB 253, California CFOs, sustainability consulting budgets, or any company's willingness or ability to pay for a climate disclosure drafting service.
+
+None of the passages address California's SB 253, CARB filings, sustainability consultants, or any distribution channel through which a vendor could reach California CFOs at $1B+ companies — the provided texts cover unrelated topics (CFO support spaces, generic consulting, corporate title lists, texting slang, the element antimony, and Nike skateboarding).
+
+The passages discuss baseball terminology ('SB' as stolen base), antimony industrial uses, and Nike SB products; none address SB 253, CARB filings, third-party disclosure requirements, or any law or terms restricting who may prepare climate disclosures on behalf of California companies.

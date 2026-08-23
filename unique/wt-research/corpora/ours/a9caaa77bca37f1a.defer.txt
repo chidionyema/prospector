@@ -1,0 +1,13 @@
+Food hygiene trajectory scores for delivery platform ops.
+
+A monthly rating trajectory forecast for every restaurant on your platform, with risk scores for new onboardings from FSA and local authority data.
+
+Food delivery platforms in the UK carry reputational and legal risk from restaurants with poor food hygiene. Local authorities publish food hygiene ratings under the Food Hygiene Rating Scheme run by the Food Standards Agency, and a small number of councils now publish inspection results within days of the visit. Operations managers at UK food delivery platforms need to onboard restaurants with confidence and to monitor existing restaurants before a re-inspection drops their score.
+
+We compile a proprietary dataset that pairs every FSA-registered food business with its parent company data at Companies House, plus local authority enforcement notices and inspection patterns. A trajectory score predicts the likely rating at the next inspection for each restaurant on the platform, and a risk score is generated for new onboardings based on the same signals.
+
+The data compounds. Local authorities publish inspection reports at different cadences; cross-referencing with parent company changes (new directors, registered office moves, recent strikes) sharpens the score. The FSA's food hygiene rating website is free; it does not include parent company data or local authority enforcement patterns, and it does not generate trajectory forecasts.
+
+Operations manager at a UK food delivery platform or restaurant marketplace.
+
+The FSA has accelerated the publication of inspection data after the COVID-era reforms; a small number of councils now publish inspection notices within days of the visit. UK political pressure on delivery platforms for restaurant safety has increased since the COVID-era Just Eat and Uber Eats investigations. New entrants to the UK delivery market are competing on safety reputation, and local authorities have begun using their powers to require platforms to delist specific premises.

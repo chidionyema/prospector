@@ -1,0 +1,23 @@
+ShiftSafe – The Gig Worker's Schedule Interruption Pay.
+
+A mobile subscription for hospitality and retail workers that pays a fixed amount when a scheduled shift is cancelled within 24 hours, using AI to verify cancellation and manage risk.
+
+Just as event cancellation insurance protects ticket buyers, many hourly workers lose income due to last-minute shift drops. A solo operator can tap into this by building a parametric product that auto-pays based on schedule data (cross-sector: travel insurance).
+
+Waitstaff, baristas, and retail assistants working variable shifts at large chains or independent outlets.
+
+Rise of real-time scheduling apps and gig-like work; workers increasingly demand income stability; no existing product insures individual shift cancellations at micro-scale.
+
+None of the passages address the durability, commoditization, or evaporation of a parametric shift cancellation insurance product. They cover FLSA penalties, UK labor reforms, and a staffing platform, none of which speak to the value being real or durable.
+
+The passages show scheduling platforms (7shifts, Shiftbase) that do not solve the income loss from shift cancellations, and a legal right to payment that does not constitute an incumbent product; thus no dominant incumbent addresses the need.
+
+The passages discuss government reforms on zero hours contracts and shift scheduling rights, but none address the financial ability or willingness of hospitality/retail workers to pay for a subscription service.
+
+None of the passages discuss distribution channels, self-serve mechanisms, or forcing functions for the proposed product; they cover employment law reforms and scheduling software unrelated to route-to-market.
+
+The provided passages discuss employment rights reforms and tax treatment of cancelled shifts but do not address whether the ShiftSafe service would be legal under applicable laws, terms of service, or require falsifying measurements. No information on the margin's lawfulness is present.
+
+Passages confirm last-minute schedule changes harm income and prompt legal mandates for employer penalties, but none show that workers are currently paying for a solution like ShiftSafe's parametric insurance.
+
+ShiftSafe's value proposition—paying workers for last-minute shift cancellations—is directly undercut by emerging government mandates requiring employers to compensate workers for such changes. The UK Employment Rights Act 2025 (10ce48c98b995d50) and US Fair Workweek laws, such as Oregon's predictive scheduling law (df68998adafc2bc2), legally obligate employers to pay for cancelled, moved, or curtailed shifts. These regulations provide a free, enforced alternative to ShiftSafe's paid subscription, drastically shrinking the addressable market and reducing workers' willingness to pay. Further, the spread of these laws (34937dcd90fe0d76) and employer-facing tools like Shiftbase (8e9e65d1359c8d3b) that help comply with them indicate the problem is being solved at a systemic level, making a standalone worker-paid insurance product redundant.

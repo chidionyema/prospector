@@ -1,0 +1,23 @@
+ShiftScout – The Gig Worker's Platform Algorithm Decoder.
+
+A data intelligence feed that reverse-engineers gig platform shift-allocation algorithms by aggregating micro-decision data from thousands of workers, delivering personalized schedules that maximize hourly earnings.
+
+Gig platforms (Uber Eats, Deliveroo) operate black-box algorithms that assign orders and surging bonuses to maximize platform profit at the expense of worker predictability. By crowdsourcing granular shift-log data (time, location, acceptance, earnings) and applying causal inference, a solo operator can model the algorithm's behavioral triggers and sell a daily 'earnings-maximizing route' back to workers — effectively arbing the platform's opacity. (Invert lens: adversarial to the platform's information asymmetry.).
+
+A delivery rider or gig driver aged 18–27, earning below median on a platform, who would pay a weekly £5–10 sub to boost earnings by 15–20%.
+
+Platforms are removing fare transparency and introducing 'dynamic' pay models that punish workers who don't game the system; workers are organizing in chat groups but lack analytical power; the EU Platform Work Directive is forcing more data openness but not algorithmic explanation.
+
+The provided passages discuss other projects and general algorithmic management concepts but do not contain any information about the ShiftScout tool's value, its realness, durability, commoditisation, or evaporation. They are irrelevant to the specific claim.
+
+The passages describe academic research and proposals for reverse engineering platform code or designing worker-centric audit tools, but none indicates a dominant commercial incumbent or funded rival that already profitably delivers personalized gig algorithm decoding to workers.
+
+Passages discuss gig worker exploitation and algorithmic management, but none address the financial ability or willingness of delivery riders to pay a weekly subscription for earnings-maximizing routes.
+
+None of the provided passages discuss distribution channels, self-serve mechanisms, or any route for a data feed to reach gig workers; they describe datasets, algorithmic exploitation, and information asymmetry in general.
+
+None of the three passages addresses the lawfulness of crowdsourcing workers' own shift-log data or selling analysis derived from it. One mentions a GDPR fine against a platform, another proposes reverse-engineering for ethnography, but neither states that the candidate's specific margin would break law or terms.
+
+The passages describe academic/research tools for auditing platform algorithms or empowering organizers, not evidence that gig workers are paying to solve a personalized scheduling problem. No passage addresses willingness to pay or current suffering driving payment.
+
+The candidate idea lacks evidence of value durability, payer willingness, distribution feasibility, and legal clarity. Free worker-centric audit tools like the Shipt Calculator (173fd42d67e16f95) and FairFare (944f6560a68cd36b) already provide crowdsourced pay transparency, commoditizing the data advantage without subscription fees. Academic reverse-engineering efforts (2b1cd96d26252088) suggest algorithm insights may become widely accessible, eroding the proprietary wedge. Without validation of a paying audience or distribution channel, the risk of building is prohibitively high. The case is not fully decisive, but the burden of proof lies with the builder to demonstrate a sustainable business model.

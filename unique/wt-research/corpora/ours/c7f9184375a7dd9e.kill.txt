@@ -1,0 +1,27 @@
+Gig-Gear Resilience Lab.
+
+Specialized, reinforced repair and ergonomic customization service for urban gig-delivery equipment.
+
+Broadening the scope of repair to include ergonomic optimization for specific urban climates/vehicle-types creates value that mass-market manufacturers cannot touch. Lens: broaden.
+
+Freelance delivery couriers operating in extreme weather conditions using bikes/scooters in dense urban centers.
+
+Gig-income is volatile; extending the life and efficiency of high-usage, cheap equipment is a direct way to protect daily earnings.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+The proposed business model for 'Gig-Gear Resilience Lab' hinges on the ability of an independent entity to conduct specialized, reinforced repairs on urban gig-delivery equipment. However, evidence (signals/uk_right_to_repair_2026.txt) reveals that despite expanded Right to Repair legislation, independent repairers remain unable to secure affordable, structured access to essential OEM parts catalogues, diagnostic codes, and repair manuals due to manufacturer non-compliance and fragmented systems. This constitutes a fundamental deliverability failure, as the service cannot be executed as promised because the necessary inputs to perform these repairs remain inaccessible or prohibitively expensive for independent operators.

@@ -1,0 +1,11 @@
+The Solo Dent Repair Workflow Service for Independent Auto Body Shops.
+
+A solo operator provides a complete, end-to-end workflow service for independent auto body shops: from AI-assisted damage assessment and parts ordering to insurance claim filing and customer communication, all managed via a simple portal with a per-repair flat fee.
+
+Independent auto body shops (the 'manual tradesperson' of the automotive repair world) are caught between complex insurance protocols, fragmented parts supply chains, and tech-forward competitors. They lack the time and expertise to optimize their workflow. By borrowing the 'managed service' model from IT support (cross_sector lens), a solo operator can deliver a high-margin, high-value service that integrates multiple disjointed tasks into a single, predictable cost.
+
+Independent auto body shop owners (often sole proprietors or small partnerships) who handle 5-20 repairs per month, in suburban and exurban areas. They pay a flat fee of $50-$150 per repair, depending on complexity, for the managed workflow service.
+
+Insurance companies are increasingly demanding digital-first claim submissions and pre-authorization. Parts supply chains are disrupted and complex. AI-based damage assessment tools (e.g., Tractable, Click-Ins) are becoming accurate but require integration and know-how. The solo operator can be the 'glue' that makes these technologies accessible and the process painless for the time-poor shop owner, who otherwise struggles to keep up and loses money on each repair.
+
+The passage highlights 'Wrenchdesk', an existing AI-powered business software solution built specifically for collision repair and body shops, which handles job pipelines, invoices, estimates, and customer communication, thereby addressing the shop owners' need for workflow management.

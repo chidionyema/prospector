@@ -1,0 +1,305 @@
+"""The gateway's fences, tested where they live.
+
+Every fence in this console is enforced in Python, in `dispatch`, and NOT in the web handler. That
+is the property under test: a caller who reaches the engine some other way — the CLI, a future
+Telegram surface, a script — hits the same refusal.
+
+Nothing here writes to the real store. `_record_intent` and `_store_ops_dir` are redirected to
+tmp_path, because a test suite that appends to `store/ops/intents.jsonl` puts fiction in the
+operator's audit log, which this repo has done before to the durable ledger and the audit log.
+"""
+from __future__ import annotations
+
+import json
+import time
+
+import pytest
+
+from prospector.ops import console_api as api
+
+
+@pytest.fixture(autouse=True)
+def _no_production_writes(tmp_path, monkeypatch):
+    """Send every intent receipt to tmp_path. Also proves the log path is a single choke point."""
+    ops = tmp_path / "ops"
+    ops.mkdir()
+    monkeypatch.setattr(api, "_store_ops_dir", lambda cfg: ops)
+    return ops
+
+
+@pytest.fixture
+def cfg():
+    return api._cfg(None)
+
+
+# --------------------------------------------------------------------------- #
+# The envelope
+# --------------------------------------------------------------------------- #
+def test_every_response_is_dated():
+    """Founder requirement: every screen states when its data was read. It cannot if the
+    gateway does not date the read."""
+    doc, code = api.dispatch(["views"])
+    assert code == 0
+    assert isinstance(doc["as_of"], float)
+    assert doc["as_of_iso"].endswith("Z")
+    assert doc["contract"] == api.CONTRACT_VERSION
+
+
+def test_an_unknown_view_is_a_bad_request_not_a_crash():
+    doc, code = api.dispatch(["read", "no_such_view"])
+    assert code == 2
+    assert doc["ok"] is False
+    assert doc["error_kind"] == "UnknownView"
+    # The error names the alternatives, so an operator is not left guessing.
+    assert "status" in doc["error"]
+
+
+def test_read_failure_reports_the_reason_and_never_empty_data(monkeypatch):
+    """A swallowed outage returns `[]` and reads as 'nothing to show'. This one raises."""
+    def boom(cfg, args):
+        raise RuntimeError("the ledger is unreadable")
+
+    monkeypatch.setitem(api.READS, "spend", boom)
+    doc, code = api.dispatch(["read", "spend"])
+    assert code == 1
+    assert doc["ok"] is False
+    assert doc["data"] is None
+    assert "unreadable" in doc["error"]
+
+
+# --------------------------------------------------------------------------- #
+# The confirmation fence
+# --------------------------------------------------------------------------- #
+def test_a_write_without_a_token_is_refused_and_returns_the_preview():
+    doc, code = api.dispatch([
+        "act", "pause.arm",
+        "--payload", json.dumps({"scope": "generation", "reason": "testing the fence"}),
+    ])
+    assert code == 4
+    assert doc["error_kind"] == "ConfirmationRequired"
+    # The refusal hands back the preview AND a usable token, so the operator's next step is one
+    # click rather than a second round trip.
+    assert doc["data"]["preview"] is True
+    assert len(doc["data"]["confirm"]) == 20
+
+
+def test_the_refusal_is_recorded(_no_production_writes):
+    api.dispatch([
+        "act", "pause.arm",
+        "--payload", json.dumps({"scope": "generation", "reason": "testing the fence"}),
+    ])
+    rows = [json.loads(x) for x in
+            (_no_production_writes / "intents.jsonl").read_text().splitlines() if x.strip()]
+    assert rows, "a refused write must leave a trace; a log of successes cannot explain a quiet day"
+    assert rows[-1]["applied"] is False
+    assert "confirmation" in rows[-1]["refused"]
+
+
+def test_a_token_is_bound_to_its_action(cfg):
+    payload = {"scope": "generation", "reason": "x"}
+    for_arm = api._valid_tokens(cfg, "pause.arm", payload)[0]
+    for_disarm = api._valid_tokens(cfg, "pause.disarm", payload)[0]
+    assert for_arm != for_disarm
+
+
+def test_a_token_is_bound_to_its_arguments(cfg):
+    a = api._valid_tokens(cfg, "pause.arm", {"scope": "generation", "reason": "x"})[0]
+    b = api._valid_tokens(cfg, "pause.arm", {"scope": "all", "reason": "x"})[0]
+    assert a != b, "a token for 'pause generation' must not confirm 'pause everything'"
+
+
+def test_a_token_ignores_the_nonce_and_the_actor(cfg):
+    """The token commits to what the operator was SHOWN. The nonce makes the write idempotent and
+    is minted per attempt; binding it would force a fresh preview for every retry."""
+    base = {"scope": "generation", "reason": "x"}
+    assert (api._valid_tokens(cfg, "pause.arm", base)[0]
+            == api._valid_tokens(cfg, "pause.arm", {**base, "nonce": "n1", "actor": "web"})[0])
+
+
+def test_a_token_expires(cfg, monkeypatch):
+    payload = {"scope": "generation", "reason": "x"}
+    old = api._valid_tokens(cfg, "pause.arm", payload)[0]
+    real = time.time
+    monkeypatch.setattr(api.time, "time", lambda: real() + 3 * api.CONFIRM_TTL_S)
+    assert old not in api._valid_tokens(cfg, "pause.arm", payload)
+
+
+def test_the_previous_window_still_confirms(cfg, monkeypatch):
+    """A preview read slowly must still be confirmable, or the console refuses the operator for
+    reading carefully."""
+    payload = {"scope": "generation", "reason": "x"}
+    real = time.time
+    old = api._valid_tokens(cfg, "pause.arm", payload)[0]
+    monkeypatch.setattr(api.time, "time", lambda: real() + api.CONFIRM_TTL_S)
+    assert old in api._valid_tokens(cfg, "pause.arm", payload)
+
+
+def test_preview_writes_nothing(monkeypatch):
+    calls = []
+
+    def spy(cfg, payload, preview):
+        calls.append(preview)
+        return {"ok": True}
+
+    monkeypatch.setitem(api.ACTIONS, "pause.arm", spy)
+    doc, code = api.dispatch(["act", "pause.arm", "--payload", "{}", "--preview"])
+    assert code == 0
+    assert calls == [True], "preview must never call the action in write mode"
+    assert doc["data"]["preview"] is True
+
+
+# --------------------------------------------------------------------------- #
+# Prices
+# --------------------------------------------------------------------------- #
+def test_price_writes_are_refused_by_name_with_a_reason():
+    """Refused BY NAME, not by absence. '404 unknown action' reads as a missing feature; this
+    says why it will not exist."""
+    doc, code = api.dispatch(["act", "catalogue.set_price",
+                              "--payload", json.dumps({"id": "x", "pence": 100})])
+    assert code == 3
+    assert doc["error_kind"] == "RefusedByDesign"
+    assert "bridge.py" in doc["error"]
+
+
+def test_no_action_can_reach_a_price():
+    assert not [a for a in api.ACTIONS if "price" in a or "reprice" in a]
+
+
+def test_the_destructive_index_tool_runs_with_a_snapshot_instead_of_being_hidden():
+    """`index.reconcile` used to be refused by name. That was the wrong fence (founder decision,
+    2026-08-16): refusing it did not stop the deletion, it moved the deletion to a terminal where
+    nothing recorded it. It now runs through `tools.run`, behind the preview, the confirmation
+    token and a rollback snapshot — and its danger note says which half undo cannot reach."""
+    assert "index.reconcile" not in api.REFUSED_ACTIONS
+
+    tool = [t for t in api.TOOLS if t["path"] == "scripts/reconcile_orphan_index.py"]
+    assert tool, "the tool must stay in the inventory whatever the fence is"
+    assert tool[0]["run"] is True
+    assert tool[0]["risk"] == "external"
+    assert "DELETES" in tool[0]["danger"], "the operator must be told what it removes"
+
+
+# --------------------------------------------------------------------------- #
+# Catalogue: the one non-price write
+# --------------------------------------------------------------------------- #
+def test_set_listing_uses_only_the_listing_endpoint(monkeypatch):
+    """Re-POSTing a pack to /internal/catalog with IsListed=false goes through an UPSERT that
+    assigns ProviderProductId and ProviderPriceId from the request unconditionally — so an
+    unlisting done that way nulls the pack's Stripe ids. This action may only touch the bit."""
+    seen = []
+
+    def fake_call(method, path, *, body=None, internal=False, timeout=20.0):
+        seen.append((method, path, body))
+        if path.startswith("/catalog/"):
+            return {"status": 200, "body": {"id": "abc", "title": "A pack"}, "url": path}
+        if "price-history" in path:
+            return {"status": 200, "body": {"changeCount": 0}, "url": path}
+        return {"status": 200, "body": {"ok": True}, "url": path}
+
+    monkeypatch.setattr(api, "_store_call", fake_call)
+    cfg = api._cfg(None)
+    receipt = api._act_catalogue_listing(
+        cfg, {"id": "abc", "listed": False, "reason": "citations rotted"}, False)
+
+    writes = [(m, p) for m, p, _ in seen if m != "GET"]
+    assert writes == [("PATCH", "/internal/catalog/abc/listing")]
+    assert receipt["applied"] is True
+    body = [b for m, p, b in seen if m == "PATCH"][0]
+    assert set(body) == {"IsListed", "Reason"}, "the body must not carry a price or a provider id"
+
+
+def test_set_listing_refuses_an_unexplained_delisting():
+    cfg = api._cfg(None)
+    with pytest.raises(ValueError, match="reason"):
+        api._act_catalogue_listing(cfg, {"id": "abc", "listed": False}, True)
+
+
+def test_the_catalogue_is_read_from_the_route_that_exists(monkeypatch):
+    """`/v1/catalog` does not exist. The public routes are `/catalog` and `/catalog/{id}`
+    (Store.Api Program.cs:255, :329). An invented path 404s and reads as an outage."""
+    seen = []
+
+    def fake_call(method, path, *, body=None, internal=False, timeout=20.0):
+        seen.append(path)
+        return {"status": 200, "body": [], "url": path}
+
+    monkeypatch.setattr(api, "_store_call", fake_call)
+    api._read_catalogue(api._cfg(None), {})
+    assert seen == ["/catalog"]
+
+
+def test_a_withdrawn_pack_is_distinguished_from_a_missing_one(monkeypatch):
+    """`GET /catalog/{id}` 404s on an unlisted pack on purpose. Pairing it with the internal
+    price-history status is the only way to tell 'withdrawn' from 'no such id' — and telling an
+    operator 'already off the shelf' when they typed the id wrong is a lie."""
+    def fake_call(method, path, *, body=None, internal=False, timeout=20.0):
+        if "price-history" in path:
+            return {"status": 200, "body": {"changeCount": 2}, "url": path}
+        return {"status": 404, "body": "", "url": path, "http_error": True}
+
+    monkeypatch.setattr(api, "_store_call", fake_call)
+    out = api._read_pack(api._cfg(None), {"id": "abc"})
+    assert out["listed"] is False
+    assert out["exists"] is True
+    assert "OFF the shelf" in out["listed_note"]
+
+
+def test_a_pack_that_does_not_exist_says_so(monkeypatch):
+    def fake_call(method, path, *, body=None, internal=False, timeout=20.0):
+        return {"status": 404, "body": "", "url": path, "http_error": True}
+
+    monkeypatch.setattr(api, "_store_call", fake_call)
+    out = api._read_pack(api._cfg(None), {"id": "nope"})
+    assert out["exists"] is False
+
+
+def test_an_unreachable_store_raises_rather_than_reporting_an_empty_shelf(monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("could not reach the store API")
+
+    monkeypatch.setattr(api, "_store_call", boom)
+    with pytest.raises(RuntimeError):
+        api._read_catalogue(api._cfg(None), {})
+
+
+# --------------------------------------------------------------------------- #
+# The tool inventory
+# --------------------------------------------------------------------------- #
+def test_every_listed_tool_is_on_disk():
+    """The table is hand-kept, so it can go stale. `exists` is measured, and this is the check
+    that the map still matches the territory."""
+    out = api._read_tools(api._cfg(None), {})
+    missing = [t["path"] for t in out["tools"] if not t["exists"]]
+    assert missing == []
+
+
+def test_money_rail_tools_run_but_are_marked_as_reaching_off_this_machine():
+    """The money-rail tools are the ones the console must run, because running them by hand is
+    how a price gets changed with no receipt. What must never happen is a DIRECT catalogue price
+    write, and that is still refused by name (`test_price_writes_are_refused_by_name_with_a_reason`).
+    `risk="external"` is the honest part: a snapshot rolls back the local store, not Stripe."""
+    money = [t for t in api.TOOLS if t["danger"] and "MONEY RAIL" in t["danger"]]
+    assert money, "the price tools must be inventoried, not hidden"
+    assert all(t["run"] is True for t in money)
+    assert all(t["risk"] == "external" for t in money), (
+        "a money tool marked local would promise an undo that cannot reach Stripe"
+    )
+
+
+def test_every_tool_that_reaches_off_this_machine_says_so():
+    """The old fence was `run=False` on anything holding the word DESTRUCTIVE in its danger note.
+    No tool carries that word now, so that test had gone vacuous — it asserted nothing about
+    anything. The property that replaced it is `risk`, and it is only useful if every tool has a
+    known one."""
+    assert all(t["risk"] in api.RISKS for t in api.TOOLS)
+    external = [t for t in api.TOOLS if t["risk"] == "external"]
+    assert external, "publishing, repricing and unlisting all reach off this machine"
+    assert all(t["writes"] for t in external), "a read-only tool cannot be external"
+
+
+def test_no_tool_is_runnable_from_the_web_at_all():
+    """The console executes exactly one command: this gateway. `run` marks what the console
+    COVERS, not a shell-out; if that ever becomes an executor, this test is the alarm."""
+    doc, code = api.dispatch(["actions"])
+    assert code == 0
+    assert not [a for a in doc["data"]["available"] if a.startswith("tool.")]

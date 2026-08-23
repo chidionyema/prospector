@@ -1,0 +1,13 @@
+RainDay Cover – Parametric Weather-Action Guarantee for Outdoor Tradespeople.
+
+A solo-operated daily weather guarantee that pays a cash benefit automatically when a pre‑specified rainfall threshold is met at the job site—no claims forms, no adjusters, just a weather API trigger.
+
+Applying the cross‑sector model of parametric crop insurance to micro‑trades: an individual tradesperson cannot absorb the income shock of a rained‑out day, yet existing business‑interruption policies are too complex, require proof of loss, and are never sold in daily slices. By using a third‑party verified weather data feed and a simple fixed‑payout schedule, a solo operator can price and bear this granular risk with minimal operational overhead, creating a product that feels like an instant cash injection rather than insurance.
+
+Self‑employed landscapers, roofers, painters, external renderers, window cleaners—any outdoor manual worker who loses a full day’s earnings when it rains during working hours.
+
+Freak rainfall events are rising due to climate change; gig‑platform algorithms have conditioned workers to expect on‑demand financial products; open weather APIs and mobile wallets make real‑time automated payout feasible and cheap; no legacy insurer wants to underwrite a £40 daily micro‑policy.
+
+The passages describe parametric weather-guarantee products in the travel/booking market (Vrbo WeatherPromise, Ontario Blue Cross 'Rainy Day' travel insurance), not the tradesperson income-protection value at issue; they neither affirm that the value for outdoor tradespeople is durable nor show it has evaporated or been fully commoditised. Adjacent-market products are not a direct refutation of durability for this candidate's market.
+
+The passages name at least two operating rivals—WeatherIt Rain Insurance and Sensible Weather—already delivering the exact parametric mechanism (automatic fixed cash payout when rainfall hits a trigger, no claims/adjusters), so the parametric-weather-payout space is already served by funded incumbents rather than underserved.

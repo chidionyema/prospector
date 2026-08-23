@@ -1,0 +1,11 @@
+The Section 21 Flaw Finder.
+
+A solo-operated service that turns a tenant's Section 21 eviction notice into a detailed invalidity challenge by scanning for hidden legal errors using a proprietary database of defect patterns and case law.
+
+lens: first_principles. Friction: Gen Z renters face sudden no-fault eviction with 2 months' notice, but many Section 21 notices are invalid due to unaffixed prescribed forms, missing deposit certificate, or defective EPCs/gas safety records. External change: post‑COVID eviction surge + mandatory possession reform leaving loopholes. The service rebuilds from the tenant's pain, ignoring free advice leaflets, and delivers an actionable invalidation letter that forces the landlord to restart the entire process, buying months of housing stability.
+
+Gen Z gig workers and students privately renting in England/Wales, receiving a Section 21 notice with less than 2 months to vacate.
+
+Eviction filings jumped 40% in 2023, and ground‑40 reforms left small legal traps that even solicitors miss; tenants need a low‑cost weapon that exploits these widely‑ignored technicalities.
+
+The passages confirm Section 21 technical-defect checks (deposit, gas safety, EPC, Form 6A errors) are exactly the mechanism this service relies on, but also show Section 21 itself is being abolished from 1 May 2026, eliminating the notice type the service scans — so the underlying legal loophole is a time-limited, disappearing target rather than a durable value source.

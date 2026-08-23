@@ -1,0 +1,21 @@
+Texas appraisal protest briefs for property tax SaaS.
+
+For property tax SaaS vendors serving Texas commercial owners, a monthly feed that turns 254 county appraisal district protest outcomes into per-CAD success rates.
+
+Texas has more than 254 county appraisal districts (CADs), each with its own protest filing format, hearing schedule and decision language. Texas commercial property owners collectively pay over $40B in property taxes annually. Property tax SaaS vendors (typically 5 to 50 staff companies such as O'Connor and EquiComp) help owners file protests, track deadlines and predict outcomes. Their product's value depends on knowing, per CAD, which protest arguments are currently winning. Today their data team scrapes individual CAD sites one at a time because formats vary wildly and there is no central source of protest outcomes.
+
+We provide per-CAD, per-argument-type, per-property-class success rates updated monthly from protest hearing records. The deliverable is a queryable database plus a monthly change brief that the engineering team plugs into their product.
+
+The buyer already spends on this outcome today. Property tax SaaS vendors either assign 1 to 2 data engineers to scrape CAD sites (a fully-loaded cost of around $200K per year), buy fragmented third-party CAD extracts, or ship a product whose success-rate predictions are stale. The corpus (normalized protest outcomes across all 254 CADs, tied to argument type and property class) only accumulates with continuous scraping and operator curation. No incumbent has that corpus. The Texas Comptroller publishes aggregate CAD statistics, not argument-level outcomes.
+
+Data product leads and engineering managers at property tax SaaS companies serving Texas commercial owners (typically 5 to 50 staff companies).
+
+Texas commercial property values rose 30 to 60 percent in the 2023 and 2024 reassessments, driving an unprecedented volume of protests. The 89th Texas Legislature is considering appraisal reform bills in 2025.
+
+No passage addresses Texas property tax protests, CAD outcomes, or buyer demand for property-tax SaaS data products; the sources cover UK property portals, Texas geography/wildlife, and a Scottish rock band, which are entirely irrelevant to the buyer-intent question.
+
+The passages show that Texas has a large, economically strong business environment, but they do not establish that property-tax SaaS vendors can or will pay £49.99 for this product. No passage identifies these buyers, their budgets, their current spending, or any evidence of purchase intent.
+
+The passages describe Texas geography and Kent County Council services in England; none address property tax SaaS vendors, county appraisal districts, or any route to reach such buyers, so the distribution question cannot be resolved on this evidence.
+
+The passages contain no information about the legality of scraping Texas county appraisal district websites, their terms of service, or any restrictions on aggregating and reselling public protest outcome data. The sources address Texas geography and a German university, offering no evidence on whether the margin requires unlawful conduct or breach of terms.

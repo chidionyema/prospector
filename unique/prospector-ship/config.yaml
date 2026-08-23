@@ -1,0 +1,1616 @@
+# MOAT CHAIN (Part 9 failover): TRUSTED brains only. There is no cheap tail here any more.
+#   claude_cli = TRUSTED moat (subscription CLI; rules kills/passes normally).
+# When it cannot answer, verification raises ProviderExhaustedError and the candidate DEFERS,
+# to be finished by `vet --resume` when the moat is back.
+#
+# minimax RE-ADDED 2026-08-08 (founder directive: "veridt should also have fallback", after
+# being shown the 2026-08-06 arithmetic below and reaffirming). It is the "guardrailed
+# emergency tail": a ruling it serves is stamped `provisional` by `is_provisional_provider`
+# (`prospector/operator.py`), is refused by the publish gate (`run.py:528`, `not dossier.provisional`),
+# and is auto re-vetted by the drain. Nothing untrusted can ever reach a customer.
+#
+# The 2026-08-06 arithmetic that removed it is UNCHANGED and still true — it is now an
+# accepted cost, not a refuted claim:
+#     provisional = one full verdict run now (minimax) + one full re-vet later (moat) = 2x
+#     defer       = nothing now                        + one vet later (moat)         = 1x
+# Both reach the SAME final answer, because a provisional ruling can never publish. Measured
+# 2026-08-06: 38 provisional passes were queued behind a `vet --resume` drain, and the drain's
+# own CLI load was implicated in the moat flapping that minted them.
+#
+# What the re-add buys, and it is the thing the arithmetic does not price: a DEFER stops the
+# line. On 2026-08-08 claude_cli hit a monthly spend limit and every candidate in flight
+# deferred, so the daemon produced nothing rulable for the duration. A 2x answer that arrives
+# today beats a 1x answer that arrives whenever the subscription resets.
+#
+# The rails that keep this safe, all pre-existing and now under test:
+#   * publish gate         run.py:528          — a provisional PASS never publishes
+#   * drain preflight      run.py:1533         — TRUSTED-only; the drain refuses to re-vet into
+#                                                a chain that can only re-stamp provisional
+#   * generation preflight health.py           — un-blinded for the provisional tail (see
+#                                                `trusted_only`), which is what makes the
+#                                                fallback reach the daemon at all
+# Known cost, stated as such: minimax is NON-DETERMINISTIC on structured routing at
+# temperature 0 (4 of 6 candidates changed tier across 3 repeat runs; claude_cli 18/18
+# identical). A provisional ruling it serves is a placeholder, not a second opinion.
+#
+# cursor_cli REMOVED 2026-08-06 (founder directive: "we need to get rid of cursor_cli"). It led
+# this chain from 2026-07-30 and was measured DEAD on 2026-08-06 — a live probe of every
+# configured brain, one JSON call each:
+#     deepseek    RuntimeError: DeepSeek call failed: HTTP Error 402: Payment Required
+#     cursor_cli  ProviderExhaustedError: cursor cli exit 1: ActionRequiredError:
+#                 You've hit your usage limit
+#     minimax     OK
+#     claude_cli  OK
+# The fallbacks did their job — nothing crashed — which is exactly why this went unnoticed: a
+# chain whose first tier is dead looks identical to a healthy one from the outside, it just pays
+# a guaranteed failure (and, until its breaker trips, a full timeout) before every single call.
+# The adapter is deleted, not demoted; `_build_operator` raises an explicit error on the name so
+# a stale config fails loudly instead of quietly building a shorter chain.
+#
+# PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
+# specs/offline-moat-validation.md and run, recording a clearance:
+#   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
+operator: [claude_cli, standardcompute, minimax]
+# standardcompute inserted ahead of minimax 2026-08-08 (founder directive: "fall back for claude
+# ahead of minimax"). It is a TAIL, not a head — claude_cli still leads, per the standing rule that
+# the chain must stay led by a trusted brain. It is NOT in MOAT_PRIMARY (`prospector/operator.py`), so a
+# ruling it serves is stamped `provisional`, never publishes on PASS (run.py:528) and is auto
+# re-vetted — the same posture minimax already had, which is what makes a cheap tail safe.
+# To promote it to trusted-final, the gate is the one named below:
+#   python -m prospector.golden --operator standardcompute --fixtures fixtures/golden_fixtures.json --runs 3
+#
+# The CHEAP chain: divergent generation, prescreen, scoring. Never rules a verdict — anything of
+# its that reaches a ruling is stamped `provisional` (operator.py:1071), so the fence above does
+# not apply here and the head may be the cheapest live brain rather than a trusted one. It lived
+# in `run.py` as a module constant until 2026-08-10, which made the one knob whose entire subject
+# is "what does the ancillary work cost" the only one that needed a source edit and a daemon
+# re-exec to move, while every throughput knob beside it was a config line. Its head changed
+# three times in two weeks (deepseek → claude_cli → standardcompute), each time by editing code
+# to express a billing fact. Blank/absent => the historical default, byte for byte.
+noncritical_operator: [standardcompute, claude_cli, minimax]
+model: ""                            # verdict brain model pin (blank = each CLI's default).
+model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
+                                 # own fast default (model_defaults.fast). Was deepseek-v4-flash.
+model_version_tag: ""            # filled at runtime for audit
+
+# Quality chain for the customer-facing £49 deliverable (build_spec / gtm_plan / ops_plan
+# and the storefront listing_page). Subscription CLIs first, cheap tail behind them.
+# Falls back to the moat operator if none are available.
+artifact_operator: [claude_cli, minimax]
+                                  # cursor_cli removed 2026-08-06 (founder directive; it was at
+                                  # its usage limit per the probe above, so it answered none of
+                                  # the pack prose and every artifact call paid its failure
+                                  # first). This chain runs against the NON-CRITICAL health
+                                  # file, so a hiccup here can never blind the moat.
+                                  #
+                                  # minimax added 2026-08-08 (founder directive: "we can use
+                                  # minimax for cheap vetting"). It REVERSES this file's earlier
+                                  # "cheap non-critical tail is not used for pack prose" rule,
+                                  # deliberately and with a narrower claim: claude_cli still
+                                  # LEADS, so normal-path prose quality is unchanged; minimax
+                                  # only answers when claude_cli is walled, where the previous
+                                  # behaviour was that no pack was regenerated AT ALL. Measured
+                                  # 2026-08-08: 9 packs sat unlisted on content defects while a
+                                  # single-entry chain had nothing to fall back to.
+                                  #
+                                  # This is safe to make cheap ONLY because the pack lint is a
+                                  # backstop that runs after generation and before minting
+                                  # (bridge.py:820 content_ok, since 967457f): a weak minimax
+                                  # pack fails currency/citation/completeness and stays UNLISTED
+                                  # rather than reaching a buyer. Generation is non-critical by
+                                  # the standing rule; NO VERDICT moves here — minimax is
+                                  # outside MOAT_PRIMARY (operator.py:997) and anything it RULES
+                                  # is stamped provisional and refused publication (run.py:543).
+                                  # Regenerating a pack re-uses the stored trusted verdict and
+                                  # never re-rules, so nothing published this way is provisional.
+
+# --- Model defaults (Part: HARDCODED_MODEL_AUDIT_TICKET) ---
+# Per-provider default model identifiers. Used as FALLBACK when model:/model_fast:
+# are empty or unset for a given provider context.
+model_defaults:
+  claude:       "claude-sonnet-4-5"     # ClaudeOperator default
+  deepseek:     "deepseek-v4-pro"       # DeepSeekOperator default
+  minimax:      "MiniMax-M3"           # MiniMaxOperator (full reasoning)
+  minimax_fast: "MiniMax-M3"           # MiniMaxOperator (fast — also M3 per standing order)
+  ollama:       "qwen2.5-coder:7b"     # OllamaOperator default
+  # StandardCompute (api.stdcmpt.com) — OpenAI-compatible, key in .env as
+  # STANDARDCOMPUTE_API_KEY, base URL overridable via STANDARDCOMPUTE_BASE_URL.
+  # Wire format verified live 2026-08-08: /v1/chat/completions 200, /v1/messages 404.
+  standardcompute: "standardcompute"    # StandardComputeOperator default
+  search:
+    deepseek:    "deepseek-v4-flash"
+    minimax:     "MiniMax-M3"
+
+retrieval:
+  # Grounding chain — infra-controlled providers (re-verified live 2026-07-31):
+  #   1. ddg         — DuckDuckGo real web search, FREE, no API key (needs `pip install ddgs`).
+  #                    Fast primary (5.7s mean over 81 calls, audit 2026-07-30); rate-limits at
+  #                    batch scale (15/96 errors that day) → falls through to (2).
+  #   2. exa         — real web search API, ~2-4s, EXA_API_KEY. Credits are BACK: the
+  #                    "402 NO_MORE_CREDITS" note below was true on 2026-07-02 and is no longer.
+  #                    Live probe 2026-07-31: 5/5 queries, 3 results each, 2.1-4.2s.
+  #   3. claude_cli  — real web search via the Claude Code SUBSCRIPTION (no key, no credits).
+  #                    Guaranteed-available backstop; kept LAST so grounding coverage is
+  #                    unchanged if both (1) and (2) are down. It is correct but SLOW.
+  #
+  # Why exa was inserted at position 2 (job 20260730T212901866, generate k=5, FAILED at 1731s):
+  # 112 grounding calls; 81 resolved on ddg costing 460s total, but the 31 that fell through to
+  # claude_cli cost ~3028s — 87% of all grounding time on 28% of the calls, 97.7s mean, 262s max.
+  # At claude_concurrency=2 that queue alone is ~1514s of the 1731s wall, and the run finally died
+  # on "claude cli slot acquire timed out after 45s (grounding queue saturated)". Replaying the
+  # five most expensive of those queries through exa: 14.0s total vs 900s on claude_cli (64x),
+  # identical result counts. This changes only HOW FAST the passages arrive — same real web
+  # search, same results_per_query, same verdict rules, same publish gate. The moat is untouched.
+  #
+  # STILL DEAD on this machine (do NOT reintroduce without restoring the dependency):
+  #   brave  → no BRAVE_API_KEY
+  #   searxng→ not running (localhost:8888 refused)
+  # deepseek/minimax_search/openrouter are LLM-synthesis, NOT real search — they hallucinate
+  # URLs that _resolve() drops → every check "unverifiable". Never use them for grounding.
+  # Options: ddg | claude_cli | exa | brave | searxng | fixture
+  provider: [ddg, exa, claude_cli]
+  queries_per_check: 2              # LLM query-gen: 2 distinct queries per check for grounding depth
+  results_per_query: 3             # 3 sources per query (~6 passages/check) so checks can reach 'supported'
+  max_passage_chars: 1500
+  cache: true
+  cache_ttl_s: 1209600   # 14 days; cached grounding older than this is re-fetched (0 = never expire)
+  # BATCHED LLM query-gen on the fast/non-critical tier (deepseek→minimax). ONE call per
+  # candidate decomposes the idea into real-world domain queries for all checks at once.
+  # Replaces the deterministic templates, which were PROVEN to restate the product pitch
+  # ("productized transforms tenant answers adversarial") → search returns off-topic junk
+  # (cambridge.org dictionary, web.whatsapp.com, diy.com) → ~93% unverifiable at batch scale.
+  # The moat VERDICT brain is untouched (query-gen is a search string, not a ruling).
+  llm_query_gen: true
+  # template_checks stays populated: it is the GRACEFUL FALLBACK when the batched call fails
+  # or omits a check (fast chain down) — those checks then use _DISCONFIRM/_CONFIRM templates
+  # rather than hard-failing. With llm_query_gen=true the templates are the safety net, not
+  # the primary path.
+  template_checks: [pain_reality, value_durability, incumbency, payer_solvency, distribution, legality]
+  fast_queries: 2                # 1 disconfirm + 1 confirm per check (template fallback)
+  # E1 A/B arm (default OFF = control): entity-templated queries for the grounding-starved
+  # checks. The experiment arm is [payer_solvency, distribution]; kill criterion in
+  # docs/COMMERCIAL_READINESS_PROGRAM.md §3 E1.
+  hybrid_entity_checks: []
+  search_model: ""                   # SEARCH/grounding model (empty = use default).
+
+  # --- Resilience layer (Part 9). All knobs live here — no hardcoded values in code. ---
+  search_timeout: 75             # base seconds per web-search (attempt 0)
+  search_timeout_max: 150        # adaptive ceiling: the timeout escalates per retry up to this
+  search_timeout_escalation: 1.5 # slow≠dead — give each retry more headroom before giving up
+  search_retries: 1              # in-place retries before failing over to the next provider
+  claude_min_timeout: 120        # claude grounding floor (its search is slower)
+  # Raised from 45/2/2/2 on 2026-07-31. These were pinned low DEFENSIVELY because the CLI
+  # semaphores were a per-process threading.Semaphore: with the daemon, a backfill and a manual
+  # generate all live at once, "2" meant a real machine-wide ceiling of ~8, and the resulting
+  # oversubscription is what produced the 45s "grounding queue saturated" death in job
+  # 20260730T212901866. prospector/cli_governor.py now enforces the cap machine-wide via fcntl
+  # flock slot files (two-process proof: A acquired 2, B acquired 0, TOTAL 2 at limit=2), so a
+  # higher number can no longer multiply across pipelines — surplus workers block on the
+  # governor instead of thrashing the CLI. That is what makes raising these safe.
+  #
+  # 8 is the measured KNEE, not a guess. Concurrent `agent` subprocess probe, 2026-07-31:
+  #   N=1  (at rest)  8.9s
+  #   N=8   8/8 ok, p50  9.2s, max 15.5s, 5.3x throughput   <-- latency essentially flat
+  #   N=14 14/14 ok, p50 13.1s, max 34.7s, 6.0x throughput  <-- p50 +42% to buy +13% throughput
+  # No rate-limit or auth failure at either level; past 8 you pay latency for almost nothing.
+  #
+  # Vetting was 68% of the 1481s wall on the post-parallel-lane run (generation ~473s, vetting
+  # ~1008s for 5 candidates in 3 sequential waves of 2). vet_workers 5 makes k=5 a single wave.
+  # Kept BELOW cursor_concurrency so the daemon/backfill keep headroom under the shared cap.
+  queue_timeout: 90              # max wait for a free provider slot before failing over. Raised
+                                 # from 45: failing over now means falling to claude_cli at 97.7s
+                                 # mean, so waiting up to 90s for a fast slot strictly beats it.
+                                 # Bounds total latency at queue_timeout + search_timeout.
+  # infra_defer_abort_streak: batch-level kill-fast on INFRASTRUCTURE (added 2026-08-06).
+  # The 10:00 UTC batch that day vetted 14 candidates end-to-end and deferred ALL 14. The
+  # non-critical chain that generates each check's search queries had been benched by a
+  # monthly spend limit, so 52 of 98 checks never produced a query — and a check with no
+  # query has no passages, which verify.py reports as retrieval_failed -> DEFER. Retrieval
+  # itself was perfectly healthy (200/200 ddg searches `ok`, every completed search 5-42
+  # passages). Nothing counted defers ACROSS candidates, so candidates 3..14 each re-learned
+  # the same outage at full price, and all 14 landed in a backlog the drain pays for AGAIN.
+  # 3 = stop after three consecutive infra-gated defers. 0 disables.
+  infra_defer_abort_streak: 3
+  claude_concurrency: 4          # max concurrent claude CLI subprocesses (failover brain only
+                                 # now that grounding resolves on ddg/exa — see chain above)
+  # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter. claude_concurrency above
+  # is now the only CLI ceiling, and it is what vet_workers must respect.
+  vet_workers: 3                 # parallel candidates. Must stay <= claude_concurrency (4): each
+                                 # vet holds at most one CLI slot at a time (checks run
+                                 # sequentially for kill-fast), so 3 workers draw 3 of the 4
+                                 # slots and leave headroom for a concurrent `vet --resume`
+                                 # drain. It was 5 against a cursor_concurrency of 8; with
+                                 # cursor_cli gone, 5 workers would oversubscribe the 4 claude
+                                 # slots and queue against the daemon — the contention that
+                                 # produced the ~3s HTTP-429 failures and the moat flap on
+                                 # 2026-08-06 (nine dead-marks in 70 minutes).
+  # Sized from the observed SUCCESS distribution, not a guess (317 logged run_cursor_cli
+  # successes as of 2026-07-31: mean 46.9s, p50 41.7s, max 279.3s; run_claude_cli n=63,
+  # p50 76.8s, max 283.0s). The old 120/180 pair sat *inside* that distribution, so long-but-
+  # healthy calls were killed mid-flight — all 4 logged cursor errors have p50 exactly 120.0s,
+  # i.e. the guillotine, not a hang. Each kill cost 2 x 120s and returned nothing, which is how
+  # packs ended up held back on `artifact 'build_spec' is empty (generation produced nothing)`
+  # and `marketing 'listing_page' is missing or empty`. Raising the ceiling does NOT slow the
+  # median (p50 is 41.7s — the timeout only binds on the tail); it converts 240s of wasted
+  # retry into a completed artifact.
+  cli_timeout: 180               # completion-brain attempt 0 (verdict / adversarial; no web)
+  cli_timeout_max: 300           # completion ceiling across retries — covers the observed max
+  cli_retries: 1
+  query_gen_timeout: 90          # non-critical query-gen cap — fail over / template, don't wedge
+  query_gen_timeout_max: 90      # no escalation on query-gen
+  query_gen_retries: 0           # template fallback is the retry path
+  breaker_failure_threshold: 3   # CONSECUTIVE transient fails before a provider is retired (one
+                                 # timeout under load no longer permanently dead-lists it)
+  breaker_cooldown_s: 60         # seconds a retired provider stays out before a half-open recovery probe
+
+# Citation ADMISSIBILITY at ruling time (programme doc §20, the Q4 lever). Decides which
+# domains may be the SOLE basis of a supported/refuted ruling. It does NOT touch retrieval:
+# §18 measured grounding as RELEVANCE-bound, so shrinking the fetched pool is the one
+# intervention that provably cannot help. Every passage is still fetched, judged and stored;
+# this only declines to TRUST a ruling whose every citation is an AI stats farm, dictionary
+# chrome, or — for checks where it cannot be probative — a social post.
+#
+# Measured cost, ruled verdicts demoted over store/dossiers/*.json (§20.3, zero LLM):
+#     P2_farm_only     0  (0.00%)  all eras | 0 (0.00%) current moat
+#     P1_check_aware  12  (0.47%)  all eras | 1 (0.08%) current moat   <- SHIPPED
+#     P0_global       52  (2.02%)  all eras | 17 (1.38%) current moat  <- do NOT ship
+# P0 costs 4.3x P1 and pays it precisely in the channel checks (distribution 26,
+# route_to_market 8) where user-generated content WAS the right source. `off` = pre-§20.
+# An unrecognised value raises at startup (config.py _validate_admissibility) rather than
+# silently disabling the gate.
+admissibility:
+  policy: P1_check_aware
+
+thresholds:
+  # confidence_floor: KILL-SIDE lever only (kill_filter.is_hard_fail). A grounded killing
+  # verdict (refuted) only HARD-kills when its confidence clears this floor; below it the
+  # candidate falls through to scoring. Tunable for the value_durability over-restriction
+  # wall (war-room 2026-06-15). Do NOT conflate with min_supported_confidence below.
+  #
+  # RAISED 0.0 -> 0.4 on 2026-08-07 (founder sign-off; E11 result, programme doc §17).
+  # Calibration, not a product change: replaying store/dossiers/*.kill.json through the REAL
+  # kill_filter.apply_gates (tools/experiments/e11_confidence_floor.py) over the 333 kills whose
+  # gate reproduces under the shipped config gives 66 freed at 0.4 = 19.8%, against a firing-check
+  # confidence distribution of p10 0.23 / p25 0.40 / median 0.55 / p90 0.70. So 0.4 retires the
+  # bottom quartile and never touches the median kill. Freed at 0.4 by gate: incumbency=31,
+  # value_durability=16, payer_solvency=7, legality=6, pain_reality=3 — concentrated in exactly
+  # the two gates the 2026-06-15 war room flagged as over-restrictive (kill_filter.py:47-50).
+  # This loosens KILLING, never PUBLISHING: freed candidates fall through to scoring, where
+  # min_composite_to_pass and the adversarial gate still stand between them and the catalogue.
+  # 0.5 frees 43.2% and is a PRODUCT decision, not a calibration — do not drift upward silently.
+  # Supersedes the 2026-06-25 note that a 0.3 floor would un-kill 21/156 refuted-gate kills; that
+  # measurement stands, it was simply taken before the pass-side laxness fix made it safe.
+  confidence_floor: 0.4
+  # min_supported_confidence: PASS-SIDE floor (dossier source-or-die only). A SUPPORTED
+  # check counts as grounded — toward both the n>=min_supported_to_pass requirement and the
+  # moat-grounded requirement — only when its confidence clears this floor. CALIBRATED
+  # 2026-06-25 against the LIVE distribution over 504 supported checks in store/dossiers/:
+  # median=0.43, p25=0.40, p10=0.30, max=0.79 — the live scale is COMPRESSED (~0.43), not
+  # 0-1. 0.3 trims only the bottom-10% coin-flip tail (the conf-0.15 "supported" that minted
+  # lax passes) while preserving the genuine 0.30-0.49 mass; 0.5 would void 76% of real
+  # supported checks. Golden-safe (mock conf ~0.4 > 0.3). Decoupled from confidence_floor so
+  # tightening passes never loosens kills.
+  min_supported_confidence: 0.3
+  min_composite_to_pass: 2.5
+
+hard_gates:                      # Part 4 kill-filter; evaluated kill-fast in this order
+  # A KILL must be grounded in CITED disconfirming evidence (refuted), never in
+  # silence. `unverifiable` = "no matching passage" = no evidence to kill on, so it
+  # must NOT be a killing verdict (doing so killed on silence and, under kill-fast,
+  # let value_durability execute ~every candidate before any other gate ran).
+  # See CLAUDE.md: "A KILL is not the model's opinion; it is grounded in evidence."
+  # The killing verdict depends on the check's QUESTION FRAMING (models.py CHECKS):
+  # All checks are instructed via verdict.md to use POSITIVE polarity:
+  # "supported" = PASS (space is open, legal, durable, solvent)
+  # "refuted"   = KILL (incumbent exists, illegal, obsolete, broke)
+  # This unified polarity ensures all hard gates kill on `refuted`.
+  # HISTORY, and a trap to not walk back into: legality once killed on `supported`, which
+  # inverted it against the positive polarity above and killed LAWFUL ideas. Receipts on
+  # disk: store/dossiers/459b72f3630d21be.kill.json (rationale: heirloom tomatoes are
+  # "completely legal to grow, sell, buy, and eat anywhere in the United States") and
+  # 7e603974bcde1e09 (rationale: "basic gardening work does not require a specific
+  # licence") — both KILLED for being legal, at conf 0.43/0.42. The gate below is now
+  # `[refuted]`, matching every other check. A creative-but-LAWFUL workaround (exploiting
+  # a legitimate statutory mechanism) must SURVIVE; only a margin that requires actually
+  # breaking law/terms or falsifying data is a kill, and that reads `refuted`.
+  # Do NOT "fix" this back to `[supported]`: that is the bug, not the fix.
+  - value_durability: [refuted]
+  - incumbency: [refuted]
+  - payer_solvency: [refuted]
+  - distribution: [refuted]
+  - legality: [refuted]
+
+  - pain_reality: [refuted]
+  - adversarial_decisive: false
+
+weights:
+  # RE-WEIGHTED 2026-06-25 to stop the composite structurally rewarding no-moat ideas.
+  # The defect: automatability(.20) + build_feasibility(.10) = .30 of the composite paid
+  # out for "trivially easy to build/automate" — which IS "trivially easy to clone" = no
+  # moat — while defensibility (the only moat axis) was weighted just .15. A generic
+  # AI-wrapper was the global maximum of that formula (e.g. meal-planner: automatability=5,
+  # build_feasibility=5 contributed 1.50 of its 3.75). Fix: clonability-reward .30 -> .20,
+  # moat .15 -> .25. defensibility now joins pain+money as the joint-top axis: a durable
+  # business needs real pain, provable money, AND a defensible moat. Sum stays 1.00.
+  pain_acuity: 0.20
+  money_provability: 0.20
+  automatability: 0.15
+  distribution: 0.15
+  defensibility: 0.25
+  build_feasibility: 0.05
+
+# ---- Ambition lanes (Part 14) ----
+# The engine caters to the FULL spectrum of ideas — from £30 side-hustles to unicorn-
+# potential ventures — by judging each candidate against the bar appropriate to its OWN
+# ambition class, NOT one universal filter (think an Amazon catalogue: list anything, but
+# each item is graded by its own class). The cross-lane invariant that never moves is
+# source-or-die grounding; only WHICH claims must hold (the gate roles + thresholds) swaps.
+# A lane overrides hard_gates / thresholds / weights; the top-level blocks above are the
+# implicit default. `active_lane: ""` => default => byte-for-byte today's venture behaviour.
+# MULTI-LANE BY DEFAULT: the catalogue is mixed-ambition (a buyer seeking a side hustle and a
+# buyer wanting to launch a startup browse the SAME catalogue, each item graded by its own
+# class). One run fans generation out across `active_lanes`, auto-classifies each idea into its
+# natural tier, then vets each against THAT tier's bar. `active_lane` (singular) still pins a
+# single lane and overrides active_lanes; empty active_lanes => single-default (venture) run.
+active_lane: ""
+active_lanes: [side_hustle, smb, growth, venture]
+# Rebalanced 2026-08-01 (founder: "more startup ideas than just solo operator"). Weights are
+# EVIDENCE-LED, from historical per-lane PASS rate across the 221 tier-tagged dossiers — NOT a
+# guess at which tier sounds most ambitious:
+#     smb  6/51 = 11.8%   growth 2/41 = 4.9%   side_hustle 4/94 = 4.3%   venture 0/35 = 0.0%
+# So the weight goes to smb (small_team) and growth (startup) — the tiers that actually convert —
+# while side_hustle (the SOLO lane) steps down from the largest share to the smallest. venture
+# holds at 3 rather than rising: it has never produced a PASS, so buying more of it would buy
+# more kills, not more startups; it stays funded only so the 0% stays measured rather than
+# assumed. Revisit when venture records its first PASS.
+# NOTE these totals sum to exactly `schedule.batch_size` (15), so `_lane_counts` distributes them
+# 1:1 with no rounding nudge (run.py::_lane_counts). Changing batch_size re-proportions them.
+# Until 2026-08-01 this whole block was DEAD CONFIG for the daemon — see the comment in
+# scheduler/run_scheduled.py::_default_generate.
+lane_quota:                        # candidates generated per tier per multi-lane run
+  side_hustle: 3                   # solo_agent  — was 4 (the largest share); now the smallest
+  smb: 5                           # small_team  — was 3; best converter at 11.8%
+  growth: 4                        # startup     — was 3
+  venture: 3                       # startup     — unchanged; 0 PASS in 35, do not over-buy
+lanes:
+  venture:                         # unicorn-ambition: the durable-moat bar (= current default)
+    hard_gates:
+      - value_durability: [refuted]
+      - incumbency: [refuted]
+      - payer_solvency: [refuted]
+      - distribution: [refuted]
+      - legality: [refuted]
+      - pain_reality: [refuted]
+      - adversarial_decisive: false
+    thresholds:
+      confidence_floor: 0.4   # minimum confidence for a supported check to count as grounded
+      min_composite_to_pass: 2.5
+      min_supported_to_pass: 2  # source-or-die: need 2+ grounded-supported checks to PASS
+    # Generation framing only — gates/thresholds above are untouched. startup archetype
+    # lets venture ideas assume a founding team + capital (still judged on the moat bar).
+    generation:
+      operator_archetype: startup
+  side_hustle:                     # £30-pack lane: judge DEMAND + DELIVERABILITY, not moat.
+    # Commoditised, high-intent niches are GOOD here (lots of searchers/payers = the buyer),
+    # so value_durability/incumbency are OFF. The real moat filter is the Stage-7 CAC test.
+    hard_gates:                    # kill-fast: cheapest decisive demand signal first
+      - buyer_intent: [refuted]    # nobody searching/paying => dead
+      - currency: [refuted]        # stale/peaked trend => dead
+      - route_to_market: [refuted] # no beginner-followable channel => dead
+      - legality: [refuted]
+      # margin requires genuine illegality => dead
+      # adversarial stays DECISIVE, but lane-aware (see adversarial_directive): it must NOT
+      # kill on "no moat / commoditised" (the wrong objection for a £30 pack — commoditised
+      # = buyers exist), yet it MUST still kill on grounded DELIVERABILITY/DEMAND failure
+      # (method doesn't work, channel dead, no demand, already free). Turning it fully off
+      # let through a dishonest PASS whose own dossier refuted it.
+      - adversarial_decisive: false
+    # Re-frames the adversarial pass for the £30-pack bar: commoditisation is fine; kill
+    # only on grounded evidence the thing won't deliver or sell. (Empty for venture.)
+    adversarial_directive: >
+      This candidate is a £30 INFO-PRODUCT PACK, not a venture. Commoditisation, absence
+      of a moat or defensibility, low switching cost, or the fact that 'anyone could
+      assemble this themselves' are NOT valid kill reasons here — buyers pay £30 for
+      convenience, curation and a method they can follow. You may mark the case 'decisive'
+      ONLY on grounded evidence of a DELIVERABILITY or DEMAND failure: practitioners report
+      the method does not actually work as sold; the route/channel is closed, banned or
+      being deprecated; there is no real buyer demand; or the promised outcome is already
+      available FREE in a form buyers will use instead. Never mark 'decisive' for mere lack
+      of a moat, novelty, or defensibility.
+    score_checks:                  # run + score, never kill (soft signal for the composite)
+      # claims_verifiable is SOFT here: its disconfirm query ("false OR contradicted")
+      # structurally surfaces a negative for any niche, so it kills demand-real ideas on
+      # "the space got more competitive" — a quality signal, not a kill criterion.
+      - claims_verifiable
+      - payer_solvency
+      - distribution
+      - pain_reality
+    thresholds:
+      confidence_floor: 0.4   # minimum confidence for a supported check to count as grounded
+      min_composite_to_pass: 2.5
+      min_supported_to_pass: 2  # source-or-die: need 2+ grounded-supported checks to PASS   # lower bar: a £30 pack is not a venture
+      # Publish-critical (source-or-die at PASS): side_hustle judges DEMAND, not moat — so the
+      # decisive grounded evidence is real buyer demand, NOT value_durability/incumbency (which
+      # this lane deliberately does not run). Without this override no side_hustle idea can PASS.
+      moat_critical_checks: [buyer_intent]
+    # Lane-aware GENERATION: merged over the top-level `generation:` block (for_lane).
+    # Re-aims generation at side-hustle-SCALE OPPORTUNITIES (the kind of opportunity), NOT
+    # at "£30 packs" (the £30 pack is the downstream SELLING FORMAT, applied to every tier —
+    # see listing/packs; it is NOT this lane's idea space). Decoupling these two axes is the
+    # core correction: tier = scale of the opportunity; packaging = how we sell it.
+    generation:
+      operator_archetype: solo_agent   # side hustles stay one-person operable
+      # lane_directive is injected at the top of generate_system.md and OVERRIDES the
+      # venture moat language that follows. Empty for venture => prompt unchanged.
+      lane_directive: >
+        LANE OVERRIDE — IGNORE every durable-moat / wedge / defensibility / "kills ~80%"
+        requirement stated anywhere below: it DOES NOT APPLY to this run. Generate
+        SIDE-HUSTLE-SCALE OPPORTUNITIES: a specific thing ONE solo person can start with
+        little capital, for supplemental or income-replacing earnings. Judge an idea ONLY on:
+        (1) DEMAND — are real people actively searching for or already paying for this RIGHT
+        NOW; (2) DELIVERABILITY — can a beginner follow an OPEN route to the promised outcome;
+        (3) CURRENCY — is it live now, not a peaked fad. Commoditised, crowded, "anyone could
+        do it" niches are GOOD here (crowds = buyers). Each idea must name a SPECIFIC, concrete
+        opportunity (the exact niche + the exact thing sold/done) — never a platform,
+        marketplace, registry, or venture. Span DIVERSE forms; do NOT collapse to one format.
+        Favour sharp, non-obvious opportunities over the tired top-10 side hustles.
+      # Side-hustle-SCALE opportunity forms (what the solo operator actually DOES/sells) —
+      # NOT "£30 pack" deliverable formats. The £30 pack packages any of these for sale.
+      structural_forms:
+        - local_service          # a hands-on local service one person can deliver
+        - micro_ecommerce        # a small niche product store (print-on-demand, dropship, handmade)
+        - productized_freelance  # a freelance skill sold as a fixed-scope, repeatable product
+        - content_channel        # a monetised audience in a specific niche (ads/sponsor/affiliate)
+        - niche_micro_saas       # a tiny single-workflow tool for one underserved niche
+        - marketplace_seller     # selling into an existing marketplace's built-in demand
+        - rental_arbitrage       # renting/reselling an asset or access for a spread
+        - info_product           # a course/templates/kit teaching one valuable skill
+  smb:                             # small-business lane: a real 1–20-staff business that throws
+    # off genuine owner income. Bar above side_hustle: demand is not enough — the PAYER must be
+    # solvent and there must be a real route to customers (both HARD). A deep moat is still NOT
+    # required (commoditised-but-profitable small businesses are fine); the kill is no real
+    # business / broken unit economics, surfaced by the adversarial pass.
+    hard_gates:                    # kill-fast: cheapest decisive signal first
+      - buyer_intent: [refuted]    # nobody searching/paying => dead
+      - payer_solvency: [refuted]  # payer has no budget/motive => no business
+      - distribution: [refuted]    # no real route to the customer => dead
+      - legality: [refuted]
+      # margin requires genuine illegality => dead
+      - adversarial_decisive: false
+    adversarial_directive: >
+      This candidate is a SMALL BUSINESS (roughly 1–20 staff) meant to throw off real owner
+      income, NOT a venture-scale company. Commoditisation, absence of a durable moat, low
+      switching cost, or 'anyone could compete' are NOT valid kill reasons — plenty of
+      profitable small businesses are commoditised. You may mark the case 'decisive' ONLY on
+      grounded evidence of a real-business failure: the unit economics cannot clear a living
+      owner income (costs/CAC exceed achievable margin), there is no reachable paying customer
+      base, the route to customers is closed/banned, or the demand is not real. Never mark
+      'decisive' merely for lack of a moat, novelty, or defensibility.
+    score_checks:                  # run + score, never kill
+      - pain_reality
+      - currency
+      - route_to_market
+      - claims_verifiable
+    thresholds:
+      confidence_floor: 0.4   # E11-calibrated 2026-08-07, founder sign-off (see thresholds note, §17)
+      min_composite_to_pass: 2.6   # above side_hustle (2.0), below growth/venture
+      # Publish-critical (source-or-die at PASS): smb's headline is "the PAYER must be solvent"
+      # — that is the decisive grounded evidence to publish, NOT value_durability/incumbency
+      # (this lane deliberately does not run them; a deep moat is explicitly NOT required).
+      # Without this override no smb idea can PASS (proven 2026-06-28, Martyn's Law @ 2.95).
+      moat_critical_checks: [payer_solvency]
+    generation:
+      operator_archetype: small_team   # 2–10 people; some capital OK — matches 1–20 staff bar
+      lane_directive: >
+        LANE OVERRIDE — IGNORE every durable-moat / wedge / defensibility / "kills ~80%"
+        requirement below: it DOES NOT APPLY here. Generate SMALL-BUSINESS OPPORTUNITIES — a
+        venture one founder (optionally a tiny team) can build into a real business of roughly
+        1–20 people that pays a genuine owner income. Judge an idea ONLY on: (1) DEMAND — real
+        people/firms actively paying for this now; (2) VIABLE UNIT ECONOMICS — a believable
+        margin after delivery cost and customer acquisition; (3) A REAL ROUTE TO CUSTOMERS a
+        small operator can actually work. A durable moat is NOT required — commoditised but
+        profitable is fine. Name a SPECIFIC, concrete business (who it serves + what it sells),
+        never a platform, marketplace, registry, or venture-scale play. Span DIVERSE forms.
+      structural_forms:
+        - productized_service    # a done-for-you outcome sold as a repeatable product
+        - local_service_chain    # a hands-on service that can grow past one operator
+        - vertical_tool          # narrow software for one workflow in one niche
+        - b2b_service            # an ongoing service sold to other small businesses
+        - ecommerce_brand        # a niche product brand with repeat purchase
+        - specialist_agency      # a focused agency owning one specific deliverable
+        - niche_distribution     # sourcing/reselling into an underserved channel
+        - equipment_or_rental    # an asset-backed service or rental operation
+  growth:                          # growth-startup lane: venture-track, must show a REPEATABLE,
+    # scalable growth motion (a channel that compounds + retention), but NOT yet a deep moat.
+    # Bar above smb: acute pain is now HARD. The kill is no scalable channel / no retention.
+    hard_gates:
+      - pain_reality: [refuted]    # no acute, real pain => no growth engine
+      - payer_solvency: [refuted]
+      - distribution: [refuted]    # no scalable route => not a growth business
+      - legality: [refuted]
+      - adversarial_decisive: false
+    adversarial_directive: >
+      This candidate is a GROWTH-STAGE STARTUP that must show a REPEATABLE, SCALABLE growth
+      motion — but a deep durable moat is NOT yet required (early growth companies often lack
+      one). Do NOT kill merely for absence of a moat or defensibility. You may mark the case
+      'decisive' ONLY on grounded evidence that growth cannot compound: there is no scalable,
+      repeatable acquisition channel (only manual/unscalable selling), or no plausible
+      retention (one-shot demand, churn that kills the motion), or the acute pain is not real.
+    score_checks:
+      - value_durability
+      - incumbency
+      - currency
+      - buyer_intent
+      - claims_verifiable
+    thresholds:
+      confidence_floor: 0.4   # E11-calibrated 2026-08-07, founder sign-off (see thresholds note, §17)
+      min_composite_to_pass: 2.9   # above smb (2.6), just below venture (3.2)
+      # Publish-critical (source-or-die at PASS): growth's headline is a SOLVENT PAYER on a
+      # SCALABLE CHANNEL — a deep moat is explicitly NOT yet required (314-320). Decisive grounded
+      # evidence = payer_solvency OR distribution. growth DOES run value_durability/incumbency as
+      # soft score_checks, but requiring them grounded would contradict "moat not required".
+      moat_critical_checks: [payer_solvency, distribution]
+    generation:
+      operator_archetype: startup      # founding team + capital OK; still no deep-moat demand
+      lane_directive: >
+        LANE OVERRIDE — a deep durable moat is NOT required for THIS run; do not demand one.
+        Generate GROWTH-STARTUP OPPORTUNITIES — ventures that can grow fast via a REPEATABLE,
+        SCALABLE motion. Judge an idea on: (1) ACUTE PAIN a defined segment feels now; (2) a
+        SOLVENT, MOTIVATED PAYER; (3) a SCALABLE, REPEATABLE acquisition CHANNEL (self-serve,
+        a forcing function, an existing high-volume channel) — not manual one-off selling;
+        (4) plausible RETENTION (the need recurs / the product compounds). A deep moat can come
+        later. Name a SPECIFIC, concrete startup (segment + product + growth motion). Span
+        DIVERSE forms; do NOT collapse to one shape.
+      structural_forms:
+        - vertical_saas          # software for one industry's core workflow, self-serve growth
+        - plg_tool               # a product-led tool with built-in viral/self-serve acquisition
+        - transactional_platform # takes a cut of a transaction it uniquely originates/de-risks
+        - prosumer_tool          # a tool for prosumers/creators with bottoms-up adoption
+        - api_product            # an API/infra product developers adopt and embed
+        - data_workflow          # a compounding-data product that improves with usage
+        - marketplace_thin       # a focused marketplace seeding one liquid niche first
+        - vertical_service_scaled # a service productised toward a scalable delivery model
+
+# ---- Markets (Epic D) ----
+# A market is the JURISDICTION an opportunity lives in. It is orthogonal to BOTH the
+# ambition lane (which sets the bar) and the buyer's locale — a Texas-arbitrage pack is
+# still sold in GBP through the existing Stripe rail (opportunity-market != buyer-market).
+#
+# A market configures the EVIDENCE TERRAIN (authority domains, search region, legality
+# corpus) and the PROMPT FRAMING. It may NOT configure the bar: hard_gates / thresholds /
+# weights inside a market block are a LOAD ERROR (config.py::_validate_markets). A market
+# with no evidence gets no catalogue — never a lowered threshold.
+#
+# Codes are hierarchical: "us-tx" inherits everything "us" declares. A market is CLOSED
+# until a readiness probe writes a passing store/markets/<code>/READINESS.json.
+active_market: ""                  # "" => markets.default
+markets:
+  default: uk
+  uk:
+    label: "United Kingdom"
+    status: open                   # the pre-existing baseline market
+    readiness_ref: ""              # no probe required: this is the calibration anchor
+    # "us-en" is the ddgs 9.14.4 DEFAULT that UK grounding has silently run under
+    # (ddgs/ddgs.py:357 — DuckDuckGoSearchProvider never passed a region). Pinned here to
+    # preserve current behaviour EXACTLY. Flipping this to "uk-en" is a measured yield
+    # change that must move cache_salt with it — see specs/multi-market-dimension.md D4.2.
+    search_region: "us-en"
+    currency_hint: "GBP"
+    cache_salt: ""                 # MUST stay "" so the existing store/_cache stays valid
+    authority_domains:             # UNIONED with the global base set in retrieval.py
+      - gov.uk
+      - legislation.gov.uk
+      - ons.gov.uk
+      - hse.gov.uk
+      - companieshouse.gov.uk
+      - fca.org.uk
+    legality_corpus: [legislation.gov.uk, gov.uk]
+    market_context: >
+      Jurisdiction: the United Kingdom. Money in GBP (£). Authoritative public evidence
+      includes gov.uk guidance, legislation.gov.uk, ONS statistics, HSE, Companies House
+      filings, and FCA registers.
+    exemplars:
+      query_gen:
+        - "NHS nurse pension additional voluntary contributions take-up UK"
+        - "medication fridge temperature monitoring market vendors UK"
+      verdict_irrelevant_candidate: "Probate clearance services in the UK."
+      verdict_irrelevant_passage: "The UK housing market saw a 2% rise in mortgage rates in Q3."
+      verdict_irrelevant_why: >
+        The text mentions UK and housing but has ZERO conceptual overlap with death,
+        estates, executors, or clearance.
+      verdict_relevant_candidate: "Fixed-fee probate clearance for UK Executors."
+    persona_overlay:
+      retiree_cohort: >
+        UK state pension plus private pension drawdown; ISA/property wealth; NHS-funded
+        care assessed by the local authority.
+  us:
+    label: "United States"
+    status: open                 # opened only by a passing readiness probe
+    readiness_ref: "store/markets/us/READINESS.json"
+    search_region: "us-en"
+    currency_hint: "USD"
+    cache_salt: "us"
+    # US law is federal PLUS 50 states. Without state-level scoping the legality check
+    # drowns in irrelevant federal/other-state material (story risk 3).
+    require_subdivision: true
+    # Retrieval overlay — evidence terrain only (DD2). Slightly deeper fetch so state
+    # .gov / CMS / SEC pages are likelier to land in the passage set; does NOT touch bars.
+    retrieval:
+      results_per_query: 5
+    authority_domains:
+      - sec.gov
+      - census.gov
+      - bls.gov
+      - federalregister.gov
+      - ftc.gov
+      - cms.gov
+      - sba.gov
+      - dol.gov
+      - fincen.gov
+      - consumerfinance.gov
+      - courtlistener.com
+      - usa.gov
+      - law.cornell.edu
+      # State / program regulators used by the US calibration packs (authority_rate).
+      - irs.gov
+      - tdlr.texas.gov
+      - texas.gov
+      - sos.texas.gov
+    legality_corpus: [federalregister.gov, law.cornell.edu, usa.gov, sec.gov, cms.gov, fincen.gov, consumerfinance.gov, irs.gov]
+    market_context: >
+      Jurisdiction: the United States. Money in USD ($). Law is federal PLUS state-level —
+      always name the state. Authoritative public evidence includes SEC EDGAR, Census, BLS,
+      CMS, FinCEN, CFPB, the Federal Register, IRS, state Secretary-of-State and licensing
+      boards (.gov such as TDLR), and CourtListener. Prefer primary .gov pages over vendor blogs.
+    exemplars:
+      query_gen:
+        - "Texas TDLR cosmetology operator license renewal continuing education hours site:tdlr.texas.gov"
+        - "IRS Form 2290 heavy highway vehicle use tax due date owner operator site:irs.gov"
+        - "CMS DMEPOS supplier standards accreditation survey checklist site:cms.gov"
+        - "FinCEN money services business registration requirement site:fincen.gov"
+        - "FCRA consumer report resale prohibition site:consumerfinance.gov"
+      # Verdict exemplars deliberately omitted: they teach RELEVANCE JUDGEMENT, not market
+      # facts, so this market inherits the uk set until its probe justifies its own.
+    persona_overlay:
+      retiree_cohort: >
+        Social Security plus 401(k)/IRA drawdown; Medicare at 65 with supplemental
+        coverage; state-variable long-term-care funding.
+  # Closed stubs — MVP evidence terrain so each is probe-openable later via the same
+  # gate. Status stays closed until a passing READINESS.json; no catalogue writes, no
+  # lowered bars. Fill country-specific authority/exemplars before probing a subdivision.
+  africa:
+    label: "Africa (regional)"
+    status: closed
+    readiness_ref: "store/markets/africa/READINESS.json"
+    search_region: "wt-wt"
+    currency_hint: "USD"
+    cache_salt: "africa"
+    require_subdivision: true      # always name the country (africa-ng, africa-ke, …)
+    authority_domains:
+      - afdb.org                   # African Development Bank
+      - uneca.org                  # UN Economic Commission for Africa
+      - au.int                     # African Union
+      - worldbank.org
+    legality_corpus: [africanlii.org, au.int]
+    market_context: >
+      Jurisdiction: African markets (regional framing). Prefer country-specific evidence
+      when a subdivision is named — always name the country. Money often quoted in USD
+      or local currency. Authoritative public evidence includes AfDB, UNECA, AU instruments,
+      national statistics offices, central banks, and company registries.
+    exemplars:
+      query_gen:
+        - "SME company registry filings volume West Africa"
+        - "mobile money agent liquidity regulation central bank Africa"
+  nigeria:
+    label: "Nigeria"
+    status: closed
+    readiness_ref: "store/markets/nigeria/READINESS.json"
+    search_region: "wt-wt"         # ddgs has no stable ng-en; keep worldwide until measured
+    currency_hint: "NGN"
+    cache_salt: "nigeria"
+    authority_domains:
+      - cac.gov.ng
+      - cbn.gov.ng
+      - nigerianstat.gov.ng
+      - ncc.gov.ng
+      - fmcide.gov.ng
+    legality_corpus: [nigerialii.org, placng.org, cac.gov.ng]
+    market_context: >
+      Jurisdiction: Nigeria. Money in Naira (₦) unless a contract is USD-denominated.
+      Authoritative public evidence includes CAC company filings, CBN circulars, NBS
+      statistics, and NCC regs. Prefer .gov.ng and primary regulator sources.
+    exemplars:
+      query_gen:
+        - "CAC company registration filings count Nigeria SMEs"
+        - "CBN agent banking guidelines compliance burden"
+  europe:
+    label: "Europe (regional)"
+    status: closed
+    readiness_ref: "store/markets/europe/READINESS.json"
+    search_region: "wt-wt"
+    currency_hint: "EUR"
+    cache_salt: "europe"
+    require_subdivision: true      # prefer a member state (europe-de, europe-fr, …)
+    authority_domains:
+      - europa.eu
+      - ec.europa.eu
+      - eurostat.ec.europa.eu
+      - eea.europa.eu
+    legality_corpus: [eur-lex.europa.eu, europa.eu]
+    market_context: >
+      Jurisdiction: Europe (EU/EEA regional framing). Prefer a named member state when
+      the opportunity is local. Money in EUR unless the state uses another currency.
+      Authoritative evidence includes EUR-Lex, Eurostat, Commission guidance, and
+      national company/regulator registries.
+    exemplars:
+      query_gen:
+        - "EU GDPR SME compliance cost survey Eurostat"
+        - "cross-border VAT OSS registration volume EU"
+  asia:
+    label: "Asia (regional)"
+    status: closed
+    readiness_ref: "store/markets/asia/READINESS.json"
+    search_region: "wt-wt"
+    currency_hint: "USD"
+    cache_salt: "asia"
+    require_subdivision: true      # always name the country (asia-sg, asia-in, …)
+    authority_domains:
+      - adb.org                    # Asian Development Bank
+      - asean.org
+      - unescap.org
+      - worldbank.org
+    legality_corpus: [asianlii.org, asean.org]
+    market_context: >
+      Jurisdiction: Asian markets (regional framing). Prefer country-specific evidence
+      when a subdivision is named — always name the country. Money in local currency or
+      USD. Authoritative public evidence includes ADB, ASEAN instruments, UNESCAP, and
+      national statistics / company registries.
+    exemplars:
+      query_gen:
+        - "ASEAN SME digital trade compliance burden survey"
+        - "company registry filings volume Southeast Asia startups"
+
+generation:
+  # k=50 — founder directive 2026-08-13, raised from 20. Reachable inside the existing
+  # batching rails: ceil(50 / max_per_call 10) = 5 rounds, under max_rounds 6.
+  #
+  # WHAT THIS IS *NOT* FUNDED BY. The war plan's k=100 proposal rests on a FREE pre-ranker
+  # concentrating the paid budget. W0.1 measured that ranker on 1904 labelled dossiers and it
+  # is at chance out-of-time: TF-IDF logreg AUC 0.502 on the regime-restricted temporal split
+  # (0.613 unrestricted, but that arm learns "June-era phrasing = kill" — June is 724
+  # candidates and 0 passes). A chance ranker cannot make admitting 15 of 50 differ in
+  # distribution from admitting 15 of 20.
+  #
+  # WHAT IT COULD BE FUNDED BY, UNMEASURED. `schedule.batch_size` (15) bounds how many
+  # candidates reach the PAID moat per tick, so k only widens the pool that `prescreen.py`
+  # selects those 15 from. Prescreen is an LLM triage gate, not a free proxy, so W0.1 says
+  # nothing about it. If prescreen discriminates better than chance, k=50 concentrates the
+  # verdict budget and yield rises; if it does not, this buys generation cost and no passes.
+  # UNPROVEN either way — prescreen-rejected candidates never get a dossier, so the retro
+  # corpus cannot answer it. The measurement is forward: pass rate per VETTED candidate
+  # before vs after this change, at fixed batch_size.
+  candidates_per_signal: 50
+  max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k
+  max_rounds: 6         # max batching rounds to hit the requested candidate count
+  # Default archetype when no lane pin / --archetype. Lane defaults below override per tier
+  # (side_hustle→solo_agent, smb→small_team, growth/venture→startup). Moat/gates untouched.
+  operator_archetype: solo_agent
+  # DISABLED 2026-07-02 — PROVEN zero-yield root cause. The "cynical analyst" refine pass
+  # (prompts/refine_system.md) is an UNGROUNDED opinion-KILL at generation time: it violates
+  # two operating rules — "Nothing is killed at generation time; all gates are downstream" and
+  # "A KILL is grounded in evidence, not the model's opinion." Worse, it silently DROPPED all
+  # survivors: it re-mapped refined items to originals by EXACT title, but refinement rewords
+  # titles → no match → candidate lost; and a dict-wrapped response ({"...":[...]}) fell to `[]`,
+  # wiping the whole wave. PROVEN: k=1 sometimes survived, k=3 → 0/3 (8 claude calls, forms=0).
+  # The same kill-list criteria (middleman wrapper / first-party proxy / commodity core) are
+  # applied GROUNDED downstream by prescreen + verify + kill_filter. _refine_wave is now also
+  # hardened to be non-lossy (defense-in-depth) if ever re-enabled.
+  refinement_enabled: false
+  # ORTHOGONALITY AXIS (Part 3 redesign). Generation mode-collapsed: the ONLY diversity
+  # axis was the creativity LENS, which varies the ANGLE of attack but not the BUSINESS
+  # FORM — so every lens on a regulatory signal converged on the same "central data /
+  # rating / registry utility" shape (6 ideas from 2 unrelated signals were one idea).
+  # We now fan out across distinct STRUCTURAL FORMS: each parallel call must build its
+  # idea in a DIFFERENT business form, so the dead reference-data shape is at most ONE
+  # cell of many — collapse broken by construction, not by another prompt adjective.
+  structural_forms:
+    - productized_service   # a done-for-you OUTCOME sold as a product; human labour is the wedge, automated down over time
+    - vertical_tool         # narrow software for ONE workflow in ONE niche; switching-cost moat once embedded
+    - transaction_broker    # take a cut of a transaction you uniquely ORIGINATE or de-risk (not a generic marketplace)
+    - risk_financing        # take the OTHER SIDE of a cashflow/risk others won't underwrite; price an asymmetry you can read
+    - physical_ops          # an atoms+bits operation a laptop rival cannot ship; logistics/inspection/on-the-ground presence
+    - audience_media        # build a SPECIFIC audience's trust first, then monetise the attention/access you own
+    - picks_and_shovels     # sell the inputs/tooling to everyone chasing the same gold rush, not the gold
+    - data_intelligence     # proprietary COMPOUNDING data rivals structurally cannot obtain (the one form that may be a data play)
+  # Audience persona axis — varies the BUYER independently of the business form.
+  # Together with structural_forms this creates an 8×13 = 104-cell diversity matrix,
+  # breaking the B2B-institutional monoculture that drives the value_durability wall.
+  audience_forms:
+    - retiree_cohort          # 60+ with capital, time, health anxiety; asset-rich, income-poor
+    - gen_z_worker            # 18-27, gig economy, digital native, low savings, job-hopping
+    - smb_owner               # 1-20 employee business owner; wears every hat, cash-flow stressed
+    - primary_carer           # parents of young children or guardians of elderly relatives
+    - manual_tradesperson     # construction, logistics, hospitality; hands-on, time-poor, digitally underserved
+    - public_sector_worker    # nurses, teachers, civil servants; fixed pay, predictable needs
+    - freelancer_creative     # designers, writers, consultants; income volatile, client-dependent
+    - squeezed_middle         # 35-55, dual-income, asset-rich on paper, cash-poor month-to-month
+    # V1 (2026-08-06): operator/buyer personas. The E2 baseline (COMMERCIAL_READINESS_PROGRAM.md
+    # §8) measured a 9:1 PASS-rate spread in favour of the sole business-buyer persona
+    # (smb_owner 21/242 vs public_sector_worker 2/148) — payer_solvency grounds when the payer
+    # is a business. These five widen that lane; the consumer spectrum above stays (founder
+    # rule: spectrum, not one lane).
+    - startup_operator        # founder/operator of a pre-Series-A company; wears every hat, pays for speed
+    - software_developer      # professional dev buying tools/components with own or team budget
+    - agency_owner            # marketing/dev/design agency, 2-15 staff; bills clients, buys leverage
+    - ops_manager             # operations/finance manager in a 50-500 person firm; owns tooling spend
+    - ecommerce_seller        # sells on Amazon/Shopify/Etsy; margins squeezed by fees and returns
+  # Founder-capacity bindings injected into generate.md as {operator_constraints}.
+  # Names chosen 2026-07-30: solo_agent (existing), small_team (2–10, some capital OK),
+  # startup (ambitious venture-scale founding team). Generation-only — never a gate.
+  archetypes:
+    solo_agent:
+      binding: "SOLO AGENT-OPERATOR (binding — an idea failing these is INVALID, do not propose it): distribution must be OWNED or FREE (you cannot buy reach or out-spend anyone); the whole thing must be BUILDABLE and OPERABLE by ONE AI-leveraged person with no team, no outside capital, no licence; the moat must be one a solo can actually hold (proprietary process/data/taste/judgment, a captive niche, or switching cost) — never one that needs scale, headcount, or capital."
+      forbid: "FORBIDDEN SHAPES (a solo structurally CANNOT be these — proposing one is an automatic miss): a licensed/accredited rating agency, a central registry/index/authority, a regulator or standards body, a bank/insurer/DFI underwriting at scale, a two-sided marketplace whose liquidity you must buy, or anything that only works once you are already a large incumbent with an existing book."
+    small_team:
+      binding: "SMALL-TEAM OPERATOR (binding — an idea failing these is INVALID, do not propose it): buildable and operable by a team of roughly 2–10 people with modest seed capital OK (not institutional Series B+); distribution may include paid acquisition if unit economics clear; the moat may rely on process, relationships, local density, or early switching cost — but must be holdable WITHOUT hundreds of staff or a war-chest CAC spend."
+      forbid: "FORBIDDEN SHAPES (a small team structurally CANNOT be these — proposing one is an automatic miss): a regulated bank/insurer/DFI underwriting at national scale, a two-sided marketplace that only works after buying both sides at venture scale, a central registry/standards body, or anything that requires a large incumbent's existing book or regulatory charter to function on day one."
+    startup:
+      binding: "STARTUP FOUNDER (binding — an idea failing these is INVALID, do not propose it): ambitious venture-scale opportunity for a founding team that CAN raise capital and hire; must name a SPECIFIC wedge + a plausible path to a repeatable growth motion; distribution may be paid, partner, or product-led; the moat can be built over time (data, network effects, switching cost) but the idea must NOT require already BEING a large incumbent."
+      forbid: "FORBIDDEN SHAPES (even a funded startup cannot be these at birth — proposing one is an automatic miss): a licensed rating agency or central registry/authority that only works once you are already the standard, a regulator or standards body, or a play that presupposes an existing national balance sheet / charter you do not have."
+  # G1: per-batch distinct-k receipts -> store/generation_metrics.jsonl (zero LLM)
+  diversity_meter: true
+  # G3: standing exhausted-family denial list mined from the full kill corpus (zero LLM)
+  denylist:
+    enabled: true
+    min_family_size: 3
+    refresh_every_kills: 25
+    max_families: 12
+  # G2: one bounded, cached live search per (topic, market), injected as generation CONTEXT.
+  # It is never a Source, never cited, never scored and can never kill — it exists so ideas are
+  # designed against the incumbents that currently kill them at the `incumbency` gate.
+  # `providers` deliberately EXCLUDES claude_cli: the moat's grounding queue runs on it, and a
+  # generation-side query must never queue ahead of a verdict (job 20260730T212901866 died at
+  # 1731s on exactly that saturation). Empty signal AND empty sector => no brief, no call.
+  incumbent_seed:
+    enabled: true
+    providers: [ddg, exa]
+    max_queries: 2
+    results_per_query: 3
+    max_chars: 700
+    max_entries: 8
+    cache_ttl_s: 604800          # 7 days
+    query_templates:
+      - "{topic} existing providers"
+      - "{topic} software vendors pricing"
+  # G4: Verbalized Sampling (arXiv:2510.01171) — ask the model for its distribution instead of
+  # k samples from its mode. The self-reported typicality is observability only; nothing is
+  # filtered, reordered or down-weighted by it.
+  verbalized_sampling:
+    enabled: true
+    atypical_threshold: 0.3
+    min_atypical_fraction: 0.4
+  # G9 lane quota mode. `static` uses the hand-tuned `lane_quota` block above verbatim.
+  # `measured` replaces it with a split derived from realised value per lane
+  # (prospector/lane_yield.py) that sums to the SAME total, so the mode changes where
+  # candidates land and never how many are generated.
+  #
+  # Left OFF deliberately. This is the one item in the generation-quality programme that
+  # points a lever at the kill stats, and the founder rule is that those are a report card,
+  # not a lever. The guardrails are in lane_yield.py's docstring: it weights on realised
+  # composite rather than pass COUNT, it touches no gate, and the exploration reserve below
+  # is uniform and unconditional. Turn it on only with a survival report in hand
+  # (`python -m tools.generation_survival --by ambition_tier`) — venture is at 0 PASS in 35
+  # and an unreserved value-weighting would starve it into never producing the evidence
+  # that would revive it.
+  lane_quota_mode: static          # static | measured
+  lane_exploration_reserve: 0.2    # share of the batch split uniformly regardless of value
+  # G8 critique -> revise. REPLACES the single refine pass with two calls: one that writes a
+  # critique naming the weakest COMPOSITE AXIS per idea, one that rewrites the idea to remove
+  # that named weakness. The rationale is measured, not assumed: `min_composite` is the modal
+  # kill gate in 8 of 9 persona cells (tools/generation_survival.py, 2026-08-08) — these ideas
+  # clear the hard gates and then score too low — while the refine prompt never mentioned the
+  # scoring axes at all. The axes and their weights are rendered from `weights` below, so the
+  # critic cannot drift from the scorer.
+  #
+  # COST: one extra generation call per wave (1 -> 2). Nothing else changes; no verdict, no
+  # retrieval and no gate is touched, and the pass stays non-lossy in CODE (prospector/
+  # critique.py asserts len(out) == len(in) and falls back per-index to the original).
+  #
+  # ONE round, deliberately: arXiv:2507.08350 finds the gain is in the first critique-revise
+  # round and that further rounds regress toward the model's own priors.
+  #
+  # OFF by default: it doubles the generation call count per wave, and nothing on this branch
+  # has a daemon receipt yet. Turn it on with a distinct-k A/B in hand, not on the strength of
+  # the argument above.
+  critique_revise:
+    enabled: false
+  controller:
+    killrate_window: 50
+    exploration_min: 0.2
+    exploration_max: 0.9
+    lenses: [broaden, narrow, analogical, first_principles, invert, combine_signals, cross_sector]
+    target_qualities: [acute_pain, solvent_motivated_payer, durable_hard_core, real_distribution, clean_legality, high_automatability]
+
+# Generation PROFILES (Part 16 — targeted steering). A profile is a reusable bundle of
+# `generation` overrides selectable with `--profile NAME` (or config `active_profile`). It
+# biases WHAT KIND of ideas are generated — it NEVER touches gates, thresholds or the moat,
+# so it cannot manufacture a pass. A profile composes over any --lane (its forms/focus win).
+# The `focus` string is injected into the generate prompt as a binding TARGETING CONSTRAINT;
+# `--focus "..."` at the CLI overrides it for one-off experiments.
+#
+# THIS KEY IS THE STEERING WHEEL. Empty => blue-sky generation across unrelated sectors.
+# Set to a profile name below and `load_config` applies it to every run, daemon included
+# (config.py:916-917 calls for_profile at load, so the scheduler needs no argument of its
+# own). It existed only as a dataclass default until 2026-08-10 — declared here so the
+# operator surface has a single scalar to patch, and so the live value is readable on disk.
+active_profile: "tech_ai_all"
+profiles:
+  # Evidence-steered toward shapes that historically clear the UK moat (store/dossiers
+  # PASSes 2026-07): sole-operator / named-regulator compliance packs and statutory
+  # income micro-brokers — NOT generic SaaS trackers. Generation-only; moat untouched.
+  statutory_compliance_pack:
+    generation:
+      operator_archetype: solo_agent
+      structural_forms:
+        - productized_service   # a fixed-scope compliance / filing / appeal pack
+        - vertical_tool         # narrow per-lease / per-suite / per-truck helper
+        - transaction_broker    # backdate / refund / entitlement recovery desk
+        - risk_financing        # stand-down / suspension income micro-bond
+      audience_forms:
+        - manual_tradesperson
+        - primary_carer
+        - smb_owner
+        - freelancer_creative
+        - gen_z_worker
+      focus: >
+        TARGET the shapes that historically PASS this filter: a SPECIFIC sole-operator
+        (or primary carer) facing a NAMED regulator or statutory chore — HSE, DVSA, MCS,
+        local-authority licensing, Universal Credit/PIP/Attendance Allowance, Companies
+        House, FCA — and selling a concrete pack/broker/desk that walks ONE recurring
+        filing, renewal, stand-down, tribunal, or recovery step. Each idea MUST name
+        (1) the exact operator niche, (2) the exact statutory/regulator trigger, and
+        (3) the exact deliverable. REJECT generic SaaS dashboards, weekly bulletins,
+        marketplaces, and vague "AI assistants". Commoditised niches with real search
+        demand are GOOD. Prefer UK evidence terrain unless --market says otherwise.
+  online_autonomous_predator:
+    generation:
+      # NO automatability_floor here (removed 2026-08-13, audit finding #13). A hard floor gave
+      # `automatability` an effective VETO on the one axis the weights deliberately demoted on
+      # 2026-06-25 for making generic AI-wrappers the global maximum (see the note at `weights:`
+      # — automatability .20 -> .15, defensibility .15 -> .25), and it dropped on a self-graded,
+      # pre-retrieval number. "No human in the loop" is STEERED below by structural_forms +
+      # focus; generation steers, only verification kills.
+      # Restrict to ONLINE / software-deliverable forms — drop physical_ops (atoms) and
+      # productized_service / risk_financing (human-labour or capital-heavy, not "no human
+      # in the loop"). These five can all run as automated online businesses.
+      structural_forms:
+        - vertical_tool         # narrow automated software for ONE niche workflow
+        - transaction_broker    # take a cut of a transaction you uniquely originate/de-risk, online
+        - data_intelligence     # proprietary compounding data, sold as an automated feed/API
+        - audience_media        # owned audience monetised via automated digital products/access
+        - picks_and_shovels     # automated tooling sold to everyone chasing one online gold rush
+      focus: >
+        ONLINE-NATIVE, FULLY-AUTOMATED business only. It must (1) operate entirely ONLINE —
+        no physical premises, inventory, logistics, or local in-person service; (2) run with
+        NO HUMAN IN THE LOOP for delivery — the value is produced and delivered by software/AI
+        on autopilot, not by the operator's manual labour per customer; (3) attack an ACUTE,
+        bleeding-neck pain a specific buyer feels NOW and will pay to stop today — predatory
+        instinct: go where the pain is sharpest and the alternative is doing nothing; and
+        (4) make money DIRECTLY ONLINE — self-serve signup and online payment, no sales calls,
+        no invoicing, no human onboarding. Reject anything requiring per-customer human work,
+        offline fulfilment, or a long manual sales cycle.
+
+  # ── TECH & AI FAMILY (founder directive 2026-08-10) ──────────────────────────────────
+  # "Tech and AI" was asked for as ONE steer and is deliberately shipped as THREE, because
+  # the three readings want different business forms, different buyers and different
+  # evidence terrain. Fused into one string they produce mush that the moat then kills as
+  # ungrounded — the top kill gate on the 2026-08-10 09:24 batch was moat_ungrounded, 7 of
+  # 14. So every focus below spends most of its words on WHAT MAKES THE PAIN RETRIEVABLE
+  # (a named platform rule, a published price, a public framework), not on the technology.
+  # A profile still cannot lower a bar: these steer generation only.
+
+  # (1) The AI *is* the product — a model does work a named human role is paid to do today.
+  ai_native:
+    generation:
+      structural_forms:
+        - vertical_tool         # the model doing ONE workflow end-to-end for ONE niche
+        - productized_service   # a fixed-scope outcome delivered by the model, priced as a pack
+        - data_intelligence     # a compounding proprietary corpus the model uniquely reads
+        - picks_and_shovels     # tooling sold to everyone else building with models
+        - transaction_broker    # originate/de-risk a transaction because the model reads it better
+      audience_forms:
+        - smb_owner
+        - software_developer
+        - agency_owner
+        - ops_manager
+        - freelancer_creative
+      focus: >
+        AI-NATIVE products only: the MODEL performs the work, and without it the product
+        does not exist. Each idea MUST name (1) the exact recurring task and the job title
+        that does it manually today, (2) the trigger that makes it recur (a filing date, a
+        ticket, a shift, a renewal, an inbound document), (3) the deliverable the buyer
+        receives, and (4) THE PUBLIC EVIDENCE that this work is currently paid for — an
+        advertised salary or day rate, an agency price list, a published SLA, a job posting.
+        Point 4 is not optional: an idea whose pain cannot be evidenced from the open web is
+        an idea this engine will kill, so do not propose it. REJECT: "AI assistant/copilot
+        for X" with no named workflow; chatbots; thin wrappers over a public API with no
+        proprietary input; "AI-powered" dashboards, summarisers and bulletins; anything whose
+        value proposition is the technology rather than the task.
+
+  # (2) The SECTOR is tech — the buyer builds or runs software. AI optional.
+  tech_vertical:
+    generation:
+      structural_forms:
+        - vertical_tool         # narrow software for ONE workflow inside ONE tech ecosystem
+        - data_intelligence     # proprietary data about a platform/ecosystem others cannot get
+        - picks_and_shovels     # sell inputs to everyone building on one platform
+        - transaction_broker    # take a cut where the ecosystem's money actually changes hands
+        - audience_media        # own a specific technical audience's trust, then monetise access
+      audience_forms:
+        - software_developer
+        - startup_operator
+        - agency_owner
+        - ops_manager
+        - ecommerce_seller
+      focus: >
+        Businesses serving a NAMED software, hardware or infrastructure ECOSYSTEM. Each idea
+        MUST name (1) the specific platform or ecosystem — e.g. Shopify apps, Kubernetes
+        operators, Salesforce ISVs, Unity developers, npm/PyPI maintainers, AWS marketplace
+        sellers, Stripe-billed SaaS, App Store publishers; (2) the platform's OWN PUBLISHED
+        RULE, FEE, LIMIT OR DEADLINE that creates the recurring pain — a review policy, a
+        take rate, a rate limit, a deprecation schedule, a certification requirement; and
+        (3) the concrete deliverable sold. The platform's public documentation IS the
+        evidence terrain, which is why naming the rule is mandatory. REJECT: generic
+        developer-productivity SaaS, another CI tool, another observability dashboard,
+        "the X for Y" analogies, and anything that would read identically for any platform.
+
+  # (3) The PAYER is a tech company — an internal chore with a budget line.
+  sells_to_tech:
+    generation:
+      structural_forms:
+        - productized_service   # a fixed-scope internal chore done for you
+        - vertical_tool         # narrow software for ONE internal workflow
+        - data_intelligence     # proprietary data a tech buyer cannot assemble internally
+        - picks_and_shovels     # tooling every company in this position needs
+        - risk_financing        # underwrite a risk tech buyers carry and hate
+      audience_forms:
+        - startup_operator
+        - ops_manager
+        - software_developer
+        - agency_owner
+        - smb_owner
+      focus: >
+        Sell TO technology companies. The buyer is a NAMED role inside a software business
+        who controls a budget line — founder, head of engineering, ops/finance manager,
+        security lead. Each idea MUST name (1) that role, (2) the RECURRING INTERNAL CHORE
+        it owns, anchored to a PUBLIC framework, contract or deadline — SOC 2 / ISO 27001
+        evidence collection, vendor security questionnaires, DPAs and sub-processor lists,
+        cloud cost commitments and renewals, on-call and incident review, contractor status
+        and payroll compliance, export/licence review, accessibility conformance; and
+        (3) what the buyer receives each cycle. The framework's published control list or
+        the vendor's published pricing IS the evidence, so name it. REJECT: generic B2B
+        SaaS, lead-gen agencies, recruiting marketplaces, and any idea whose buyer is
+        "startups" in general rather than one role with one budget.
+
+  # (4) The union — use when you want the whole space rather than one reading of it.
+  tech_ai_all:
+    generation:
+      structural_forms:
+        - vertical_tool
+        - productized_service
+        - data_intelligence
+        - picks_and_shovels
+        - transaction_broker
+        - audience_media
+      audience_forms:
+        - software_developer
+        - startup_operator
+        - agency_owner
+        - ops_manager
+        - smb_owner
+        - ecommerce_seller
+      focus: >
+        TECHNOLOGY AND AI, in any of three shapes — and each idea must COMMIT to exactly one
+        and say which: (A) AI-NATIVE, where a model does work a named human role is paid for
+        today; (B) TECH-VERTICAL, serving a named software/hardware/infrastructure ecosystem
+        and the platform rule, fee or deadline that hurts; or (C) SELLS-TO-TECH, where the
+        payer is a named budget-holding role inside a software company facing a recurring
+        chore anchored to a public framework. Whichever shape, the idea MUST name the buyer
+        role, the recurring trigger, the deliverable, and THE PUBLIC SOURCE that proves the
+        pain is already paid for. Spread the batch across all three shapes rather than
+        clustering in one. REJECT anything whose pitch is the technology rather than the
+        task, and anything that would read identically for any company in any country.
+
+# Personas (Part 16 — analytical multi-tenancy). A persona provides analytical bias/voice
+# for generation, verdict, and adversarial. It "tints" the entire pipeline.
+# active_persona: "" (default)
+active_persona: ""
+personas:
+  shark:
+    generation_bias: >
+      You are Kevin O'Leary. You care ONLY about massive margins, unassailable moats,
+      and scale. If an idea is 'too small' or 'too easy to copy', don't even propose it.
+      Search for the 'unfair advantage' in every signal. Reject anything that feels like
+      a hobby or a tiny niche without a path to a $100M exit.
+    verdict_bias: >
+      Be ruthlessly skeptical. If the evidence doesn't prove a massive, recurring pain
+      and a clear ability to capture value, mark it REFUTED. Don't be 'nice'. Look for
+      the hidden commodity trap.
+    adversarial_bias: >
+      Your job is to find the one reason this company will go bankrupt. Is there a giant
+      already doing this? Is the CAC higher than the LTV? Is the margin being eaten by
+      incumbents? Kill it if you can.
+    thresholds:
+      min_composite_to_pass: 3.8
+  minimalist:
+    generation_bias: >
+      You are a solopreneur. You want zero employees, 90% automation, and high cashflow.
+      Avoid complex operations, physical inventory, or long sales cycles. Focus on 'boring'
+      but profitable niches that can be run from a laptop.
+    verdict_bias: >
+      Focus on deliverability. Can ONE person actually run this using AI? If it requires
+      a team, a physical presence, or a complex license, it's REFUTED for this persona.
+    adversarial_bias: >
+      Find the operational trap. Where will the founder get stuck doing manual labor?
+      If it's not truly autonomous or if it has 'people risk', kill it.
+    thresholds:
+      min_composite_to_pass: 2.5
+  academic:
+    generation_bias: >
+      You are a research scientist. Look for deep technical breakthroughs, regulatory
+      shifts rooted in data, and first-principles optimizations. Avoid marketing fluff
+      and 'growth hacks'. Focus on structural changes in science and law.
+    verdict_bias: >
+      Require high-fidelity evidence. Is there a peer-reviewed study? Is there a primary
+      legal source? If the citations are 'blog posts' but not 'sources of truth',
+      downgrade the confidence.
+    adversarial_bias: >
+      Identify the logical flaw. Is the hypothesis grounded in sound physics/economics/law?
+      If the reasoning is weak or based on a misunderstanding of the technical signal,
+      it's dead.
+    thresholds:
+      min_composite_to_pass: 3.4
+
+listing:
+  price_pence: 4999              # The DEFAULT rung. An unclassified pack holds here, forever.
+  publish_on: pass
+  # THE FIGURE FENCE (§33, item 33-G). On = a pack may list only when the post-verdict figure
+  # trace has RUN and either flagged nothing (`clean`) or every flag carries a human decision
+  # (`verified`). Off = the trace still runs and still writes its receipt; it just does not gate.
+  # Kept off because turning it on delists the ~30% of the shelf measured as carrying a figure
+  # found in no retrieved passage, and that is a revenue decision. Review queue:
+  # `python -m tools.review_figures list` / `... decide`.
+  require_figure_verification: false
+  # Q2 pack linter (bridge.py publish gate). URL resolution is the linter's only networked
+  # check; off = the pure-text checks (currency, arithmetic, truncation, sections) still
+  # run. A definitive 404/410 blocks listing; a timeout is only a warning — our outage is
+  # not the citation's death (the same rule as DEFER-not-KILL on the verdict path).
+  lint_check_urls: true
+  # CITATION ARCHIVING (prospector/archive.py, publish path). A pack is generated once and
+  # sold indefinitely, so its citations rot after the sale: measured 2026-08-09, 12 of 14
+  # dead citations blocking packs were genuinely 404 on a GET. Archiving mints a second
+  # pointer at publish, rendered beside the live URL in the pack's QA report, so
+  # "follow any of them and check us" stays true. Strictly additive: it can never block or
+  # delay a publish past its timeouts, and a total failure just means no mementos.
+  archive_citations: true
+  # Save Page Now is slow and rate-limits anonymous callers, so the cheap availability API
+  # runs first and this only controls whether a URL with NO existing snapshot gets one
+  # minted. Turn it off to archive from existing captures only (fast, unmetered).
+  archive_save_new: true
+  archive_lookup_timeout_s: 10
+  archive_save_timeout_s: 30
+  # Bound on citations archived per pack, so a long bibliography cannot stall a publish.
+  # What is dropped is logged: a silent cap reads as "we archived everything".
+  archive_max_urls: 30
+  # ARCHIVE AT VET TIME, NOT ONLY AT PUBLISH (prospector/store.py Store.save, 2026-08-13).
+  # The publish-time call above is too late to do the job it exists for: a pack is often
+  # published weeks after it was vetted, and the Internet Archive cannot snapshot a page
+  # that has already gone. Measured across every pack the lint gate was holding off the
+  # shelf that day: 16 dead cited URLs, only 4 with a memento — and those 4 were snapshots
+  # that already existed, not ones we took. The other 12 had nothing, so pack_linter had no
+  # durable copy to accept in place of the dead link and the packs could not list.
+  # Archiving when the PASS dossier is written catches the page while it is provably alive.
+  # PASS dossiers only — a KILL cannot list, so archiving its citations buys nothing.
+  archive_at_vet: true
+  # Separate, tighter bound: this one runs inside the daemon tick, where wall-clock is a
+  # live complaint, so it must be tunable without touching the publish path's budget.
+  archive_at_vet_max_urls: 12
+  # Grammar pass (Harper) on the publish path. Runs in-process, fails OPEN: a missing or
+  # broken checker records `grammar_check_unavailable` and blocks nothing, because an
+  # absent checker must never unlist a good pack.
+  lint_grammar: true
+  # The actuator. 0 = record the rate but never block. Above 0, a pack whose grammar
+  # defect rate exceeds this is refused, goes UNLISTED, and the daemon's repair path picks
+  # it up — no human in the loop.
+  # Basis: MEASURED on production packs 2026-08-08 — the same `check_grammar` call the
+  # publish path makes, over all 99 packs carrying artifact prose (542,689 words):
+  #   mean 2.28   median 1.61   p90 4.57   p95 5.50   max 10.95
+  # 6.0 sits just above p95, so it fires on genuinely degraded copy: it refuses 2 of 99
+  # packs where the earlier 3.0 refused 19.
+  #
+  # 3.0 was set from a 40-dossier sample on the belief that engine prose ran 0.8 per 1k and
+  # that 3.0 was therefore ~3.75x the mean. PACK ARTIFACTS ARE NOT THAT CORPUS: their mean
+  # is 2.28, which put 3.0 BELOW p90 — i.e. firing on normal variance, not degradation.
+  # Note the rate is least stable exactly where it bites hardest: the worst offenders are
+  # 300-800 word packs where a handful of findings dominates the ratio.
+  max_grammar_defects_per_1k: 6.0
+  # TITLE FORMAT (pack_linter.check_title). The title is the only string that reaches every
+  # surface at once — shelf card, pack page H1, the <title> in search results, the OG image
+  # on a shared link — and until 2026-08-09 nothing bounded it or shaped it. The declared
+  # format is `Name, what it does`: a short name, a comma, then the outcome in buyer words.
+  #
+  # 60 is not a guess. It is the same ceiling `artifacts.CARD_LINE_MAX` already enforces on
+  # card_line, and the engine hit it comfortably: measured over the 48 live rows, card_line
+  # ran min 40 / median 52.5 / max 60 on all 36 rows that had one, while the TITLE for those
+  # same packs ran median 96.5 with 2 of 48 inside 40-60. The short form is writable; it just
+  # was not being asked for. Supporting outside evidence (all correlational, none ours):
+  # Zyppy n=80,959 — Google rewrites 99.9% of titles over 70 chars, lowest rewrite rate at
+  # 51-60; Backlinko n=1.3M — 40-60 chars correlates with +33% CTR.
+  title_max_chars: 60
+  # The actuator, and it starts OFF on purpose. Every breach is reported either way; false
+  # here makes them warnings, so shipping the rule does not unlist the 46 live packs that
+  # predate it. Flip to true once tools/retitle_catalogue.py has landed the rewrite — the
+  # same sequence max_grammar_defects_per_1k was introduced in, for the same reason.
+  title_block_on_breach: false
+  surfaces: [own_store, syndicate]
+  tiers: [scout, operator, founder_investor]
+  exclusivity: true
+  subscription: true
+  pricing:
+    driver: composite            # legacy, unread — the ladder below decides price
+    premium_axis: automatability # legacy, unread
+
+    # ---- L1 price ladder (spec: specs/d1-pricing-ladder-spec.md) ----
+    # Price is a rung on a fixed ladder, never a computed continuous number. Discrete
+    # rungs are what make a price change legible ("we moved smb/uk up one rung"),
+    # comparable across packs, and safe to reason about — a continuous function
+    # produces £63.41 and nobody can say why.
+    #
+    # These numbers are a HYPOTHESIS, not a finding. There is no willingness-to-pay
+    # evidence behind them yet; that is what the price_comparables check (C3) and the
+    # storefront events (D2) exist to produce. They are pinned here so the ladder is
+    # deterministic and so moving one is a visible, reviewable act.
+    # Charm pricing (2026-08-09, founder: "round figure is not right, we should have pence,
+    # cents also"). Every rung now ends in 99p instead of a flat hundred so the storefront
+    # renders £19.99 / £49.99 / £199.99 instead of £19 / £49 / £199. The rung POSITIONS are
+    # unchanged (default_rung_index, tier_rung_index and market_rung_offset below all index
+    # into this same 7-element array), so only the numbers moved, not the ladder shape.
+    rungs: [1999, 2999, 4999, 7999, 9999, 14999, 19999]
+
+    # A human-readable label for the ladder below, recorded on every D3 rationale record
+    # (prospector/price_rationale.py). It is a LABEL, not the truth: a stale label that
+    # nobody bumped after editing `rungs` would misattribute a price. The record also
+    # carries the rung numbers themselves plus a `fingerprint` digest over them, and the
+    # fingerprint is what proves which ladder actually ran.
+    ladder_version: L1-ladder-2026-08-09-charm
+
+    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4999: an
+    # unclassified pack is one we know nothing about, and guessing at its price is
+    # strictly worse than holding the price the whole catalogue already sells at.
+    default_rung_index: 2
+
+    # The ambition tier is the BAR the idea was vetted against, which is the closest
+    # proxy we have for the buyer's own scale — a side_hustle pack is bought by an
+    # individual, a venture pack by someone raising against it. side_hustle sits at
+    # 2900 because config already calls it "the £30-pack lane" (see lanes.side_hustle).
+    tier_rung_index:
+      side_hustle: 1             # 2900
+      smb: 2                     # 4900
+      growth: 3                  # 7900
+      venture: 5                 # 14900
+
+    # `market` is the jurisdiction the OPPORTUNITY lives in, not the buyer's locale —
+    # packs sell in GBP wherever they sell (models.py Candidate.market). A US-market
+    # opportunity addresses a larger economy, so it earns one rung, not a multiplier.
+    # An offset keeps every output on the ladder; a multiplier would not.
+    market_rung_offset:
+      uk: 0
+      us: 1
+
+    # ---- C3: price_comparables (prospector/price_comparables.py) ----
+    # The evidence side of pricing. Runs once per candidate that survived every hard gate,
+    # pooling the willingness-to-pay passages the six checks already fetched with a few
+    # price-page searches, and extracting CITED prices buyers demonstrably already pay.
+    # It can never kill (models.PRICING_CHECK is barred in kill_filter and in verify's
+    # run order) — "no price page on the open web" is a fact about the web, not the idea.
+    comparables:
+      # Retrieval and extraction. On, because the passages are already being paid for and
+      # binned; the marginal cost is 3 searches + 1 extraction call per SURVIVOR, and
+      # survivors are rare.
+      enabled: true
+
+      # Acting on the evidence. OFF, and separately from `enabled` on purpose: retrieving
+      # evidence and letting it move money are two decisions. Turn this on deliberately,
+      # after reading anchors that real runs produced — not on the day the check merges.
+      rung_adjust_enabled: false
+
+      # Aimed at price PAGES. "market size" queries return analyst press releases whose
+      # numbers are not prices, which is precisely the failure the bounds rail below
+      # exists to catch as a second line of defence.
+      queries:
+        - "{q} pricing how much does it cost"
+        - "{q} price per month subscription plans"
+        - "{q} course OR template OR toolkit price"
+
+      # FX is DECLARED, never inferred. An anchor in a currency absent from this map is
+      # kept as readable evidence in the dossier but carries no pence value and can never
+      # move a price — a guessed exchange rate is an unsourced number on the money path.
+      # Add a rate here only with a dated source next to the commit that adds it.
+      fx_to_gbp:
+        GBP: 1.0
+
+      # A monthly SaaS seat is not comparable to a one-off pack, and the multiplier that
+      # would make it so is a commercial judgement, not a retrievable fact. Only one_off
+      # anchors are eligible to move a rung; the rest still appear in the dossier.
+      cadence_eligible: ["one_off"]
+
+      # Sane price band in GBP pence, applied AFTER conversion. Below £1 is noise; above
+      # £5,000 is a contract value, a salary, or a market size the model mislabelled.
+      min_anchor_pence: 100
+      max_anchor_pence: 500000
+
+      # The bar for "evidence" rather than "anecdote". Domains are counted distinctly:
+      # three prices off one vendor's pricing page are one data point wearing three hats.
+      min_anchors: 3
+      min_domains: 2
+
+# Storefront payment rail. MUST match the provider the Store API bills through: checkout
+# builds a Stripe Checkout Session from the pack's ProviderPriceId, so a pack provisioned
+# under any other rail lists with a `price_stub_*` id and its checkout returns HTTP 500.
+# This was unset before 2026-07-31, so EngineBridge defaulted to `paddle`, found no
+# PADDLE_API_KEY, and shipped six listed-but-unbuyable packs. Explicit now, and
+# bridge.py refuses to LIST anything still carrying a stub price id.
+store_payments:
+  active_provider: stripe
+
+# Near-duplicate similarity ratio for Part 3 dedup (0..1). At or above this, the later
+# candidate is dropped as a duplicate. Higher = stricter (fewer dropped); lower = looser.
+dedup_threshold: 0.85
+
+# E6 (programme doc §3): local-embedding prescreen prefilter — SHADOW MODE ONLY.
+# The register mandates "shadow-mode first (log, don't act)", and only the shadow half is
+# built: with shadow_mode on, prescreen still returns exactly what it returns today and the
+# prefilter writes what it WOULD have dropped to store/prescreen_shadow/shadow-YYYY-MM.jsonl
+# next to the LLM's actual decision. There is no key here that can drop a candidate.
+# OFF by default — an unproven prefilter that acts silently kills good candidates, and this
+# one has no measured agreement yet. Turn shadow_mode on to start accumulating that measurement
+# (read it back with prescreen_prefilter.summarise_shadow_log).
+prescreen_prefilter:
+  # ON 2026-08-07. Register §27.2 item 6 was written as "shadow rows exist; agreement still
+  # unmeasured" — the rows did NOT exist: this flag was false and store/prescreen_shadow/ was
+  # absent, so E6 had no corpus to decide on and could not have had one. E6 cannot be measured
+  # offline either: the prefilter votes over a rolling window of the LLM's OWN accumulated
+  # prescreen decisions (min_exemplars 20), and no historical prescreen decision is persisted
+  # anywhere to replay. So the only route to the measurement is to let live ticks write it.
+  # Safe to turn on: shadow is log-only by construction — there is no key in this block that
+  # can drop a candidate, and `test_prescreen_result_identical_with_shadow_on_and_off` pins
+  # that prescreen returns exactly what it returned before. `backend` stays `lexical` on
+  # purpose (see below): switching it would change what E6 is measuring.
+  shadow_mode: true
+  # `lexical` = dedup's content-word tokeniser + char trigrams, cosine via novelty.py.
+  #
+  # A REAL dense backend now exists: `ollama:<model>` — e.g. `ollama:nomic-embed-text`, 768-dim,
+  # installed on this box. It posts to `<OLLAMA_BASE_URL>/api/embeddings` (default
+  # http://localhost:11434; a trailing `/v1` is stripped, because that path is NOT under /v1 and
+  # a 404 there reads exactly like "ollama is down"), timeout from
+  # PROSPECTOR_OLLAMA_EMBED_TIMEOUT_S. Measured live 2026-08-07: cos(text, reworded)=0.8374 vs
+  # cos(text, unrelated)=0.4930, margin +0.3444 — it discriminates, which the lexical backend
+  # cannot be assumed to do on a reworded idea.
+  #
+  # The comment this replaces said no embedding model was available and a dense backend "would
+  # mean a multi-GB download". That was true when measured and is now stale: `nomic-embed-text`
+  # is 274MB and already pulled. sentence-transformers/torch remain genuinely impossible here
+  # (python 3.14 x86_64 has no wheels), which is why the route is ollama-over-HTTP, not an import.
+  #
+  # Both dense backends degrade to lexical if unavailable, logged, and recorded per-row as
+  # `backend_used` — for ollama that reads `lexical<-ollama:<model>`, NOT a bare `lexical`, so the
+  # log can never be ambiguous between "lexical was configured" and "the encoder died".
+  #
+  # Still `lexical` on purpose: switching the backend changes what E6 measures, and E6's whole
+  # point is to calibrate `threshold` against real agreement. Flip this when E6 runs, not before.
+  backend: lexical
+  # Would-drop when the neighbour-weighted keep-rate falls below this. Uncalibrated by
+  # construction — calibrating it against real agreement IS experiment E6.
+  threshold: 0.35
+  neighbours: 5              # k in the kNN vote
+  min_similarity: 0.15       # a neighbour below this says nothing; ignored
+  min_exemplars: 20          # below this the prefilter ABSTAINS — cold start never drops
+  max_exemplars: 500         # rolling window over accumulated LLM decisions
+  log_dir: ""                # "" => <store.dir>/prescreen_shadow (honours PROSPECTOR_STORE_DIR)
+
+# §25.6 — the numeric-citation check. Q4c measured that roughly ONE FIGURE IN TEN in a
+# dossier rationale appears in no retrieved passage at all: it was never retrieved, the
+# model produced it. This check is deterministic and costs microseconds — it extracts the
+# figures from a rationale and confirms each appears in the passage that rationale cites.
+# Founder decision: SHADOW FIRST. It writes a log; it never demotes a check to
+# `unverifiable` and never strips a sentence. Turning that action on is a second decision.
+numeric_citation:
+  enabled: true              # founder 2026-08-07 — SHADOW only; `shadow_mode` below is the fence
+  shadow_mode: true          # true => log only. The action variant is not built.
+  min_digits: 1
+  ignore_years: true         # "in 2024" is a date, not a claim figure
+  tolerance: 0.0             # 0 => exact match after normalisation. Rounding slack, not fuzz.
+  log_dir: ""                # "" => <store.dir>/numeric_citation_shadow
+
+# V2 — the under-coverage sampler. Note the axes: `sector` is NOT among them and cannot
+# be, because no sector column exists in `dossiers` and generation never writes one — it
+# lives only inside prompt text. These four are real columns, all set at generation time.
+# `ambition_tier` is blank on about two thirds of rows; `unknown` is therefore an explicit
+# cell rather than a silent drop, and `min_coverage` stops a mostly-blank axis dominating.
+coverage_sampler:
+  enabled: false             # inert until switched on; the daemon's behaviour is unchanged
+  axes: [ambition_tier, structural_form, audience, market]
+  method: quota              # quota | entropy
+  unknown_policy: include    # include => blanks are their own cell, never invisible
+  recent_window: 200         # rows of recent-candidate history that count as "recent"
+  min_coverage: 0.25         # an axis below this fraction populated cannot drive sampling
+  seed: 0                    # a sampler you cannot replay is not a measurement
+  # G7 illumination weight. 0.0 = V2 exactly: elites are measured and appear in the receipt,
+  # but they do not steer, and the plan is byte-identical including the seed. Above 0 a
+  # value's rows are discounted by how good its BEST ruled composite is, so a cell attempted
+  # a hundred times that never produced anything good stops counting as covered.
+  #
+  # Read the polarity before turning this up: it steers generation TOWARD the cells with the
+  # worst results, which is the opposite direction to G9 and costs pass rate in the short
+  # run. That is the point. A barren cell and a badly-attempted cell are indistinguishable in
+  # a row count, and this repo has already been wrong about one (chunk C read `smb` as weak
+  # generation when its modal kill gate was `moat_ungrounded`, a retrieval outcome).
+  quality_weight: 0.0        # [0,1]; clamped, never raises — a typo must not stop generation
+  # Which per-cell statistic the weight acts on. `mean` is the default even though `elite`
+  # (the max) is the QD-canonical choice, because the elite was MEASURED on the live index
+  # (1,789 rows, 2026-08-08, cells with n>=30) and barely discriminates:
+  #     ambition_tier   max spread 1.16x   mean spread 2.56x
+  #     audience        max spread 1.20x   mean spread 1.71x
+  # The maximum is an extreme order statistic and over 40-110 samples per cell it has already
+  # converged to the same value everywhere. `elite` stays selectable because it is right for
+  # the regime MAP-Elites assumes — an archive keeping only a cell's best occupant — which is
+  # not this pipeline, where every candidate is verified and scored.
+  quality_stat: mean         # mean | elite
+
+# V4 — meta-shape monitor. Embeds catalogue one-liners with the LOCAL ollama model and
+# alerts when one cluster exceeds a share of the catalogue. This is what turns "78 niches,
+# one shape" from a suspicion into a number. Zero tokens, read-only.
+meta_shape_monitor:
+  enabled: false
+  embed_model: nomic-embed-text
+  ollama_host: "http://localhost:11434"
+  clusters: 8
+  alert_top_cluster_share: 0.35
+  min_rows: 50               # below this the share is noise; the monitor abstains
+  log_dir: ""                # "" => <store.dir>/meta_shape
+
+# R2 — per-candidate claim lock. A concurrent backlog drain and a manual `vet --resume`
+# can both pick up the same candidate and pay for the same re-vet twice. Mirrors the
+# file-locked, half-open probe idiom already proven in `health.py:130`. Defaults ON: this
+# is a correctness rail, not an experiment. `stale_after_s` exists because a lock that
+# outlives a crashed holder forever is a deadlock, which this repo has already met once.
+claim_lock:
+  enabled: true
+  dir: ""                    # "" => <store.dir>/claims
+  stale_after_s: 3600
+
+# F1-F4 — deterministic buyer-facing data artifacts, zero LLM calls. The comparables line
+# is the pointed one: `price_comparables` already fetches cited willingness-to-pay anchors
+# and the pack then DISCARDS them, so the buyer never sees the price evidence we paid to
+# retrieve. `pdf` and `xlsx` degrade to absent (logged) rather than failing a bundle.
+pack_data:
+  enabled: true              # founder 2026-08-07 — the data files now ship in the bundle
+  formats: [json, csv, svg]  # add xlsx / pdf once F3/F4 are exercised on a real pack
+  chrome_path: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+# Second dedup signal: content-word overlap (Jaccard, 0..1). Char ratio above is blind to
+# the SAME idea reworded — that is how the catalogue accumulated 4 "retiree garden harvest"
+# variants + 2 "probate clear-out" variants that all scored well under 0.85. This catches
+# reworded same-idea titles. Calibrated to 0.34 (live dupe pairs >=0.38, distinct ~0.00).
+# Lower = stricter (drops more). Set to null to disable the token signal entirely.
+dedup_token_threshold: 0.34
+
+# batch_size 15 (was 5): founder directive 2026-07-31 — the moat is now cursor_cli primary
+# (faster than the claude_cli chain that the old 5-batch was sized for), and with exa in the
+# grounding chain at position 2 (see retrieval chain above) the per-candidate wall time has
+# dropped. Tick hard deadline in run_scheduled.py bumped to 10800s (3h) to match.
+# backlog_cap 100 — added 2026-08-06 after measuring that this block SPECIFIED a treadmill.
+# `batch_size: 15` mints up to 15 rows per tick; `resume_per_tick` was unset and fell to its
+# default of 3 (run_scheduled.py::_RESUME_PER_TICK_DEFAULT), so every tick added a net +12
+# backlog rows BY DESIGN. Not moat flakiness — arithmetic. Nothing read the backlog it was
+# filling: guard.evaluate() gates on PAUSE, clock-backward and the two spend caps and then
+# returns can_run=True. Measured that day: 343 drainable rows (157 defer + 191 provisional − 5
+# overlap, tombstones excluded), flat for six weeks, oldest 2026-06-14.
+#
+# Above this cap the daemon skips GENERATION and drains only, at `drain_only_resume_per_tick`
+# (defaults to batch_size = 15, not 3) on a `drain_only_interval_s` cadence (default 900s). It
+# releases automatically the moment the count falls back under the cap — no human, no PAUSE
+# file. 100 is roughly a week of buffer at the measured drain rate; it is a ceiling on debt,
+# not a target.
+# `max_resume_attempts`: completed re-vets one backlogged row may absorb before it stops being
+# counted as backlog (prospector/drain_state.py). It exists to keep `backlog_cap` self-releasing:
+# the brake waits for the drainable count to fall, so a row nothing can resolve would hold
+# generation frozen forever. 0 disables it. Outages never spend a row's budget — only a completed
+# re-vet whose verdict left the row drainable counts.
+# `revet_provisional_kills: false` — do NOT spend the drain's bound re-vetting rows that are
+# already KILL. A provisional row is one an untrusted brain ruled; the re-vet exists so a trusted
+# brain can overwrite that ruling. For a PASS that is the difference between unsellable and
+# sellable (the publish gate is `decision == PASS and not provisional`). For a KILL it changes
+# `provisional=1 -> 0` on a row that can never publish under any verdict.
+# Measured 2026-08-06 before this line existed: 318 drainable rows = 161 provisional KILL + 152
+# DEFER + 5 provisional DEFER, and ZERO provisional PASSes — so 51% of the backlog, and (because
+# the sort was oldest-first and the KILLs are the old ones) most of what each tick actually paid
+# for, was rows in that class. Yield of every drain in ticks.jsonl: 39 attempted -> 1 pass. The
+# drain-only tick at 12:23:06Z: 15 attempted -> 15 kills, 0 passes, ~$28.65 of subscription CLI
+# (meter flat at $438.6810 before, $467.3271 after), none of it visible to spend.daily_cap_usd.
+# And it ran INSTEAD of generation, not alongside it: backlog_cap 100 vs 334 forced batch_size 0.
+# This excludes them from the drain AND from the brake's count via the one shared definition
+# (run.drain_survey) — narrowing only one of the two is how the brake deadlocks. Nothing is
+# deleted or tombstoned: the rows keep their cited kill reason, `vet --resume --only
+# provisional-kill` still works them on demand, and flipping this to true restores the old
+# behaviour in one line. See prospector/drain_state.revet_provisional_kills for the receipts.
+# `backlog_cap: 0` — the stock-based brake is OFF, replaced by `gate_generation_on_grounding`.
+# It was set to 100 and it controlled on the wrong variable. Measured 2026-08-06 against the live
+# store: 154 of 154 drainable rows carry `retrieval_degraded=1`, while only 180 of all 1,483
+# non-tombstoned rows (12%) do — so the flag discriminates, and 1,220 KILLs plus 83 PASSes were
+# generated and ruled on the spot with `degraded=0`. Generation VOLUME does not create backlog
+# rows; failed RETRIEVAL does, and 88% of everything ever generated never entered the backlog.
+# The queue is therefore burst-shaped, not treadmill-shaped: 95 rows created on 2026-06-24, 44 on
+# 2026-08-06, 0-4 on every other day in six weeks. Controlling on the stock gives the brake
+# unbounded memory — the 2026-06-24 cohort alone is 95 of 154, so removing that one day puts the
+# count at 59, under the cap. A six-week-old outage was why the daemon generated nothing on the
+# afternoon of 2026-08-06, and draining old rows cannot make new retrieval succeed. Left in the
+# config at 0 rather than deleted: it is still the floor-of-last-resort if the queue ever grows
+# without an outage behind it.
+#
+# `gate_generation_on_grounding: true` — the replacement, and a RATE not a stock. One bounded live
+# search per tick (free on the ddg head of the chain, 45s bound) answers "is retrieval working
+# now" — the only condition under which generating adds to the backlog at all. A tick suppressed
+# by a real outage un-suppresses itself the moment the outage ends: no state file, no hysteresis,
+# nothing to reset by hand. Fail-closed on generation, because a probe that did not complete is
+# not evidence that retrieval works. The drain runs either way.
+#
+# `market_rotation` — the ONLY way to work more than one market unattended. `active_market` is a
+# single string (config.py:437) and the market block it selects rewrites retrieval and generation
+# framing for a WHOLE batch, so "US as well as UK" has no representation in the schema: setting
+# `active_market` to one code retires the other. Rotation keeps the single-valued contract intact
+# and moves it BETWEEN batches, one market per tick, alternating in the order written here.
+# Empty => off, and `active_market` above is used unchanged (today's behaviour, byte for byte).
+# Comma-separated codes, each of which must resolve (subdivisions inherit their parent, so
+# "us-ca" needs no config beyond "us"). Example: "uk,us-ca".
+# An unresolvable code disables the WHOLE rotation rather than silently rotating over what is
+# left: a typo'd "us-ca" that quietly degrades to UK-only is precisely the failure this exists to
+# prevent, and a rotation the operator believes is running is worse than one plainly refused.
+schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
+            revet_provisional_kills: false, gate_generation_on_grounding: true,
+            reload_on_code_change: true, market_rotation: "uk,us" }
+
+spend:
+  # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.
+  daily_cap_usd: 20.0
+  warn_at_usd: 15.0
+  # Claude Code CLI burn, which `daily_cap_usd` structurally cannot see: the CLI logs its own
+  # cost under `cost_usd` with no `event: spend` tag, so the ledger scan skips it. Measured
+  # 2026-08-05: metered $1.64, CLI $71.94 — the rail covered 2% of the day's consumption.
+  # It is subscription-equivalent, not invoiced, so it is NOT part of the liability cap.
+  # 0 = report only (current behaviour). Set a number to halt the daemon when the Max plan's
+  # usage allowance is the constraint you actually care about — CLAUDE.md's "run bounded
+  # batches inside the usage allowance".
+  daily_subscription_cap_usd: 0.0
+  # The ARMABLE subscription ceiling. `daily_subscription_cap_usd` above is a HARD wall: it
+  # refuses the whole tick, and `run_tick` returns on `not can_run` BEFORE the drain — so
+  # arming it freezes the backlog, which is the 0efe40e defect ("stopping the treadmill also
+  # stopped the only thing paying it down") arriving through the money rail instead of PAUSE.
+  # A frozen backlog does not save that spend, it defers it: every unresolved row still owes a
+  # full re-vet. That is why the hard cap has never been armed, and why 2026-08-06 recorded
+  # $438.68 of subscription burn against no ceiling at all.
+  #
+  # This one stops DIGGING and keeps RESOLVING: above it, a tick skips generation and drains
+  # only, exactly like `schedule.backlog_cap`. Backlog goes DOWN while it is engaged, so it
+  # releases itself when the day rolls over. 0 = off (current). Set it BELOW
+  # daily_subscription_cap_usd or the hard wall fires first and the drain stops with it.
+  daily_subscription_soft_cap_usd: 0.0
+
+store:
+  dir: store
+
+# Entitlements API key used by the bridge's /entitlements check.
+# Must be set to a valid key before publishing. Reads from the
+# PROSPECTOR_ENTITLEMENTS_API_KEY env var at load time (config.py).
+# Leave empty (or unset) to fail closed — no test-token stub fallback.
+entitlements_api_key: ""

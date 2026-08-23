@@ -1,0 +1,23 @@
+Hearing Aid Scout – The Carer's Buyer Broker.
+
+A solo broker that finds, inspects, and negotiates the purchase of gently used high‑end hearing aids for carers of elderly relatives, charging a flat fee per successful match.
+
+A perfect‑condition, one‑owner hearing aid from an estate sale costs 80% less than new, but carers can't navigate the reprogramming maze or trust unvetted sellers. The broker's proprietary database of model‑specific reprogrammability and a network of audiologist‑verified refurbishers makes the opaque market safe.
+
+Primary carer (buyer) pays a fixed finder's fee of £150–£300 per pair sourced.
+
+Over‑the‑counter hearing aid explosion, rising new‑device prices, and a growing supply of lightly used units from digital upgrades and deceased estates.
+
+No passage addresses the durability of the broker's value; OTC market emergence and used-aid skepticism do not confirm or refute that the broker's trust layer remains real and non-commoditised.
+
+Passages mention general marketplaces (eBay, Facebook) where individuals buy used hearing aids, but none establish whether a dominant specialized broker exists for this exact service. No direct evidence addresses the incumbency of a used hearing aid broker with reprogramming verification.
+
+Passages mention a poor elderly mother and a shopper unable to afford $5k, but none directly address whether primary carers as a group have the budget or willingness to pay a £150–300 broker fee.
+
+No passage describes any distribution channel (self-serve, forcing mechanism, or existing route) for the broker's service, leaving the claim on distribution completely unaddressed.
+
+No passage directly addresses the lawfulness of brokering used hearing aid sales; Ontario's prescription requirement for dispensing is not clearly applicable to private resale.
+
+One passage shows a person considering used hearing aids on eBay due to high new prices, but no passage shows anyone paying a broker or suffering from the specific trust/reprogramming pain this service would solve. There is no evidence of acute, paid demand for a used hearing aid broker.
+
+The evidence suggests the used hearing aid broker faces multiple fatal obstacles. Forum posts from audiologists and users indicate that hearing aids are 'really not capable of being resold' (9ed92023077ef9c9), directly challenging the core premise. Practical experience from audiologists warns that used aids 'end up costing more than new ones' (d4348f09ed4f2762), undermining the claimed 80% savings. Instead of relying on a broker, budget-conscious buyers are already purchasing unlocked aids directly on eBay and Facebook (4fe62f196ec39b6d), so the pain of navigating unvetted sellers may not be acute enough to pay a £150–300 fee. Legal barriers emerge from regulations that mandate a prescription for dispensing hearing aids (620d65e8b1e8f466), which could block reprogramming or resale. Finally, distribution to the target audience of elderly carers is notoriously difficult because this group is often underserved and hard to reach (ef10b77c11d2c9f7). Together, these factors indicate the market is structurally unfriendly, the economic promise is dubious, and incumbents already satisfy much of the demand.

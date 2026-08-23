@@ -1,0 +1,27 @@
+Timing checks for chip startups selling to carmakers.
+
+A test bench and signed report service that proves a startup's AI chip or module meets the automotive functional-safety timing numbers a Tier 1 buyer demands before design-win sign-off.
+
+A small US fabless chip or edge-AI module company wins a design slot with a carmaker or a Tier 1 supplier like Bosch or Aptiv. The buyer then asks for something the startup cannot produce: measured evidence that the part detects its own faults inside the time the safety standard allows. That standard is ISO 26262, and the number is the fault-tolerant time interval. The startup has simulation results. The buyer wants bench measurements on real silicon, at temperature, with the fault deliberately injected.
+
+This business sells the picks and shovels for that moment. It is a rented bench in Austin, Texas plus a fixed-fee report: fault-injection rigs, thermal chambers, clock-glitch and voltage-droop injectors, and a measurement harness that records how long each safety mechanism actually took to raise a flag. The deliverable is a diagnostic coverage and timing report the customer hands straight to their buyer's safety engineer, alongside the raw traces.
+
+The angle is borrowed from aviation. Aircraft parts are not certified on the manufacturer's own word; an independent test house measures them, and the report travels with the part. Nobody does that routinely for AI silicon going into cars, so every startup builds a one-off rig, badly, under deadline.
+
+The wedge is the data that piles up. After a hundred parts, this business knows which failure modes actually miss their timing budget on which process nodes, and which Tier 1 safety teams reject which evidence formats. That is a fault-and-rejection library no chip startup can build from one part, and no test-equipment vendor can build because they sell boxes and never see the verdicts.
+
+Committing to shape B, tech-vertical: the ecosystem is automotive semiconductors and the deadline is the design-win safety review.
+
+Growth comes from the Tier 1 side. Once two or three safety teams at large suppliers recognise the report format, they start naming it to every startup they evaluate, which turns the buyer's own review process into the sales channel.
+
+The VP of engineering or head of silicon at a US fabless chip or edge-AI module company with 15 to 150 staff, chasing an automotive design win. Typical spend is $40,000 to $120,000 per part per cycle, and parts come back for re-test at every respin.
+
+Carmakers are putting far more compute into vehicles for driver assistance, and NHTSA has been steadily expanding automatic emergency braking requirements, which pushes safety scrutiny down onto the chips. ISO 26262 second edition explicitly covers semiconductor parts. At the same time a wave of US AI-chip startups funded since 2023 is now reaching production silicon with no in-house safety test capability, because they hired architects and compiler engineers, not automotive validation staff.
+
+The passages establish that ISO 26262 defines fault injection testing and that fault-tolerant time interval is a required design attribute [2004ed522bde0240][ae6063f74c3012ca][174bc49a7e059e7c], but a standard requiring a test says nothing about whether chip startups are struggling with it or paying outside labs to do it. No passage describes anyone's difficulty, cost, unmet need, or spending on bench-measured timing evidence for a design-win review.
+
+The passages only explain what fabless chip companies are and describe general industry news (foundry business models, Groq's licensing deal, TSMC inventory); none says anything about what a chip startup budgets or spends on safety testing, certification, or outside test services. With no passage touching the buyer's willingness or ability to pay for such a report — at £99.99 or any price — the claim that the payer has budget and motive cannot be judged from this evidence.
+
+The passages only establish that Aptiv exists as a large automotive supplier with a supply-chain contact list and supplier requirements [83d300aeb68df643][3987b1999d16f85f][c46e857e988ccb86][a16f20eb5bdd0c5c], and that foreign Tier 1 ADAS suppliers face declining profitability [bf0cdc763db05f93]; none of them say how a chip startup or an independent test lab reaches a Tier 1 safety engineer, nor whether such a buyer's safety review names or accepts outside test reports.
+
+The passages describe what ISO 26262 is and that firms like TÜV SÜD sell assessment and certification services against it, and that testing labs can seek ISO/IEC 17025 accreditation, but none of them say whether an independent bench-test-and-report business may lawfully sell measured fault-injection results to chip makers, nor do they identify any rule such a service would have to break. The export-control passages concern licensing for shipping advanced computing items abroad and say nothing about running a domestic US test lab or issuing safety-timing reports.

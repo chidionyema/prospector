@@ -1,0 +1,23 @@
+Landed Cost Compass.
+
+A tool that takes a product HS code, destination, and shipping method, then instantly outputs a guaranteed-accurate landed cost breakdown including duties, taxes, and brokerage fees, plus a carrier-ready commercial invoice, powered by a real-world customs clearance dataset.
+
+Current duty calculators are either carrier-biased or generic; by first-principles reconstruction, the true need is confident, final cost for cross-border listings. The tool creates certainty for micro-sellers, reducing cart abandonment and customs surprises, by using an organically grown dataset of actual customs bills.
+
+Small e-commerce merchants (Etsy, eBay, Shopify solo-ops) shipping internationally, who lose sales when buyers see duties due on delivery, and face returns if costs are misestimated.
+
+Global cross-border B2C e-commerce is surging, but new EU e-commerce VAT rules, UK post-Brexit changes, and US de minimis shifts make accurate duty prediction a recurring pain. Carriers' free tools often overestimate or don't account for product-specific duty fee nuances, leaving sellers confused.
+
+None of the provided passages mention customs duty calculation, landed cost estimation, proprietary datasets for brokerage fees, or the specific competitive dynamics of the candidate. The passages discuss unrelated products (chat, fashion store, video generation, robotaxis, AI moats in general).
+
+One passage describes a shipped cost engine, but no information on market share, funding, or dominance. A single competitor's existence does not refute incumbency without evidence of market leadership.
+
+None of the passages mention small e-commerce merchants' budget, motive, or willingness to pay for a landed cost tool; they describe free shipping calculators and unrelated topics, so the payer's solvency is unaddressed.
+
+None of the passages discuss a distribution channel, route to the buyer, self-serve mechanism, or any existing channel for the tool. They are either generic definitions of landed cost or irrelevant.
+
+Passages reference existing landed cost guarantee services (Floship, FlavorCloud) that provide similar calculations, indicating the activity is lawful. No passage suggests the tool requires breaking any law, terms, or falsifying data.
+
+No passage addresses the pain or spending behavior of small e-commerce merchants regarding cross-border duty estimation; one merely defines landed cost, while the rest discuss unrelated topics.
+
+No explicit evidence found for critical regulatory blocker, impossible unit economics, or incumbent monopoly. The searches provided no data on acquisition costs, market dominance, or legal barriers for this tool.

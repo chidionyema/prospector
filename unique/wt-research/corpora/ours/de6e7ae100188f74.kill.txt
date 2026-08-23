@@ -1,0 +1,25 @@
+Recall Room — weekly product-failure briefings for UK hardware startups.
+
+A paid weekly briefing that shows UK hardware founders how real product recalls unfolded and what to do before Trading Standards arrives.
+
+Recall Room is a private email briefing for founders selling children's products, electronics, cosmetics or home goods in the United Kingdom. Each issue examines one real incident from the Office for Product Safety and Standards, Trading Standards, the Competition and Markets Authority, or a published court case.
+
+It explains the failure in plain English, identifies the overlooked warning sign, and gives the founder a short action list for their own product. It can include customer wording, distributor questions and evidence requests, but it does not pretend to replace a product-safety lawyer or test laboratory.
+
+This borrows the way aviation operators learn from accident reports, and applies it to consumer-product failures that small companies rarely have time to study. The solo operator can research public recall notices, court judgments and government guidance, then add original interviews with affected founders and test houses.
+
+The paid archive becomes more useful as it grows because every case is coded by product type, fault, importer role, retailer response, injury risk and regulator involved. A new subscriber can search for failures resembling their own product instead of reading generic guidance.
+
+The strongest free alternative is GOV.UK product-safety guidance and the Office for Product Safety and Standards recall database. Those sources record what happened, but they cannot publish commercially candid lessons about how a founder should challenge a supplier, negotiate with a retailer or protect a launch date. The channel sells interpretation and incident-based judgment rather than a filing tool or compliance dashboard.
+
+The payer is a founder-operator at a UK consumer-hardware startup selling fewer than 20,000 units a year through retailers, Amazon or its own website. They can justify £19 a month or £190 a year because one avoidable recall can destroy a launch and consume their cash.
+
+The Office for Product Safety and Standards continues to publish recalls and safety alerts across online and physical retail. UK sellers also face duties under the General Product Safety Regulations 2005, the Product Safety and Metrology etc. (Amendment etc.) (EU Exit) Regulations 2019, and retailer-specific evidence demands. Small founders increasingly sell directly online, so they often become the importer, brand owner and first point of contact when a product fails.
+
+The passages are generic UK/US geography and government-portal descriptions with no mention of hardware founders, product recalls, safety briefings, or any paid alternative — they have zero conceptual overlap with the claim.
+
+None of the passages address UK product-safety regulation, recall activity, or hardware startups; they concern Persian kabob etymology, truck lighting, and PC RAM lights, with zero conceptual overlap with the claim.
+
+The passages establish only that PECR/UK GDPR govern email marketing consent and that the UK has certain jurisdictions/geography; none identify an actual channel (ad platform, marketplace, existing audience) a founder could use to reach UK hardware-startup buyers for this briefing.
+
+None of the passages describe any statutory mechanism, licence restriction, or legal duty tied to publishing paid commentary on public recall data — they only cover GOV.UK cookie notices, the Open Government Licence's own terms, Scotland's devolved remits, an FDA recall index, and an unrelated software licence. Nothing here shows whether reselling interpretation of OGL-licensed recall data as a paid briefing is compliant or non-compliant with that licence, so legality cannot be assessed from this evidence.

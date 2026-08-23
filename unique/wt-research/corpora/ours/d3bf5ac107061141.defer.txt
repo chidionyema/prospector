@@ -1,0 +1,13 @@
+Age assurance evidence for UK under-18 AI apps.
+
+An evidence tool that produces the ICO Age-Appropriate Design Code assessment and Online Safety Act risk assessment a UK AI app needs before launching for under-18 users.
+
+UK AI companion apps targeting under-18s — AI chatbots, AI tutors, character.AI-style apps — must satisfy two overlapping UK frameworks: the ICO's Age-Appropriate Design Code (in force since September 2021) and the Online Safety Act 2023 illegal harms codes that Ofcom is enforcing from 2025 for user-to-user services. Today this work is done by privacy and trust-and-safety consultancies at £25,000 to £60,000 per engagement.
+
+The tool produces the assessment deliverable: an AADC 14-standards assessment, an Online Safety Act illegal harms risk assessment, an age assurance mechanism design, and a transparency notice draft. The buyer is the AI app founder or Data Protection Officer; the deliverable is one document they hand to investors, app store reviewers, and the ICO if challenged.
+
+What compounds here is a library of evidence patterns: which age assurance mechanisms have been accepted by app store reviewers, which AADC standards the ICO has actually enforced against, and which risk mitigations satisfy Ofcom's illegal harms codes. The ICO's free AADC self-assessment tool is generic across all children's services, not B2C AI-specific. Ofcom does not offer commercial preparation services. Privacy consultancies are expensive; the tool serves the long tail of UK AI companion app founders who cannot afford £25,000 to £60,000 per engagement.
+
+UK AI companion app founders (chatbots, AI tutors, AI character apps, AI creative tools) targeting under-18 users. They already hire privacy consultancies (Bolt Burdon Kemp, BPE Solicitors, Mishcon de Reya) or trust-and-safety specialists at £25,000 to £60,000 per engagement, and face App Store age-rating rejections without this evidence.
+
+The ICO's Age-Appropriate Design Code has been enforced against UK children's services since 2023, with fines up to 4% of global turnover. The Online Safety Act 2023 received Royal Assent in October 2023; Ofcom's illegal harms codes are now in force for user-to-user services with phased commencement through 2025, giving Ofcom powers to fine up to £18 million or 10% of global turnover. AI companion apps targeting under-18s are a fast-growing category facing regulatory pressure from app stores and the ICO simultaneously.

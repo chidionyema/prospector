@@ -1,0 +1,408 @@
+DRN-4798795 
+ 
+ 
+The complaint 
+ 
+Mr B complains that Nationwide Building Society rejected his claim under section 75 of the 
+Consumer Credit Act 1974 in relation to an air source heating system. 
+What happened 
+In 2022 Mr B bought an air source heating system for his home, and paid a third party over 
+£14,000 to supply and install it. He paid for nearly two thirds of that from his current account, 
+in February and March 2022, and about one third remained outstanding. The system was 
+installed in April and May. 
+ 
+Mr B complained to the retailer that the system which was installed did not meet the 
+specifications of the system he had contracted to buy. He said the contract had stipulated a 
+16.5 kW system, but the system that was installed was only 12.5 kW. He said the retailer 
+was therefore in breach of contract. 
+ 
+In June 2022 the manufacturer carried out a site visit, and its engineer agreed that the 
+system installed was 12.5 kW, but he also said that this was the right size for the premises. 
+As the manufacturer also found that the system had nothing wrong with it and was 
+performing correctly, the retailer did not agree to do anything. It demanded payment of the 
+remaining balance, and in August 2022 Mr B paid using his Nationwide credit card. He then 
+asked Nationwide to refund him the whole purchase price. He said that the system fails to 
+keep the house warm, even when the heating is on all the time. 
+ 
+Nationwide both raised a chargeback dispute and opened a claim under section 75. The 
+chargeback was unsuccessful (but that is not part of this complaint).1 Nationwide asked Mr B 
+to obtain an independent report about the heating system to support his section 75 claim. 
+That report was obtained in October 2023. It found a number of shortcomings with the 
+installation work (for example, holes drilled in the walls were allowing water ingress and 
+allowing heat to escape, because they had not been made good). But notwithstanding what 
+that report said, Nationwide did not uphold Mr B’s section 75 claim. It said that the units were 
+operating correctly. That was in October 2023. 
+ 
+Mr B then brought this complaint to our service. He asked for the contract to be unwound for 
+a full refund. He also said that the installers had drilled a hole through a lintel, which had 
+caused it to crack; he asked for compensation for that. 
+ 
+Our investigator did not uphold this complaint. She said (among other things) that the 16.5 
+kW system did not appear to have been available at the time of installation, so the retailer 
+could not be expected to supply it. The house was not properly insulated, which was not the 
+retailer’s fault. She concluded that there had been no breach of contract and no 
+misrepresentation. 
+ 
+Mr B did not accept that opinion, and he asked for an ombudsman’s decision. I wrote a 
+ 
+1 Our investigator decided that our service did not have jurisdiction to consider the chargeback 
+dispute, and Mr B has accepted that decision, so I need not reconsider it here. 
+
+ 
+ 
+provisional decision, which read as follows. 
+My first provisional decision 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+Having done so, I am minded to uphold it. I will explain why. 
+ 
+Breach of contract 
+ 
+It is not in dispute (but I have verified anyway) that Mr B ordered a 16.5 kW system, but a 
+12.5 kW system was installed instead. That is a clear breach of contract, so Mr B is entitled 
+to have his section 75 claim upheld. If the 16.5 kW system was no longer available, then the 
+retailer was obliged to say so, and to try to agree a new contract with Mr B if it wanted to 
+make a sale. It couldn’t just substitute something else unilaterally. The fact that the installed 
+system has no manufacturing faults and that it works is neither here nor there. 
+ 
+It also appears that a lintel has cracked as a result of having a hole drilled through it. I think 
+that is a breach of the statutory implied term that the installation would be carried out with 
+reasonable care and skill. 
+ 
+The only question which remains is what would be a fair remedy for those breaches. 
+ 
+Fair compensation 
+ 
+Mr B has asked for the contract to be unwound and to get all of his money back. This would 
+mean removing the entire system. That is my starting point, but I have to consider whether it 
+would be fair and proportionate to require that to be done, or whether some other remedy 
+should be substituted. 
+ 
+Since I have found a breach of an express term of the contract, I don’t strictly need to 
+consider whether there has also been a breach of any implied terms (such as the statutory 
+term that the installation has to be carried out with reasonable skill and care). But I have still 
+considered the findings in the independent report in the context of deciding whether it is 
+desirable to replace the system or to keep it in place and find some other remedy. 
+ 
+(To understand the report, it is necessary to know that there are six internal heaters and an 
+external heat pump.) 
+ 
+Although the independent report found no manufacturing faults, it did still identify a number 
+of problems. These were as follows: 
+• The holes drilled for the pipes which connect the heat pump to the system inside the 
+house had not been made good. This meant they were allowing heat to escape 
+through the gaps around the pipes, and also rainwater ingress, which Mr B says has 
+caused mould. 
+• The external pipes were not adequately insulated and so they were losing a lot of 
+heat. 
+• The air source heat pump had been installed on the north wall, but the south wall 
+would have been preferable. 
+• Although the system was actually capable of providing 16 kW (how this is possible 
+was not explained), this was still not enough to adequately warm the house, as the 
+system was “30% undersized.” This was due to two factors: heat loss from the 
+property, and the heat pump’s capacity being lower than the internal units required. 
+While there was nothing wrong with the internal units themselves, they were not able 
+ 
+ 
+to perform properly because of those factors. 
+• Six internal units were being used to heat eight rooms, further undermining their 
+collective performance. 
+• Mr B’s electricity supply was inadequate to meet the system’s energy needs. 
+• The manufacturer had carried out its own test in warm summer weather. This was 
+not a reliable indicator of how well the system would work in winter. 
+• Although the air at ceiling height was very warm, the rest of the rooms were not. Wall 
+hung internal units may therefore not have been the best solution (especially 
+considering heat loss via the roof). 
+ 
+The report made the following recommendations: 
+• The manufacturer should conduct another test in winter. 
+• More insulation should be added to the house’s roof and walls. 
+• The wall-hung units should be changed to floor-mounted units. 
+• Alternatively, add another heat pump (but this would require planning permission and 
+an upgraded electricity supply). 
+• Alternatively, either replace the entire system, or add a fossil fuel boiler and radiators 
+to the existing system. 
+ 
+Clearly, not all of those things are the installer’s fault, although just as clearly some of them 
+are. But I don’t need to specify which ones the installer is responsible for. It is enough to say 
+that I don’t see any advantage in keeping the system in place and just refunding some of the 
+cost. I think it would be reasonable to say that the whole system needs to be removed for a 
+full refund, and to make good where needed. 
+ 
+The lintel will need to be repaired at no cost to Mr B. Alternatively, Mr B can obtain a 
+reasonable quote for those repairs to be done, and Nationwide can pay him what it will cost. 
+(I have seen a quote from March 2024 for £9,905 plus VAT, but that quote has expired, and 
+it seems very steep. A simple internet search suggests that the work could be done much 
+more cheaply. So I encourage Mr B to obtain a quote from somebody else.) 
+ 
+Mr B says four lintels have been damaged, but I have only seen evidence of one. He will 
+need to provide evidence of the others. 
+ 
+My provisional decision 
+ 
+I am currently minded to uphold this complaint and to order Nationwide Building Society to: 
+• Arrange for the system to be removed from Mr B’s property, and the premises made 
+good, at no cost to him; 
+• Arrange for the lintel to be repaired (or replaced) at no cost to Mr B; or alternatively, 
+on the receipt of a reasonable and up to date quote from a third party for this work, to 
+pay Mr B the amount quoted; 
+• Refund the cost of the system (£14,391:38), plus interest on that refund at the rate of 
+8% a year from the dates that the payments were made to the date of settlement; 
+• Pay Mr B a further £1,000 for his inconvenience. 
+ 
+Responses to my first provisional decision 
+ 
+Nationwide did not accept my provisional findings. It insisted that the system was working as 
+it should, and so there had been no breach of contract by the retailer. As to the fact that Mr B 
+had contracted to buy a 16.5 kW system but the retailer had installed a 12.5 kW system 
+instead, Nationwide submitted that the power output of the system had not been the subject 
+of pre-contract negotiations. In support of this, Nationwide referred to the sales documents. 
+Nationwide also asked me to consider the manufacturer’s report (which I had already 
+ 
+ 
+referred to in my provisional decision), which says that the system was performing 
+adequately. Nationwide also referred to a letter from the retailer (dated September 2022) 
+explaining that they had attended the site several times to rectify some minor issues, and 
+that they had not heard again from Mr B since he paid the outstanding balance of the 
+purchase price. And Nationwide reminded me of a letter from the retailer’s solicitor about the 
+power output of the system. 
+ 
+Nationwide did not specifically address the findings in the independent report from October 
+2023. 
+ 
+Mr B provided more photos of the property, including pictures of the other lintels showing 
+some hairline cracks. I couldn’t tell if these were really cracks in the lintels or just cracks in 
+the paintwork, so I asked him to remove some paint with a screwdriver and take photos of 
+what is underneath, which he did. Those new photos show cracks in the lintels, underneath 
+the paint. (I will share these photos with Nationwide.) 
+ 
+Mr B also provided a new quote from a builder’s firm, dated 26 August 2024, which was 
+slightly cheaper than the previous one (by £365),2 and which also included figures for 
+investigating and (if necessary) replacing the three other lintels. 
+ 
+He also asked to be compensated for furniture, clothes and toys which had been damaged 
+by water ingress and mould over the last two years, and which his home insurance company 
+had refused to cover. He said that Nationwide had told him that any action he took to protect 
+his property could adversely affect his claim, because the retailer might wish to inspect the 
+site. So he had taken no action since August 2022. 
+ 
+Mr B also said that he had ordered a heating system, but he has since been told that the 
+system actually installed is really an air conditioning system. 
+ 
+My revised provisional findings 
+ 
+The lintels 
+ 
+Based on the new photos supplied by Mr B, I now accept that all four lintels have cracked. 
+On the balance of probabilities, I think this is the result of poor installation work that was not 
+carried out with reasonable skill and care, since the cracks run from holes drilled during the 
+installation. So I find that this was a breach of contract by the retailer, and that Nationwide 
+should pay for the four lintels to be replaced. 
+ 
+The latest quote is for £26,300 plus VAT to replace the four lintels. (That quote recently 
+expired, so that figure is now approximate, but I expect any revised quote will be for a similar 
+amount.) 
+ 
+The heating system 
+ 
+As I said before, the manufacturer’s report found that there were no manufacturing faults 
+with the system. However, the report also states that a 12.5 kW system had been installed. 
+Yet Mr B’s quotation from the retailer (dated 19 February 2022) was unequivocally for a 16.5 
+kW system. In this excerpt, the column on the right is the quantity of units: 
+ 
+ 
+2 [New footnote added in final decision:] When I wrote this sentence, I did not include the cost of 
+dismantling and replacing the conservatory (as to which see page 6). 
+ 
+ 
+ 
+ 
+It is immaterial what else was said in the pre-contract negotiations, because I think that the 
+written itemisation of what would be provided formed an express term of the contract. So I 
+remain of the view that there was a breach of an express term to provide a 16.5 kW system, 
+consisting of three 3 kW units and three 2.5 kW units. What was actually provided instead, 
+according to the manufacturer’s report, was a 12.5 kW system. This was made up of four 
+units of one kind, and two units of another kind, but the report does not specifically say how 
+powerful each kind of unit was. (I will come back to that in a moment.) 
+ 
+However, the retailer’s solicitor claims (based on information taken from the retailer’s 
+website) that the system actually installed consisted of four 3.2 kW units and two 4 kW units, 
+which adds up to 20.8 kW, exceeding what was stated in the contract. Of course, that 
+conclusion contradicts both reports. Since the manufacturer’s report was based on a site 
+visit, and since I would expect the manufacturer to understand its own product, I prefer the 
+manufacturer’s findings to the solicitor’s conclusions. 
+ 
+The manufacturer’s website provides further information, which I’ve shared with Nationwide. 
+Cross-referencing that with the manufacturer’s report sheds some further light on the report. 
+I won’t go into much detail here (to avoid identifying the manufacturer in a published 
+decision). But it seems clear to me that the system installed consists of a 12.5 kW outdoor 
+heat pump, four 2.03 kW indoor units, and two 2.69 kW indoor units. (The six indoor units 
+add up to 13.5 kW.) The website specifically identifies this combination of units as having a 
+total capacity of 13.5 kW. 
+ 
+Based on this evidence, I remain of the view that the system that was installed was not the 
+system that was ordered and paid for, and that this amounts to a breach of an express term 
+of the contract. And I remain of the view that removing the system and making good the 
+premises is a fair remedy. 
+ 
+Heating or air conditioning? 
+ 
+Before I move on, I will deal with Mr B’s point about what kind of system this is, although I 
+don’t really need to because my findings above make this a moot point. Both versions of the 
+retailer’s quotation (dated December 2021 and February 2022) describe it as an “air source 
+heating system.” The 2022 quote also calls it a “multi split systems air conditioner 5-6 
+rooms”. Then on the next page, both documents say: 
+ 
+“It heats your home by extracting the renewable energy that's in the air outside and 
+then converts this heat into warm air for distribution around your property. As an 
+added benefit it can also act as an air cooler during the warmer summer months, 
+improving comfort.” 
+ 
+So the system is both a heating system and an air conditioner, and was described as such 
+before Mr B ordered it. I do not uphold his complaint about that. 
+ 
+Damage to clothes and furniture 
+ 
+I can understand why Mr B took no immediate action to protect his property when he was 
+told that the retailer might need to carry out a site inspection. But I don’t think that fully 
+explains why he took no action for more than a year after that, if he noticed that clothes and 
+furniture were beginning to be affected by moisture. I think it ought to have become apparent 
+
+ 
+ 
+much earlier than that, that the retailer was not going to carry out a site visit after all. (And 
+there had already been an inspection by the manufacturer.) So I think that Mr B should have 
+taken steps to mitigate his loss much earlier than he did. For that reason, I do not think that I 
+can fairly tell Nationwide to reimburse Mr B for these items. 
+ 
+My second provisional decision 
+ 
+My provisional decision is that I am minded to uphold this complaint, and to order Nationwide 
+Building Society to: 
+• Arrange for the system to be removed from Mr B’s property, and the premises made 
+good, at no cost to him; 
+• Arrange for the four lintels to be repaired or replaced at no cost to Mr B; or 
+alternatively, on the receipt of a reasonable and up to date quote from a third party 
+for this work, to pay Mr B the amount quoted; 
+• Refund the cost of the system (£14,391:38), plus interest on that refund at the rate of 
+8% a year from the dates that the payments were made to the date of settlement; 
+and 
+• Pay Mr B a further £1,000 for his inconvenience. 
+ 
+Responses to my second provisional decision 
+ 
+Mr B said that as well as the cost of replacing the lintels, his builder had also quoted £15,000 
+plus VAT to remove his conservatory and then to supply and build a replacement. That was 
+necessary because the conservatory was in the way of where the builder’s scaffolding would 
+need to go, and it would be impossible to remove the lintels, or to erect scaffolding, with the 
+conservatory in the way. Including that, the latest quote (including VAT) comes to £49,560 
+altogether. I shared this with Nationwide. 
+ 
+Mr B also asked to be refunded for some steps he had taken to mitigate his losses, such as 
+buying electric heaters and the associated increase in his electricity bills, and the cost of coal 
+and firelighters. And he asked for the cost of the independent report, which was £450, and 
+also for the cost of removing refrigerant from the system (£336), which he said was 
+necessary to make it legally safe. He provided receipts. He also reiterated what he had said 
+about consequential losses to clothes and furniture, and he asked for £80,000 for that. 
+ 
+I asked Nationwide to comment about the cost of dismantling and rebuilding the 
+conservatory. In response to that and to my provisional decision, Nationwide said that there 
+was still not enough evidence that the lintels had been damaged, or that any damage had 
+been caused by the installers of the heating system. It suggested that an independent 
+builder’s report should be obtained. 
+ 
+Nationwide also argued that building a new conservatory for Mr B would leave him in a 
+better position than before he entered into the contract; it asked me to consider apportioning 
+the amount.3 Nationwide also pointed out that the quote mentioned removing kitchen units 
+and surfaces and then reinstating them, and it made similar points about this to what it had 
+said about the conservatory. (However I note that the quote does not say that the kitchen 
+components will be replaced with new ones.) 
+ 
+Mr B pointed out that his position would not really be bettered if this work was carried out, 
+because he had been living in a cold house for two and a half years; his health had suffered 
+as a result of the ongoing stress; and (as mentioned earlier) there had been damage to 
+clothes and furniture caused by damp and mould. He has also had to pay to heat the house 
+ 
+3 The quote says “Removal of existing conservatory along with cart away all waste material. Supply & 
+fit new conservatory to match existing.” 
+ 
+ 
+by other means. 
+My findings 
+I disagree with Nationwide about the sufficiency of the evidence to show that the lintels were 
+all damaged and that the damage was caused by the installation work being carried out 
+without reasonable skill and care. As I said in my last decision, the cracks run from holes 
+drilled during the installation. I have not changed my mind about the need for this work to be 
+done, and about who is liable. 
+ 
+I now turn to the conservatory. While I do take Nationwide’s point about Mr B ending up with 
+a new conservatory which (although it will be like-for-like) will be in better condition than the 
+original, I think that cannot be helped, as the remedial work simply cannot be performed 
+otherwise. I have considered Nationwide’s alternative argument – that I should apportion the 
+cost of the conservatory between Nationwide and Mr B. It’s not an unreasonable thing for 
+Nationwide to ask for. But on further reflection, I am not persuaded that I should do that. Mr 
+B did not ask for a new conservatory; he was happy enough with the old one, and there is no 
+evidence that he would have had it replaced either by now or in the future. This is only 
+having to happen because of the need to replace the damaged lintels. His home will become 
+a building site for a significant period of time, and part of that time will consist of taking down 
+a conservatory, and then some more time building a new one, which will not be an 
+inconsiderable interruption of his domestic life. It now looks as though the work will have to 
+be carried out in the winter. So I think that requiring him to pay towards the new 
+conservatory would be rather like adding insult to injury. 
+ 
+It will be necessary to remove some kitchen units and surfaces to access the lintels, and 
+then put them back again, but unlike the conservatory the quote does not suggest that these 
+will be replaced with new ones. 
+ 
+For all of those reasons, I do not think it would be fair of me to expect Mr B to foot the bill for 
+any portion of the remedial work. 
+ 
+Turning to Mr B’s latest points, I have not changed my mind about the consequential 
+damage caused by damp. I remain of the view expressed in my second provisional decision. 
+ 
+If Mr B had not had the heating system installed, he would still have had to pay for heating in 
+some other form, so I do not propose to require Nationwide to pay for portable electric 
+heaters or for coal and so on. 
+ 
+I’ve seen evidence that Mr B paid £450 to get the independent report. I consider that the 
+report was absolutely essential to his case, and to the fair resolution of this complaint, so he 
+should have that reimbursed. 
+ 
+I don’t know that the system contravened any law that made the removal of refrigerant 
+essential, or (if that was indeed the case) that Mr B would have been personally liable for it 
+(rather than the retailer). All I’ve seen evidence of is that (but for the removal) there would 
+have had to have been annual refrigerant leak checks, and a third party consulted by Mr B 
+told him it had received legal advice to the effect that no offence had been committed. I don’t 
+know what the annual checks would have cost, or whether it was cheaper for Mr B to pay 
+£336 to remove that liability. So I have not required Nationwide to pay for that. 
+ 
+Although I accept that this matter has been stressful for Mr B, it’s not possible for me to 
+determine to what extent this caused or contributed to the health issues he has told me 
+about or whether they would still have happened anyway. I think the same thing about the 
+time he took off work. I also have to consider that such losses would need to be foreseeable 
+ 
+ 
+by the retailer at the time of installation. So I do not award compensation for those issues 
+(except to the extent that I have already taken his health into account as evidence of his 
+vulnerability in deciding to award him £1,000 for his distress and inconvenience). 
+ 
+My final decision 
+My decision is that I uphold this complaint. I order Nationwide Building Society to: 
+• Arrange for the system to be removed from Mr B’s property, and the premises made 
+good, at no cost to him (and if the retailer will not co-operate then Nationwide 
+Building Society must arrange for another qualified party to do it); 
+• Arrange for the four lintels to be repaired or replaced at no cost to Mr B; or 
+alternatively, pay Mr B £49,560; 
+• Refund the cost of the system (£14,391:38), plus interest on that refund at the rate of 
+8% a year from the dates that the relevant payments were made to the date of 
+settlement; 
+• Pay Mr B £450 for the cost of obtaining the independent report, with interest on that 
+refund at the rate of 8% a year from 16 November 2022 to the date of settlement; 
+and 
+• Pay Mr B a further £1,000 for his inconvenience. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr B to accept or 
+reject my decision before 22 November 2024. But apart from that, this final decision brings 
+this service’s involvement in this complaint to an end. 
+   
+Richard Wood 
+Ombudsman

@@ -1,0 +1,13 @@
+The Council Tax Band Challenge Intel Pack.
+
+An online intel tool for asset-rich, cash-poor retirees that predicts their UK council tax band reduction success probability and auto-generates an FOI-backed, tribunal-ready challenge argument, as VOA digitisation opens a data battlefield.
+
+Retirees in high-value London suburbs face crippling council tax on fixed incomes. The VOA’s tribunal rulings are public but scattered. By FOI-ing all recent South East England decisions and cross-referencing with Land Registry price data, a solo can build a predictive model that scores a property’s challenge chances and assembles a legally-cited, locality-specific appeal. This inverts the VOA’s digital push into a taxpayer weapon—every new tribunal defeat for the VOA feeds the model.
+
+Homeowners aged 65+ in London and the Home Counties with properties valued over £600k but incomes under £25k, paying £249 for a detailed report and evidence pack.
+
+Council tax increases are outpacing inflation, the VOA is digitising all banding data and moving toward mass revaluation, and FOI portals are now machine-readable. The cost-of-living crisis has made retirees acutely motivated to challenge, while tribunal transparency laws make the necessary adversarial data legally extractable at scale.
+
+The passage is only a content-index header for a 'Council Tax Band Appeal Success Rate' guide page; it asserts nothing about whether the proprietary FOI/tribunal-data wedge is durable, already commoditised, or evaporating.
+
+The passage is itself published by 'BandCheck', a service that compiles council tax challenge success rates from official sources and analyses 'where appeals work best' — the same predictive-intelligence value the candidate proposes, showing a rival already operates in this exact niche. This negates the claim that the space is open/underserved.

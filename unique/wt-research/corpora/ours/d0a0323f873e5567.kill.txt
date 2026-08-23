@@ -1,0 +1,23 @@
+ShiftFit Clinic — same-day physio for delivery riders and drivers who can't afford a day off.
+
+A walk-in physio clinic for gig delivery riders and drivers, open around shift hours, that treats the RSI, back and knee injuries the job causes for a fixed price the same day.
+
+A moped or bike courier who pulls a muscle in their lower back has two choices. Push through the shift in pain, because there is no sick pay if they stop. Or lose the day's earnings entirely. Neither is a real choice, so most keep riding hurt, and a strain that a same-day treatment could have fixed in a week turns into a chronic problem that costs them months.
+
+This borrows the way a professional sports team runs its own physio clinic, not because players can't book a normal appointment, but because the team cannot afford the days the player would otherwise lose waiting for one. A gig worker's body is their only equipment. The same logic applies, just with a £40 visit instead of a club retainer.
+
+The clinic itself is plain and repeatable: two to four HCPC-registered physios, a small unit near a cluster of dark kitchens or a PHV depot, open from 6am and again 6pm to 11pm to match shift patterns rather than office hours, same-day slots held back for exactly this. Every visit is priced flat, no insurance claim, no GP referral, paid on the spot. Over time the clinic builds a playbook of the handful of injuries that repeat constantly in this job — wrist and shoulder RSI from stop-start braking, lower back strain from long driving stints, knee wear from stairs and pedalling — and that playbook is what makes triage and treatment planning fast, not generic.
+
+Distribution runs through the places gig workers already gather: driver WhatsApp and Facebook groups, flyers at charging and battery-swap points, referral arrangements with the vehicle repair shops and depots they already use, and word of mouth once one rider tells the group where to go when their shoulder gives out.
+
+The gig worker, out of pocket, £35–£45 per visit, because the alternative is an NHS physiotherapy referral that in many trusts takes months, or losing a day's pay by not working at all. Some claim the cost back as a self-employed allowable expense at tax time, which softens the price without anyone else footing the bill.
+
+The TUC put the UK gig workforce at over 4 million people in its most recent survey, and that number has kept growing since. NHS England's own waiting-time figures show many trusts running well past 18 weeks for a routine physiotherapy referral. The 2021 Supreme Court ruling in Uber v Aslam gave app-based drivers minimum wage and holiday pay, but the 2023 IWGB case confirmed Deliveroo riders remain genuinely self-employed with no sick pay at all — so the gap this fills, no employer safety net for an injured rider, isn't closing, it's the settled legal position.
+
+Passages show a paid private-physiotherapy market already exists offering same-day/evening self-referral appointments as an alternative to slow NHS routes, and separately confirm gig riders are frequently injured on the job (50% hurt or know someone hurt), establishing both a paying channel and a population with the underlying need. No passage shows riders specifically searching for or paying for physio, so intent is inferred from the adjacent paid-market and injury-prevalence evidence rather than directly demonstrated.
+
+The passages give conflicting pictures of income: some cite average full-time earnings of £400-£700/week (5631fe37d70b98d0), while others describe riders paid as little as £2/hour and facing 'working poverty' amid precarious, low-paid self-employment (3cfca80f5ea596d6, 46c5797512ff8856, 85952fca43497acd). None of the passages address whether this population would actually spend £35-45 out of pocket on a same-day physio visit, so ability and willingness to pay can't be confirmed either way.
+
+The passages describe general consumer/driver-facing Uber Eats and Deliveroo apps, support pages, and news, with no mention of physio clinics, injury-related services, or any channel for reaching gig workers about health services.
+
+The passages show physiotherapy is a lawful regulated profession (HCPC registration) and that clinics can lawfully operate outside CQC where they are not providing regulated activities like primary medical services, so a physio-only walk-in clinic is achievable without breaking law provided staff are HCPC-registered.

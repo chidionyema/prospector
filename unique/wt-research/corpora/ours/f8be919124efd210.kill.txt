@@ -1,0 +1,23 @@
+The Divorce Financial Forensics Engine.
+
+A web app that flags hidden assets and drafting errors in Form E financial disclosures by cross-referencing the user's submission against a proprietary database of judicial findings from published divorce cases.
+
+first_principles: Form E is a dense, high-stakes document; self-reppers and even some lawyers miss subtle misrepresentations. By mining the public record of financial remedy judgments for common concealment patterns and valuation disputes, the engine provides a specific, fact-based 'red flag' report and tailored amendment language that generic guides cannot.
+
+Squeezed middle individuals going through a divorce (typically age 40–55, mortgages, children) who cannot afford a full forensic accountant but fear the other party is hiding assets or income.
+
+Rising cost of legal services is pushing more couples toward self-representation or unbundled advice; recent Family Court transparency pilots are releasing richer judgment data, making pattern extraction more viable.
+
+Passage [d308428e1fe387fd] affirms that family-law financial disclosures are often incomplete or 'designed to obscure,' making thorough analysis essential real work that AI tools add value to, and [ccc1427d2859cc3e] confirms categories like cash withdrawals are genuinely hard to verify; the only free tool cited [7f3d9adbf6eeaed1] merely generates blank asset/liability forms and does not perform the judgment-based anomaly detection, so it does not commoditise this value.
+
+All three passages describe tools for unrelated domains (SEC 10-K/10-Q filings, organizational conflict-of-interest checks, US OGE Form 450 disclosures); none address UK divorce Form E forensic disclosure analysis, so they neither confirm nor deny an incumbent in this space.
+
+None of the passages address divorcing squeezed-middle individuals' ability or willingness to pay; they concern insolvency Statement of Affairs drafting, SEC 10-K filing checks, and bankruptcy schedule mistakes, which do not speak to this payer's budget or motive.
+
+The passages describe AI automation of financial-disclosure analysis (for attorneys, digital workflows, and OGE Form 450 compliance) but say nothing about a route or channel to reach the squeezed-middle divorcing-individual buyer. No passage addresses distribution.
+
+The passages concern US government financial disclosure forms (House, OGE Form 450, Senate Ethics) and say nothing about the legality of analysing UK divorce Form E disclosures against public judgment data. No cited passage addresses whether this margin requires breaking law/terms or falsifying a measurement.
+
+All three passages concern US government/corporate financial disclosure automation (OGE Form 450, VA filers, SEC S-1/8-K filings); none address divorce, Form E, hidden-asset detection, or whether divorcing individuals pay to solve this fear.
+
+The product's entire reason to exist is the demand-side bet — that fearful squeezed-middle self-reppers will pay for hidden-asset red flags on Form E — and every demand-side check came back with ZERO grounding: pain_reality (unverifiable, conf 0.0), payer_solvency (unverifiable, conf 0.0), distribution (unverifiable, conf 0.0), and legality of mining/cross-referencing UK Form E against published judgments (unverifiable, conf 0.0). Under source-or-die and verdict-from-retrieval-only, no fetched passage shows this buyer exists, pays, can be reached, or that the data play is lawful, so the idea cannot clear the PASS bar — a KILL on the cheapest decisive gates. Worse, the ONLY grounded value point actively undercuts the consumer wedge: the passages that supported value_durability are existing commercial AI disclosure-analysis tools — firmadapt's automated family-law disclosure analysis [d308428e1fe387fd] and Disclosure Assistant's systematic cash-withdrawal/anomaly detection [ccc1427d2859cc3e] — but both target ATTORNEYS and LAW FIRMS, not the self-representing squeezed-middle individual this product names as its payer. So the real, grounded value is already being captured by lawyer-facing incumbents, while the free consumer-grade tooling that actually reaches individuals is a blank form generator with no anomaly detection [7f3d9adbf6eeaed1]. The 'proprietary judicial-findings database' moat is asserted, never evidenced: no passage shows such a corpus is extractable, accurate, or that consumers (not their solicitors) would act on its 'red flags.' Net: the supply side is commoditised toward lawyers, the consumer demand/pay/reach/legality side is wholly unproven, and the differentiating data moat is unverifiable. Nothing here can publish.

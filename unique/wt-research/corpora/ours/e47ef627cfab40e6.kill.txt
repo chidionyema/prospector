@@ -1,0 +1,27 @@
+Renovation Glitch Hunter.
+
+A productized service that walks through a recently renovated home with a calibrated toolkit of non-destructive tests (thermal, acoustic, moisture) to find the specific defects that will become expensive warranty claims or insurance disputes within 18 months, then documents them in a legally-admissible report.
+
+Home renovation is dominated by a power asymmetry: the contractor has a structural information advantage over the homeowner. After the final payment, the homeowner discovers defects they cannot prove. By analogically transferring the 'pre-purchase vehicle inspection' business model (a neutral third party finds latent defects before the buyer's payment clears) into renovation snagging, a solo operator can capture the acute pain of a homeowner who just paid $80k for a kitchen remodel and isn't sure the waterproofing was done right. The owner's own anxiety, plus the credible threat of a lawyer's letter if defects are found, forces the contractor to re-do the work without legal escalation.
+
+Homeowners in the USA and UK who have just completed a renovation costing $30k+ and have not yet signed the final completion certificate or made the final payment. This is a solvent, motivated, one-time buyer with an acute pain and budget authority.
+
+Post-COVID renovation boom means a huge cohort of homes were renovated by overbooked contractors with inconsistent quality. Simultaneously, social media has made homeowners hyper-aware of 'renovation nightmares' (the GFE, or 'Gut Feel Error', is replaced by documented fear). Insurance subrogation clauses are tightening, pushing liability back to the homeowner if latent defects aren't documented promptly.
+
+The provided passage describes a commercial building inspection tool available for purchase, but contains no evidence regarding consumer demand or existing paid services for renovation defect inspection.
+
+The passage describes an existing moisture detection service provider but provides no information regarding the financial solvency, motivation, or ability to pay of the target demographic defined in the candidate's hypothesis.
+
+The provided passage describes an established, unrelated leak detection service and does not offer information regarding a distribution route for the proposed Renovation Glitch Hunter service.
+
+The passage confirms the use of thermal imaging, acoustic detection, and moisture mapping for identifying hidden defects without destructive investigation, establishing that these diagnostic methods are standard, commercially available, and legally applied survey techniques.
+
+The passage confirms that customers pay for specialized leak detection and moisture surveys using thermal and acoustic tools to identify hidden defects, validating the acute need and willingness to pay for this type of service.
+
+The passage confirms that services using thermal imaging, acoustic detection, and moisture mapping exist to identify hidden defects, but it does not address the specific business opportunity of renovation-snagging services or whether this particular market is currently active.
+
+The provided passage details a specific existing leak detection company and does not contain information regarding potential routes to market or marketing channels for the Renovation Glitch Hunter candidate.
+
+The passage confirms that specialized services offering 'advanced moisture intrusion mapping' exist, which validates the technical feasibility and verifiability of using non-destructive toolkits for defect detection.
+
+The business hypothesis relies on capturing demand from homeowners for a non-emergency, post-renovation defect inspection service. However, all gathered evidence for the application of non-destructive testing tools (thermal, acoustic, moisture) specifically demonstrates an established market for *emergency* service with immediate response requirements (e.g., under 90 minutes). The candidate fails to provide evidence for a reachable paying customer base for the proposed non-emergency, productized snagging model, which diverges significantly from the established, emergency-response operational profile of current market participants.

@@ -1,0 +1,21 @@
+CapChallenge — fights HMRC's valuation of your family's farm or business, so the new inheritance tax cap doesn't cost you more than it should.
+
+A fixed-fee service that builds the evidence to challenge HMRC's valuation of an inherited farm or business, for families now facing the new £1m cap on inheritance tax relief.
+
+From 6 April 2026, the 100% inheritance tax relief on agricultural and business property is capped at £1m combined per estate. Anything valued above that is only 50% relieved, an effective 20% tax rate on land or a business that used to pass on completely free of tax. Executors now have to negotiate the value of the farm or business with HMRC's District Valuer, and for the first time that negotiation has a hard cash number attached to every extra £1 of value agreed.
+
+The District Valuer works for the Exchequer, not the family, so their opening valuation tends to sit at the top of any defensible range. Most families respond by instructing a RICS surveyor for a valuation opinion, or leaving it to their accountant alongside the IHT400 paperwork. Neither actually runs the adversarial part: negotiating down the District Valuer's figure, or referring the dispute to the Upper Tribunal (Lands Chamber) if they won't move. That is a specialist, occasional skill that most surveyors and accountants never get the chance to build, because in their normal work a valuation dispute is a rare side-task, not the job itself.
+
+Every case fought produces something reusable: a settled value for a particular kind of tenanted farm, an accepted discount for a business without a ready buyer, a precedent from a Lands Chamber decision. Captured deliberately as evidence templates and comparables, that playbook lets the next case be argued faster and with a stronger starting position — the kind of compounding edge a surveyor doing one valuation a year, or an accountant filing one estate a year, structurally never builds.
+
+The people paying are the adult children or spouses acting as executor for a family farm or trading business, who have just been told by their accountant that the District Valuer's figure pushes the estate over the new £1m cap. They are usually not the wealthy business owner making plans in advance — they are the ordinary relative, often with a mortgage and a job of their own, suddenly facing a six-figure tax bill on land or a business they can't easily sell to pay it.
+
+The Autumn Budget 2024 announced that from 6 April 2026 the 100% rate of Agricultural Property Relief and Business Property Relief would be capped at a combined £1m per estate, with everything above that relieved at only 50%. That change is now four months old. The first wave of estates filing IHT400 forms and IHT100 relief claims under it are discovering, often for the first time, that their accountant and their surveyor have never actually fought a valuation dispute under these specific new rules.
+
+The passages confirm the tax change and describe the standard process for obtaining an initial valuation (three estate agent valuations or a RICS surveyor) for the IHT400, but none show anyone searching for, paying for, or discussing a service to dispute or negotiate down HMRC's District Valuer figure specifically.
+
+Two passages confirm the £1m cap on Agricultural and Business Property Relief takes effect 6 April 2026, and a further passage shows Early Day Motions currently active in Parliament on this same relief — together showing the change is imminent and still politically live, not a stale prior-year issue. The remaining passages (film plot, dictionary definitions of inheritance/succession) are irrelevant and add nothing.
+
+None of the passages address any distribution channel for reaching executors facing IHT valuation disputes; they cover OneDrive sharing, USB formatting, a Microsoft account portal, generic IHT definitions, and irrelevant/foreign-language content.
+
+None of the passages address inheritance tax, HMRC valuations, District Valuers, or any legal mechanism relevant to this claim — they concern a software product, a dictionary entry, a text-case converter, and online Solitaire games. There is zero conceptual overlap to assess lawfulness of the described margin.

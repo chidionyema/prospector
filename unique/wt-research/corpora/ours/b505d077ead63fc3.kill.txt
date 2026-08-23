@@ -1,0 +1,21 @@
+DBS Update Service signals for UK HR software vendors.
+
+Reads the DBS Update Service every day for continuous-vetting changes per UK employee, and serves the score to HR software vendors to embed.
+
+The plain version: an HR software vendor serving UK employers with regulated-role workforces (financial advisers, care workers, education staff) subscribes to a daily feed that watches the DBS Update Service and surfaces a per-employee risk-change flag inside the HR vendor's own dashboard.
+
+Why it works: the DBS Update Service lets subscribers (more than two million as of the November 2023 published figures) keep their DBS certificate portable, with employers carrying out instant checks. HR SaaS vendors currently rebuild status checks from scratch via UCheck, Onfido or HireRight. The product reads the same Update Service portal across all participating employees of all participating customers, normalises status across Basic, Standard and Enhanced-with-barring-list certificates, and serves an embedded change flag to the HR vendor's customer UI. The buyer is the product or operations manager at a UK HR SaaS selling into employers with regulated staff.
+
+Why it holds: UCheck, Onfido, HireRight sell direct to the employer and are not positioned to be an embedded multi-tenant API for HR SaaS vendors. Each HR vendor individually is too small to justify building the integration. Serving many HR vendors at once produces the wedge.
+
+Product and operations managers at UK HR software vendors serving regulated-workforce employers.
+
+DBS Update Service registrations exceeded two million by November 2023, and the Disclosure and Barring Service has signalled further changes through 2025-2026 to tighten workforce-pinning rules that the Update Service depends on. HR software vendors need to be in place before those rules mature.
+
+Passages show DBS checks are described as essential and not optional for workers and employers (87e66bae56742fa2), with compliance requiring verified, audit-ready staff and workers risking delays/missed shifts without updated checks, establishing real acute pain. The Update Service is an active subscribed service (4a52a81427cef10e) with a free status check option (b1f30ef7a46c6864), confirming the underlying need is live; however the passages do not directly show that buyers are currently paying for an embedded HR-vendor signal feed specifically, which limits confidence.
+
+No passage addresses whether UK HR software vendors budget for third-party embedded data feeds, what they currently pay for similar integrations, or whether a £79.99 one-time fee for a DBS Update Service signal is affordable/compelling for their product and operations buyers. The passages mention UK HR software demand signals and freemium models but never address DBS, the Update Service, or the willingness of HR SaaS vendors to pay for an embedded compliance data feed at this price point.
+
+The passages address e-commerce marketplace integration software and UK geography/history; none mention DBS, the DBS Update Service, UK HR software vendors, vetting feeds, or any distribution route to HR SaaS buyers, so the existence of a low-friction channel to that buyer cannot be assessed from this evidence.
+
+None of the passages address the DBS Update Service's terms of use, UK statutory rules on automated/continuous status reads, or data-protection constraints on redistributing check outcomes to third-party HR SaaS vendors; the only adjacent passage (77f3c534799ead5e) describes AccessNI in Northern Ireland, not the England/Wales DBS Update Service, and does not state whether third-party scraping and resale are permitted. [77f3c534799ead5e]

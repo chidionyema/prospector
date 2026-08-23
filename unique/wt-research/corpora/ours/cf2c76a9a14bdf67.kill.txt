@@ -1,0 +1,31 @@
+Model licence checks for AI startups shipping open weights.
+
+A tool for AI product engineers that reads your shipped model files and tells you which weights carry a licence your enterprise customer's procurement team will refuse.
+
+Start with the plain version. If you build a product on top of an open-weight AI model, you inherit that model's licence. Many of those licences are not the simple open-source ones lawyers recognise. Llama's community licence caps you at 700 million monthly users and forbids some uses. Some Chinese-origin weights ship with terms nobody in a UK procurement office has read. And most models are fine-tuned from other models, so you inherit a chain of terms you never agreed to directly.
+
+The tool scans what you actually ship. It reads your container images, your Hugging Face pulls, your model config files and your inference code. It then produces a signed report naming every model artefact, the licence it carries, the parent model it was tuned from, and any term that a buyer's legal team will object to.
+
+This borrows a mechanism from software supply-chain security. There, tools scan your dependencies and produce a bill of materials that a buyer accepts as evidence. That whole industry exists because the UK's National Cyber Security Centre and its Software Security Code of Practice, published by DSIT in May 2025, push buyers to demand component-level provenance. Nobody applies that mechanism to model weights, because weights are not packages and no package manager tracks them.
+
+Why it holds. Every scan teaches the tool something rivals cannot copy: which specific fine-tuned models on Hugging Face descend from which parents, and which licence clauses actually got a deal blocked at a named UK buyer. Licence text is public. The mapping from a 4GB weights blob to its true licence ancestry is not, because uploaders routinely fail to declare it. After a few thousand scans you hold a fingerprint database of model artefacts that identifies a model by its weights, not by what someone typed in a metadata file.
+
+The buyer role is the engineering lead or CTO at a UK AI startup selling into enterprise or public sector. The recurring trigger is a security questionnaire or procurement review before a contract signs. The deliverable is a report they attach to that questionnaire. This is the SELLS-TO-TECH shape.
+
+Pricing is per scan plus an annual subscription for continuous monitoring, because your model stack changes every sprint and the report goes stale.
+
+The switching cost builds fast. Once your report is the artefact your customers' procurement teams have accepted three times, changing tools means re-explaining yourself to every buyer.
+
+The engineering lead or CTO at a UK AI startup, roughly 10 to 80 staff, selling software into banks, insurers, the NHS or central government. They pay because a procurement review is holding up a contract worth far more than the tool.
+
+The EU AI Act's rules for general-purpose AI models started applying on 2 August 2025, and its code of practice asks providers to document what their models are built from. The UK's Software Security Code of Practice, published by DSIT and the NCSC in May 2025, pushes buyers to demand component-level provenance from software vendors. Meanwhile Hugging Face now hosts well over a million models, most of them fine-tunes of fine-tunes, with licence metadata that is frequently absent or wrong.
+
+The passages confirm that models are released under specific licenses (Kimi K3 License, Apache 2.0), which is a necessary precondition for the tool's value, but they do not address whether the licensing problem is acute enough to drive purchases, whether existing tools already commoditise this, or whether the value is durable. The bulk of the passages (Meta social media, Business Suite) are irrelevant to the underlying question of value durability for model-licence scanning.
+
+The passages do not address whether any incumbent or funded rival dominates model licence checking. [f1f61767e00ba3bf] shows Hugging Face and Protect AI operate large-scale model scanning, but that scanning covers malware and secrets, not licence clauses or procurement-grade licence ancestry. [e9a4e3eeda8fe62d] suggests lineage fingerprinting is doable from public artifacts, but says nothing about who, if anyone, packages that capability as a product. No passage names a tool that flags problematic licence terms (e.g. Llama's user cap) for enterprise procurement.
+
+Passages confirm that AI vendor questionnaires and enterprise security reviews are a real and active forcing mechanism in 2025-2026, and that model weights provenance specifically needs to be addressed within them, which is exactly the buyer-access route the candidate relies on. [dbf0e143c03d155a] and [e848509ed28a188f] show that procurement teams are actively using structured questionnaires for AI vendors, and [aff44a2ea1497bec] explicitly states 'model weights needs to be clear' in the context of enterprise security reviews.
+
+The passages describe Software Composition Analysis tools, SBOM generation, and the technical feasibility of scraping Hugging Face models (including a commercial Model Scraper product), but none of them state whether reading model weights files, fingerprinting them, or building a database of model ancestry violates Hugging Face's Terms of Service or any other law. No passage addresses the specific legality of the candidate's scanning approach, so this check cannot be ruled from the evidence provided.
+
+The passages confirm that the Llama Community Licence contains a real commercial cap (700M MAU) and that enterprise procurement processes move slowly, but no passage shows that UK AI startups are currently paying to audit open-weight model licences or that procurement reviews are specifically being blocked by model-weight licence concerns. The remaining passages (The Open Championship, OpenEvidence, The Open University) have no bearing on the claim. The specific paying-pain assertion is not evidenced.

@@ -1,0 +1,23 @@
+Payback Guarantee – The Tradesperson's Unpaid Invoice Protection Pool.
+
+A mutual invoice‑protection fund where a self‑employed plasterer or landscaper pays a small fee per invoice into a shared pool that covers 80% of the amount if the customer doesn’t pay within 60 days – coupled with an AI‑driven recovery engine that chases the debtor and returns recovered sums to the pool.
+
+Non‑payment by domestic and small‑commercial clients is a constant cash‑flow killer for manual tradespeople, yet trade‑credit insurance is only available to large firms. By adapting the corporate supply‑chain finance model into a micro, pooled ‘invoice shield’ (cross_sector: b2b trade credit insurance) and automating the collection arm with smart dunning and small‑claims document generation, a solo operator can offer a liquidity backstop that a traditional credit insurer would never touch because the premiums would be too small and the underwriting too bespoke. The operator captures a management fee on contributions, not the credit risk itself, because the pool is fully funded by the members and the fee is taken from the spread.
+
+Self‑employed decorators, gardeners, and plasterers who average 5–20 invoices a month and have suffered at least one significant write‑off in the past year, with the cash to pay a small per‑invoice protection premium.
+
+Soaring living costs are squeezing household budgets, increasing the rate of payment disputes. Open banking and public‑records APIs now allow real‑time, lightweight credit checks on a customer’s payment history. AI‑driven document generation makes small‑claims pursuit achievable by a solo operator without a legal team, and the psychology of tradespeople seeking security post‑lockdown makes them willing to pool risk.
+
+The passages define commoditization and describe an unrelated property insurance pool, but none address whether the candidate's invoice protection value is real, durable, or commoditised.
+
+The passages discuss public liability insurance for tradespeople and generic business topics, but none address invoice protection, mutual pools, or any incumbent in the specific niche of trade credit for sole traders. No evidence of dominance or under-service is present.
+
+The passages discuss general insolvency definitions, invoice financing ads, and plasterer tax/insurance, but none address whether self-employed tradespeople have budget and motive to pay small per-invoice premiums for an invoice protection pool.
+
+The passages show tradespeople discussing projects on Facebook and platforms like Mybuilder.com, but they do not demonstrate that a low-friction route exists to distribute a niche invoice-protection product to this audience.
+
+None of the passages address the legality of the mutual invoice-protection pool model; they discuss unrelated topics like contractor earnings, CARB compliance, mutual aid documentation, employer guidelines, and legal rights of self-employed, but do not indicate whether the specific margin would require breaking any law.
+
+The existence of invoice finance providers (factoring, discounting) directly shows that businesses pay to solve cash-flow gaps from unpaid invoices — a safe commonsense deduction that the underlying pain is real.
+
+No evidence from the provided passages indicates any critical regulatory blocker, impossible unit economics, or incumbent monopoly. The business model is not shown to be illegal, and no single company dominates the channel.

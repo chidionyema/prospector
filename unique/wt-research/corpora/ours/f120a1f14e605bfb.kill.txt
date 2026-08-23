@@ -1,0 +1,23 @@
+The FairSplit Divorce Settlement Architect.
+
+A web app that guides a divorcing spouse in England & Wales through asset classification, childcare arrangements, and financial disclosure to produce a court-ready schedule of assets and a negotiation range based on anonymised case outcomes from proprietary case-law data.
+
+Divorce is a financial unbundling muddled by emotional fog and obscure legal norms. Instead of a 50/50 calculator, this tool rebuilds the process from first principles, using a curated, jurisdiction-specific database of financial remedy judgments (England & Wales) that maps fact patterns—income disparity, length of marriage, child residency—to realistic settlement zones. This matching engine empowers self-representation and avoids legal fees.
+
+Divorcing individuals in England & Wales (often the higher earner or jointly) who want a clean break but cannot afford full solicitor fees.
+
+No-fault divorce (2022) in England & Wales has removed the blame game, focusing disputes on finances; the cost-of-living crisis makes legal fees prohibitive; courts are actively encouraging litigants-in-person to present structured proposals, creating an acute need for a dynamic, data-driven settlement tool.
+
+The passages discuss general divorce procedures, eligibility, ongoing consultations, and a DIY guide from £37, but none address whether a proprietary case-law matching engine provides real and durable value or is already commoditised.
+
+No passage mentions any incumbent or funded rival in the DIY divorce settlement tool space; the only passage remotely related (f27f5dc122f3e855) notes law firms published research but provides no evidence of market dominance or even a competing product.
+
+The passages describe the divorce financial process but provide no information about the budget or willingness of divorcing individuals to pay for a web app. Thus, payer solvency cannot be assessed.
+
+None of the passages describe a route to the buyer, self-serve channels, forcing mechanisms, or existing distribution for the candidate. They discuss legal principles, divorce outcomes, prenups, and an unrelated messaging platform, providing zero relevant evidence per Precedent 2.
+
+The passages discuss divorce eligibility and steps but contain no information about the lawfulness of providing a tool that generates court-ready documents or uses proprietary case-law data. No legal prohibition is mentioned.
+
+The passages offer general divorce eligibility and process guidance, plus a WhatsApp Web login, but none address financial pain, willingness to pay for settlement tools, or acute suffering that the candidate aims to solve.
+
+No evidence found for any critical risk vector. The candidate does not face a regulatory blocker, impossible unit economics, or an incumbent monopoly based on provided sources.

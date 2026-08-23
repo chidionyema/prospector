@@ -1,0 +1,2104 @@
+DRN-4912768 
+ 
+ 
+The complaint 
+ 
+Mr C complains that Curtis Banks Limited (‘CBL’) shouldn’t have accepted his application for 
+a self-invested personal pension (‘SIPP’) and that it failed to undertake due diligence on the 
+introducer and intended investments, causing him a financial loss. He says it should 
+compensate him for his loss.   
+   
+For simplicity, I refer to Mr C throughout, even where the submissions I’m referring to were 
+made by his representative.  
+ 
+What happened 
+I've outlined the key parties involved in Mr C’s complaint below.   
+   
+Involved parties   
+ 
+CBL 
+   
+CBL is a regulated pension provider and administrator. It’s authorised to arrange deals in 
+investments, deal in investments as principal, establish, operate or wind up a personal 
+pension scheme and to make arrangements with a view to transactions in investments.   
+   
+1 Stop Financial Services (‘1 Stop’) 
+ 
+At the time of the events complained of, 1 Stop was an independent financial adviser 
+authorised by the then regulator – the Financial Services Authority (‘FSA’), which later 
+became the Financial Conduct Authority (‘FCA’), the latter of which I’ll largely refer to 
+throughout for ease.  
+ 
+We’ve been provided with a copy of pages from 1 Stop’s entry on the FCA Register. This 
+says that 1 Stop’s permissions included advising on investments (except on Pension 
+Transfers and Pension Opt Outs). Other permissions 1 Stop held included arranging 
+(bringing about) deals in investments.  
+ 
+In the FCA’s final notice, dated 17 April 2014, it said for example that: 
+ 
+“Specifically, [Mr R] failed to take reasonable steps to ensure that 1 Stop assessed the 
+suitability of the underlying investment for the customer. Instead, 1 Stop’s business model 
+focussed solely on providing advice on the most suitable SIPP wrapper for the underlying 
+investment.” 
+ 
+In an April 2014 publication on its website, updated the following month, the FCA explained 
+that: 
+ 
+“[Mr R] and [Mr H], partners at 1 Stop Financial Services (1 Stop), have been banned by the 
+Financial Conduct Authority (FCA) from performing any significant influence function in 
+relation to any regulated activity. [Mr R] and [Mr H] had advised customers to switch into 
+self-invested personal pensions (SIPPs), which enabled those customers to invest in 
+
+ 
+ 
+unregulated and often high risk products, regardless of whether those products were suitable 
+for the customers.” 
+ 
+And that: 
+ 
+“By enabling customers to invest in unregulated and often high risk products without 
+assessing suitability, these men exposed customers to the risk of losing their hard earned 
+pension funds. This was then compounded by the partners’ failure to ensure that their 
+customers fully understood these risks”. 
+ 
+The Harlequin Group (Harlequin) 
+ 
+The Harlequin group of companies were involved in the promotion, development and  
+distribution of off-plan overseas property investments and resorts – primarily based in to  
+Caribbean. None of these companies were regulated by the FCA. 
+ 
+Harlequin Management (South East) Limited promoted the investment to UK investors,  
+either directly or through a network of agents and financial advisers. Investors could invest  
+into resorts developed in the Caribbean in the hope of purchasing an individual hotel room,  
+apartment, cabana or villa. 
+ 
+The developments failed and funds invested were not always used as intended. In         
+March 2013 the Serious Fraud Office (‘SFO’), in conjunction with the police, started 
+investigating the Harlequin Group of companies. Harlequin Management (South East) 
+Limited subsequently went into administration and some senior figures were prosecuted for 
+fraud. 
+ 
+Amongst other things, the SFO said that the business model relied upon investors paying a 
+30 percent deposit to purchase an unbuilt villa or hotel room, half of which went toward fees 
+for Harlequin and relevant salespeople, while Harlequin put the remaining 15 percent toward 
+construction. Investors were fraudulently told that the building of the properties would be 
+further funded by external financial backing. And that, in reality, the scheme had no external 
+or additional source of funding and it never delivered what was promised. Almost no 
+properties were ever constructed and nearly all those who invested made no return. 
+ 
+Mosaic Caribe 
+ 
+I understand that Mosaic Caribe was a US-based company, whose business involved buying 
+whole-of-life insurance policies from policyholders who were ill or terminally ill to help them 
+fund healthcare costs. And that, in or around August 2016, Mosaic Caribe went into 
+liquidation. 
+ 
+The transaction   
+ 
+On 19 March 2010, 1 Stop sent CBL a letter which said it enclosed Mr C’s: 
+ 
+• SIPP application form, signed and dated the same day.  
+• Illustration.  
+• Property Questionnaire, also signed and dated 19 March 2010. But this was only 
+partially completed with the name of the investment, for example.  
+ 
+In the ‘Introducer’ Section of Mr C’s SIPP application form – which said that this was to be 
+filled out if making the application as a result of advice from a financial adviser – Mr C 
+provided Mr H of 1 Stop’s details and set out that it would be paid a one-off fee of £1,295 
+plus £200 in renewal payments. Under the signed ‘Introducer Declaration’ section Mr H of    
+ 
+ 
+1 Stop declared, amongst other things, that he had advised Mr C to take out the SIPP. And 
+that where transfers were made from other pension arrangements into the SIPP, he 
+confirmed he had advised Mr C on the suitability of the transfer. 
+ 
+When Mr C was asked in the ‘Investment Details’ section ‘If someone will be assisting you 
+with investments, please give their details below’, he wrote Mr H of 1 Stop and ticked a box 
+to say he wanted CBL to accept instructions from 1 Stop. He then said that he intended to 
+invest in commercial property and he noted down that this was in a Harlequin hotel room. 
+And under ‘Cancellation Rights’, Mr C ticked a box to confirm he wanted to waive his 30-day 
+SIPP cancellation rights. 
+ 
+Mr C also said on the application that he was employed, he provided the name of his 
+employer – which wasn’t finance or pensions related – and said that he expected to retire at 
+age 65.  
+ 
+In April and May 2010, 1 Stop sent CBL signed transfer documents. And, on 10 May 2010, it 
+sent CBL a further letter enclosing the Harlequin Property Investments Declaration signed by 
+Mr C on 7 May 2010. The latter of which said, amongst other things, at the top in bold that: 
+ 
+‘You choose the investments for your SIPP and are responsible for the outcomes of 
+your Investment decisions. You should take care in this process, making yourself 
+fully aware of all the issues, so that you understand and are comfortable with the 
+Investment you are making, and you should take professional advice where 
+necessary. [CBL] cannot give you advice on the suitability of a Harlequin Investment 
+and should not be relied on to have detailed ongoing knowledge of the Harlequin 
+Property business’.  
+ 
+It went on to say, amongst other things, that: 
+ 
+• The notes were general guidance on the issues involved and should be read in 
+conjunction with the Property Notes, which describe the investment more generally. 
+• While the investment in a hotel should be acceptable for HMRC purposes, there’s no 
+guarantee and it accepts no liability for tax charges. And a condition of HMRC 
+acceptability is that the member has no right to use the property, as explained in 
+Harlequin’s literature.  
+• Following the initial 30% deposit required, further stage payments are required as the 
+property is built. From the outset Mr C should have a clear idea of how the total is 
+likely to be financed by the SIPP. If it turns out Mr C’s SIPP is unable to finance all 
+the purchase, then Mr C would be required to personally pay the balance. His SIPP 
+could borrow funds towards this, up to 50% of the net asset value of the SIPP where 
+increases in the property value can be taken into account. 
+• Harlequin has said that borrowing is available and that properties are generally 
+expected to appreciate in value. But if borrowing isn’t available in future or increases 
+aren’t sufficient to support the borrowing needed, Mr C may have to find other means 
+of financing the purchase. And that when Mr C completes its property questionnaire 
+there is a section for him to indicate how he expects to finance the purchase. 
+• Mr C was purchasing an off plan unit and he should be aware of the associated risks, 
+such as the developer may fail to complete this or it could turn out to be different to 
+what he expected. 
+ 
+And Mr C was also asked to declare he understood that: 
+ 
+• He had received no advice from CBL or any financial adviser in respect of the 
+suitability of the investment. 
+ 
+ 
+• The possible pitfalls as set out. 
+• That he nor anyone connected with him has any right to use the property. 
+• He had a clear idea as to how he expected to finance the purchase and was 
+confident this could be achieved.  
+• He accepted full responsibility for the outcome of the investment and won’t hold CBL 
+liable for losses or charges he may incur.  
+ 
+Turning back to the Property Questionnaire, it seems 1 Stop sent an updated version of this 
+to CBL on 18 May 2010, albeit still signed and dated by Mr C on 19 March 2010. This now 
+set out, amongst other things, that: 
+ 
+• Mr C wanted to invest in Harlequin Marquis Estate. 
+• The purchase price was £155,000, with Mr C financing this by way of just over 
+£53,000 from his CBL pension monies. There was space for Mr C to detail how he’d 
+fund the remainder, such as scheme borrowing or contribution, but no details were 
+provided and the section to detail any proposed scheme borrowing was crossed out 
+with a line through it.  
+• The property completion date was to be advised and was registered at the land 
+registry. And that property plans were available upon request.  
+ 
+And at the bottom Mr C confirmed, amongst other things, that: 
+ 
+• He had read and understood the Property Guidance Notes issued by CBL – CBL 
+doesn’t appear to have provided our Service with a copy despite being asked to do 
+so in response to my provisional decision – and had satisfactorily resolved any 
+queries with CBL or his adviser and he understood how this type of investment works 
+and any possible pitfalls. 
+• He understood that the acquisition couldn’t proceed until CBL had received all 
+necessary information and had approved the purchase, and all financing is in place. 
+• He’d received no advice from CBL. 
+• He was comfortable with the level of risk with this type of investment and that values 
+can fall, rents aren’t guaranteed and past performance is no guarantee of further 
+performance.  
+• He understood that property may not be as readily realisable as other types of 
+investment.  
+• He understood that if the investment led to the scheme holding ‘taxable property’, 
+such as residential property, there could be tax charges he’d be liable for.  
+ 
+I’m aware from other similar cases against CBL concerning the same introducer and 
+investment that around the time CBL customers were asked to complete a Direct Investment 
+Questionnaire, although CBL doesn’t appear to have provided us with a copy in respect of 
+Mr C’s Harlequin investment despite being asked to do so in response to my provisional 
+decision. And in my experience this questionnaire said in bold at the top that: 
+ 
+‘[CBL] recommends that you obtain suitable financial advice in respect of any Investment 
+you make within your SIPP or SSAS. This questionnaire must be completed if you are 
+making a complex investment without such advice’ (my emphasis).  
+ 
+And it went on to say that the purpose of the questionnaire was for the customer to confirm 
+they’d understood all the issues involved with the investment, before it goes ahead. And that 
+if they couldn’t answer ‘yes’ to all the questions, then it suggested they reconsider and obtain 
+suitable financial advice. The customer would have been asked to confirm, amongst other 
+things, that: 
+ 
+ 
+ 
+• They understood they’d received no advice from CBL or any financial adviser in 
+respect of the suitability of the investment. 
+• They understood how the investment worked and any possible pitfalls. 
+• They’d read and understood the investment terms and conditions. 
+• They were comfortable with the level of risk for the investment and that, although 
+higher risk could mean higher returns, there’s no guarantee and he may get back 
+less than he invests.  
+• They understood they might not be able to sell the investment easily and this could 
+impact on its ability to pay the benefits.  
+ 
+On or around 19 March 2010, Mr C’s CBL SIPP was established. And, across May and June 
+2010, just under £87,000 was switched into Mr C’s CBL SIPP from three of his existing 
+pension schemes.  
+ 
+By the end of May 2010, the Harlequin contract was in place which set out, for example, the 
+payment schedule and target completion date as December 2013. On 26 May 2010, 
+£46,500 of Mr C’s CBL SIPP pension monies were invested in Harlequin. And, a few days 
+later, Harlequin confirmed receipt of this. 
+ 
+Mr C doesn’t appear to have received any returns from his Harlequin investment.   
+ 
+In October 2010, 1 Stop sent CBL an application for Mr C to invest just under £38,000 of his 
+remaining SIPP pension monies in Mosaic Caribe, which named Mr H of 1 Stop as his 
+professional adviser under the ‘Advisor Information’ section. There was an arrow mark with 
+an ‘X’ next to the two signature sections on the form indicating where Mr C needed to sign, 
+and Mr H of 1 Stop signed the form as witness to Mr C’s signature in both places. Mr C also 
+completed an Investment Reservation Request Form which detailed Mr H of 1 Stop as his 
+adviser and that all correspondence and documentation in respect of the Mosaic Caribe 
+investment should be sent to 1 Stop.   
+ 
+On 5 February 2011, Mr C completed a ‘Statement of Overall Assets’ form for CBL in 
+respect of his application to invest in Mosaic Caribe. At the top this said in bold that: 
+ 
+‘In order to confirm the acceptability of a particular investment, [CBL] may sometimes 
+require details of your overall financial position. This is to ensure the investment does 
+not form an excessive part of your overall finances and, if it were to fail, your 
+remaining assets would be more than enough for your future financial needs’.  
+ 
+And, amongst other things, Mr C said on the form that: 
+ 
+• His only pension arrangement was his CBL SIPP.  
+• He wasn’t prepared to disclose his personal assets, such as savings.  
+• He was currently employed with no plans to retire in the medium to long term.  
+• He had no significant outgoings planned now or in the anticipated future, such as 
+large mortgage payments.  
+• And, when asked for other relevant information, such as whether Mr C planned to 
+downsize his home to release capital in future, he said he was ‘aware of risks + 
+aware of non regulated product + say choice…’ 
+ 
+On 15 February 2011, Mr C completed the Direct Investment Questionnaire for his 
+application to invest in Mosaic Caribe, which said in bold at the top that: 
+ 
+ 
+ 
+‘[CBL] recommends that you obtain suitable financial advice in respect of any Investment 
+you make within your SIPP or SSAS. This questionnaire must be completed if you are 
+making a complex investment without such advice’. 
+ 
+It went on to say that the purpose of the questionnaire was for Mr C to confirm he 
+understood all the issues involved with the investment, before it goes ahead. And that if he 
+couldn’t answer ‘yes’ to all the questions, then it suggested he reconsider and obtain suitable 
+financial advice. And Mr C ticked to confirm, amongst other things, that: 
+ 
+• He understood he had received no advice from CBL or any financial adviser in 
+respect of the suitability of the investment. 
+• He understood how the investment worked and any possible pitfalls. 
+• He’d read and understood the investment terms and conditions. 
+• He was comfortable with the level of risk for the investment and that, although higher 
+risk could mean higher returns, there’s no guarantee and he may get back less than 
+he invests.  
+• He understood he might not be able to sell the investment easily and this could 
+impact on its ability to pay the benefits.  
+ 
+Mr C also sent CBL a pre-typed letter dated 1 September 2011 which said he was happy for 
+1 Stop to receive commission on the Mosaic Caribe investment despite the fact no advice 
+had been provided to him in relation to this, that he was aware of the risks and was insistent 
+on proceeding. 
+ 
+CBL has said that its compliance department approved the Mosaic Caribe investment on     
+1 September 2011. And, at the start of October 2011, Mr C’s investment was made.   
+  
+In May 2013, part of Mr C’s investment in Mosaic Caribe matured and he received just under 
+£6,650 back into his SIPP, along with a further return of around £10,400 in May 2015. In 
+August 2016, Mosaic Caribe went into liquidation. And, in October 2020, Mr C received a 
+distribution from this of around £1,100 into his SIPP and a further amount of just under 
+£8,850 in May 2021.   
+  
+Mr C’s complaint   
+   
+Mr C made a claim to the Financial Services Compensation Scheme (‘FSCS’) about 1 Stop. 
+In September 2015, the FSCS reviewed Mr C’s claim and calculated his losses to be just 
+over £73,000. It paid him £50,000 in total which, as I understand it, was its compensation 
+limit at that time. And, on request, the FSCS later reassigned legal rights against CBL back 
+to Mr C.  
+ 
+Mr C first complained, via his representatives, to CBL in July 2018. He said, in summary, 
+that it didn’t do enough due diligence on Firm B – which had a flawed advice model and 
+wasn’t advising on the suitability of the underlying investments – or the investments, which 
+were unregulated and high-risk. He said that CBL shouldn’t have accepted his applications 
+and this has caused him to lose out. Mr C said that at the time of the events complained of, 
+he was employed earning around £25,000 and a retail customer, with a house worth around 
+£200,000 with a mortgage of approximately £85,000.  
+ 
+CBL replied in September 2018. It said, in summary, that its duties were limited to ensuring 
+the investment was permissible within the SIPP for tax purposes. The investments met 
+CBL’s allowable investment criteria and there was no reason to suggest that either was of a 
+higher than expected risk. Mr C signed declarations at the time confirming he was relying on 
+his own decisions or financial advice when making the investments, that he was solely 
+ 
+ 
+responsible and that CBL didn’t give him any advice. He also declared that he understood 
+how the investments worked and possible pitfalls.  
+ 
+Unhappy with this response, Mr C referred his complaint to our Service. And, amongst other 
+things, CBL said in its responses in respect of Mr C’s complaint and on another similar 
+complaint with our Service involving the same introducer and Harlequin investment that:   
+ 
+• On 2 November 2009, Mr H of 1 Stop signed an application form with CBL agreeing 
+to its terms of business (‘TOB’) and to enter into a business relationship with it as a 
+financial adviser.   
+• It carried out checks of the FCA register on Mr H and/or Mr R and 1 Stop at intervals, 
+such as August 2010 and May 2011, to ensure it was regulated. 
+• It would have carried out a google search to check for any adverse media on the 
+introducer, although CBL hasn’t provided evidence that it did this at the time despite 
+me asking it to do so in response to my provisional decision.  
+• It thinks that 1 Stop’s business model would have been discussed in the initial 
+meetings between it and the adviser, but it doesn’t have meeting notes from the time. 
+However, it said that from the emails saved it was expected 20-30 introductions per 
+month – CBL doesn’t appear to have provided us with a copy of these emails, 
+despite me asking it to do so in response to my provisional decision.  
+• It didn’t have any further discussions with 1 Stop about the business being referred 
+after the TOB were put in place. But it assessed the documentation presented to it on 
+an individual SIPP basis.  
+• It didn’t request copies of any suitability reports provided to clients in respect of 
+whether 1 Stop had given advice. It would have only done that if the business was a 
+transfer from a defined benefit scheme. And, in any event, CBL isn’t qualified to 
+analyse suitability reports.  
+• 14 organic clients (i.e. not including those which it later took over as part of the 
+acquisition of another business in May 2011) were introduced to CBL from 1 Stop 
+over a six month period. It received the first organic referral in December 2009 and 
+the last in May 2010. None included defined benefit transfers. This accounted for 
+around 2.25% of its new business over that period. Just under 79% of these invested 
+in Harlequin at some point via their SIPP. Mr C’s was the sixth introduction to it from 
+1 Stop and out of those, two invested in standard assets only.  
+• It stopped accepting business from 1 Stop in December 2012 when its permissions 
+were frozen by the FCA in November 2012 and then withdrawn in 2014.  And it didn’t 
+have any arrangement with 1 Stop to introduce business to it in exchange for 
+commission.  
+• It’s an execution only SIPP provider. It didn’t provide any advice to Mr C. It can only 
+provide relevant information in line with the instructions received as to what is and 
+what isn’t permissible under scheme rule and HMRC legislation. 
+• The plan was introduced by a regulated financial adviser who was responsible for 
+suitability. It’s unclear as to the level of involvement by 1 Stop in providing advice, 
+however the direct investment questionnaire Mr C signed said he didn’t receive 
+advice on the suitability of the investment.  
+• It made Mr C aware of the risks involved and he confirmed he understood these and 
+wished to proceed.  
+• Non-standard investments are allowable within a SIPP. Having no immediate market 
+for sale doesn’t mean these should be prohibited within a SIPP.  
+• By the time of Mr C’s investment in May 2010, Harlequin literature had already been 
+assessed for other clients.  
+• It had been accepting the Harlequin investment within its SIPPs from September 
+2009. Harlequin had been an established trading company since 2001 with positive 
+returns. There was no cause for cause or reason for it to be considered an 
+ 
+ 
+unallowable investment, until 2013 as highlighted by the FCA.  
+• It carried out a CreditSafe check on the Harlequin investment in March 2010, which 
+provided a very good credit worthiness score, relevant as of January 2010.  
+• It said that all business, including SIPP applications and any investments are 
+received against its allowability criteria and that it was still awaiting a copy of the 
+investment product literature from its operations team – CBL hasn’t provided us with 
+a copy of this criteria or literature when requested though, despite me asking it to do 
+so in response to my provisional decision. 
+• It reviewed Harlequin’s accounts from January 2010. While the information available 
+showed this was a non-standard investment, it was showing positive returns at the 
+time so met CBL’s criteria in respect of liquidity. And, in respect of the valuation of 
+Harlequin, it based this on the information in the company reports. However, it 
+understood the potential risks, which is why it highlighted to clients that this was a 
+non-standard investment and asked them to complete a declaration, which evidences 
+they understood the risks and what was involved yet wanted to proceed on the basis 
+it was a direct investment and they weren’t receiving advice, including a property 
+questionnaire and direct investment questionnaire.  
+• It met the standards expected of it at the time, as set out in the FCA’s 2009 and 2012 
+reviews.  
+• In respect of the Mosaic Caribe investment, Mr C signed a declaration confirming he 
+was experienced in financial matters, competent to make a decision and understood 
+the risks and drawbacks involved.  
+ 
+During the course of Mr C’s complaint he’s said, amongst other things, that:  
+ 
+• He was introduced to 1 Stop by an individual who I’ll refer to as Mr B, who said he’d 
+invested in Harlequin himself. Mr C spoke to Mr H of 1 Stop, who explained he 
+needed to amalgamate his pensions.  
+• Mr C was given most of the information by 1 Stop over the phone. He doesn’t recall 
+receiving any advice or reports in respect of the risks involved in moving his pensions 
+and the investments made within it.  
+• He understood that the completed Harlequin property would be rented and he’d 
+receive a percentage.  
+• He didn’t receive any incentive payment. 
+• He wanted financial security in retirement and wasn’t previously interested in 
+changing his pensions. 
+• He received an email from his now representative in February 2018, which led him to 
+complain to CBL.   
+ 
+One of our Investigators reviewed Mr C’s complaint and said that it should be upheld. And, 
+while Mr C accepted our Investigator’s findings, CBL responded with further comments. It 
+said, amongst other things, that:   
+ 
+• Mr C was the sixth referral to it from 1 Stop. And it doesn’t agree that the volume of 
+business it received from 1 Stop with esoteric investments subsequently being made 
+would be enough of a threshold to have triggered alarm bells for it. This sample size 
+is too small for any quantitative research, management information or trends to be 
+noticed. 1 Stop’s business only accounted for a small percentage of referrals to it.  
+• At the time it received Mr C’s SIPP and Harlequin investment application forms         
+1 Stop was regulated to provide advice. The FCA didn’t begin investigations into 1 
+Stop until October 2010, when CBL received the proposed investment into Mosaic 
+Caribe, which was a contributing factor as to why it ensured additional steps were 
+taken to ensure Mr C explicitly wanted this investment to go ahead, in the absence of 
+advice.  
+ 
+ 
+• Requesting a suitability report, while an example of good practice, isn’t a legislative 
+requirement. In any event, Mr C confirmed he hadn’t received advice on the 
+investment in the declarations, that he understood the investment and risks and 
+wanted to proceed regardless. And CBL highlighted in bold at the top of the Direct 
+Investment Questionnaire that Mr C should obtain advice on the investment.  
+• Clients aren’t prevented from making investments because they’ve chosen not to 
+seek advice on the particular investment. It wouldn’t be in the spirit of treating 
+customers fairly to veto them from doing so. Particularly when the client, such as    
+Mr C, confirmed they were aware of the risks, that they should seek advice but had 
+chosen not to and yet still wished to proceed. Mr C had a few months in which he 
+could have changed his mind, but he didn’t.  
+• It drew parallels with Adams v Carey and said that in the High Court ruling, the judge 
+confirmed the relationship between Mr Adams and Carey was on an execution-only 
+basis and that he was responsible for his own investment decisions. The High Court 
+held that the obligations of COBS 2.1.1 must be seen in the context of that 
+relationship. 
+• It considered Mr C’s investment instruction in line with information available at the 
+time, as well as against what was and wasn’t permissible under its scheme rules and 
+HMRC legislation.  
+• Checks were completed to ensure Mr C was comfortable to proceed with the 
+investment and furthermore, Mr C was resolute to proceed with this choice prior to 
+CBL’s involvement.  
+• Mr C has already been compensated for his claim by the FSCS and wouldn’t 
+ordinarily be granted application to litigate on the same claim again by the courts. 
+And it doesn’t agree that a top up of investment losses can be sought from it. 
+• By not accepting Mr C’s business an inference could be made that it was making a 
+judgement and provided advice as to the suitability of the investment, in breach of its 
+FCA permissions.  
+• It doesn’t agree that it’s unlikely another SIPP provider would have facilitated Mr C’s 
+transactions, given there was clearly a widespread SIPP provider acceptance of 
+business from 1 Stop.  
+ 
+Because no agreement could be reached the case was passed to me for a decision. 
+ 
+I issued a provisional decision on Mr C’s complaint and concluded that it had been made 
+within our time limits and that it should be upheld. 
+ 
+While CBL didn’t respond with any further information in respect of the content of the 
+provisional decision itself, it did let us know that it wanted to offer to settle Mr C’s complaint. 
+However, Mr C let us know that he wanted to continue on with our Service to have a final 
+decision and that he had no further comments to add in response to my provisional decision. 
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+Having done so, I remain of the view that Mr C’s complaint has been made within our time 
+limits and that it should be upheld for largely the same reasons as those set out in my 
+provisional decision, which I’ve largely repeated below. 
+ 
+When deciding what’s fair and reasonable in all the circumstances of this complaint, I need   
+to take account of relevant law and regulations, regulator’s rules, guidance and standards,   
+codes of practice and, where appropriate, what I think was good industry practice at the   
+ 
+ 
+relevant time.   
+   
+While I’ve considered the entirety of the detailed submissions the parties have provided, my   
+decision focuses on what I consider to be the central issues. The purpose of my decision   
+isn’t to comment on every point or question made, rather it’s to set out my decision 
+and reasons for reaching it.   
+ 
+Preliminary point – time limits 
+ 
+For the avoidance of doubt, I am considering this preliminary point on the basis of the 
+applicable rules and law and not on the basis of what is fair and reasonable in all the 
+circumstances.  
+ 
+The Dispute Resolution (‘DISP’) Rules – found in the FCA’s handbook – sets out the rules 
+our Service is bound by and DISP 2.8.2R sets out the time limits in which we can and can’t 
+consider complaints. It doesn’t seem to be in dispute that Mr C’s complaint was made in time 
+for our Service to consider it. And, in any event, I haven’t seen anything to make me think 
+that Mr C was or ought reasonably to have become aware that CBL had or may have 
+responsibility for a problem with his pension more than three years before he complained to 
+it in July 2018. So, I think Mr C’s complaint has been made in time and I haven’t considered 
+this issue any further.  
+ 
+Relevant considerations 
+   
+I think the FCA’s Principles for Businesses – which are set out in the FCA’s Handbook – are 
+of particular relevance. These “are a general statement of the fundamental obligations of 
+firms under the regulatory system” (PRIN 1.1.2G – at the relevant date). And Principles 2, 3 
+and 6 provide:    
+   
+“Principle 2 – Skill, care and diligence – A firm must conduct its business with due 
+skill, care and diligence.    
+   
+Principle 3 – Management and control – A firm must take reasonable care to 
+organise and control its affairs responsibly and effectively, with adequate risk 
+management systems.    
+   
+Principle 6 – Customers’ interests – A firm must pay due regard to the interests of its 
+customers and treat them fairly.”    
+   
+I’ve carefully considered the relevant law and what this says about the application of the 
+FCA’s Principles. In R (British Bankers Association) v Financial Services Authority [2011] 
+EWHC 999 (Admin) (‘BBA’) Ouseley J said at paragraph 162:    
+   
+“The Principles are best understood as the ever present substrata to which the 
+specific rules are added. The Principles always have to be complied with. The 
+Specific rules do not supplant them and cannot be used to contradict them. They are 
+but specific applications of them to the particular requirements they cover. The 
+general notion that the specific rules can exhaust the application of the Principles is 
+inappropriate. It cannot be an error of law for the Principles to augment specific 
+rules.”    
+   
+And at paragraph 77 of BBA Ouseley J said:    
+   
+“Indeed, it is my view that it would be a breach of statutory duty for the Ombudsman 
+to reach a view on a case without taking the Principles into account in deciding what 
+ 
+ 
+would be fair and reasonable and what redress to afford. Even if no Principles had 
+been produced by the FSA, the FOS would find it hard to fulfil its particular statutory 
+duty without having regard to the sort of high level Principles which find expression in 
+the Principles, whoever formulated them. They are of the essence of what is fair and 
+reasonable, subject to the argument about their relationship to specific rules.”    
+   
+In R (Berkeley Burke SIPP Administration Ltd) v Financial Ombudsman Service [2018] 
+EWHC 2878) (‘BBSAL’), Berkeley Burke brought a judicial review claim challenging the 
+decision of an Ombudsman who had upheld a consumer’s complaint against it. The 
+Ombudsman considered the FCA Principles and good industry practice at the relevant time. 
+He concluded that it was fair and reasonable for Berkeley Burke to have undertaken due 
+diligence in respect of the investment before allowing it into the SIPP wrapper, and that if it 
+had done so, it would have refused to accept the investment. The Ombudsman found 
+Berkeley Burke had therefore not complied with its regulatory obligations and hadn’t treated 
+its client fairly.    
+   
+Jacobs J, having set out some paragraphs of BBA including paragraph 162 set out above, 
+said (at paragraph 104 of BBSAL):    
+   
+“These passages explain the overarching nature of the Principles. As the FCA 
+correctly submitted in their written argument, the role of the Principles is not merely to 
+cater for new or unforeseen circumstances. The judgment in BBA shows that they 
+are, and indeed were always intended to be, of general application. The aim of the 
+Principles-based regulation described by Ouseley J. was precisely not to attempt to 
+formulate a code covering all possible circumstances, but instead to impose general 
+duties such as those set out in Principles 2 and 6.”    
+   
+The BBSAL judgment also considers s.228 of the FSMA and the approach an Ombudsman 
+is to take when deciding a complaint. The judgment of Jacobs J in BBSAL upheld the 
+lawfulness of the approach taken by the Ombudsman in that complaint, which I’ve described 
+above, and included the Principles and good industry practice at the relevant time as 
+relevant considerations that were required to be taken into account.    
+   
+As outlined above, Ouseley J in the BBA case held that it would be a breach of statutory 
+duty if I were to reach a decision on a complaint without taking the Principles into account in 
+deciding what’s fair and reasonable in all the circumstances of a case. And Jacobs J 
+adopted a similar approach to the application of the Principles in BBSAL. I’m therefore 
+satisfied that the Principles are a relevant consideration that I must take into account when 
+deciding this complaint.    
+   
+On 18 May 2020, the High Court handed down its judgment in the case of Adams v Options 
+SIPP [2020] EWHC 1229 (Ch). Mr Adams subsequently appealed the decision of the High 
+Court and, on 1 April 2021, the Court of Appeal handed down its judgment in Adams v 
+Options UK Personal Pensions LLP [2021] EWCA Civ 474. I’ve taken account of both 
+judgments when making this decision on Mr C’s case.    
+   
+I note that the Principles for Businesses didn’t form part of Mr Adams’ pleadings in his initial 
+case against Carey SIPP. And, HHJ Dight didn’t consider the application of the Principles to 
+SIPP operators in his judgment. The Court of Appeal also gave no consideration to the 
+application of the Principles to SIPP operators. So, neither judgment said anything about 
+how the Principles apply to an Ombudsman’s consideration of a complaint. But, to be clear,  
+I don’t say this means Adams isn’t a relevant consideration at all. As noted above, I’ve taken 
+account of both judgments when making this decision on Mr C’s case.    
+   
+ 
+ 
+I acknowledge that COBS 2.1.1R (A firm must act honestly, fairly and professionally in 
+accordance with the best interests of its client) overlaps with certain of the Principles, and 
+that this rule was considered by HHJ Dight in the High Court case. Mr Adams pleaded that 
+Options owed him a duty to comply with COBS 2.1.1R, a breach of which, he argued, was 
+actionable pursuant to section 138(D) of FSMA (‘the COBS claim’). HHJ Dight rejected this 
+claim and found that Options had complied with the best interests rule on the facts of         
+Mr Adams’ case.     
+   
+The Court of Appeal rejected Mr Adams’ appeal against HHJ Dight’s dismissal of the COBS 
+claim, on the basis he was seeking to advance a case that was radically different to that 
+found in his initial pleadings. The Court found that this part of Mr Adams’ appeal didn’t so 
+much represent a challenge to the grounds on which HHJ Dight had dismissed the COBS 
+claim, but rather was an attempt to put forward an entirely new case.     
+   
+I note that in Adams v Options SIPP, HHJ Dight found that the factual context of a case 
+would inform the extent of the duty imposed by COBS 2.1.1R. HHJ Dight said at paragraph 
+148:    
+   
+“In my judgment in order to identify the extent of the duty imposed by Rule 2.1.1 one 
+has to identify the relevant factual context, because it is apparent from the 
+submissions of each of the parties that the context has an impact on the 
+ascertainment of the extent of the duty. The key fact, perhaps composite fact, in the 
+context is the agreement into which the parties entered, which defined their roles and 
+functions in the transaction.”   
+   
+I note there are significant differences between the breaches of COBS 2.1.1R alleged by    
+Mr Adams (summarised in paragraph 120 of the Court of Appeal judgment) and the issues in 
+Mr C’s complaint. In particular, HHJ Dight considered the contractual relationship between 
+the parties in the context of Mr Adams’ pleaded breaches of COBS 2.1.1R that happened 
+after the contract was entered into. And he wasn’t asked to consider the question of due 
+diligence before Carey SIPP agreed to accept the investment into its SIPP.   
+   
+In Mr C’s complaint, amongst other things, I’m considering whether CBL ought to have 
+identified that the business introduced by Mr H of 1 Stop and the Harlequin investment 
+involved a significant risk of consumer detriment. And, if so, whether it ought to have 
+declined to accept Mr C’s applications.  
+   
+The facts of Mr Adams’ and Mr C’s cases are also different. I make that point to highlight that 
+there are factual differences between Adams v Options SIPP and Mr C’s case. And I need to 
+construe the duties CBL owed to Mr C under COBS 2.1.1R in light of the specific facts of his 
+case.    
+   
+So, I’m satisfied that COBS 2.1.1R is a relevant consideration – but that it needs to be 
+considered alongside the remainder of the relevant considerations, and within the factual 
+context of Mr C’s case.      
+   
+However, it’s important to emphasise that I must determine this complaint by reference to 
+what I think is fair and reasonable in all the circumstances of the case. And, in doing that, I’m 
+required to take into account relevant considerations which include: law and regulations; 
+regulator’s rules, guidance and standards; codes of practice; and, where appropriate, what    
+I consider to have been good industry practice at the relevant time. There is a clear and 
+relevant point of difference between this complaint and the judgments in Adams v Options 
+SIPP. That was a legal claim which was defined by the formal pleadings in Mr Adams’ 
+statement of case.     
+   
+ 
+ 
+I also want to emphasise that I don’t say that CBL was under any obligation to advise Mr C 
+on the SIPP and/or the underlying investments. Refusing to accept an application isn’t the 
+same thing as advising Mr C on the merits of the SIPP and/or the underlying 
+investments. But I am satisfied CBL’s obligations included deciding whether to accept 
+particular investments into its SIPP and/or whether to accept introductions from particular 
+businesses.  
+ 
+The regulatory publications 
+   
+The FCA (and its predecessor, the FSA) issued a number of publications which reminded 
+SIPP operators of their obligations and which set out how they might achieve the outcomes 
+envisaged by the Principles, namely:    
+  
+• The 2009 and 2012 Thematic Review reports.    
+• The October 2013 finalised SIPP operator guidance.   
+• The July 2014 “Dear CEO” letter.    
+ 
+I’ve considered the relevance of these publications. And I’ve set out material parts of the   
+publications here, although I’ve considered them in their entirety.   
+   
+The 2009 Thematic Review Report    
+   
+The 2009 report included the following statement:   
+   
+“We are very clear that SIPP operators, regardless of whether they provide advice, are 
+bound by Principle 6 of the Principles for Businesses (‘a firm must pay due regard to the 
+interests of its clients and treat them fairly’) insofar as they are obliged to ensure the fair 
+treatment of their customers. COBS 3.2.3(2) states that a member of a pension scheme is a 
+‘client’ for COBS purposes, and ‘Customer’ in terms of Principle 6 includes clients.    
+   
+It is the responsibility of SIPP operators to continuously analyse the individual risks to 
+themselves and their clients, with reference to the six TCF consumer outcomes.    
+…    
+We agree that firms acting purely as SIPP operators are not responsible for the SIPP advice 
+given by third parties such as IFAs. However, we are also clear that SIPP operators cannot 
+absolve themselves of any responsibility, and we would expect them to have procedures and 
+controls, and to be gathering and analysing management information, enabling them to 
+identify possible instances of financial crime and consumer detriment such as unsuitable 
+SIPPs. Such instances could then be addressed in an appropriate way, for example by 
+contacting the members to confirm the position, or by contacting the firm giving advice and 
+asking for clarification. Moreover, while they are not responsible for the advice, there is a 
+reputational risk to SIPP operators that facilitate SIPPs that are unsuitable or detrimental to 
+clients.    
+   
+Of particular concern were firms whose systems and controls were weak and inadequate to 
+the extent that they had not identified obvious potential instances of poor advice and/or 
+potential financial crime. Depending on the facts and circumstances of individual cases, we 
+may take enforcement action against SIPP operators who do not safeguard their customers’ 
+interests in this respect, with reference to Principle 3 of the Principles for Businesses (‘a firm 
+must take reasonable care to organise and control its affairs responsibly and effectively, with 
+adequate risk management systems’).    
+   
+The following are examples of measures that SIPP operators could consider, taken from 
+examples of good practice that we observed and suggestions we have made to firms:    
+   
+ 
+ 
+• Confirming, both initially and on an ongoing basis, that intermediaries that advise 
+clients are authorised and regulated by the FSA, that they have the appropriate 
+permissions to give the advice they are providing to the firm’s clients, and that they 
+do not appear on the FSA website listing warning notices.    
+ 
+• Having Terms of Business agreements governing relationships, and clarifying 
+respective responsibilities, with intermediaries introducing SIPP business.   
+  
+• Routinely recording and reviewing the type (i.e. the nature of the SIPP investment) 
+and size of investments recommended by intermediaries that give advice and 
+introduce clients to the firm, so that potentially unsuitable SIPPs can be identified.    
+ 
+• Being able to identify anomalous investments, e.g. unusually small or large 
+transactions or more ‘esoteric’ investments such as unquoted shares, together with 
+the intermediary that introduced the business. This would enable the firm to seek 
+appropriate clarification, e.g. from the client or their adviser, if it is concerned about 
+the suitability of what was recommended.    
+ 
+• Requesting copies of the suitability reports provided to clients by the intermediary 
+giving advice. While SIPP operators are not responsible for advice, having this 
+information would enhance the firm’s understanding of its clients, making the 
+facilitation of unsuitable SIPPs less likely.   
+ 
+• Routinely identifying instances of execution-only clients who have signed disclaimers 
+taking responsibility for their investment decisions, and gathering and analysing data 
+regarding the aggregate volume of such business.   
+ 
+• Identifying instances of clients waiving their cancellation rights, and the reasons for 
+this”   
+   
+The later publications    
+   
+In the October 2013 finalised SIPP operator guidance, the FCA stated:    
+   
+“This guide, originally published in September 2009, has been updated to give firms 
+further guidance to help meet the regulatory requirements. These are not new or 
+amended requirements, but a reminder of regulatory responsibilities that became a 
+requirement in April 2007.    
+   
+All firms, regardless of whether they do or do not provide advice must meet Principle 
+6 and treat customers fairly. COBS 3.2.3(2) is clear that a member of a pension 
+scheme is a ‘client’ for SIPP operators and so is a customer under Principle 6. It is a 
+SIPP operator’s responsibility to assess its business with reference to our six TCF 
+consumer outcomes.”    
+   
+The October 2013 finalised SIPP operator guidance also set out the following:    
+   
+“Relationships between firms that advise and introduce prospective members and 
+SIPP operators    
+   
+Examples of good practice we observed during our work with SIPP operators include the 
+following:    
+ 
+• Confirming, both initially and on an ongoing basis, that: introducers that advise clients 
+ 
+ 
+are authorised and regulated by the FCA; that they have the appropriate permissions 
+to give the advice they are providing; neither the firm, nor its approved persons are 
+on the list of prohibited individuals or cancelled firms and have a clear disciplinary 
+history; and that the firm does not appear on the FCA website listings for 
+unauthorised business warnings.  
+ 
+• Having terms of business agreements that govern relationships and clarify the 
+responsibilities of those introducers providing SIPP business to a firm.   
+ 
+• Understanding the nature of the introducers’ work to establish the nature of the firm, 
+what their business objectives are, the types of clients they deal with, the levels of 
+business they conduct and expect to introduce, the types of investments they 
+recommend and whether they use other SIPP operators. Being satisfied that they are 
+appropriate to deal with.  
+ 
+• Being able to identify irregular investments, often indicated by unusually small or 
+large transactions; or higher risk investments such as unquoted shares which may be 
+illiquid. This would enable the firm to seek appropriate clarification, for example from 
+the prospective member or their adviser, if it has any concerns.   
+ 
+• Identifying instances when prospective members waive their cancellation rights and 
+the reasons for this.   
+   
+Although the members’ advisers are responsible for the SIPP investment advice given, as a 
+SIPP operator the firm has a responsibility for the quality of the SIPP business it administers. 
+Examples of good practice we have identified include:   
+ 
+• conducting independent verification checks on members to ensure the information 
+they are being supplied with, or that they are providing the firm with, is authentic and 
+meets the firm’s procedures and are not being used to launder money  
+ 
+• having clear terms of business agreements in place which govern relationships and 
+clarify responsibilities for relationships with other professional bodies such as 
+solicitors and accountants, and  
+ 
+• using non-regulated introducer checklists which demonstrate the SIPP operators 
+have considered the additional risks involved in accepting business from 
+nonregulated introducers    
+ 
+In relation to due diligence, the October 2013 finalised SIPP operator guidance said:   
+   
+“Due diligence    
+   
+Principle 2 of the FCA’s Principles for Businesses requires all firms to conduct their business 
+with due skill, care and diligence. All firms should ensure that they conduct and retain 
+appropriate and sufficient due diligence (for example, checking and monitoring introducers 
+as well as assessing that investments are appropriate for personal pension schemes) to help 
+them justify their business decisions. In doing this SIPP operators should consider:    
+  
+• ensuring that all investments permitted by the scheme are permitted by HMRC, or 
+where a tax charge is incurred, that charge is identifiable, HMRC is informed and the 
+tax charge paid  
+ 
+• periodically reviewing the due diligence the firm undertakes in respect of the 
+ 
+ 
+introducers that use their scheme and, where appropriate enhancing the processes 
+that are in place in order to identify and mitigate any risks to the members and the 
+scheme  
+ 
+• having checks which may include, but are not limited to:    
+   
+o ensuring that introducers have the appropriate permissions, qualifications and 
+skills to introduce different types of business to the firm, and    
+o undertaking additional checks such as viewing Companies House records, 
+identifying connected parties and visiting introducers    
+   
+• ensuring all third-party due diligence that the firm uses or relies on has been 
+independently produced and verified    
+ 
+• good practices we have identified in firms include having a set of benchmarks, or 
+minimum standards, with the purpose of setting the minimum standard the firm is 
+prepared to accept to either deal with introducers or accept investments, and    
+ 
+• ensuring these benchmarks clearly identify those instances that would lead a firm to 
+decline the proposed business, or to undertake further investigations such as 
+instances of potential pension liberation, investments that may breach HMRC tax-
+relievable investments and non-standard investments that have not been approved 
+by the firm”   
+  
+The July 2014 “Dear CEO” letter provides a further reminder that the Principles apply and an 
+indication of the FCA’s expectations about the kinds of practical steps a SIPP operator might 
+reasonably take to achieve the outcomes envisaged by the Principles.    
+   
+The “Dear CEO” letter also sets out how a SIPP operator might meet its obligations in 
+relation to investment due diligence. It says those obligations could be met by:    
+ 
+• correctly establishing and understanding the nature of an investment    
+ 
+• ensuring that an investment is genuine and not a scam, or linked to fraudulent 
+activity, money-laundering or pensions liberation   
+ 
+• ensuring that an investment is safe/secure (meaning that custody of assets is 
+through a reputable arrangement, and any contractual agreements are correctly 
+drawn-up and legally enforceable)    
+ 
+• ensuring that an investment can be independently valued, both at point of purchase 
+and subsequently, and    
+ 
+• ensuring that an investment is not impaired (for example that previous investors have 
+received income if expected, or that any investment providers are credit worthy etc.)    
+   
+Although I’ve referred to selected parts of the publications to illustrate the relevance, I’ve 
+considered these in their entirety.   
+   
+I acknowledge that the 2009 and 2012 reports and the “Dear CEO” letter aren’t formal 
+guidance (whereas the 2013 finalised guidance is). However, the fact that the reports and 
+“Dear CEO” letter didn’t constitute formal guidance doesn’t mean the importance of these 
+should be underestimated. These provide a reminder that the Principles for Businesses 
+apply and are an indication of the kinds of things a SIPP operator might do to ensure it’s 
+ 
+ 
+treating its customers fairly and produce the outcomes envisaged by the Principles. In that 
+respect, the publications which set out the regulators’ expectations of what SIPP operators 
+should be doing also go some way to indicate what I consider amounts to good industry 
+practice, and I’m therefore satisfied it’s appropriate to take these into account.    
+   
+It’s relevant that when deciding what amounted to good industry practice in the BBSAL case, 
+the Ombudsman found that “the regulator’s reports, guidance and letter go a long way to 
+clarify what should be regarded as good practice and what should not.” And the judge in 
+BBSAL endorsed the lawfulness of the approach taken by the Ombudsman.    
+At its introduction the 2009 Thematic Review Report says:   
+   
+“In this report, we describe the findings of this thematic review, and make clear 
+what  we expect of SIPP operator firms in the areas we reviewed. It also 
+provides examples of good practices we found.”   
+   
+And, as referenced above, the report goes on to provide “…examples of measures that SIPP 
+operators could consider, taken from examples of good practice that we observed and 
+suggestions we have made to firms.”   
+   
+So, I’m satisfied that the 2009 Report is a reminder that the Principles apply and it gives 
+an indication of the kinds of things a SIPP operator might do to ensure it is treating its    
+customers fairly and produce the outcomes envisaged by the Principles. The Report set 
+out the regulator’s expectations of what SIPP operators should be doing and therefore 
+indicates what I consider amounts to good industry practice at the relevant time. So I remain 
+satisfied it’s relevant and therefore appropriate to take it into account.   
+   
+I think the Report is also directed at firms like CBL acting purely as SIPP operators, rather 
+than just those providing advisory services. The Report says that “We are very clear that 
+SIPP operators, regardless of whether they provide advice, are bound by Principle 6 of the 
+Principles for Businesses…” And it’s noted prior to the good practice examples quoted 
+above that “We agree that firms acting purely as SIPP operators are not responsible for the 
+SIPP advice given by third parties such as IFAs. However, we are also clear that SIPP 
+operators cannot absolve themselves of any responsibility, and we would expect them to 
+have procedures and controls, and to be gathering and analysing management information, 
+enabling them to identify possible instances of financial crime and consumer detriment such 
+as unsuitable SIPPs.”   
+ 
+I’m also satisfied that CBL, at the time of the events under consideration here, thought the 
+2009 review was relevant. CBL acknowledged in its submissions that the review is relevant 
+to how it conducts its business and highlights some areas of good practice. 
+   
+The remainder of the publications also provide a reminder that the Principles apply and are 
+an indication of the kinds of things a SIPP operator might do to ensure it is treating its 
+customers fairly and to produce the outcomes envisaged by the Principles. In that respect, 
+these publications also go some way to indicate what I consider amounts to good industry 
+practice at the relevant time. I therefore remain satisfied it’s appropriate to take them into 
+account too.   
+   
+Like the Ombudsman in the BBSAL case, I don’t think the fact that some of the publications 
+post-date the events that took place in relation to Mr C’s complaint, mean that the examples 
+of good practice they provide weren’t good practice at the time of the relevant events. 
+Although the later publications were published after the events subject to this complaint, the 
+Principles that underpin these existed throughout, as did the obligation to act in accordance 
+with the Principles.    
+   
+ 
+ 
+It’s also clear from the text of the 2009 and 2012 Thematic Review Reports (and the “Dear    
+CEO” letter in 2014) that the regulator expected SIPP operators to have incorporated the    
+recommended good practices into the conduct of their business already. So, whilst the    
+regulators’ comments suggest some industry participants’ understanding of how the good    
+practice standards shaped what was expected of SIPP operators changed over time, it’s    
+clear the standards themselves hadn’t changed.   
+ 
+I note CBL’s point that the judge in the Adams didn’t consider the 2012 Thematic Review 
+Report, 2013 SIPP operator guidance and 2014 “Dear CEO” letter to be of relevance to their 
+consideration of Mr Adams’ claim. But it doesn’t follow that those publications are irrelevant 
+to my consideration of what’s fair and reasonable in the circumstances of this complaint. I’m 
+required to take into account good industry practice at the relevant time. And, as mentioned, 
+the publications indicate what I consider to amount to good industry practice at the relevant 
+time.   
+   
+That doesn’t mean that in considering what’s fair and reasonable, I’ll only consider CBL’s 
+actions with these documents in mind. The reports, “Dear CEO” letter and guidance gave 
+non-exhaustive examples of good practice. They didn’t say the suggestions given were the 
+limit of what a SIPP operator should do. As the annex to the “Dear CEO” letter notes, what 
+should be done to meet regulatory obligations will depend on the circumstances.    
+ 
+The regulator also issued an alert in 2013 about advisers giving advice to consumers on  
+SIPPs without consideration of the underlying investment to be held in the SIPP. The alert  
+(“Advising on pension transfers with a view to investing pension monies into unregulated  
+products through a SIPP”) set out that this type of restricted advice didn’t meet regulatory  
+requirements. It said: 
+ 
+“It has been brought to the FSA’s attention that some financial advisers are giving  
+advice to customers on pension transfers or pension switches without assessing the  
+advantages and disadvantages of investments proposed to be held within the new  
+pension. In particular, we have seen financial advisers moving customers’ retirement 
+savings to self-invested personal pensions (SIPPs) that invest wholly or primarily in 
+high risk, often highly illiquid unregulated investments (some which may be in 
+Unregulated Collective Investment Schemes). 
+…  
+Financial advisers using this advice model are under the mistaken impression that  
+this process means they do not have to consider the unregulated investment as part  
+of their advice to invest in the SIPP and that they only need to consider the suitability 
+of the SIPP in the abstract. This is incorrect.  
+ 
+The FSA’s view is that the provision of suitable advice generally requires 
+consideration of the other investments held by the customer or, when advice is given 
+on a product which is a vehicle for investment in other products (such as SIPPs and 
+other wrappers), consideration of the suitability of the overall proposition, that is, the 
+wrapper and the expected underlying investments in unregulated schemes.”  
+ 
+The alert post-dates the events in this complaint – but, again, it didn’t set new standards. It  
+highlighted that advisers using the restricted advice model discussed in the alert generally  
+weren’t meeting existing regulatory requirements and set out the regulator’s concerns about 
+industry practices at the time. 
+ 
+To be clear, I don’t say the Principles or the publications obliged CBL to ensure the    
+transactions were suitable for Mr C. It’s accepted CBL wasn’t required to give advice to      
+Mr C, and couldn’t give advice. And I accept the publications don’t alter the meaning of, or 
+the scope of, the Principles. But as I’ve said above these are evidence of what I consider to 
+ 
+ 
+have been good industry practice at the relevant time, which would bring about the outcomes 
+envisaged by the Principles. And, as per the FCA’s Enforcement Guide, publications of this 
+type “illustrate ways (but not the only ways) in which a person can comply with the relevant 
+rules”. So it’s fair and reasonable for me to take them into account when deciding this 
+complaint.   
+   
+I’d also add that, even if I agreed that any publications or guidance that post-dated the 
+events subject of this complaint don’t help to clarify the type of good industry practice that 
+existed at the relevant time (which I don’t), that doesn’t alter my view on what I consider to 
+have been good industry practice at the time. That’s because I find that the 2009 Report 
+together with the Principles provide a very clear indication of what CBL could and should 
+have done to comply with its regulatory obligations that existed at the relevant time before 
+accepting Mr C’s applications.   
+   
+It’s important to keep in mind the judge in Adams v Options didn’t consider the regulatory    
+publications in the context of considering what’s fair and reasonable in all the circumstances, 
+bearing in mind various matters including the Principles (as part of the regulator’s rules) or 
+good industry practice.   
+   
+And in determining this complaint, I need to consider whether, in accepting Mr C’s  
+application to establish a SIPP and to invest in Harlequin, CBL complied with its 
+regulatory obligations: to act with due skill, care and diligence; to take reasonable care to 
+organise and control its affairs responsibly and effectively; to pay due regard to the interests 
+of its customers and treat them fairly; and to act honestly, fairly and professionally. In doing 
+that, I’m looking to the Principles and the publications listed above to provide an indication of 
+what CBL should have done to comply with its regulatory obligations and duties.   
+ 
+I’m deciding what’s fair and reasonable in the circumstances of this complaint – and for all 
+the reasons I’ve set out above I’m satisfied that the Principles and the publications listed 
+above are relevant considerations to that decision.    
+   
+And taking account of the factual context of this case, I think that in order for CBL to meet its 
+regulatory obligations, (under the Principles and COBS 2.1.1R), amongst other things it 
+should have undertaken sufficient due diligence into 1 Stop and the business it (1 Stop) was 
+introducing, both initially and on an ongoing basis. 
+   
+In deciding what’s fair and reasonable in the circumstances, it’s appropriate to take an  
+inquisitorial approach. And, ultimately, what I’ll be looking at here is whether CBL took  
+reasonable care, acted with due diligence, and treated Mr C fairly, in accordance with his  
+best interests. And what I think’s fair and reasonable in light of that. I consider the key issue 
+in Mr C’s complaint is whether it was fair and reasonable for CBL to have accepted his SIPP 
+and Harlequin investment applications in the first place. So, I need to determine whether 
+CBL carried out appropriate due diligence checks before deciding to accept Mr C’s SIPP 
+applications. 
+ 
+As noted above, CBL says it did carry out due diligence on 1 Stop before accepting  
+business from it. And from what I’ve seen I accept that it undertook some checks. However, 
+the question I need to consider is whether CBL ought to, acting fairly and reasonably to meet 
+its regulatory obligations and good industry practice, have identified that consumers 
+introduced by 1 Stop and/or investing in Harlequin were being put at significant risk of 
+detriment. And, if so, whether CBL should therefore not have accepted Mr C’s applications. 
+ 
+The contract between CBL and Mr C 
+ 
+ 
+ 
+My decision is made on the understanding that CBL acted purely as a SIPP operator. I don’t 
+say CBL should (or could) have given advice to Mr C or otherwise have ensured the 
+suitability of the SIPP or Harlequin investment for him. I accept that CBL made it clear to    
+Mr C that it wasn’t giving, nor was it able to give, advice and that it played an execution-only 
+role in his SIPP investments. And that forms Mr C signed confirmed, amongst other things, 
+that losses arising as a result of CBL acting on his instructions were his responsibility. 
+ 
+I’ve not overlooked or discounted the basis on which CBL was appointed. And my decision  
+on what’s fair and reasonable in the circumstances of Mr C’s case is made with all of this in 
+mind. So, I’ve proceeded on the understanding that CBL wasn’t obliged – and wasn’t able – 
+to give advice to Mr C on the suitability of the SIPP or Harlequin investment. But I remain 
+satisfied that, to meet its regulatory obligations when conducting its operation of SIPPs 
+business, CBL had to decide whether to accept introductions of business and/or investments 
+with the Principles in mind. And I don’t agree that it couldn’t have rejected introductions or 
+applications without contravening its regulatory permissions by giving investment advice. 
+ 
+What did CBL’s obligations mean in practice? 
+ 
+The business CBL was conducting was its operation of SIPPs. The regulatory publications  
+provided some examples of good industry practice observed by the FCA during its work with 
+SIPP operators, including being satisfied that it should accept applications from a particular 
+introducer, and being satisfied that a particular investment is an appropriate one to accept. 
+So I’m satisfied that, to meet its regulatory obligations and good industry practice, when 
+conducting its business, CBL was required to consider whether to accept or reject particular 
+referrals of business and particular applications for investment in its SIPPs. 
+ 
+CBL was under a regulatory obligation to conduct its business with due skill, care and  
+diligence, organise and control its affairs responsibly and effectively, and pay due regard to  
+the interests of its customers (including Mr C) and treat them fairly. Its obligations and duties 
+in this respect weren’t prescriptive and depended on the nature of the circumstances, 
+information and events on an ongoing basis. 
+ 
+And I think CBL understood this at the time too, as I’ve seen that it did more than just check 
+the FCA entries for 1 Stop to ensure it was regulated to give advice. It also entered into TOB 
+with it, as set out further below. And it’s apparent that CBL had access to some information 
+about the type and volume of introductions it was receiving from 1 Stop, as it has been able 
+to provide us with information about this when requested. 
+ 
+So, I think CBL ought to have understood before it received Mr C’s application that its 
+obligations meant that it had a responsibility to carry out appropriate checks on 1 Stop to 
+ensure the quality of the business it was introducing. And I think CBL also ought to have 
+understood that its obligations meant that it had a responsibility to carry out appropriate due 
+diligence on investments, like Harlequin, before accepting these into its SIPPs. 
+ 
+So I’m satisfied that, to meet its regulatory obligations when conducting its business, CBL 
+was also required to consider whether to accept or reject a particular investment (here 
+Harlequin), with the Principles in mind. 
+ 
+CBL’s due diligence on 1 Stop 
+ 
+As set out in the background above, while CBL said it would have carried out a google 
+search to check for any adverse media on 1 Stop’s and that it thinks that 1 Stop’s business 
+model would have been discussed in the initial meetings with it, CBL hasn’t provided 
+evidence that it did this at the time.   
+ 
+ 
+ 
+Having looked at the evidence CBL has provided to show what due diligence checks it 
+carried out on 1 Stop and what conclusions it drew from these, this shows that, by the time it 
+accepted Mr C’s application, CBL had: 
+ 
+• C
+hecked the FCA register to ensure 1 Stop and its directors were regulated and 
+authorised to give financial advice. 
+ 
+• E
+ntered into TOB with 1 Stop in November 2009. 
+ 
+These steps go some way towards meeting CBL’s regulatory obligations and good industry  
+practice. But I think CBL failed to conduct sufficient due diligence on 1 Stop before  
+accepting business from it, or that CBL failed to draw fair and reasonable conclusions from 
+what it did know about 1 Stop.  
+ 
+I think CBL ought reasonably to have concluded it shouldn’t accept business from 1 Stop, 
+and CBL shouldn’t have accepted Mr C’s application from it. I say this because: 
+ 
+• C
+BL was aware or should have been aware of potential risks of consumer detriment  
+associated with business introduced by 1 Stop by the time of Mr C’s application, as:  
+ 
+o C
+onsumers were being introduced to CBL by 1 Stop without having been given 
+full regulated advice (that is advice on the transfer or switch to the SIPP and 
+advice on the intended investment). 
+ 
+o T
+he introductions had anomalous features – high-risk business for unregulated 
+overseas property developments and other esoteric investments. And, even 
+though 1 Stop had the necessary permissions to give full advice on the 
+business it was introducing, it wasn’t giving any advice on a large proportion 
+of that business.  
+ 
+• C
+BL should’ve taken steps to address these risks (or, given these risks, have simply 
+declined to deal further with 1 Stop). 
+ 
+• S
+uch steps should have involved getting a fuller understanding of 1 Stop’s business 
+model – through requesting information from it and through independent checks. 
+ 
+• S
+uch understanding would’ve revealed there was a significant risk of consumer  
+detriment associated with introductions of business from 1 Stop. 
+ 
+• I
+n the alternative 1 Stop would have been unwilling to answer or fully answer the 
+questions about its business model. 
+ 
+• I
+n either event CBL should’ve concluded it shouldn’t accept introductions from  
+1 Stop. 
+ 
+ 
+ 
+I’ve set out below some more detail on the potential risks of consumer detriment either  
+knew about or ought to have known about at the time of Mr C’s application. These points  
+overlap, to a degree, and should have been considered by CBL cumulatively. 
+ 
+The type of investments being made by 1-Stop introduced consumers 
+ 
+As I’ve said, it’s clear CBL had access to information about the number and nature of 
+introductions that 1 Stop made to it, as it’s been able to provide details about this when 
+requested. An example of good practice identified in the FCA’s 2009 review was:  
+ 
+“Routinely recording and reviewing the type (i.e. the nature of the SIPP investment) 
+and size of investments recommended by intermediaries that give advice and 
+introduce clients to the firm, so that potentially unsuitable SIPPs can be identified.”  
+ 
+Given all that I’ve said above, I don’t think simply keeping records without scrutinising the 
+information would be consistent with good industry practice and CBL’s regulatory 
+obligations. As highlighted in the 2009 review, the reason why the records are important is 
+so that potentially unsuitable SIPPs can be identified.  
+ 
+During our investigation of Mr C’s complaint, CBL said that 14 organic clients (i.e. not 
+including those which it later took over as part of the acquisition of another business in    
+May 2011) were introduced to CBL from 1 Stop over a six-month period between December 
+2009 and May 2010. While CBL has said this only accounted for around 2.25% of its new 
+business over that period, it also said that just under 79% of these invested in Harlequin via 
+their SIPP. And that Mr C’s was the sixth introduction, albeit two of those invested in 
+standard assets only. 
+ 
+So, by the time of Mr C’s application in March 2010, CBL had already received several 
+introductions from CBL over a period of four months and most of those customers invested 
+in Harlequin or other non-standard investments.   
+ 
+I’ve also seen internal emails of CBL’s from December 2012 in respect of 1 Stop’s 
+permissions being frozen, where CBL said it assumed this was because 1 Stop was selling 
+all UCIS and advice had been questioned. While CBL may well have been surmising as to 
+what might have happened, it’s reasonable to think CBL’s comments were reflective of and 
+grounded in its experience of the type of business it had received from 1 Stop to date, as set 
+out above.  
+ 
+As mentioned, I think it’s fair to say that such investments are highly unlikely to be suitable 
+for the vast majority of retail clients. They will generally only be suitable for a small 
+proportion of the population – sophisticated and/or high net worth investors. So I think CBL 
+should’ve been concerned that introductions over a short period of time, relating largely to 
+consumers investing in high-risk esoteric investments such as Harlequin, was unusual. This 
+was a clear and obvious potential risk of consumer detriment. 
+ 
+Lack of advice 
+ 
+CBL hasn’t told us how many of the introductions from 1 Stop were transacted as execution-
+only business (i.e. without full regulated advice being given by it). But in light of the FCA 
+publications, set out in the background above, it’s reasonable to think this was most, if not 
+all, of the business 1 Stop introduced to CBL. And, bearing in mind what I’ve said about the 
+timing of Mr C’s introduction to CBL, I think it’s likely that 1 Stop had introduced business to 
+CBL without providing full advice on several occasions before it received his application.  
+ 
+ 
+ 
+So I think that, from early on, CBL ought to have been on notice that 1 Stop, although a 
+regulated business that had permissions to advise on all the business being introduced, 
+wasn’t a firm that was doing things in a conventional way. And I think CBL ought to have 
+recognised that there was a risk here that 1 Stop might be choosing to introduce some 
+consumers not only without them being given full regulated advice but also without them 
+having been offered full regulated advice. 
+ 
+I think this ought to have been a red flag for CBL in its dealings with 1 Stop, as it’s highly 
+unusual for regulated advice firms to be involved in execution-only transactions involving 
+pension switches to invest in high-risk esoteric investments, such as unregulated overseas 
+property investment schemes. That’s because the risks involved in such transactions are 
+unlikely to be fully understood by most people, without obtaining regulated advice. I think it’s 
+fair to say that most advice firms decline to be involved in such transactions and certainly 
+don’t transact this kind of business in volume.  
+ 
+So, I think CBL either was aware, or ought reasonably to have been aware, that the type of  
+business 1 Stop was introducing was high-risk and therefore carried a potential risk of  
+consumer detriment on this basis too. And that it ought to have viewed this as serious cause 
+for concern.  
+ 
+CBL entered into TOB with 1 Stop and, as part of this process, it was open to CBL to enquire 
+whether full regulated advice would be made available to applicants introduced to it by         
+1 Stop. Particularly given CBL has said it anticipated around 20-30 introductions per month 
+from 1 Stop, albeit I recognise it didn’t go on to receive as many as that. But no 
+correspondence I’ve seen between CBL and 1 Stop mentioned this. 
+ 
+As I’ve said, I’ve seen no evidence in this particular case that Mr C was offered and received 
+(or declined) full regulated advice on his switch to and investment in the SIPP by 1 Stop (or 
+any other regulated advisory firm). While Mr H of 1 Stop declared that he had advised Mr C 
+to take out the SIPP in the SIPP application form, Mr C said later in the form that Mr H would 
+be assisting him with – not advising him on, I note – the investments and that he intended to 
+invest in Harlequin. And Mr C went on to declare elsewhere that he was making a complex 
+investment – in Harlequin – and that he understood he hadn’t received advice from any 
+financial adviser in respect of the suitability of this investment.    
+ 
+In light of this, I think CBL was made reasonably aware that Mr C hadn’t received full 
+regulated advice from 1 Stop. CBL doesn’t seem to dispute this. Instead, it seems to have 
+accepted Mr C’s applications still on the basis that he confirmed he understood the 
+investment risks himself and wanted to proceed regardless, having chosen not to seek 
+advice on this.  
+ 
+I also think CBL ought to have been alive to the risk that an unregulated third party might 
+have been involved in promoting the Harlequin investment to investors, like Mr C. I think it’s 
+unlikely that Mr C, based on his testimony and circumstances, found out about and 
+independently determined to invest in Harlequin without any input from a third party. And 
+based on Mr C’s testimony, he was introduced to Harlequin and 1 Stop by a seemingly 
+unregulated third-party, Mr B.  
+ 
+Given CBL was aware customers like Mr C weren’t receiving any regulated advice from       
+1 Stop on their Harlequin investments, I think it ought to have had significant cause for 
+concern and that this ought to have caused CBL to consider the business it was receiving 
+from 1 Stop very carefully.  
+ 
+Mr C was switching his pension to invest entirely in an esoteric overseas investment scheme 
+– a move which was highly unlikely to be suitable for the vast majority of retail clients. And 
+ 
+ 
+given full regulated advice hadn’t been given or made available to Mr C, there was a clear 
+and obvious potential risk of consumer detriment here.  
+ 
+What fair and reasonable steps should CBL have taken in the circumstances? 
+ 
+CBL could simply have concluded that, given the potential risks of consumer detriment –  
+which I think were clear and obvious at the time – it shouldn’t have continued to accept 
+applications from 1 Stop and before it received Mr C’s application. That would have been a 
+fair and reasonable step to take in the circumstances. Alternatively, CBL could have taken 
+fair and reasonable steps to address the potential risks of consumer detriment. I’ve set these 
+out below. 
+ 
+Requesting information directly from 1 Stop 
+ 
+As part of its due diligence on 1 Stop, I think it’s fair and reasonable to expect CBL, in line 
+with its regulatory obligations, to have made some specific enquiries and obtained 
+information about 1 Stop’s business model. CBL ought to have found out more about how    
+1 Stop was operating before it accepted applications from it.  
+ 
+As set out above, the 2009 Thematic Review explained that the regulator would expect SIPP 
+operators to have procedures and controls, and for management information to be gathered 
+and analysed, so as to enable the identification of, amongst other things, ‘consumer 
+detriment such as unsuitable SIPPs’. Further, that this could then be addressed in an 
+appropriate manner ‘…for example by contacting the members to confirm the position, or by 
+contacting the firm giving advice and asking for clarification’. 
+ 
+The October 2013 finalised SIPP guidance gave an example of good practice as: 
+ 
+‘Understanding the nature of the introducers’ work to establish the nature of the firm, 
+what their business objectives are, the types of clients they deal with, the levels of 
+business they conduct and expect to introduce, the types of investments they 
+recommend and whether they use other SIPP operators. Being satisfied that they are 
+appropriate to deal with.’ 
+ 
+And I think that CBL, prior to accepting Mr C’s application, should’ve checked with 1 Stop 
+about things like: how it came into contact with potential clients, what agreements it had in 
+place with its clients, whether all of the clients it was introducing were being offered full 
+regulated advice, what its arrangements with any unregulated businesses promoting 
+investments were, how and why retail clients were interested in making these esoteric 
+investments, whether it was aware of anyone else providing information to clients, how it 
+was able to meet with or speak with all its clients, and what material was being provided to 
+clients by it.  
+ 
+The contents of the documentation we’ve seen on this complaint doesn’t suggest 1 Stop was 
+trying to mask what it was doing. As I’ve said, 1 Stop sent CBL Mr C’s Harlequin Property 
+Investments Declaration where he declared that he hadn’t had any advice from any financial 
+adviser in respect of the suitability of the investment. And, on balance, I think it’s more likely 
+than not that if CBL had checked with 1 Stop and asked the type of questions I’ve mentioned 
+earlier on in this section that 1 Stop would have provided a full response to the information 
+sought.  
+ 
+CBL says that it would have discussed 1 Stop’s business model at its initial meetings with it, 
+although it hasn’t provided any evidence to show what was discussed. CBL therefore was, or 
+should have been aware of, the significant potential risk of consumer detriment either from 
+those initial discussions with 1 Stop or more detailed discussions this ought to have led to. 
+ 
+ 
+In the alternative, if 1 Stop had been unwilling to answer such questions if put to it by CBL,    
+I think it should simply then have declined to accept introductions from 1 Stop. 
+ 
+CBL might say that it didn’t have to obtain this information from 1 Stop. But I think this was a 
+fair and reasonable step to take, in the circumstances, to meet its regulatory obligations and 
+good industry practice. 
+ 
+Making independent checks 
+ 
+I think, in light of what I’ve said above, it would also have been fair and reasonable for CBL  
+to meet its regulatory obligations and good industry practice, to have taken independent  
+steps to satisfy itself that full regulated advice was being offered to applicants like Mr C.  
+ 
+The 2009 Thematic Review Report said: 
+ 
+‘…we would expect [SIPP operators] to have procedures and controls, and to be  
+gathering and analysing management information, enabling them to identify possible 
+instances of financial crime and consumer detriment such as unsuitable SIPPs. Such 
+instances could then be addressed in an appropriate way, for example by 
+contacting the members to confirm the position, or by contacting the firm  
+giving advice and asking for clarification.’ (bold my emphasis) 
+ 
+The 2009 Thematic Review Report also said that an example of good practice was: 
+ 
+‘Requesting copies of the suitability reports provided to clients by the intermediary 
+giving advice. While SIPP operators are not responsible for advice, having this 
+information would enhance the firm’s understanding of its clients, making the 
+facilitation of unsuitable SIPPs less likely.’ 
+ 
+So I think it would’ve been fair and reasonable for CBL to speak to some applicants, like  
+Mr C, directly and to ask whether they’d been offered full regulated advice on their  
+transactions and/or seek copies of the suitability reports.  
+ 
+CBL might say it couldn’t comment on advice without potentially being in breach of its  
+permissions. Again, I confirm that I accept CBL couldn’t give advice. But it had to take  
+reasonable steps to meet its regulatory obligations. And in my view such steps included  
+addressing a potential risk of consumer detriment by speaking to applicants and/or having 
+sight of advice letters, as this could have provided CBL with further insight into 1 Stop’s  
+business model, and helped to clarify to CBL whether full regulated advice on the overall  
+proposition was being offered/given. This was a fair and reasonable step to take in reaction  
+to the clear and obvious risks of consumer detriment I’ve mentioned. 
+ 
+Had it taken these fair and reasonable steps, what should CBL have concluded? 
+ 
+If CBL had undertaken these steps I think it ought to have identified, amongst others, the  
+following risks before it received Mr C’s application: 
+ 
+• C
+onsumers were being introduced to CBL by 1 Stop without having been offered full 
+regulated advice on the overall proposition. 
+ 
+• 1
+ Stop was having business referred to it by third parties, including unregulated 
+introducers, and it was then introducing business to CBL. 
+ 
+ 
+ 
+• S
+ome consumers might have been sold on the idea of transferring pension monies so 
+as to invest in unregulated investments before the involvement of any regulated 
+parties. 
+ 
+Each of these in isolation is very serious, but cumulatively I think they demonstrate that there 
+was a significant risk of consumer detriment associated with introductions from 1 Stop. CBL 
+ought to have concluded 1 Stop had a disregard for its consumers’ best interests, and wasn’t 
+meeting many of its regulatory obligations. 
+ 
+As I’ve mentioned, the contemporaneous documentation, such as the questionnaires and 
+declarations, suggests that 1 Stop was being open about the limited service it was offering to 
+consumers like Mr C. And had CBL carried out the type of due diligence I’ve mentioned 
+above, I think it should have identified that consumers like Mr C introduced by 1 Stop hadn’t 
+been offered, or received, full regulated advice from 1 Stop on their transactions. 
+ 
+The approach 1 Stop was taking was a highly unusual role for an advisory firm to take.         
+1 Stop hadn’t discussed the specific risks associated with unregulated investments with 
+consumers like Mr C and it wasn’t advising on the suitability of the overall proposition for 
+consumers (i.e. including advice about the intended post-transfer unregulated investments). 
+This raises significant questions about the motivations and competency of 1 Stop – 
+particularly where consumers were being introduced by an unregulated third party like Mr B.  
+ 
+Had CBL taken appropriate steps in reaction to this, such as seeking clarification from some 
+applicants introduced by 1 Stop at the time, like Mr C, I think it’s more likely than not that the 
+information CBL obtained would have accorded with what 1 Stop was stating in the  
+contemporaneous documentation we’ve seen in Mr C’s complaint, and with what is stated in 
+the FCA’s 14 April 2014 Final Notice. Namely, that 1 Stop wasn’t offering consumers it was 
+introducing to CBL any advice on investing in high-risk unregulated investments, like 
+Harlequin, which investments consumers’ pension monies were being transferred to CBL so 
+as to effect. 
+ 
+I therefore think CBL ought to have concluded Mr C – and most likely applicants before him 
+– didn’t have full regulated advice on the overall proposition made available to them by         
+1 Stop. And I think that CBL ought to have viewed this as a significant point of concern. As 
+retail consumers, like Mr C were switching pension monies to CBL to invest in high-risk  
+esoteric investments like Harlequin, without the benefit of having been offered full regulated 
+advice on those investments, by an advisory business which appeared to be actively 
+avoiding its responsibility to give advice on the intended investments. 
+ 
+1 Stop was a regulated business that had permissions to advise on the establishment of a  
+SIPP, the switch of monies into that SIPP and where monies would be invested post-
+transfer. But I think that from very early on CBL was aware, or ought to have been aware, 
+that 1 Stop wasn’t a firm that was doing things in a conventional way. 
+ 
+As I’ve said, it’s unusual for regulated advice firms to be involved in transactions involving 
+transfers to a SIPP to invest in high-risk esoteric investments, such as Harlequin, where no 
+advice is being given by that firm on the esoteric investments. That’s because the risks 
+involved in such investments are unlikely to be fully understood by most people, without 
+obtaining regulated advice. I think it’s fair to say that most advice firms decline to be involved 
+in such transactions. This ought to have been a red flag for CBL in its dealings with 1 Stop. 
+And I think CBL ought to have identified that there was a risk that 1 Stop was choosing to 
+introduce consumers without their having been offered full regulated advice. I think CBL 
+ought to have viewed this as a serious cause for concern – this was a clear and obvious 
+potential risk of consumer detriment in this case. 
+ 
+ 
+ 
+And I think CBL should have concluded, and before it accepted Mr C’s business from           
+1 Stop, that it shouldn’t accept introductions from it. I therefore conclude that it’s fair and  
+reasonable in the circumstances to say that CBL shouldn’t have accepted Mr C’s application 
+from 1 Stop. 
+ 
+CBL didn’t act with due skill, care and diligence, organise and control its affairs responsibly,  
+or treat Mr C fairly by accepting his application from 1 Stop. To my mind, CBL didn’t meet its 
+obligations or good industry practice at the relevant time, and allowed Mr C to be put at  
+significant risk of detriment as a result. 
+ 
+CBL’s due diligence on Harlequin and what it should have concluded 
+ 
+As I’ve said, CBL had a duty to conduct due diligence and give thought to whether to permit 
+the investments within its SIPP. That’s consistent with the Principles and the regulators’ 
+publications as set out earlier in this decision. And this is also seemingly consistent with 
+CBL’s own understanding of its obligations at the relevant time given that, amongst other 
+things, it has said the following in respect of Harlequin: 
+ 
+• It had been accepting the Harlequin investment within its SIPPs from September 
+2009.  And that by the time of Mr C’s Harlequin investment in May 2010, Harlequin 
+literature had already been assessed for other clients.  
+• Harlequin had been an established trading company since 2001 with positive returns 
+on investment. There was no cause for cause or for it to be considered an 
+unallowable investment, until 2013 as highlighted by the FCA.  
+• It carried out a CreditSafe check on the investment in March 2010, which provided a 
+very good credit worthiness score, relevant as of January 2010.  
+• It had investment allowability criteria. 
+• It reviewed Harlequin’s accounts from January 2010. While the information available 
+showed this was a non-standard investment, it was showing positive returns at the 
+time so met CBL’s criteria in respect of liquidity. And, in respect of the valuation of 
+Harlequin, it based this on the information in the company accountancy reports. 
+• It understood the potential risks, which is why it highlighted to customer’s that this 
+was a non-standard investment and asked clients to complete a declaration 
+evidencing they understood the risks and what was involved yet wanted to proceed 
+on the basis it was a direct investment and they weren’t receiving advice, including a 
+property questionnaire and direct investment questionnaire.  
+ 
+I can also see that, on another case against CBL with our Service involving the Harlequin 
+investment, CBL provided us with emails between its Managing Director and Harlequin 
+Sales Director from 9 March 2010. CBL has said that these showed there was ongoing 
+dialogue about the structure of the investment and ensuring there would be no issues that 
+HMRC may treat it as property. In the emails, CBL said, amongst other things that: 
+ 
+• ‘[CBL’s] main concern is that SIPP investors have a fairly good idea from the outset 
+on how they are going to fund the total purchase’ (my emphasis). And that it 
+understood 30% was payable by initial deposit and that the SIPP is able to borrow 
+funds, but only up to 50% of the net asset value.  
+• Harlequin had told it that the purchase price of a unit is generally well below final 
+market value, with substantial growth in values in practice. And that Harlequin had 
+previously told CBL about examples of current and final values on completion and of 
+prices properties were currently being sold at. CBL said it understood that with that 
+sort of growth there was ample scope for SIPPs to borrow to complete the purchase 
+and keep within the limit of 50% of net asset value. And, in two places in its email, 
+ 
+ 
+CBL asked Harlequin for any evidence to support the valuations (i.e. the values 
+given in the verbal examples previously provided to CBL).  
+• Harlequin had told CBL that should capital growth not be sufficient for the SIPP to 
+borrow the full balance to complete the purchase, then Harlequin could arrange a 
+loan for the individual investors. There would be joint ownership between the SIPP 
+and individual though in that case and loans would be available on that basis.  
+• CBL asked Harlequin to confirm its understanding was correct. 
+ 
+It seems that rolling up payments until completion and the lending Harlequin said it could 
+arrange for individuals to fund the remaining balance were some of the main selling points of 
+the investment. And I think it’s clear from the above that CBL had concerns about how 
+investors were going to fund the remaining balance. CBL was clearly aware that individual 
+investor’s had potential liability for this, where the SIPP was only being used to fund the 30% 
+deposit. And, as a result, CBL was seeking further evidence and reassurance from Harlequin 
+as to this and the funding Harlequin had said it could arrange.  
+ 
+While I can see Harlequin told CBL in response that sales prices were showing enormous 
+growth, that it invited CBL to its offices to prove this was the case and that Harlequin 
+confirmed CBL’s understanding in respect of funding, having carefully considered the 
+information made available to us to date, I don’t think CBL’s actions went far enough or that 
+CBL reached the correct conclusion.  
+ 
+I’m not satisfied CBL undertook sufficient due diligence on Harlequin before it decided to 
+accept the investment into its SIPPs. As such, in my view, CBL didn’t comply with its 
+regulatory obligations and good practice, and it didn’t act fairly and reasonably in its dealings 
+Mr C, by not undertaking sufficient due diligence on the Harlequin investment before it 
+accepted his application to invest in this. Further, based on what CBL knew or ought to have 
+known had it undertaken sufficient due diligence, I think it failed to draw a reasonable 
+conclusion on accepting this investment into its SIPPs, for the following reasons.  
+ 
+Despite CBL’s concerns, it seems to have accepted what Harlequin told it in response 
+without seeking or being given any further evidence in support of the sales values and 
+growth levels it had been provided with in order to satisfy itself as to this and the likelihood of 
+the SIPP being able to borrow enough to complete the purchase while keeping within the 
+limit of 50% of net asset value, for example, in the way I think it should have. And I can’t see 
+that CBL asked Harlequin for any supporting information or evidence surrounding the 
+lending it said it could arrange for consumers either. 
+ 
+I note that the declarations and questionnaires contained wording to try to make customers 
+aware that, for example, if borrowing wasn’t available in future or increases weren’t sufficient 
+to support the borrowing needed, then they would be required to personally pay the balance 
+and that they were asked to declare that they had arrangements in place for this and that 
+CBL wasn’t liable for any losses. However it’s unclear when some of these were introduced. 
+The Direct Investment Questionnaire seemingly wasn’t introduced until December 2009, 
+after CBL had already begun to accept applications to invest in Harlequin. And, in any event, 
+I don’t think it’s reasonable for CBL to have sought to simply circumvent the concerns it had 
+identified via such declarations to look to protect itself from the risks. Particularly when I think 
+it’s clear that CBL still had concerns about how consumers would be able to fund the 
+remaining payments, despite Harlequin’s reassurances as to available borrowing.  
+ 
+There doesn’t appear to have been any real exploration by CBL as to whether a consumer 
+could secure the funds needed from any source to meet contractual obligations and make 
+staged payments. While CBL said in the declaration that there is a section in its property 
+questionnaire for a customer to indicate how they expected to finance the purchase and 
+there was a space in Mr C’s for him tell CBL how he would fund the remainder of the 
+ 
+ 
+purchase price, no details were provided as to this in Mr C’s case and I can’t see that CBL 
+queried this any further with him or 1 Stop to satisfy itself as to this concern.  
+ 
+I’m not saying that CBL should have provided advice, but it should have ensured no 
+consumer detriment by sense checking the transaction overall. Had CBL asked made further 
+enquiries into how customers intended on making the stage repayments, asked Harlequin 
+for more information about the lending arrangements that it said were available to it and for 
+evidence of the sales values and growth levels, then I think that CBL would likely have 
+received confirmation of its concerns in light of what I’ve explained above in ‘What 
+happened’ in respect of Harlequin. And such declarations in the absence of CBL satisfying 
+itself as to the viability of the borrowing arrangements advertised to allow customers to 
+complete the investment isn’t reasonable where there’s a real risk of customer detriment.  
+ 
+In my opinion, the issues I’ve identified above should have, when considered objectively, put 
+CBL on notice that there was a significant risk of consumer detriment. And, without more 
+evidence to ensure the investment was an appropriate one to permit within its SIPPs, I’m 
+satisfied CBL shouldn’t have accepted the Harlequin investment into its SIPPs. The above 
+emails that CBL had with Harlequin were in March 2010, prior to Mr C’s application and 
+investment was made. And, in any event, I think these were the sort of enquiries CBL ought 
+reasonably to have made before permitting the Harlequin investment into its SIPPs. Had it 
+done so, I think it’s likely to have received the same or similar responses from Harlequin that 
+it did.  
+ 
+And, based on what was or what ought reasonably to have been known at the time, CBL 
+ought to have drawn the conclusion I’ve set out. It ought to have identified significant points 
+of concern, which ought to have led it to conclude it should not accept the Harlequin 
+investment. It ought to have identified that there was a high risk of consumer detriment here. 
+And it’s the failure of CBL’s due diligence that’s resulted in Mr C being treated unfairly and 
+unreasonably. 
+ 
+To my mind, CBL didn’t meet its regulatory obligations or good industry practice at the  
+relevant time. I think it’s fair and reasonable to conclude that CBL didn’t act with due skill,  
+care and diligence, and it didn’t treat Mr C fairly, by accepting the Harlequin investment in his 
+SIPP.  
+ 
+There’s a difference between accepting or rejecting a particular investment for a SIPP and  
+advising on its suitability for the individual investor. I accept that CBL wasn’t expected to, nor 
+was it able to, give advice to Mr C on the suitability of the SIPP and/or investment for him 
+personally. To be clear, I’m not making a finding that CBL should have assessed the  
+suitability of the investment for Mr C.  
+ 
+So my finding isn’t that CBL should have concluded that Mr C wasn’t a candidate for high  
+risk investments. It’s that CBL should have concluded the investment wasn’t acceptable  
+for its SIPPs and it thereby failed to treat Mr C fairly or act with due skill, care and diligence  
+when accepting the Harlequin investment into his SIPP. 
+ 
+I think it’s important I emphasise here that I’m not saying that CBL should necessarily have  
+discovered everything that later became known had it undertaken sufficient due diligence  
+before accepting the investment into its SIPP. But I do think that appropriate checks  
+would have revealed some fundamental issues which were, in and of themselves, sufficient  
+basis for CBL to have declined to accept the Harlequin investment in its SIPPs. 
+ 
+Summary of my findings on due diligence 
+ 
+ 
+ 
+To be clear, even if I thought CBL had undertaken adequate due diligence on 1 Stop and 
+acted appropriately in accepting Mr C’s business from it (which, as I’ve explained earlier, I 
+don’t), I’d still consider it fair and reasonable to uphold Mr C’s complaint on the basis that 
+CBL didn’t act with due skill, care and diligence, organise and control its affairs responsibly, 
+or treat Mr C fairly, by accepting the Harlequin investment into his SIPP.  
+ 
+I make this point here to emphasise that while I’ve concluded both that CBL shouldn’t have 
+accepted Mr C’s business from 1 Stop and also that it shouldn’t have accepted his 
+application to invest in Harlequin, had I only reached the conclusions I’ve set out above on 
+one of those aspects and not also gone on to reach findings on the other aspect for 
+completeness, I'd still consider it fair and reasonable in all the circumstances to uphold this 
+complaint. That’s because CBL didn’t act with due skill, care and diligence, organise and 
+control its affairs responsibly, or treat Mr C fairly by accepting his business from 1 Stop. And 
+because, separately, CBL also didn’t act with due skill, care and diligence, organise and 
+control its affairs responsibly, or treat Mr C fairly, by accepting the investment into his SIPP. 
+And to my mind, CBL didn’t meet its regulatory obligations or good industry practice at the 
+relevant times, and allowed Mr C to be put at significant risk of detriment as a result. 
+ 
+Mr C’s investment in Mosaic Caribe investment  
+ 
+CBL had a duty to conduct due diligence and give thought to whether to accept Mr C’s later 
+investment application into Mosaic Caribe made from October 2010 onwards. That’s 
+consistent with the Principles and the regulators’ publications as set out earlier in this 
+decision.    
+ 
+I don’t think it’s necessary for me to also consider the due diligence CBL carried out into the 
+Mosaic Caribe investment though, given my conclusion that CBL failed to comply with its 
+regulatory obligations and good industry practice by permitting the Harlequin in its SIPPs in 
+the first place and when it accepted Mr C’s March 2010 applications from 1 Stop to invest in 
+this.  
+ 
+I’m satisfied that CBL wasn’t treating Mr C fairly or reasonably when it accepted his 
+application to switch to a SIPP to invest in Harlequin. Mr C’s application to take out the SIPP 
+in March 2010 was to make the Harlequin investment (as mentioned on the SIPP application 
+form) and, for reasons I’ll come on to below, if that had been declined then his application to 
+open the SIPP and switch his pension would not have gone ahead, his CBL SIPP would not 
+have been opened, his pensions would have stayed where these were and I think it’s 
+unlikely the Harlequin and Mosaic Caribe investments would have been made.  
+ 
+So I’ve not gone on to consider the due diligence CBL has said it carried out on the Mosaic 
+Caribe investment and whether this was sufficient to meet its regulatory obligations.   
+ 
+Did CBL act fairly and reasonably in proceeding with Mr C’s instructions?  
+  
+CBL has said that it was reasonable to proceed in the light of the indemnity, as Mr C signed 
+forms confirming he was relying on his own decisions or financial advice when making the 
+investments, that he was solely responsible and that CBL didn’t give him any advice. And 
+that Mr C also declared that he understood how the investment worked and possible pitfalls.  
+For the reasons given above, I think CBL should have refused Mr C’s application from          
+1 Stop and/or refused to permit the Harlequin investment within its SIPPs. So things 
+shouldn’t have progressed beyond that. 
+ 
+The indemnity 
+ 
+ 
+ 
+The indemnity sought to confirm that Mr C was aware the investment was high risk, that he 
+accepted responsibility for the outcome and would not hold CBL liable for any losses he may 
+incur.   
+ 
+In my view it’s fair and reasonable to say that just having Mr C sign indemnity declarations 
+wasn’t an effective way for CBL to meet its regulatory obligations to treat him fairly, given the 
+concerns CBL ought to have had about his introduction and the intended investment. 
+CBL knew that Mr C had signed forms intended to indemnify it against losses that arose 
+from acting on his instructions. And, in my opinion, relying on such indemnities when CBL 
+knew, or ought to have known, Mr C’s dealings with 1 Stop and the intended investments 
+were putting him at significant risk wasn’t the fair and reasonable thing to do. In the 
+circumstances I think very little comfort could have been taken from the declaration 
+stating that Mr C understood the investment risks.  Having identified the risks I’ve mentioned 
+above, it’s my view that the fair and reasonable thing to do would have been to refuse to 
+accept Mr C’s applications. 
+ 
+The Principles exist to ensure regulated firms treat their clients fairly. And I don’t think the 
+paperwork Mr C signed meant that CBL could ignore its duty to treat him fairly. I’m satisfied 
+that indemnities contained within the contractual documents don’t absolve CBL of its 
+regulatory obligations to treat customers fairly when deciding whether to accept or reject 
+business. 
+ 
+I’m satisfied that Mr C’s SIPP shouldn’t have been established and the opportunity to 
+execute investment instructions or proceed in reliance on an indemnity shouldn’t have arisen 
+at all. And I’m firmly of the view that it wasn’t fair and reasonable in all the circumstances for 
+CBL to proceed with Mr C’s applications. 
+   
+COBS 11.2.19R  
+  
+CBL has said that it’s an execution only SIPP provider and it might say that COBS 11.2.19R 
+obliged it to execute investment instructions. As I’ve said though, it wasn’t fair and 
+reasonable for CBL to have accepted Mr C’s applications in the first place. So his SIPP 
+shouldn’t have been established and the opportunity to execute investment instructions 
+shouldn’t have arisen at all. 
+ 
+In any event, an argument about having to execute the transaction as a result of COBS 
+11.2.19R was considered and rejected by the judge in BBSAL. In that case Jacobs J   
+said:  
+  
+‘The heading to COBS 11.2.1R shows that it is concerned with the manner in which   
+orders are to be executed: i.e. on terms most favourable to the client. This is   
+consistent with the heading to COBS 11.2 as a whole, namely: “Best execution”.   
+The text of COBS 11.2.1R is to the same effect. The expression “when executing   
+orders” indicates that it is looking at the moment when the firm comes to execute   
+the order, and the way in which the firm must then conduct itself. It is concerned   
+with the “mechanics” of execution; a conclusion reached, albeit in a different   
+context, in Bailey & Anr v Barclays Bank [2014] EWHC 2882 (QB), paras [34] – [35].   
+It is not addressing an anterior question, namely whether a particular order should   
+be executed at all. I agree with the FCA’s submission that COBS 11.2 is a section   
+of the Handbook concerned with the method of execution of client orders, and is   
+designed to achieve a high quality of execution. It presupposes that there is an   
+order being executed, and refers to the factors that must be taken into account   
+when deciding how best to execute the order. It has nothing to do with the question   
+of whether or not the order should be accepted in the first place.’  
+  
+ 
+ 
+So I’m satisfied that Mr C’s SIPP shouldn’t have been established and the opportunity to 
+execute investment instructions or proceed in reliance on an indemnity shouldn’t have arisen 
+at all. And I’m firmly of the view that it wasn’t fair and reasonable in all the circumstances for 
+CBL to proceed with Mr C’s application. 
+ 
+Is it fair to ask CBL to compensate Mr C in the circumstances? 
+ 
+The involvement of other parties 
+ 
+In this decision I’m considering Mr C’s complaint about CBL. However, I accept that other 
+regulated parties were involved in the transactions complained about – 1 Stop and Mr B. But 
+our Service won’t look at complaints against 1 Stop, as it’s been dissolved and no longer 
+exists as a regulated business. We also can’t look at complaints about Mr B.  
+ 
+The DISP rules set out that when an Ombudsman’s determination includes a money award, 
+then that money award may be such amount as the Ombudsman considers to be fair  
+compensation for financial loss, whether or not a Court would award compensation (DISP 
+3.7.2R). 
+ 
+As I set out above, I think it’s fair and reasonable in the circumstances of this case to hold 
+CBL accountable for its own failure to comply with its regulatory obligations, good industry 
+practice and to treat Mr C fairly. The starting point therefore, is that it would be fair to require 
+CBL to pay Mr C compensation for the loss he’s suffered as a result of its failings. I’ve 
+carefully considered if there’s any reason why it wouldn’t be fair to ask CBL to compensate 
+Mr C for his loss, including whether it would be fair to hold another party liable in full or in 
+part. And, in the circumstances, I consider it appropriate and fair in the circumstances for 
+CBL to compensate Mr C to the full extent of the financial losses he’s suffered due to CBL’s 
+failings. 
+ 
+I accept that Harlequin, 1 Stop and Mr B might have some responsibility for initiating the 
+course of action that led to Mr C’s loss. However, I’m satisfied that it’s also the case that if 
+CBL had complied with its own distinct regulatory obligations as a SIPP operator, the 
+arrangement for Mr C wouldn’t have come about in the first place, and the loss he’s suffered 
+could have been avoided. I want to make clear that I’ve carefully taken everything CBL has 
+said into consideration. And it’s my view that it’s appropriate and fair in the circumstances for 
+CBL to compensate Mr C to the full extent of the financial losses he’s suffered due to CBL’s 
+failings. And, taking into account the combination of factors I’ve set out, I’m not persuaded 
+that it would be appropriate or fair in the circumstances to reduce the compensation amount 
+that CBL’s liable to pay to Mr C. 
+ 
+To be clear, I’m not making a finding that CBL should have assessed the suitability of the  
+SIPP or investment for Mr C. I accept that CBL wasn’t obligated to give advice to Mr C, or 
+otherwise to ensure the suitability of the pension wrapper or investments for him. Rather, I’m 
+looking at CBL’s separate role and responsibilities – and for the reasons I’ve explained,         
+I think it failed in meeting those responsibilities. 
+ 
+Mr C taking responsibility for his own investment decisions 
+ 
+Section 5(2)(d) of the FSMA (now section 1C) requires the FCA, in securing an appropriate 
+degree of protection for consumers, to have regard to, amongst other things, the general 
+principle that consumers should take responsibility for their own investment decisions. 
+Having considered this point I’m satisfied that it wouldn’t be fair or reasonable to say Mr C’s 
+actions mean he should bear the loss arising as a result of CBL’s failings. 
+ 
+ 
+ 
+For the reasons given above, I think that if CBL had acted in accordance with its regulatory 
+obligations and good industry practice it shouldn’t have accepted Mr C’s introduction from    
+1 Stop. That should have been the end of the matter – if that had happened, I’m satisfied the 
+arrangement for Mr C wouldn’t have come about in the first place, and the loss he’s suffered 
+could have been avoided. 
+ 
+As I’ve made clear, CBL needed to carry out appropriate due diligence on 1 Stop and reach 
+the right conclusions. I think it failed to do this. And merely having Mr C sign forms 
+containing declarations wasn’t an effective way of CBL meeting its obligations, or of 
+escaping liability where it failed to meet these.  
+ 
+1 Stop was a regulated firm with the necessary permissions to advise on the transactions 
+this complaint concerns. I’m satisfied that in his dealings with it, Mr C trusted 1 Stop to act in 
+his best interests. Mr C also then used the services of a regulated personal pension provider 
+in CBL. So, overall, I’m satisfied that in the circumstances, for all the reasons given, it’s fair 
+to say CBL should compensate Mr C for the loss he’s suffered. I don’t think it would be fair to 
+say in the circumstances that Mr C should suffer the loss because he ultimately instructed 
+the transactions to be effected. 
+ 
+Would Mr C’s application have gone ahead elsewhere if CBL had declined it? 
+ 
+I’ve considered whether, in the circumstances, Mr C would have gone ahead with the  
+switch and the investment if CBL had refused his applications. In Adams v Options SIPP, the 
+judge found that Mr Adams would’ve proceeded with the transaction regardless. HHJ Dight 
+says (at paragraph 32): 
+ 
+‘The Claimant knew that it was a high risk and speculative investment but  
+nevertheless decided to proceed with it, because of the cash incentive.’ 
+ 
+I recognise Mr C signed a declaration confirming he understood and accepted the level of 
+risk and wished to proceed. And that in a later letter in respect of the Mosaic Caribe 
+investment – which I mention only in reference to what Mr C would likely have done if CBL 
+had refused his March 2010 applications – Mr C said he was insistent on proceeding. But  
+Mr C was a retail customer, who doesn’t appear to work in finance or pensions from the 
+information in his SIPP application and who has said his only pension arrangement was this 
+CBL SIPP. And, as I’ve said, I think CBL was made aware Mr C hadn’t been given regulated 
+advice on the switch to make the Harlequin investment. 
+ 
+In any event, I’m not satisfied that Mr C was determined to move forward with the 
+transactions in order to take advantage of a cash incentive. I’ve not seen any evidence to 
+show Mr C was paid a cash incentive. It therefore cannot be said he was incentivised to 
+enter into the transaction. And, on balance, I’m satisfied that Mr C, unlike Mr Adams, wasn’t 
+eager to complete the transaction for reasons other than securing the best pension for 
+himself. Mr C has said that he wanted financial security in retirement and that he wasn’t 
+previously interested in changing his pensions. So, in my opinion, this case is very different 
+from that of Mr Adams.  
+ 
+Further, I don’t think it’s fair and reasonable to say that CBL shouldn’t compensate Mr C for 
+his loss on the basis of speculation that another SIPP operator would’ve made the same 
+mistakes as I’ve found CBL did. I think it’s fair instead to assume that another SIPP provider 
+would’ve complied with its regulatory obligations and acted according to good industry 
+practice, and therefore wouldn’t have accepted Mr C’s application from 1 Stop or permitted 
+the Harlequin investment. 
+ 
+On balance, I think it’s fair and reasonable to direct CBL to pay Mr C compensation in the  
+ 
+ 
+circumstances. While I accept that other parties might have some responsibility for initiating  
+the course of action that’s led to Mr C’s loss, I consider that CBL failed to comply with its  
+own regulatory obligations and didn’t put a stop to the transactions proceeding when it had  
+the opportunity to do so by declining to accept Mr C’s applications. 
+ 
+Having carefully considered all of the circumstances, I’m satisfied it’s fair and reasonable to 
+conclude that if CBL had refused to accept Mr C’s application from 1 Stop, the transactions 
+this complaint concerns wouldn’t still have gone ahead. So, overall, I do think it’s fair and 
+reasonable to direct CBL to pay Mr C compensation in the circumstances. 
+ 
+In making these findings, I’ve taken into account the potential contribution made by other  
+parties to the losses suffered by Mr C. In my view, in considering what fair compensation  
+looks like in this case, it’s reasonable to make an award against CBL that requires it to  
+compensate Mr C for the full measure of his loss. 1 Stop was reliant on CBL to facilitate 
+access to Mr C’s pension. CBL accepted Mr C’s business from 1 Stop and, but for CBL’s 
+failings, I’m satisfied that Mr C’s pension monies wouldn’t have been transferred to CBL or 
+invested in the Harlequin investment.  
+ 
+As such, I’m not asking CBL to account for loss that goes beyond the consequences of its  
+failings. I’m satisfied those failings have caused the full extent of the loss in question. That  
+other parties might also be responsible for that same loss is a distinct matter. However, that  
+fact shouldn’t impact on Mr C’s right to fair compensation from CBL for the full amount of his 
+loss. The key point here is that but for CBL’s failings, Mr C wouldn’t have suffered the loss 
+she’s suffered. As such, I’m of the opinion that it’s appropriate and fair in the circumstances 
+for CBL to compensate Mr C to the full extent of the financial losses he’s suffered due to its 
+failings, and notwithstanding any failings by other firms involved in the transactions. 
+ 
+Conclusion   
+   
+Having carefully considered all of the circumstances, I’m satisfied it’s fair and reasonable to    
+conclude that if CBL had refused to permit the Harlequin investment in its SIPPs then Mr C 
+would've retained his existing pensions and wouldn't have switched to a SIPP or 
+subsequently made the investments that he did, including the Mosaic Caribe investment. So 
+CBL should put him back in the position he would have been in.  
+ 
+I say this having given careful consideration to the Adams v Options judgments, but also  
+bearing in mind that my role is to reach a decision that’s fair and reasonable in the  
+circumstances of the case having taken account of all relevant considerations. 
+    
+As set out above, I’m satisfied that CBL should’ve declined Mr C’s applications and that any 
+subsequent investments wouldn’t have gone ahead if it had treated Mr C fairly and 
+reasonably. I’ve carefully considered causation, contributory negligence, apportionment of 
+damages and DISP 3.6.4. But in the circumstances here, I’m still satisfied it’s fair for CBL to 
+compensate Mr C for his full loss.  
+ 
+Putting things right 
+My aim is to return Mr C to the position he would now be in but for what I consider to be 
+CBL’s due diligence failings.   
+ 
+In light of the above, I think that CBL should calculate fair compensation by comparing the 
+current position to the position Mr C would be in if he hadn’t switched from his existing 
+pension plans. But for CBL’s failings I think that Mr C would've retained his existing pensions 
+and that he wouldn't have switched to a SIPP or subsequently made the investments that he 
+ 
+ 
+did, also including the later Mosaic Caribe investment. And I think the following redress will 
+put this right.   
+  
+To date, we haven’t received anything to suggest this was anything other than a defined 
+contribution plans without any guarantees attached. Neither Mr C nor CBL have disputed 
+this, despite being made aware it won’t be possible for us to amend this once any final 
+decision has been issued on the complaint. So, I’ve proceeded on the basis that there were 
+no such guarantees.  
+  
+In summary, CBL should:  
+  
+1. Obtain the current notional value, as at the date of this decision, of Mr C’s previous 
+pension plans, if these hadn’t been transferred to the CBL SIPP.  
+2. Obtain the actual current value of Mr C’s CBL SIPP, as at the date of this decision, 
+less any outstanding charges.  
+3. Deduct the sum arrived at in step 2) from the sum arrived at in step 1).  
+4. Pay a commercial value to buy any illiquid investments (or treat them as having a 
+zero value).  
+5. Pay an amount into Mr C’s CBL SIPP, so that the transfer value of this is increased 
+by an amount equal to the loss calculated in step 3). This payment should take 
+account of any available tax relief and the effect of charges. The payment should 
+also take account of interest as set out below.  
+6. Pay Mr C £500 for the distress and inconvenience the problems with his 
+pension have caused him.  
+  
+I’ve explained how CBL should carry out the calculation, set out in steps 1 - 6 above, in  
+further detail below:  
+  
+1. Obtain the current notional value, as at the date of this decision, of Mr C’s previous 
+pension plans, if these hadn’t been transferred to the CBL SIPP.  
+  
+CBL should ask the operator of Mr C’s previous pension plans to calculate the 
+current notional value of this, as at the date of this decision, had he not transferred 
+into the SIPP. CBL must also ask the same operator to make a notional allowance in 
+the calculations, so as to allow for any additional sums Mr C has contributed to, or 
+withdrawn from, his CBL SIPP since the outset. To be clear this doesn’t include SIPP 
+charges or fees paid to third parties like an adviser.  
+  
+Any notional contributions or notional withdrawals to be allowed for in the calculations 
+should be deemed to have occurred on the date on which monies were actually 
+credited to, or withdrawn from, the CB SIPP by Mr C.  
+   
+If there are any difficulties in obtaining a notional valuation from the operator of       
+Mr C’s previous pension plans, CBL should instead calculate a notional valuation by 
+ascertaining what the monies transferred away from this would now be worth, as at 
+the date of this decision, had these achieved a return from the date of transfer 
+equivalent to the FTSE UK Private Investors Income Total Return Index (prior to       
+1 March 2017, the FTSE WMA Stock Market Income total return index).  
+  
+I’m satisfied that’s a reasonable proxy for the type of return that could have been 
+achieved over the period in question.  
+ 
+I acknowledge that Mr C has received a sum of compensation from the FSCS, and 
+that he has had the use of the monies received from the FSCS. The terms of Mr C’s 
+reassignment of rights require him to return compensation paid by the FSCS in the 
+ 
+ 
+event this complaint is successful, and I understand that the FSCS will ordinarily 
+enforce the terms of the assignment if required. So, I think it’s fair and reasonable 
+to make no permanent deduction in the redress calculation for the compensation    
+Mr C received from the FSCS. And it will be for Mr C make the arrangements to 
+make any repayments he needs to make to the FSCS. However, I do think it’s fair 
+and reasonable to allow for a temporary notional deduction equivalent to the 
+payment(s) Mr C actually received from the FSCS for a period of the calculation, so 
+that the payment(s) ceases to accrue any return in the calculation during that period. 
+ 
+As such, if it wishes, CBL may make an allowance in the form of a notional 
+withdrawal (deduction) equivalent to the payment(s) Mr C received from the FSCS 
+following the claim about 1 Stop, and on the date the payment(s) was actually paid to 
+Mr C. Where such a deduction is made there must also be a corresponding notional 
+contribution (addition), at the date of my final decision equivalent to all FSCS 
+payment(s) notionally deducted earlier in the calculation.  
+ 
+To do this, CBL should calculate the proportion of the total FSCS’ payment(s) that it’s 
+reasonable to apportion to each transfer into the SIPP, this should be proportionate 
+to the actual sums transferred in. And CBL should then ask the operators of Mr C’s 
+previous pension plan(s) to allow for the relevant notional withdrawal(s) in the 
+manner specified above. The total notional deductions allowed for shouldn’t equate 
+to any more than the actual payment(s) from the FSCS that Mr C received. CBL must 
+also then allow for a corresponding notional contribution (addition) as at the date my 
+final decision, equivalent to the accumulated FSCS payment(s) notionally deducted 
+by the operators of Mr C’s previous pension plan(s). 
+ 
+Where there are any difficulties in obtaining notional valuations from the previous 
+operators, CBL can instead allow for both the notional withdrawal(s) and 
+contribution(s) in the notional calculation it performs, provided it does so in 
+accordance with the approach set out above. 
+ 
+2. Obtain the actual current value of Mr C’s CBL SIPP, as at the date of this decision, 
+less any outstanding charges.  
+  
+This should be the current value as at the date of this decision.  
+  
+3. Deduct the sum arrived at in step 2) from the sum arrived at in step 1).  
+  
+The total sum calculated in step 1) minus the sum arrived at in step 2), is the loss to 
+Mr C’s pension provisions.   
+  
+4. Pay a commercial value to buy Mr C’s share in any investments that cannot currently 
+be redeemed.  
+  
+I’m satisfied that Mr C’s CBL SIPP only still exists because of the illiquid investments 
+that are held within it. And that but for these investments Mr C’s monies could have 
+been transferred away from CBL. In order for the SIPP to be closed and further SIPP 
+fees to be prevented, any remaining investments need to be removed from the 
+SIPP.  
+  
+To do this CBL should reach an amount it’s willing to accept as a commercial value 
+for the investments, and pay this sum into the SIPP and take ownership of the 
+relevant investments.  
+  
+ 
+ 
+If CBL is unwilling or unable to purchase the investments, then the actual value of 
+any investments it doesn’t purchase should be assumed to be nil for the purposes of 
+the redress calculation. To be clear, this would include their being given a nil value 
+for the purposes of ascertaining the current value of Mr C’s SIPP in step 2).  
+  
+If CBL doesn’t purchase the investments, it may ask Mr C to provide an undertaking 
+to account to it for the net amount of any payment the SIPP may receive from these 
+investments. That undertaking should allow for the effect of any tax and charges on 
+the amount Mr C may receive from the investments, and any eventual sums he 
+would be able to access from the SIPP. CBL will need to meet any costs in drawing 
+up the undertaking.  
+  
+5. Pay an amount into Mr C’s CBL SIPP, so that the transfer value of this is increased 
+by an amount equal to the loss calculated in step 3). This payment should take 
+account of any available tax relief and the effect of charges. The payment should 
+also take account of interest as set out below.  
+  
+The amount paid should allow for the effect of charges and any available tax relief. 
+Compensation shouldn’t be paid into a pension plan if it would conflict with any 
+existing protections or allowances.  
+  
+If CBL is unable to pay the compensation into Mr C’s SIPP, or if doing so would give 
+rise to protection or allowance issues, it should instead pay that amount direct to her. 
+But had it been possible to pay into the plan, it would have provided a taxable 
+income. Therefore, the compensation should be reduced to notionally allow for any 
+income tax that would otherwise have been paid.  
+  
+The notional allowance should be calculated using Mr C’s actual or expected 
+marginal rate of tax in retirement at his selected retirement age.  
+  
+It’s reasonable to assume that Mr C is likely to be a basic rate taxpayer at his 
+selected retirement age, so the reduction would equal 20%. However, if Mr C would 
+have been able to take a tax-free lump sum, the reduction should be applied to 75% 
+of the compensation, resulting in an overall reduction of 15%.  
+  
+Neither CBL nor Mr C have disputed that this is a reasonable assumption, despite 
+being given the opportunity to do so in response to my provisional decision and being 
+made aware that it won’t be possible for us to amend this assumption once any final 
+decision has been issued on the complaint.  
+  
+6. Pay Mr C £500 for the distress and inconvenience the problems with his pension 
+have caused him.  
+  
+In addition to the financial loss that Mr C has suffered as a result of the problems with 
+his pension, I think that the loss suffered to Mr C’s pension provision has caused him 
+distress. Mr C lost most of his CBL SIPP pension provision when he was in his 50’s 
+and I think it’s unlikely he can afford such a loss, so I think this is likely to have 
+caused him worry. And I think that it’s fair for CBL to compensate him for this as 
+well.  
+ 
+CBL must also provide the details of its redress calculation to Mr C in a clear, simple format. 
+  
+SIPP fees  
+  
+ 
+ 
+If the investment/s can’t be removed from the SIPP, and because of this it can’t be closed 
+compensation has been paid, then it wouldn’t be fair for Mr C to have to pay annual SIPP 
+fees to keep the SIPP open. So, if the SIPP needs to be kept open only because of the 
+illiquid investments and is used only or substantially to hold that asset, then any future SIPP 
+fees should be waived until the SIPP can be closed.  
+ 
+Interest 
+ 
+The compensation resulting from this loss assessment must be paid to Mr C or into his 
+SIPP within 28 days of the date CBL receives notification of Mr C’s acceptance of my final 
+decision. Interest must be added to the compensation amount at the rate of 8% per year 
+simple from the date of my final decision to the date of settlement if the compensation isn’t 
+paid within 28 days. 
+ 
+My final decision 
+For the reasons given, my final decision is that this complaint is upheld and Curtis Banks 
+Limited must calculate and pay fair compensation to Mr C as set out above. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr C to accept or 
+reject my decision before 14 August 2024. 
+  
+ 
+   
+Holly Jackson 
+Ombudsman

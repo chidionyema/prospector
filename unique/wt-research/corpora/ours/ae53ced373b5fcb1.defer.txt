@@ -1,0 +1,17 @@
+Clean Truck Check files for California fleet SaaS teams.
+
+A fleet SaaS founder connects a truck's telematics; the tool emits the CARB Clean Truck Check attestation file the carrier uploads before the deadline.
+
+California's Clean Truck Check, enforced by CARB since January 2024, requires heavy-duty diesel trucks operating in-state to pass an annual emissions check using odometer and usage attestations. Carriers pay a $50 per-truck fee and face non-compliance penalties that can bar a truck from operation, with phase-in through 2026 adding new vehicle classes each year.
+
+Fleet management SaaS vendors — Motive, Samsara and Geotab at the top, plus a long tail of smaller ELD and telematics platforms — already log the mileage, fuel and inspection data their carrier customers care about. The CTC attestation file is a natural by-product of that data, but converting it to CARB's CSV-or-JSON layout with the right odometer attestation language and per-truck position is a chore each vendor maintains in custom code, reworked with every CARB bulletin update.
+
+The tool widens what is normally an annual manual CARB portal upload into an always-on attestation pipeline. The fleet SaaS founder connects to the truck's telematics stream (Motive, Samsara, Geotab APIs or generic OBD-II ELDs), the tool continuously pulls odometer reads, checks against CARB's CTC category thresholds and emits the attestation file when the carrier hits a compliance window, also flagging CARB bulletin updates so the vendor's automation stays current.
+
+The defensibility is technical IP — the conversion library across telematics schemas into the CARB CTC layout — plus a per-bulletin update pack that compounds. Motive's built-in CTC integration announced in 2024 is the strongest incumbent, but it is a walled feature available only to Motive's own customers; every other fleet SaaS vendor is Motive's direct competitor and cannot use it, which is the long tail the tool serves. CARB continues the phase-in through 2026 with additional vehicle classes.
+
+Distribution is partner-led: a telematics API partner or ELD reseller refers customers into the CTC attestation pipeline they don't natively support, paid per vehicle.
+
+Founder or product lead at a fleet management SaaS serving California motor carriers — Series A to mid-market, with telematics or ELD ingestion as the core product.
+
+CARB began enforcing non-compliance penalties in early 2024, and the rollout adds more vehicle classes in 2025; each fleet SaaS vendor without a native CTC integration now has a hard deadline on the calendar.

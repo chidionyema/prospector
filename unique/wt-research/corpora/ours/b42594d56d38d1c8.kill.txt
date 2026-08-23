@@ -1,0 +1,19 @@
+RepayFight — the fixed-fee service that fights your Carer's Allowance repayment bill.
+
+A fixed-fee, done-for-you service for family carers who got a DWP letter demanding thousands back in Carer's Allowance, that builds the case to cut or clear the bill.
+
+Carer's Allowance has a hard cliff edge, not a taper. Earn one pound over the weekly limit and the DWP can claim back the whole payment for that period, not just the pound. Many carers keep getting paid for months or years after their earnings crept over the line, because nobody at the DWP flagged it at the time. Then a letter arrives asking for money back, sometimes tens of thousands of pounds, built up over years the carer had no idea they were breaching the rule.
+
+This is not a one-off problem. The DWP has been matching Carer's Allowance claims against HMRC's real-time earnings data much faster than before, and MPs on the Work and Pensions Committee have been pushing the department to speed up recovery further after years of criticism for letting debts pile up unnoticed. Faster, harder enforcement is the whole point of the current push. That means more carers get a letter, and each one is emotionally and financially blindsided in the same way: confused, ashamed, and facing a debt they cannot easily query alone.
+
+The service is a fixed-fee, structured engagement, not open-ended advice. A carer sends their DWP overpayment notice and a short earnings history. The operator reconstructs the timeline against HMRC and DWP records, checks whether the carer told the DWP about a change in circumstances that was never acted on (grounds for an official-error argument under the overpayment recovery rules), and drafts the mandatory reconsideration request and, if needed, the appeal bundle for the First-tier Tribunal's Social Entitlement Chamber. Every case processed adds to a private, growing record of which arguments and evidence framings actually get DWP decision-makers to reduce or write off a debt, which most volunteer advisers never get to see across enough cases to spot the pattern.
+
+This only works solo because the product is a fixed, repeatable document pipeline: intake questionnaire, RTI/DWP timeline reconstruction, templated reconsideration letter, templated appeal bundle, one video call to check the story. AI drafts the first pass of each document from the case file; the operator's judgement is spent on picking the right argument and tone for each case, not on retyping the same letter from scratch.
+
+A family carer, usually managing a fluctuating part-time or gig income alongside caring duties, who has received a DWP overpayment notice for Carer's Allowance, typically for an amount from a few hundred pounds up to five figures.
+
+Faster HMRC-to-DWP earnings data matching means overpayment notices are being generated in larger numbers and further back in time. The Work and Pensions Committee has publicly pressed the DWP to pursue recovery more aggressively after criticism for letting debts build for years, and the earnings limit rose in April 2025, which is fixing the rule going forward but does nothing for the backlog of carers already being chased for money paid under the old, harsher cliff-edge threshold.
+
+The passages confirm Carer's Allowance overpayments exist and are being reviewed, but none show carers actively searching for or paying a third party to fight these bills — they point instead to free official/charity channels (gov.uk, Carers UK advice hub).
+
+The threshold rose to £196/week from April 2025 and again to £204/week from April 2026 [d0e87915fcd47fa9][ad4f33c62df00587], meaning the specific old, lower cliff-edge that generated the historical overpayment cases has already been superseded, not something currently active. The debt-pile figure [94ab9f60af44d9ab] is dated 'last year' with no year given, so it cannot establish that the enforcement wave is happening right now rather than being a stale prior-year statistic.

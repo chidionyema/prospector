@@ -1,0 +1,13 @@
+ThermoScope – The Home Energy Intelligence Kit.
+
+A DIY thermal audit kit that gives owners of hard-to-heat UK homes a room-by-room energy waste map and a prioritized retrofit plan, building a proprietary performance database that improves recommendations with each test.
+
+First-principles: Home improvement is crippled by trust—generic calculators and biased installer assessments discourage action. By providing a physical, independent thermal baseline, we turn anxiety into a high-confidence action plan, analogous to how 23andMe gave health insights without a doctor visit.
+
+UK owners of pre-1919 homes or solid-wall properties (the squeezed middle), who face the highest heat loss and most contradictory retrofit advice.
+
+The energy price cap rose 54% in 2022/23 and remains volatile; the government’s ‘Great British Insulation Scheme’ launched in 2023 but is widely mistrusted after the Green Homes Grant failures, creating a gap for an impartial, data-first approach.
+
+Passages mention a similar DIY kit and a free AI energy audit alternative but do not address whether the proprietary thermal dataset is durable, commoditised, or evaporating.
+
+HomeBoost already offers a DIY energy audit kit with a thermal camera and professional review, directly serving the same homeowner need at a similar price point, so a dominant incumbent exists.

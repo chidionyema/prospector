@@ -1,0 +1,134 @@
+DRN-5017164 
+ 
+ 
+The complaint 
+ 
+T is a company registered in Gibraltar, and it has brought this complaint through its director, 
+whom I’ll refer to as Mr H. T complains that Wise Payments Limited suspended and then 
+closed its account without notice and that it did not explain why it had done so.  
+What happened 
+T was set up to deal in financial futures. Mr H has explained that it has not traded for a 
+number of years and that it is no longer regulated. The main reason it remains open is to 
+collect a debt which is owed to it.  
+In March 2023 Wise contacted Mr H seeking further information about T’s activities and 
+finances, including the source of its funding. Wise described the checks as “routine”. Mr H 
+responded to Wise’s requests almost immediately.  
+However, Wise then decided to close T’s account without notice and without giving any 
+reasons.   
+Mr H complained about Wise’s actions. He said that, in the absence of criminal or similar 
+activity, Wise had no right to restrict T’s account or to close it without notice. Further, it 
+should have explained why it had taken those steps; he said that T had acted lawfully and 
+there was therefore no justification for Wise’s failure to do so.      
+Wise did not agree and said that it had acted fairly. It did however offer T £50 in recognition 
+of some administrative failings. Mr H did not accept the offer and referred the matter to this 
+service.  
+One of our investigators considered what had happened. Initially, he recommended that 
+Wise increase its offer to £150, but then reconsidered that conclusion and indicated that he 
+thought Wise’s offer of £50 had been fair after all. Mr H asked that an ombudsman consider 
+T’s complaint and issue a formal decision.       
+I did that and issued a provisional decision, in which I said: 
+Banks and other account providers have certain legal and regulatory duties. To meet those 
+obligations, they may in some cases review accounts, and are generally entitled to restrict 
+them while they carry out a review. In some cases, they may be under a duty to do so.  
+Further, it is generally for banks to decide whether to provide, or to continue to provide, 
+account services to any particular customer. They can exercise their commercial discretion 
+in such matters and, as long as that discretion is exercised legitimately, this service won’t 
+usually intervene.  
+Wise has provided little information about its reasons for restricting and then closing T’s 
+account. I have therefore considered what the account terms say about those matters. I 
+have not however been provided with the account terms which applied at the time of the 
+restriction and account closure. I have assumed that the current terms (which were last 
+
+ 
+ 
+revised in May 2024) are broadly similar – but Wise will be able to direct me to any 
+significant differences.  
+Clauses 8.2 and 8.3 of the current business account terms say that the customer must not 
+misuse Wise’s services, and provides a wide-ranging list of activities which might constitute 
+misuse.   
+The business account terms say, at clause 8.4: 
+“We may suspend your Wise Account or your access to our Services. We may suspend 
+your profile or Wise Account, or restrict its functionality if we have reasonable concerns 
+about: 
+• (a) the security of your Wise Account or your profile. 
+• (b) suspected unauthorised or fraudulent use of your Wise Account or our Services; 
+or 
+• (c) suspected violations of this Agreement or the Additional Documents, including our 
+Acceptable Use Policy.” 
+Clause 8.5 says: 
+“We will give you notice of any suspension or restriction and the reasons for such 
+suspension or restriction as soon as we can, either before the suspension or restriction is put 
+in place, or soon after, unless notifying you would be unlawful or compromise our reasonable 
+security measures.”  
+Clause 8.6 includes a non-exhaustive list of actions which Wise might take if any of the 
+actions listed in clause 8 have been taken by the customer. They include immediate closure 
+or suspension of the account.    
+Clause 9 deals with account closures and includes, at clause 9.7: 
+We may end this Agreement by giving you two months’ notice. We may terminate this 
+Agreement and close your Wise Account or any Services associated with it by giving you 
+two months’ prior notice, where required. 
+As I have indicated, Wise does not appear to suggest that T has misused the account or that 
+it had any of the concerns referred to in clause 8.4. Nor has it identified any reason why it 
+should not tell T why the account was restricted; clause 8.5 therefore appears to require it to 
+give reasons for any restriction, although not for closing the account.  
+Clause 9 does however allow for closure on two months’ notice – whether or not the 
+customer has misused the account and whether or not Wise has any of the concerns 
+referred to in clause 8. That is, it can close an account for purely commercial reasons and in 
+the legitimate exercise of its own discretion, as long as it gives two months’ notice of its 
+intention to do so. 
+Based on the evidence I have seen, therefore, my current view is that Wise was within its 
+rights to close the account but that it should have given T two months’ notice of its intention 
+to do so.  
+I have therefore considered what impact its failure to give notice had on T. As I have 
+indicated, T was no longer trading, and had not done so for some years. Mr H has said that 
+he did not try to open a new account, since it was unlikely that it would be possible for a 
+Gibraltar company which was not trading […] to do so. I accept that is the case. 
+ 
+ 
+Mr H has said too that the company was funding litigation. If it can no longer do so (since it 
+has no account), he will have to pay legal fees from his personal funds. That will make it 
+more difficult or impossible to recover VAT on those fees. I think that is probably true as well. 
+However, that would have been the case even if Wise had acted as it should have done and 
+given two months’ notice of closure.  
+In conclusion, therefore, whilst I am not persuaded that Wise acted fairly in this case, I do 
+not believe that T has suffered any actual financial loss or any material inconvenience as a 
+result – and certainly none which would merit an award of compensation. I therefore leave it 
+to T to decide whether to accept Wise’s settlement offer, assuming it is still open.   
+Wise accepted my provisional decision. Mr H, on behalf of T, did not, so I have reviewed the 
+matter and his further submissions, which I’ll discuss below. 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+Mr H made two main points in response to my provisional decision. He noted that I said that 
+Wise had not suggested the account had been misused or that it had any of the concerns 
+referred to in clause 8.4. But in fact Wise’s final response letter had said it had acted in line 
+with clauses 8.4 and 8.5 when it had “deactivated” the account.   
+I understand Mr H’s point here. In my view, “deactivation” could mean suspension or closure, 
+depending on the context. But the reference to the account being deactivated, together with 
+the reference to clause 8.4, suggests the account was being suspended. But the reality, as 
+Mr H knew at the time, was that it was being closed with immediate effect. The point I was 
+making in my provisional decision was not that Wise had not referred to clause 8.4 at all, but 
+that it had not shown that it had any of the concerns listed there. It is that which led me to the 
+provisional conclusion that Wise should have given notice before closing the account.   
+The second point which Mr H made was that he had received a fee note in respect of legal 
+proceedings dated 8 June 2023, which included VAT of £170. Had Wise given two months’ 
+notice of closure, it is likely that T’s account would still have been open at that point and it 
+would have been able to pay the fee note.     
+Again, I understand Mr H’s argument. It appears that the decision to close T’s account was 
+taken in early May 2023, so it’s possible that it would still have been open in June. Had the 
+account still been open, it’s possible too that T could have made the payment (although, 
+since it was no longer trading, it would have required funding from somewhere else) and 
+recovered the VAT element – assuming of course it was registered for VAT in the UK.  
+Even if all those criteria were met, however, I do not believe that I can properly make an 
+award in T’s favour. Mr H says that, because T could not pay the fee note, he has had to do 
+so. That is, any financial loss has fallen on him, rather than on T. But, in the context of a 
+complaint brought by T, I can only make an award in favour of T. I have no power to make 
+an award in favour of Mr H.  
+My final decision 
+For these reasons, my final decision is that I do not uphold T’s complaint.  
+Under the rules of the Financial Ombudsman Service, I’m required to ask T to accept or 
+reject my decision before 9 October 2024.   
+ 
+ 
+Mike Ingram 
+Ombudsman

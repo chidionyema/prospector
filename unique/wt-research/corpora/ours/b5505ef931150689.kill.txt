@@ -1,0 +1,25 @@
+FeeBack — the delivery rider’s missing pay recovery service.
+
+Scans your Deliveroo and Uber Eats earnings for underpayments from app glitches, then gets the money back.
+
+FeeBack is a fixed-fee service that audits a delivery rider’s past earnings statements from platforms like Deliveroo and Uber Eats. Riders upload their weekly payment breakdowns and provide a log of trips they took. FeeBack’s engine cross-checks for common errors: cancelled orders that weren’t paid correctly, miscalculated distance fees, missing boost or surge payments, and duplicate deductions. It then generates a ready-to-submit dispute pack with evidence tailored to each platform’s claims process. The rider pays a flat fee of £5 per recovered £20, only if the service gets money back.
+
+This borrows the way medical claims auditors comb through hospital bills line by line to recover overcharges—an approach that works because the payer (the platform) has opaque, bug-prone systems and the rider lacks the time to argue every small error. As the service accumulates data on recurring glitches and effective arguments, it compiles a proprietary playbook that makes claims faster and harder for platforms to reject. That dataset is the moat—no competitor can copy the pattern-matching heuristics without processing thousands of claims.
+
+The service operates purely online, uses OCR and template engines to automate most of the work, and can be run by a single person with AI assistance. Distribution is through social media channels popular with UK delivery riders, such as TikTok and Reddit communities, where riders share tips on maximising earnings.
+
+Self-employed delivery riders in the UK who use apps like Deliveroo, Uber Eats, or Just Eat. They pay a small fraction of the recovered amount, so the cost is affordable from their tight weekly budget.
+
+The UK gig delivery market is maturing, and riders are increasingly vocal about algorithm-driven pay erosion. Platforms have no incentive to fix every payment glitch because the cost of chasing small sums is too high for an individual rider. Meanwhile, advances in document parsing AI make it possible for a solo operator to build a scalable audit pipeline without manual data entry.
+
+None of the passages say whether riders are underpaid by app glitches, whether recovering that pay stays worthwhile, or whether a free or bundled tool has already taken that margin. They only touch sports videos, an inDrive ad, a Deliveroo signup page, a rights-focused gig-platform audit, and tax compliance.
+
+The passages describe UK gig work, food delivery apps, and named platforms such as Deliveroo, but none name a provider that already audits rider pay statements or recovers underpayments at scale. They therefore do not show whether this niche is open or already dominated.
+
+The passages show UK delivery riders and Uber drivers on low pay (£12/hour before costs; “low pay and exploitation”) but never say whether riders can or will pay a third party to recover underpayments. The wage-deduction and recovered-wages tax passages do not address rider budget or willingness to buy this service.
+
+Passages describe UK delivery-rider hubs and forums where riders gather for tips, support, and pay discussion, plus active London rider posts—so a reachable channel to those buyers exists. One group bans self-promotion, but other rider communities and forums are shown without that block, so a workable route remains.
+
+The passages cover unpaid wages and employment dispute routes, plus that claims-management firms may need FCA approval, and a general gig-worker employment guide. None of them say whether a fee-based audit-and-dispute service for Deliveroo or Uber Eats rider underpayments can be run without breaking law or platform rules.
+
+The passages cover customer parcel complaints, Deliveroo consumer offers and ordering, and a video on Deliveroo pay-rate updates for riders. None state that riders face underpayments from app glitches or that anyone is paying to recover missing earnings.

@@ -1,0 +1,13 @@
+UC Taper Trap.
+
+A flat‑fee, done‑for‑you report service that shows a Gen Z gig worker on Universal Credit exactly how many hours to work to maximise their disposable income, by reverse‑engineering the benefit taper with a proprietary net‑income simulator.
+
+lens: invert (the government publishes rules but structurally cannot give advice on how to legally game them). Friction: a Gen Z worker on Universal Credit sees their earnings wiped out by the 55% taper and work allowance rules, yet has no tool to calculate the optimum work pattern that balances UC, tax, and net pay. Change: the taper rate reduction to 55% (2021) and the expansion of the Administrative Earnings Threshold create a more complex incentive landscape. The service inverts the government’s free “benefit calculator” by modelling multiple what‑if scenarios and delivering a personalised recommendation sheet that a regulated benefits agency could never publish because it would look like incitement to reduce work effort.
+
+Gen Z gig workers or freelancers who receive Universal Credit and have some irregular monthly income (e.g., £400‑£1,200/month).
+
+With the post‑pandemic restart, many Gen Zers are mixing part‑time gig work with UC for the first time; ignorance of the taper is costing them hundreds of pounds annually, and the DWP’s own calculators only show current entitlement, not forward‑looking optimisation.
+
+The Universal Studios passages are about a film/theme-park company and have no bearing on Universal Credit or benefit optimisation. The DWP passages only confirm that DWP administers Universal Credit and other benefits — they say nothing about whether a taper-optimisation report retains durable value or is already commoditised by existing tools.
+
+The passages show entitledto and other free government-backed calculators already do the exact optimisation task the candidate claims is open: they compute entitlement and explicitly show 'how your benefits will be affected if you start work or increase your hours' [8972a122deef9c9b], which is forward-looking work-pattern impact, not just a static snapshot. Multiple free, well-established tools (entitledto, GOV.UK-linked calculators) already occupy this exact niche for UC claimants, so the space is not shown to be underserved.

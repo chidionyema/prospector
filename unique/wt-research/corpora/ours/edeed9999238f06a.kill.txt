@@ -1,0 +1,23 @@
+Handover Audit — the due-diligence agency that checks the staff a cleaning or security contractor inherits under TUPE before they sign.
+
+A specialist audit agency that checks the staff a cleaning, security or catering contractor is about to inherit under TUPE, the way an HPI check screens a used car before you buy it.
+
+When a contract cleaning, security guarding or catering company wins a new contract, UK law usually forces it to take on the outgoing contractor's staff under TUPE, the Transfer of Undertakings Regulations. The outgoing employer must send an Employee Liability Information disclosure 28 days before the switch, listing who is transferring, their pay, and their disciplinary and grievance history. In practice that disclosure is often late, thin or wrong, because the people writing it are the same people being checked.
+
+Handover Audit is a small team of employment-law-trained auditors and payroll forensic accountants that a contractor owner hires for a fixed fee before signing a contract. They cross-check the ELI paperwork against real payroll data, holiday accrual records and Working Time Regulations exposure, and flag National Minimum Wage underpayment risk, pending tribunal claims and holiday pay miscalculations the outgoing contractor didn't disclose. This borrows the way a car buyer pays for a full HPI history check before handing over money, and applies the same before-you-buy logic to the staff a contractor inherits when it wins a facilities contract.
+
+Each audit adds another outgoing contractor's track record to Handover Audit's own file: which facilities firms chronically under-disclose ELI, which routinely miscalculate holiday pay for zero-hours cleaners, which have unresolved SIA licensing gaps for security staff. That pattern data only exists because the agency has run dozens of these audits across the same small pool of national and regional facilities contractors, so a new entrant starting from zero can't quote the same risk price on day one.
+
+A contractor could rely on the outgoing employer's own ELI disclosure for free, but that document is written by the party whose past pay practices are being investigated, so it structurally can't be trusted as the check itself. A generic employment solicitor can review one transfer, but without the cross-contractor history they price each audit from scratch, and can't tell a client 'this particular outgoing contractor has underpaid holiday pay on its last four handovers.'.
+
+The owner or commercial director of a mid-sized cleaning, security guarding or contract catering company, typically 20 to 150 staff, who is about to take on a new site and inherit its incumbent's workforce under TUPE, and who needs to know the real cost before signing the contract with the client.
+
+HMRC's National Minimum Wage enforcement naming rounds have repeatedly featured cleaning, security and hospitality contractors, so incoming employers now inherit that back-pay exposure automatically under TUPE. The Supreme Court's 2022 ruling in Harpur Trust v Brazel changed how holiday pay must be calculated for irregular-hours and zero-hours staff, leaving many outgoing contractors with under-accrued holiday liabilities that are only now surfacing as facilities contracts come up for re-tender.
+
+The passages describe TUPE's legal mechanics (ELI content, due diligence definition, transfer rules) but contain no evidence of anyone actively searching for or paying for a specialist handover-audit service — no search demand, no paid alternatives, no communities discussed.
+
+The passages give aggregate Soft FM market size (£16.7bn-£17.67bn) and generic cleaning-industry margin benchmarks (10-28%), but say nothing about whether individual mid-sized contractor owners have discretionary budget or motive to pay for a TUPE due-diligence audit specifically. Thin single-digit-to-20s margins could as easily argue against spare cash for a new professional-services line item as for it, so no directed inference is safe.
+
+The passages describe trade association memberships and generic tender/procurement mechanics for facilities management, none of which mention any channel for selling a TUPE due-diligence audit service to contractor owners.
+
+The passages show TUPE's Employee Liability Information disclosure and its underlying data are a routine, regulated part of a transfer, with established lawful mechanisms (Data Protection Act/GDPR guidance) for sharing that information between employers, and an existing commercial market for ELI audit checklists (be518f4703e97d72). Nothing in the passages indicates that a third party reviewing this data on a client's behalf would require breaking the law.

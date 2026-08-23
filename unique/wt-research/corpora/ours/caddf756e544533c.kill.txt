@@ -1,0 +1,33 @@
+Skill Escrow, banks unspent NHS study leave for later.
+
+A fixed-fee service that converts an NHS or council worker's expiring training budget into a booked, funded qualification before the financial year wipes it out.
+
+Every NHS trust, school and council allocates staff a personal training or study leave budget. It is use-it-or-lose-it. On 31 March the unspent money vanishes back to the employer, and the worker gets nothing.
+
+Staff lose this money constantly. A ward nurse cannot get study leave approved because the rota is short. A council planner never finds a course that matches the internal course code the finance system will accept. A teacher's CPD allocation goes unclaimed because the request form needed a line manager signature in February.
+
+Skill Escrow is a paid service, not software. For a fixed fee of about £180 the worker sends us their payslip band, their employer, and their goal. We find the accredited course their specific employer's policy will fund, we write the business case in the exact language that policy uses, we get the purchase order raised before the year-end cut-off, and we book a delivery date that fits their actual rota. If the claim fails, they pay nothing.
+
+This borrows the way ticket brokers work a use-it-or-lose-it airline voucher: the value is not in the course, it is in knowing which of hundreds of employer-specific rules unlocks the money and when the internal deadline really falls. NHS Education for England, Health Education England legacy funding streams, apprenticeship levy transfers under the Finance Act 2016, and each trust's own study leave policy all have different tests.
+
+The durable part is the policy library. Every claim we run teaches us one more employer's real approval path, real named approver role, real deadline, and real refusal reasons. After a few hundred claims across NHS trusts, multi-academy trusts and county councils we hold a body of employer-by-employer approval knowledge that no course provider and no employer has, because each employer only sees itself and each provider only sees its own bookings.
+
+A founding team can raise on this. Distribution is paid social into nursing, teaching and local government Facebook groups in January and February, plus partner deals with the accredited providers who want the bookings. The service is largely a document-generation workflow, so one operator can run many claims a week.
+
+Apprenticeship levy transfer work is the natural expansion: large employers must spend levy funds within 24 months or lose them to HMRC, and the same policy library maps who inside each employer can move that money.
+
+NHS band 5 to band 7 clinical staff, teachers in multi-academy trusts, and local government officers with a personal training allocation they have not spent. They pay the fixed fee themselves, out of household money, because the qualification raises their band or opens a side income.
+
+NHS and council pay is capped while training budgets are ring-fenced and separately accounted, so the money exists even where pay rises do not. The apprenticeship levy rules under the Finance Act 2016 give employers a hard 24-month expiry on unspent funds, and the March financial year-end forces a scramble every single year. Workforce shortages also mean line managers now block study leave on rota grounds more often than on cost grounds, which is exactly the objection a well-written business case answers.
+
+The passages only describe what the NHS is as a publicly funded healthcare system and how patients reach GPs, pharmacies and NHS 111; the remaining passages concern a New York marathon ballot, an implausible 'Med Bed' claim and a video streaming site, none of which touch staff training budgets [483cd12991d5db6c][c4e966d803a3bed3][cee9ac95c1574f51][39f084b4f919f4e7][c99667aee5b6e4da][a14f5bfc178736d7].
+
+The passages show pieces of the world this service operates in — an employer CPD funding request form requiring line manager approval [78c4e22d0a0fb05e], a university selling 120+ short courses [2ac112c58c14447e], and a teaching union's own professional development programme [a4d1f57630a1d4f7] — but none of these does the thing proposed: finding the course an individual employer will fund, writing the business case in that employer's language, and chasing the purchase order before the March cut-off.
+
+The passages only describe what the NHS is as a healthcare system, how to access its services, and interview-preparation products for nursing and Band 2 roles; none of them say anything about what NHS, teaching or council staff earn, what they spend on their own career development, or whether they would pay a fee of about £150 out of their own pocket. Because the evidence never touches the buyer's disposable income or willingness to self-fund training help, there is no basis to affirm or deny that this payer can and will pay £149.99.
+
+The passages describe what nursing is as a profession and that nurses make up most of the clinical workforce, and separately describe Facebook as a social network with groups and advertising tools, but none of them says anything about UK NHS, teaching or council staff being reachable there, or about how such workers would be found and sold a training-claim service. Nothing in this evidence shows a working path from this service to the people who would buy it, so the claim of an easy route to the buyer cannot be judged either way.
+
+The passages only describe that apprenticeship levy transfer funding exists and how to apply for it, and separately state general anti-bribery rules — none of them says anything about whether a paid third party may help a worker apply for employer training funds, write the business case, or take a success fee. Nothing here shows the fee-earning activity requires breaking a law or a contract, and nothing here affirms it is permitted either, so the passages simply do not address whether this margin is lawful.
+
+The passages describe what nursing is as a profession, list nursing career types, mention a Massachusetts nurses' association, point to NHS patient services like GP appointments, and include an unrelated South African booking page and a Turkish login prompt — none of them mention training budgets, study leave, course funding, or year-end deadlines. Nothing here shows that public sector staff lose training money or that anyone is paying to recover it, so the claim that this is a real and acute problem cannot be judged on this evidence.

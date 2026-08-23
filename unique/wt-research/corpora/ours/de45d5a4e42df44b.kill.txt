@@ -1,0 +1,23 @@
+RouteNote – The Mobile Music Teacher's Lesson Optimizer.
+
+A scheduling tool that minimizes travel time across a teacher's student locations by suggesting optimal lesson slots, integrating with calendar and invoicing, specifically built for peripatetic music instructors.
+
+First-principles: the real bottleneck is dead time travelling. Instead of a generic calendar, optimize the sequence of visits using a live traffic‑aware routing algorithm, and integrate billing so every optimized hour is immediately billable. The switching‑cost moat deepens as teachers embed their historical routes, student preferences, and payment schedules.
+
+Self-employed music teacher traveling to students' homes, managing 20-40 weekly students.
+
+Fuel costs remain elevated post‑2022, making travel efficiency critical. Demand for in‑home lessons has rebounded, but no current platform combines multi-stop route optimization with music teacher‑specific invoicing (e.g., bulk lesson packages, sibling discounts). A solo can target this neglected vertical just as working conditions push teachers to optimize.
+
+The passage shows Teachworks offers education scheduling with calendar views and location filters, but says nothing about travel-time minimization or multi-stop route optimization, which is the candidate's actual value. It neither affirms the routing value is durable nor shows it is commoditised or gone.
+
+The passage shows a vertical incumbent exists for solo/small-studio piano teacher software (ProgresslyAI handling lessons, students, curricula, recitals), but it says nothing about travel-time/multi-stop route optimization for mobile teachers, which is the candidate's specific need; the passage therefore does not establish whether that need is already solved or open.
+
+The passage concerns U.S. school districts using AI scheduling amid ESSER funding loss; it says nothing about whether self-employed mobile music teachers have the budget or motive to pay for a routing tool.
+
+The sole passage is a landing page for 'RationalGo', an app builder advertising a multi-location music school instrument/room allocator; it says nothing about a low-friction route, channel, or forcing mechanism for reaching self-employed peripatetic music teachers.
+
+The passage shows Teachworks openly operating commercial scheduling/calendar software coordinating teachers, students, and locations, demonstrating this activity is a lawful, openly-sold product requiring no law-breaking or data falsification. Nothing in the passage indicates the margin depends on illegality or breach.
+
+The passage advertises lesson-scheduling/billing software for tutoring businesses but says nothing about travel/dead-time between in-home visits, which is the specific pain claimed; it does not establish that mobile music teachers are paying to solve route inefficiency.
+
+The entire thesis rests on one differentiating wedge: that 'dead time travelling' between in-home lessons is a real, paid-for pain that multi-stop route optimization uniquely solves. Retrieval establishes zero grounding for that wedge. pain_reality is unverifiable (1858981c59b43837 shows Tutorbase sells lesson scheduling/billing but says nothing about travel/route inefficiency). payer_solvency is unverifiable at confidence 0.0 (348ba25e6886e264 is about US school-district ESSER budgets, irrelevant to self-employed mobile teachers; no evidence this payer will spend on a routing tool). value_durability is unverifiable (febcd7facad5bbbb, Teachworks, does multi-location education scheduling but nothing on travel-time minimization). So every check that would prove the route-optimization moat is real and monetizable came back as silence, which under source-or-die is unverifiable, never supported. Meanwhile the space the moat depends on is already occupied: a purpose-built vertical incumbent for exactly this customer exists (b5bc1f4321733cba, ProgresslyAI, 'software for solo private piano teachers, 20-80 students', already bundling scheduling + billing + student tracking), plus generic incumbents (Teachworks, Tutorbase) own the scheduling+invoicing relationship. The asserted switching-cost moat (embedded routes/preferences/payments) is therefore differentiated only by an unproven feature against vendors who already hold the lock-in. No grounded pain, no grounded payer, an unproven differentiator, and entrenched verticals owning the relationship: nothing here clears the bar to PASS.

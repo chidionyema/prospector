@@ -1,0 +1,23 @@
+CollisionBoost – The Auto Body Shop's Insurance Supplement Autopsy.
+
+A vertical tool that compares insurance estimates against a proprietary database of actual repair times and part prices, then auto-generates a bulletproof supplement request with legal justification, turning underpaid claims into full recovery for small body shops.
+
+First-principles: The raw pain is that insurance adjusters systematically underpay body shops, and shop owners spend hours fighting supplements with no guarantee. Rebuilding the supplement process into a data-driven engine that identifies missing labor operations and undervalued parts shifts power back to the shop, capturing a percentage of recovered amount or a fixed fee.
+
+Independent auto body shop owner (smb_owner, typically <10 employees) who either writes estimates themselves or directly oversees an estimator and feels the cash-flow hit from denied supplements.
+
+Insurers are increasingly using AI-powered estimate software that aggressively cuts costs, and body shops lack the data to counter. A growing justice narrative around repair shop sustainability and the availability of photo-based estimating data create an opening for an adversarial tool.
+
+The only passage that touches on durability is a generic statement that data moats can create barriers, but it does not address whether CollisionBoost's specific value in the auto body insurance supplement space is actually durable, commoditized, or evaporating. The remaining passages are irrelevant dictionary definitions.
+
+The passages discuss unrelated topics (vertical definitions, cyber insurance penetration) and contain no information about incumbents in the auto body shop insurance supplement dispute tool market.
+
+None of the provided passages address the budget or willingness to pay of independent auto body shop owners for a supplement recovery tool; they define 'vertical', discuss generic lending affordability, and mention hoteliers' AI budgets, all irrelevant to the payer segment.
+
+Passages define 'vertical' or discuss unrelated topics like enterprise CAC and vertical integration. No passage addresses distribution channels, self-serve mechanisms, or routes to independent auto body shop owners.
+
+All passages discuss definitions of 'vertical', generic compliance, or physical direction, none of which address the legality of insurance supplement generation tools.
+
+Passages discuss definitions of 'vertical', challenges of vertical AI adoption, and insurance pricing mechanisms, none of which address the specific pain of auto body shop owners fighting insurance supplement underpayment.
+
+No evidence in the provided passages supports any of the defined objective risks.

@@ -1,0 +1,13 @@
+FabQuote – The Solo Fabricator's Instant Quote Engine.
+
+A vertical AI tool that converts a 3D CAD file into a priced quotation for micro-fab shops, leveraging a growing network of actual job cost data to deliver 20% more accurate estimates each year.
+
+Micro fabrication shops (1–15 employees) waste 6–10 hours a week on manual quoting, often losing jobs to faster competitors. FabQuote ingests anonymised job-level data from its user base to continuously train an AI that learns true cost drivers across materials, geometries, and machine setups, creating a compounding accuracy advantage that no single-shop spreadsheet can replicate.
+
+Owner-operators of independent metal fabrication job shops in the UK and Ireland who personally handle quoting.
+
+Cloud-native CAD platforms like Onshape's free tier and Fusion 360's API have made CAD sharing frictionless, yet quoting remains a pen-and-paper task. Post-Brexit reshoring of manufacturing has increased demand on small shops, while materials volatility makes fixed-price quoting riskier; an AI that incorporates live metal prices and shop-floor feedback loops is now possible.
+
+The passages describe unrelated ML cost-estimation research papers and Onshape/Fusion 360 CAD licensing, with no mention of fabrication shop quoting data, network effects, or accuracy compounding from job-level data.
+
+Paperless Parts is marketed directly at the target buyer as an established 'Estimating & Quoting Software That Simplifies Your Workflow' for 'Job Shops and Contract Manufacturers,' and AYARIX already runs an AI pricing engine delivering instant quotes on infrastructure it says powers 'billion-dollar manufacturing marketplaces' — both are funded, operating rivals already serving this exact quoting-for-fabricators segment, not mere adjacent tools.

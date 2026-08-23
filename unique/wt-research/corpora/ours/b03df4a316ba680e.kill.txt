@@ -1,0 +1,21 @@
+BookedIndex, live booking pressure from other freelancers.
+
+A free tool where UK freelance creatives share their own booking status to see, in real time, how busy their peers actually are.
+
+Freelance designers, illustrators, copywriters and developers spend a lot of quiet weeks wondering if the drought is just them or the whole market. There is no way to check. The only public read on freelance demand is IPSE's quarterly Confidence Index, a lagging survey of the whole self-employed population, not a live picture of what is happening this month in, say, brand design in Manchester or motion graphics in Bristol.
+
+BookedIndex starts from that raw problem rather than from any existing tool. Once a week, a freelancer marks how booked they are — fully booked, some gaps, quiet, chasing work — for their discipline and region. In exchange they see the same picture built from everyone else who has shared theirs, broken down by niche and place. You only see the index for a segment once enough people in it have contributed, so the product only works if people put their own status in first. That reciprocity is the whole growth engine: to unlock your niche, you invite the two or three other freelancers you know in it, the same mechanic that made Glassdoor and Waze spread through direct peer referral rather than paid acquisition.
+
+The free tier shows the current pulse for your segment. The paid tier, aimed at freelancers who treat this as a business input rather than curiosity, adds trend history, an early-warning alert when your niche's booking pressure drops two weeks running, and a diversification prompt pointing at adjacent niches that are still busy. A back-end product, licensing the anonymised aggregate pulse to insurers, lenders and agencies pricing freelancer risk, is a plausible second revenue line once the panel is large enough, but the freelancer subscription is what has to work on its own first.
+
+UK freelance creatives — designers, illustrators, copywriters, videographers, developers — pay roughly £9 to £15 a month once they want the trend and alert features rather than just the weekly snapshot. They already spend on tools that reduce feast-or-famine anxiety; this gives them the one signal none of those tools currently offer, an honest read on whether their own quiet patch is normal.
+
+IPSE's Confidence Index and ONS self-employment figures both show freelance income has become more volatile since the pandemic recovery played out unevenly across creative sectors, but both are quarterly and national, not niche-level or current. Through 2024 and 2025, generative AI tools have visibly displaced parts of stock imagery, copywriting and basic design work, so freelancers are newly anxious about whether a slow month is normal seasonal noise or the start of their niche shrinking, and they have no live way to tell the difference.
+
+[1c1306b581aa6051] and [27040f32b51eac24] state that inconsistent freelance work is a genuine, widespread difficulty (66% of freelancers per Freelancers Union) and one of the most stressful parts of freelancing, showing the underlying pain is real and acute rather than a nice-to-have. Neither passage shows people paying specifically for a live peer-benchmarking signal, so the evidence supports the existence of the pain but not yet a proven willingness to pay for this exact fix.
+
+The passages list freelance invoicing/workflow tools and generic UK/global wage statistics but never state what freelancers currently spend on tools or their willingness to pay £79.99 for a booking-pressure index — no passage addresses this candidate's payer solvency.
+
+None of the passages address freelancers, booking status, referral distribution, or any UK creative-industry channel; they concern UK geography/demographics and an unrelated film called 'The Invite'.
+
+The passages describe general ICO guidance, enforcement powers, and unrelated breach examples (IoT devices, MoD, 23andMe, DPP), but none addresses whether collecting or aggregating freelancers' self-reported booking-status data is lawful, nor whether anonymised aggregation of that data avoids UK GDPR obligations.

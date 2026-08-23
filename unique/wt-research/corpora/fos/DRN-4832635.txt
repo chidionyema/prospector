@@ -1,0 +1,179 @@
+DRN-4832635 
+ 
+ 
+The complaint 
+ 
+Mr M is unhappy that Monzo Bank Ltd hasn’t refunded him after he fell victim to an 
+investment scam. 
+What happened 
+The background to this complaint is well-known to both parties and so I won’t go into great 
+detail about what happened here. 
+Mr M found an investment opportunity advertised on social media. He registered his interest 
+and was contacted by someone claiming to work for a firm which provided investment 
+advice. But Mr M had actually been contacted by scammers. 
+Not knowing this, Mr M engaged with the scammers and was persuaded to start investing. 
+As part of the process, he set up an account with Monzo and a cryptocurrency wallet (with a 
+different firm). This was all done at the instruction of the scammers. When Mr M opened the 
+Monzo account he told the bank he’d be trading in crypto. 
+Between 30 May and 6 June 2022 Mr M attempted five payments to different payees, all for 
+£2,500. Four of those were attempts to send money to different people using a money 
+transfer service. But all bounced back and were re-credited to Mr M’s account. 
+Mr M’s fifth payment was a bank transfer (faster payment) which appears to have been 
+returned to him on 17 June 2022. 
+On 20 June 2022 Mr M started to make payments to the crypto wallet he’d set up, beginning 
+with a £2,500 transfer. Over the next few weeks Mr M went on to send a total of £43,200 
+across eight payments. 
+Once the money was in Mr M’s crypto wallet it was sent on at the scammer’s instruction and 
+lost. 
+Mr M realised something was wrong when contact with who he believed to be his account 
+manager dwindled. He contacted Monzo to report the scam.  
+Monzo considered Mr M’s claim and said it wouldn’t refund him because he’d made 
+payments to a crypto wallet in his own name. It said that Mr M’s loss had been incurred from 
+that crypto wallet and not from Monzo.  
+Mr M was unhappy with Monzo’s response and so brought his complaint to our service. One 
+of our investigators considered the complaint and recommended it be upheld. He 
+acknowledged that the payments had gone to an account in Mr M’s name, which was under 
+his control, but didn’t find that absolved Monzo of any responsibility for the loss. He said it 
+ought to have recognised some of the payments as carrying a fraud risk and in turn ought to 
+have questioned Mr M about them.  
+Our investigator said the account activity had become sufficiently suspicious as to warrant 
+an intervention when Mr M made a payment of £9,900 on 15 July 2022. He noted the value 
+
+ 
+ 
+of the payment, the number of previous payments over a short period, and that it was the 
+second transfer on the same day as reasons for identifying that particular payment as 
+representing cause for concern.  
+He was persuaded Monzo ought to have stopped the payment and asked questions about 
+what was happening so it could try to ensure Mr M wasn’t falling victim to a scam. He was 
+satisfied such an intervention would have revealed the scam and prevented the loss from 
+that point on. He said Monzo didn’t act fairly and reasonably in allowing the payments to 
+continue without question and, because Mr M’s loss ought to have been prevented, it should 
+bear responsibility for it.  
+Our investigator did note that Mr M’s actions hadn’t been reasonable throughout. He didn’t 
+feel Mr M had done enough to check into the legitimacy of the investment proposal or those 
+putting it forward. And he felt there were some warning signs that all was not as it seemed, 
+but Mr M hadn’t acted on them.   
+Mr M accepted the outcome. But Monzo disagreed and so the complaint has been passed to 
+me for a final decision.          
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+Like our investigator, I’m upholding Mr M’s complaint. But I find Monzo’s intervention ought 
+to have come earlier, and so Mr M will – on acceptance of this decision – receive more of a 
+refund than that recommended by our investigator. 
+I’ve already explained this revised position to Monzo and my reasons for it. Mr M has also 
+been informed and has already expressed his preparedness to accept. And so, with that in 
+mind, I’ll broadly summarise my reasons for upholding the complaint. 
+Key considerations 
+The starting point at law is that Mr M is responsible for any transactions made from his 
+account which are properly authorised. This is set out in the Payment Service Regulations 
+(2017) as well as Mr M’s account terms and conditions. There’s no dispute here that Mr M 
+authorised the payments, albeit as part of a scam. 
+But that isn’t the end of the story. Taking into account relevant law, regulators rules and 
+guidance, relevant codes of practice, and what I consider to have been good industry 
+practice at the time, I consider Monzo ought fairly and reasonably: 
+• To have been monitoring Mr M’s account and payments to counter risks including 
+anti-money laundering, the financing of terrorism, and preventing fraud and scams; 
+ 
+• Have had systems in place to look out for unusual transactions or other signs that 
+might indicate Mr M was at risk of financial harm through fraud; 
+ 
+• In some circumstances, have taken additional steps, or made additional checks, or 
+provided additional warnings, before processing what appeared to be valid and 
+authorised payment instructions – as in practice all banks do; 
+ 
+• Have been aware of common fraud scenarios and tactics used by scammers in an 
+ever evolving landscape, including multi-stage fraud. 
+ 
+ 
+ 
+Should it be found that Monzo ought fairly and reasonably have acted to prevent a loss, 
+which could have bene avoided by such action, but didn’t then causation is established for 
+that loss. And as such it would be fair and reasonable for Monzo to compensate for that loss. 
+This position is unchanged by the use of accounts held in Mr M’s own name, as is the case 
+here, where a crypto wallet was used. In such circumstances a loss is still reasonably 
+foreseeable and preventable.   
+Should Monzo have intervened when Mr M was making payments? 
+I’m satisfied Monzo ought to have been concerned by the activity on Mr M’s account before 
+he made the first payment to his crypto wallet. Or, at least, that payment ought to have 
+crystalised concerns and led to Monzo stopping the payment to question Mr M.  
+Prior to that payment Mr M had tried and failed to send £2,500 to at least three different 
+payees. There was no explanation for what he was doing or what was going wrong. And the 
+sum he was trying to send was not insignificant. So when the exact same payment value 
+was then sent to a further new payee (with another having been attempted in the meantime), 
+I’m satisfied Monzo ought to have realised something wasn’t right. 
+In making that finding I have considered both that the account was new, and that Mr M had 
+stated on his account application that he intended to trade in crypto. But the bouncing back 
+of multiple payments in this way can’t fairly and reasonably be regarded as normal activity, 
+even on a new account. It represents a clear risk in that the customer is identifiably failing to 
+execute a payment and then altering the details to try and get it to go to someone else. 
+Those failed payments weren’t going to a cryptocurrency platform, and so the account 
+opening purpose stated has little bearing on the nature of those payments. Furthermore, 
+stating cryptocurrency as a reason for opening an account doesn’t mean a customer might 
+not fall victim to a cryptocurrency scam.  
+I can accept that it might be more difficult to detect such a scam in the circumstances, or that 
+Monzo would be less concerned by crypto activity. But it must consider the whole picture, in 
+terms of account monitoring. And I’m satisfied that the crypto payments the were preceded 
+by the failed money transfer service payments presented enough of a risk to say that Monzo 
+ought fairly and reasonably have acted and intervened.   
+What actions should Monzo fairly and reasonably have taken? 
+I’m satisfied Monzo ought to have either questioned Mr M after the repeated failed payments 
+or that it ought to have stopped the first payment to his crypto wallet. A proportionate 
+response to the evident risk would have been to speak to Mr M directly, such as through the 
+in app chat, to find out what was going on.  
+The questioning that ought to have followed would then need to be dynamic and open in 
+order to establish the circumstances behind the payments. Mr M ought to have been asked, 
+for example, why he was making the payments, what was happening to the money once it 
+credited his crypto wallet, how he’d come across the investment opportunity. This list is 
+neither prescriptive nor is it exhaustive. But it gives an idea of the sensible questions to ask 
+when the risk of financial harm through fraud is identified. 
+Would intervention have made a difference? 
+I’ve seen no evidence to suggest Mr M wouldn’t have been honest with Monzo about what 
+he was doing, or how he’d found out about the investment. He believed he was making 
+legitimate investments and was involved with legitimate parties. So there was no reason for 
+ 
+ 
+him not to share those details. As soon as he became suspicious, he shared the full details 
+with Monzo.  
+This leads me to believe it’s more likely than not Mr M would have answered Monzo’s 
+questions honestly and revealed the key details about the scam if asked. Those details, such 
+as finding the opportunity online, it being a crypto investment directed by an unknown 
+broker, and other information that would more likely than not have been revealed, would 
+have clearly demonstrated to Monzo that Mr M was caught up in a scam.  
+It follows that Monzo ought fairly and reasonably to have then delivered very strong warnings 
+against proceeding and to have highlighted the key and common features of the scam. 
+There’s nothing to suggest Mr M wouldn’t have heeded those warnings. And so his loss 
+would have been avoided. 
+Should Mr M bear some responsibility for his loss? 
+I’ve considered Mr M’s own actions throughout the scam as well as Monzo’s. My findings 
+here don’t differ from those of our investigator. Those findings have been accepted by Mr M 
+already. Monzo hasn’t objected to what’s been said on these considerations, which is 
+understandable given they establish Mr M’s responsibility for some of the loss. 
+That being the case, there isn’t an outstanding dispute as to whether Mr M ought to bear 
+some responsibility, so I won’t go on to write detailed findings.  
+In brief, I find there were signs that the investment was not all it was promised to be and 
+there were concerning features that Mr M ought fairly and reasonably to have questioned. 
+And he ought fairly and reasonably to have done more to establish the legitimacy of the 
+parties he was dealing with. 
+As I can’t say Mr M acted reasonably here, it’s fair for him to share partial responsibility for 
+his loss.       
+Putting things right 
+I’m satisfied Mr M and Monzo ought to share equal responsibility for the loss. Mr M did 
+receive a small proportion of funds (£5,102) back from his crypto wallet. This should be 
+taken into account when calculating the settlement figure and can be deducted from the total 
+loss amount (applied before the 50% reduction, not after).  
+On Mr M’s acceptance, Monzo should: 
+• Pay redress to Mr M to reflect 50% of his loss to the scam; 
+ 
+• Pay interest on that sum at 8% simple per year, calculated from the date of each 
+payment to the date of settlement. 
+My final decision 
+I uphold this complaint against Monzo Bank Ltd.  
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr M to accept or 
+reject my decision before 15 August 2024. 
+   
+Ben Murray 
+ 
+ 
+Ombudsman

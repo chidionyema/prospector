@@ -1,0 +1,21 @@
+StallFeeProbe – The Market Trader's Pitch Fee Challenge Service.
+
+A productized no‑win‑no‑fee service that algorithmically audits and challenges pitch fees using FOI‑derived council cost data, predicting win probability and recovering overcharges for market traders.
+
+Councils under budget pressure often inflate pitch fees beyond the cost of providing the service, violating statutory guidance. By aggregating FOI data on hundreds of councils’ true costs and building a machine‑learning model to prioritize winnable cases, we can auto‑generate legal demand letters, turning transparency law into a profit center for small traders—a classic invert of compliance tools.
+
+Independent market stall owners in high‑cost UK councils (London, Manchester, Birmingham) facing annual fee hikes and cash‑flow stress.
+
+The 2024 Local Government Finance Act pushes councils to maximize non‑tax revenue, driving aggressive fee increases; a landmark 2023 tribunal ruling affirmed that fees must be ‘reasonably reflective’ of costs, creating a clear legal opening for algorithmic challenge services.
+
+None of the passages address pitch/stall fees relative to council cost recovery in a way that shows durable margin: one shows a fee freeze (not overcharging), one references a US 'full cost recovery' fee study (not UK pitch fees), and the rest are general UK inflation/budget items with no connection to market trader pitch fees or FOI-derived cost audits.
+
+None of the passages describe any existing service that audits or challenges market pitch fees against council costs — they cover unrelated claims-management disclaimers, housing disrepair claims, insurance contacts, and pitch booking rules. Absent any evidence of a competitor or dominant incumbent in this specific niche, the passages simply don't address incumbency one way or the other.
+
+The passages discuss general cost-of-living calculators and traders' concerns about pitch costs and profitability, but none address whether a market trader can or will pay a £49 one-time fee for this specific challenge service. No passage gives evidence about traders' disposable budget or willingness to spend on such a product.
+
+None of the passages describe a self-serve or forcing-mechanism channel to reach market traders for a fee-challenge service; two are trader association listings, two are unrelated financial-CFD-trading platforms, and the Birmingham excerpt only states licence fee contact info, not any acquisition route for this service.
+
+The passages describe the Tax Chamber tribunal's costs regime, where each party bears its own costs except in narrow listed circumstances, meaning a trader who loses a fee challenge typically cannot recover legal costs and the operator has no fee-shifting mechanism to fund a true no-win-no-fee model off tribunal cost awards; nothing in the passages describes any FOI-based fee-challenge tribunal or margin source for this specific service.
+
+None of the passages discuss UK market traders being overcharged relative to council costs or paying to challenge pitch fees; they cover a Lymington donor paying fees, a pandemic-era fee waiver, and unrelated financial-trading content. No passage shows traders suffering from or paying to solve an overcharging problem.

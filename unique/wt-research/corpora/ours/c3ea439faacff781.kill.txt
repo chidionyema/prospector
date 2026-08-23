@@ -1,0 +1,21 @@
+GridArk, UPS kits sized to your street's power cuts.
+
+A UPS kit for developers who self-host home servers, sized using real outage data from their own street's electricity substation.
+
+GridArk sells a ready-built battery backup and power-conditioning box for developers who run real infrastructure at home: a Kubernetes cluster in the loft, a GPU box doing local LLM inference, a personal git server, a side-project SaaS running on a NUC in the cupboard. Each kit ships with a small logger that plugs into the mains and records every dip, sag and full outage, tagged to the household's exact postcode and distribution network operator (DNO) feeder.
+
+The reason this beats a plain UPS is sizing and evidence, not just battery capacity. Off-the-shelf UPS units from APC or CyberPower are sold in generic VA bands with no idea what the local grid actually does. GridArk instead asks: what does the low-voltage network on this specific street already do? UK DNOs (UKPN, Western Power, SSEN) have been reporting more localised brownouts as EV chargers and heat pumps load residential feeders unevenly through the evening peak, and their own outage maps are aggregated at postcode-district level at best, not street level. GridArk's fleet of loggers builds a live, granular picture no public source has, and that picture directly improves the next customer's recommended kit and gives existing customers an early warning ('feeders like yours have a 40% higher evening sag rate this month') a generic UPS vendor has no way to offer.
+
+The self-hosting wave among developers is the other half of the signal: rising cloud and inference API costs are pushing hobbyists and small studios back toward owning hardware, and a corrupted ZFS array or a dropped fine-tuning run from an unclean power-off is expensive in a way a laptop user never notices. GridArk turns 'buy a UPS' into 'buy the UPS built for your exact grid,' which a commodity retailer selling boxed hardware with no telemetry loop structurally cannot match — they would have to become a data company, not a hardware reseller, to catch up.
+
+UK software developers and indie hackers who run real always-on infrastructure at home — a homelab Kubernetes cluster, a local LLM inference rig, a self-hosted git/CI server, or a bootstrapped SaaS running off a NUC — and don't want a brownout to corrupt a disk array or kill a training job. Typical spend £150-£600 per kit, repeat purchase as they add nodes.
+
+UK DNOs have flagged rising low-voltage network stress from EV charging and heat pump adoption causing more frequent evening voltage sags in residential areas since 2024, while rising cloud compute and AI API costs are pushing more developers to self-host inference and infrastructure at home rather than rent it, so more of them now have something on their home network worth protecting properly.
+
+The passages show UPS demand for homelabs generally (sizing advice, product recommendations, reliability complaints) but none show demand or search behavior for street-level/DNO-feeder-specific outage data or sizing — one passage even states the local grid is 'very reliable' (99.97% uptime), undercutting the specific pain claimed.
+
+The passages describe homelab hardware/software content and general UK constitutional/geographic facts, but none discuss what homelab operators earn, spend, or are willing to pay for power-protection gear. There is no evidence here about the payer's budget or willingness to pay £49.99.
+
+The passages only show that r/homelab, r/selfhosted, and awesome-selfhosted are general community/discussion channels for homelab enthusiasts; none describe any route to sell a power-telemetry UPS product to that audience, whether via ads, partnerships, or organic posting norms. Existence of a community is not the same as an executable low-friction distribution channel for a commercial hardware kit.
+
+None of the passages address UK UPS hardware sales, telemetry data collection, or any legal restriction on logging household power data — they concern Facebook API permissions, URL schemes, and UK government data/driving-licence services.

@@ -1,0 +1,27 @@
+CarePlanAudit — the carer's fixed-fee care-plan audit and challenge pack.
+
+An independent report that scrutinises your loved one's council care plan under the Care Act and demands the support they are legally owed.
+
+When a local authority sets up a care plan for an adult with needs, it must meet the Care Act 2014's eligibility rules. Time-pressed carers often accept what they are given because challenging the council means navigating legal language, Ombudsman case law, and local assessment criteria. This service turns a carer's frustration into a structured, legally grounded audit. For a flat fee, the solo operator reviews the care plan and supporting documents, identifies specific breaches of the national eligibility framework or statutory guidance, and drafts a challenge letter that quotes the relevant regulations, local Ombudsman decisions, and the council's own published policies. The result is a pack the carer can send directly to the council to demand a reassessment or an improved package. It works because councils make mistakes under resource pressure, and a well-argued challenge often prompts a rethink before formal complaints. The operator builds a proprietary dataset of council response patterns and Ombudsman rulings to sharpen the templates over time, creating a moat that a simple template site cannot copy. This borrows the logic of the SEND tribunal appeal pack but applies it to adult social care, where no equivalent product exists yet.
+
+A primary carer for an elderly or disabled adult living in England who has been offered a care package by their local authority and believes it falls short of what the law requires. They pay directly for the report to avoid the cost and delay of a solicitor.
+
+Local authority adult social care budgets are tighter than ever, with 87% of councils overspending according to the Association of Directors of Adult Social Services in 2024. Care plans are being minimised, but the Care Act's duty to meet eligible needs remains. The Local Government and Social Care Ombudsman is upholding more complaints about inadequate care plans, and online carer forums are full of confusion about how to push back. A productized challenge pack meets a growing demand.
+
+Passages publish multiple how-to guides on challenging care-needs assessments, care reductions, and local-authority care decisions, which shows people are already being directed to solve this exact problem now. Free advice and carer support content on the same topic counts as demand, including commoditised demand.
+
+Passages dated to 2025–26 report councils projecting a £623m adult social care overspend—the highest at this point in the year since Covid—and a rising share of authorities overspending into 2024/25, with ADASS still pressing for funding changes in its Autumn Budget Representation 2025. That shows the funding squeeze behind squeezed care packages is live now, not a finished past episode.
+
+Passages show joinable online carer and caregiver communities where unpaid carers and families already gather for support and resources. A novice can reach those buyers by joining those open groups rather than needing a closed or expert-only channel.
+
+The passages state that giving legal advice—including in writing—is not a reserved legal activity, so anyone may do it. The listed reserved activities (court advocacy, litigation conduct, probate, and similar) do not cover reviewing a care plan and drafting a challenge letter, so this fee-based audit pack does not need illegality to earn its margin.
+
+The candidate’s core ADASS claim that 87% of councils overspent on adult social care is contradicted by the passage stating 80% overspent in 2024/25. Related passages do confirm rising adult social care overspends and intensifying ADASS-reported financial pressure, but that does not rescue a specifically asserted figure the sources contradict.
+
+Unpaid carers—the stated payers—are shown under serious money pressure: 1.2 million live in poverty and 400,000 in deep poverty in the UK, and Carer’s Allowance is only £81.90 a week. That evidence undercuts the idea that this group has spare budget to buy a paid care-plan audit.
+
+Passage bf36a6be40993e0f describes an existing Parents and Carers group for people navigating Adult Social Care together. That is a reachable gathering of the exact buyers this offer targets, so a workable path to them already exists.
+
+The passages show adult social care complaint routes and a small set of upheld or partly upheld external-provider complaints about care quality, carer behaviour, or commissioning, plus a Care Act duty to review support plans. They never show carers suffering from inadequate Care Act care plans specifically, nor anyone paying now for an audit or challenge pack.
+
+Passages state that giving legal advice in writing is not a reserved legal activity under the Legal Services Act 2007, so a paid care-plan audit and challenge letter is not banned (284c1aeb40443e66, b43a4efda639263c, cc2ec3837f026f15). No passage states what it costs to acquire one buyer relative to the £30 fee, and none names a single firm that controls most of the path to carers.

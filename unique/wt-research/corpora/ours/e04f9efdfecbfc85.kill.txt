@@ -1,0 +1,17 @@
+CalCloud compliance docs for California state contractors.
+
+Connects to your cloud environment and auto-generates the architecture diagrams, config evidence and screenshots your CalCloud quarterly security review requires.
+
+Companies selling SaaS to California state agencies through CalCloud must complete quarterly security reviews, providing architecture diagrams, screenshots, configuration evidence and access controls documentation. DevOps leads and engineering managers currently spend 2-5 days per quarter assembling this manually, at $150-250/hour. A service that connects to their cloud environment and continuously generates and updates CalCloud review documentation eliminates that recurring work. The deliverable is a ready-to-submit documentation package: auto-generated architecture diagrams, pulled configuration evidence, screenshots and access control documentation updated continuously rather than assembled quarterly. This is defensible because the CalCloud-specific documentation patterns and quarterly review requirements are knowledge that compounds — each review filed teaches the system what CalCloud's reviewers expect, building a library no new entrant can replicate without the same filings.
+
+DevOps leads and engineering managers at ISVs selling SaaS products to California state government agencies via CalCloud, who currently pay their teams 2-5 days per quarter to assemble documentation manually, or hire consultants at $150-250/hour.
+
+California's quoterly CalCloud security review requirement is a permanent, recurring compliance obligation for any vendor on the California Department of Technology's approved vendor list. As more state agencies migrate to CalCloud, the population of required vendors grows. The California Department of Technology administers CalCloud and publishes the review requirements; it is a durable, structural buyer trigger.
+
+The passages contain general information about California (geography, population, state services) and unrelated topics (Google Translate, Visual Studio formatting). None mention CalCloud, quarterly security reviews, California state cloud procurement, DevOps documentation burden, or any spending by vendors on compliance documentation assembly, so the existence and acuteness of this pain is not established.
+
+The passages cover California's geography, state history, and general government services (DMV, taxes, state parks) but do not mention CalCloud, quarterly security reviews, compliance documentation, or any vendor budget or spending.
+
+The passages contain only general California geographic and economic facts plus unrelated eToro marketing material; none mention CalCloud, the California Department of Technology's vendor review process, or any channel through which a compliance-documentation product could reach state-agency SaaS vendors.
+
+None of the provided passages address CalCloud's terms, the California Department of Technology's vendor requirements, or any legal or contractual restriction on third-party tools connecting to vendor cloud environments to generate compliance documentation; they contain only general AWS marketing and incident information, so the legality question cannot be resolved from this evidence.

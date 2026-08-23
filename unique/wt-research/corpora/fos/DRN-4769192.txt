@@ -1,0 +1,109 @@
+DRN-4769192
+The complaint
+Ms M complains about being overcharged for a subscription by Experian Limited. Ms M also 
+complains that she was unfairly declined for a bank account due to errors with her Experian 
+credit file.
+What happened
+The background to this complaint and my initial conclusions were set out in my provisional 
+decision. I said: 
+Last year, Ms M applied for a bank account with a business I’ll refer to as H. As part of the 
+application process, H completed a credit search and attempted to verify the personal 
+details, like Ms M’s address, provided. But the application was declined and H said Ms M 
+wasn’t recorded as being registered on the electoral roll. H recommended Ms M review her 
+credit file. 
+Ms M signed up for a free trial with Experian but due to an error was charged a subscription 
+fee. 
+Ms M went on to raise a complaint about the subscription charges incorrectly applied and 
+being declined on the basis she wasn’t recorded on the electoral roll. 
+Experian issued a final response and agreed Ms M had been incorrectly charged for her 
+subscription and a refund was made. But Experian advised that Ms M’s address, as 
+recorded by her local authority for electoral roll registration purposes, differed to the one 
+used by H when completing its credit search. As a result, Ms M’s electoral roll registration 
+wasn’t found by H. 
+An investigator at this service asked Experian to pay Ms M £205 to reflect the incentive she 
+would’ve received from H if her account application had been successful. Experian didn’t 
+agree and said the reason Ms M’s electoral roll information wasn’t found by H was due to the 
+address format it had used when carrying out a credit search. 
+Experian made a counteroffer of £100 but didn’t agree to pay Ms M the value of the £205 
+incentive she missed out on. Ms M didn’t accept and confirmed she wanted £205 to resolve 
+the complaint. As the parties haven’t accepted the investigator’s view, Ms M’s complaint has 
+been passed to me to make a decision. 
+What I’ve provisionally decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I can understand Ms M’s surprise that she was charged for her subscription despite being 
+part of a free trial. I’m pleased Experian was quickly able to issue a refund to put Ms M back 
+into the correct position. In my view, that fairly resolved the subscription issues Ms M 
+experienced. 
+
+The main focus of Ms M’s complaint appears to be about the bank account application that 
+was declined leading to her missing out on the incentive with H. Our remit is to try and put 
+the customer back into the position they would’ve been in had no error been made by the 
+respondent business. But we have no powers to award compensation where no mistake has 
+been made. So for me to award Ms M £205 in respect of the incentive she missed out on, I’d 
+have to be satisfied, on balance, that it was Experian’s actions that led to the loss. 
+Experian has provided us with evidence of the way Ms M’s address is recorded by her local 
+authority for electoral roll purposes. Experian has also provided evidence of the address 
+format used by H when carrying out a credit search which differs. The local authority uses 
+the format of street number/flat number then road name. The word “flat” isn’t used by Ms M’s 
+local authority when recording her electoral roll registration with Experian. But the address 
+format used by H when completing its credit search was Flat number followed by the street 
+number then the road name. 
+So whilst I understand H wasn’t able to see Ms M was registered on the electoral roll when it 
+carried out a credit search, I’m satisfied that was caused on the basis of the differing address 
+format it used as opposed to the way her electoral roll information is recorded by the local 
+authority. I haven’t seen anything that shows the failure to see Ms M’s electoral roll 
+registration was caused by a mistake by Experian. 
+Ms M has the option of contacting her local authority to see whether it’s able to amend the 
+way it reports her address for electoral roll registration purposes so it matches the other 
+format used. 
+I note that once Ms M contacted Experian it advised she could add the different address 
+formats to her profile which would link the credit file she sees to her electoral roll details. But 
+Ms M should be aware that when third parties, like H, carry out a credit search the address 
+format used could impact whether her electoral roll registration is found or not. 
+As I haven’t found evidence that supports errors by Experian led to Ms M’s application with 
+H being declined I’m unable to agree it would be fair to tell it to compensate her for the £205 
+incentive she missed out on. 
+Experian has agreed to pay Ms M £100 for the overall distress and inconvenience caused. 
+I’m satisfied that’s a fair way to resolve Ms M’s complaint, so don’t intend to increase the 
+award further. 
+Ms M responded and explained she felt the compensation should reflect the poor levels of 
+service she’d received from Experian, including time spent on the phone and multiple errors 
+it made. Ms M also said that she disagreed that it’s her responsibility to contact the local 
+authority concerning the format of her address. Ms M says other credit reference agencies 
+were able to find her address and that she remained of the view that the error lies with 
+Experian. 
+Experian responded to confirm it was willing to settle by paying Ms M £100. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+In response, Ms M has explained that other credit reference agencies were able to find her 
+address using the format she’s provided. Here, Experian has both the address formats 
+recorded on Ms M’s profile. But when H completed the credit search, it used the format 
+noted in the provisional decision which gave a flat number then street number and road 
+name. That format was significantly different to the way Ms M’s address is recorded by her 
+local authority for electoral roll registration. And I’m satisfied that the difference between the 
+address formats is why the electoral roll registration wasn’t found when H completed a credit 
+search in support of Ms M’s application – as Experian claims. 
+To put it another way, had H used the same address format as Ms M’s local authority uses 
+to record her electoral roll registration, I’m satisfied Experian would most likely have been 
+able to confirm the details during the application process. 
+Ms M’s told us she doesn’t feel it is her responsibility to contact the local authority to amend 
+the address format it reports for electoral roll purposes. I gave that information to let Ms M 
+know she had that option, but it’s her decision whether to do so. As I noted in the provisional 
+decision, if the address format used in future credit searches differs from the way her local 
+authority reports electoral roll registration it may mean it isn’t picked up. 
+Ms M’s explained she had to make various calls to Experian and that it incorrectly charged 
+subscription fees which took some time to sort out. I’ve taken everything Ms M has told us 
+into account in terms of the level of distress and inconvenience caused. In my view, £100 
+reflects the impact of the issues raised on Ms M and is a fair way to resolve her complaint. 
+I’m sorry to disappoint Ms M but I haven’t been persuaded to increase the award or tell 
+Experian to take any further action. 
+My final decision
+My decision is that I uphold Ms M’s complaint and direct Experian Limited to settle by paying 
+he £100 for the distress and inconvenience caused. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Ms M to accept or 
+reject my decision before 29 May 2024. 
+ 
+Marco Manente
+Ombudsman

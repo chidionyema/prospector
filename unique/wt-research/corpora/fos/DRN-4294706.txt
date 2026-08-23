@@ -1,0 +1,103 @@
+DRN-4294706
+The complaint
+Mr P, director of PD (a limited company) is unhappy ClearBank Limited (trading as Tide) 
+won’t reimburse PD for the money it lost when Mr P fell victim to a scam.
+What happened
+Mr P fell victim to a safe account scam. He received a text message, from a number that 
+Tide had previously contacted him on, saying that someone was trying to make a payment 
+from his account and asking him to call. Mr P says he was told that PD’s Tide account was 
+at risk and that he needed to move money to a safe account to protect it. Unfortunately, and 
+unknown to him at the time, Mr P was actually speaking with fraudsters.
+Believing that he was genuinely dealing with Tide, Mr P ended up making a payment for over 
+£2,900 from PD’s account to this ‘safe account’.
+Mr P realised he had been the victim of a scam when he didn’t get any further details of the 
+account the funds had supposedly been moved to, and reported the matter to Tide to see if it 
+could recover the funds. Tide logged the fraud and contacted the business the funds had 
+been sent to, to see if any funds remained that could be recovered. Ultimately though, Tide 
+told Mr P that it wouldn’t be reimbursing PD for the payments made from its account, and 
+that it had been unable to recover any funds.
+Unhappy, Mr P referred the matter to our service. One of our Investigators looked into the 
+complaint. Overall, they considered that while Mr P had authorised the transfer (albeit as a 
+result of a scam) Tide should have done more to intervene given that the payment was 
+unusual and had hallmarks of a scam payment. Our Investigator also considered that Mr P – 
+on behalf of PD – wasn’t partly to blame and shouldn’t bear any responsibility for the loss.
+Our Investigator recommended Tide refund the losses to PD.
+Mr P, on behalf of PD, accepted the Investigators findings, but Tide disagreed. It did not 
+consider that the payment was unusual, and noted that it had provided warnings – that the 
+payee did not match what had been input by Mr P, and via a message asking for a one-time 
+passcode – which Mr P had ignored.
+As no agreement could be reached, the case has now been passed to me for a decision.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so I’ve reached the same conclusions as our Investigator, and for the same 
+reasons. 
+It’s not disputed that Mr P authorised the payment that is in dispute here. So as per the 
+Payment Service Regulations 2017 (which are the relevant regulations in place here) that 
+
+means PD is responsible for them. That remains the case even though Mr P was the 
+unfortunate victim of a scam.
+Because of this, PD is not automatically entitled to a refund. But the regulatory landscape, 
+along with good industry practice, also sets out a requirement for account providers to 
+protect their customers from fraud and financial harm. And this includes monitoring accounts 
+to look out for activity that might suggest a customer was at risk of financial harm, 
+intervening in unusual or out of character transactions and trying to prevent customers falling 
+victims to scams.
+Taking the above into consideration, I need to decide whether Tide acted fairly and 
+reasonably in its dealings with PD, or whether it should have done more than it did.
+PD’s account had been opened in November 2022, just over two months before the disputed 
+payment. I appreciate this is a relatively short time, but during that period the account had 
+been used regular, so a picture of what was normal for the account had started to build up. 
+In general, the payments out of the account were relatively low, with the highest payment 
+being for just over £1,000. So I think that the payment made on 10 January 2023 as part of 
+this scam, for over £2,900, was relatively unusual given that it was more than double any 
+previous payment out of the account. 
+However, I agree that, on its own, this may not have been enough to say Tide should have 
+intervened. There are though several other features of the payment which mean that I think 
+Tide should have stepped in to ensure nothing untoward was happening. Specifically, as 
+well as being a high payment in the context of the account, the payment was to a new 
+payee, was being made to an account where the payee details input by Mr P did not match 
+the name on the recipient account, and almost entirely cleared the balance of the account. I 
+think this activity, as a whole and bearing in mind common features of scams which I would 
+expect Tide to be aware of, was unusual enough that Tide ought to have been alerted to the 
+possibility of financial harm and intervened.
+I acknowledge that this is a business account, which are usually operated differently to 
+personal accounts in that they deal with higher payments and new payees more often. 
+However, while keeping this in mind, with this particular business account, I don’t think the 
+payment in question was the norm.
+Considering the nature of the scam, I think a conversation about what the payment was for 
+would have quickly revealed the scam and prevented the payment being made. Mr P doesn’t 
+appear to have been given a cover story to use by the scammer, and he already though he 
+was talking to Tide, so if he’d been unable to progress with making a payment until he’d 
+been forced to speak to the real Tide, then I think he’d have been open and honest about 
+what was happening. With this in mind, I think it would be reasonable for Tide to refund the 
+payment that is in dispute here.
+I’ve thought about whether PD should bear some responsibility for its loss by way of 
+contributory negligence, but I don’t think it should. Mr P fell victim to a sophisticated scam, 
+and was contacted on what appeared to be Tide’s genuine number, as the messages he 
+received appeared in the same thread as messages known to be from the real Tide. In the 
+circumstances of the scam – including the real fear that he might lose a significant amount of 
+money – I can understand why the fraud went undetected by Mr P.
+With the benefit of hindsight, there may have been some ‘red flags’ (for example the
+mismatch in the confirmation of payee and the message sent with the one-time passcode) 
+that Mr P could’ve picked up on, particularly if he’d had more time to think. But the scam took 
+place over a short period of time and in the heat of the moment, in a pressured situation. 
+This is of course a deliberate tactic by the fraudsters to create fear – in the hope it would 
+disrupt Mr P’s thinking and make him more compliant. On balance, I’m satisfied that in the 
+circumstances Mr P’s actions were not unreasonable.
+I have also considered if Tide did enough to try to recover PD’s money once Mr P had told it 
+of the scam, but I’m satisfied that the funds had already been moved on by the scammers by 
+the time Mr P reported the fraud. So I don’t consider that Tide could have done anything 
+more.
+Putting things right
+To resolve this complaint Tide should:
+- Refund the payment – totaling £2,903.70
+- Pay 8% interest on this amount from 10 January 2023 to the date of settlement.
+My final decision
+I uphold this complaint. ClearBank Limited should put things right in the way I’ve set out 
+above.
+Under the rules of the Financial Ombudsman Service, I’m required to ask PD to accept or 
+reject my decision before 7 December 2023.
+ 
+Sophie Mitchell
+Ombudsman

@@ -1,0 +1,23 @@
+The SEN Tutor Desk.
+
+An outcome-guaranteed matching platform that connects parents of children with dyslexia or dyscalculia to specialist tutors, charging a success fee only when pre-agreed academic milestones are met, backed by a proprietary progress-tracking database and condition-specific efficacy model.
+
+Parents of children with specific learning disabilities waste months vetting unproven tutors through local word-of-mouth and see little measurable improvement. By guaranteeing outcomes (e.g., one reading-age year of progress in 12 weeks) and only collecting a fee upon milestone achievement, we align incentives, command premium pricing, and filter for the most effective tutors. The proprietary dataset of condition–intervention–outcome links makes the guarantee actuarially sound and impossible for general tutoring marketplaces to replicate without the same focused data.
+
+Parents/guardians of children with a diagnosed specific learning difficulty (starting with dyslexia, dyscalculia), who pay a success fee calculated as a percentage of the tutoring package cost upon milestone achievement.
+
+UK SEND funding shortfalls are pushing record numbers of parents toward private alternatives; post-pandemic acceptance of remote specialized tutoring; and the 2024 SEND Review White Paper has intensified demands for evidence-based, outcome-driven interventions rather than hours served. No existing platform provides a financial guarantee tied to measurable academic progress in this niche.
+
+The passages describe free resources, consultations, and existing tutoring services, but none address the durability of a proprietary outcome database or guarantee model; they neither support nor refute the claim.
+
+The passages describe tutoring methods, prevalence, and market segments but do not identify any dominant incumbent or funded rival that already solves the outcome-guarantee matching need. No evidence confirms or refutes whether the space is underserved.
+
+Passages show commercial dyscalculia tutoring services (ee9e2c416915bd19, d820129a690e4165) with parents willing to pay, demonstrating both budget and motive; affordability issues for some do not negate overall solvency.
+
+Passages describe parent word-of-mouth and resource websites but do not indicate a low-friction distribution channel for a matching platform. No forcing mechanism or self-serve route is evidenced.
+
+No passage discusses the lawfulness of outcome-guaranteed matching platforms or success fees; legality is unaddressed.
+
+Passage 1 shows parents struggle to select the right dyslexia tutor and likely hire them; Passage 2 confirms a paid dyscalculia tutoring service exists; Passage 3 reveals the current default is informal parent networks, underscoring acute pain. These demonstrate real paid demand.
+
+No objective risk vectors are present; none of the critical regulatory blocker, impossible unit economics, or incumbent monopoly conditions are evidenced in the provided sources.

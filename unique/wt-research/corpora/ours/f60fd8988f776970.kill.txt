@@ -1,0 +1,15 @@
+HopAlpha – The Nano-Brewery Hop Contract Optimizer.
+
+A mobile-first web app that helps nano-breweries (1-5 barrel) manage forward hop contracts, time spot purchases, and forecast alpha acid degradation to slash raw material waste and lock in lower prices.
+
+First-principles analysis shows nano-brewers lose 15-25% of hop value through over-ordering, unused surplus, and degradation, yet no tool models their unique contract-to-recipe workflow. By ingesting each brewery’s usage data, the tool’s proprietary degradation curves and spot-price models continuously improve, creating a predictive engine that generic supply-chain software—built for large, steady-state operations—cannot replicate.
+
+US-based nano-brewery owner-operators producing 1-5 barrel batches, self-distributing, who currently track hop inventory in spreadsheets.
+
+Hop price volatility post-2022, the USDA’s expanded small-brewer spot price reporting, and OCR/GPT-4’s ability to instantly parse unstructured purchase contracts make it feasible for a solo developer to build an enterprise-grade procurement intelligence layer for micro-breweries for the first time.
+
+The passage only shows BrewPlanner offers generic brewery inventory/recipe/scheduling software; it says nothing about whether the specific value (hop contract timing and alpha-acid degradation forecasting) is durable, evaporating, or commoditised. A mere adjacent competitor is not a refutation of durability, and nothing here affirms the positive claim.
+
+The passage shows BrewPlanner offers general brewery inventory and raw-material management, but says nothing about the candidate's specific need (hop forward-contract optimization, spot-purchase timing, or alpha-acid degradation forecasting) or the nano-tier (1-5 barrel) segment, so it neither confirms the space is open nor that an incumbent owns this exact need.
+
+The passage shows the craft brewery segment entered structural contraction in 2025 with net closures (399 closures vs 335 openings) and volumes down 4.1%, indicating the payer base is financially distressed and shrinking rather than solvent and willing to spend. It addresses the broader craft segment, not nano-tier budgets specifically, but the only evidence available points to a contracting, insolvency-prone payer.

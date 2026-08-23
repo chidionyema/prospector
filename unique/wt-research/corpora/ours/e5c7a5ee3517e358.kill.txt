@@ -1,0 +1,11 @@
+The CHC Decision Denial Forecaster.
+
+A data intelligence subscription that benchmarks local ICB CHC funding decision patterns, arming families with the statistics to contest refusal of long‑term care costs.
+
+With ICBs tightening CHC eligibility to contain costs, an invert‑minded data asset grows more valuable as rejections multiply; the regulator can never provide adversarial comparisons of its own decision‑making consistency. (invert: value grows with enforcement aggression).
+
+A retiree (or their adult child acting with their budget) facing a denied CHC assessment, needing hard evidence of local assessment bias to appeal.
+
+Post‑2022 ICB consolidation has led to widening variation in CHC approval rates across regions; FOI requests are exposing this, but no consumer‑ready intelligence product exists.
+
+[074547d127d57162] shows a free, already-live public tool that looks up ICB-level CHC approval rates by postcode with no tracking or data stored, which is the exact 'local approval-rate intelligence' product the candidate proposes to sell. A free first-party alternative already covering the core value (postcode-based local approval-rate comparison) undercuts the claim that this data asset is a durable, monetisable wedge.

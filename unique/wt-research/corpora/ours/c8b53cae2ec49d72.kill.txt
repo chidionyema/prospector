@@ -1,0 +1,23 @@
+LeakGuard, finds the revenue your Stripe billing quietly drops.
+
+A self-serve tool that plugs into a startup's Stripe account and finds revenue lost to billing bugs, before investors find it first.
+
+LeakGuard is a small tool a startup founder plugs into their Stripe account. It compares what Stripe actually charged against what the product's own logs say customers used or were entitled to, and flags every gap — a webhook that failed silently, a discount code that never expired, a usage tier that never triggered a price bump.
+
+This borrows the way phone companies run a 'revenue assurance' team that reconciles billed minutes against the network's own call logs, catching leakage that never shows up in a billing report because the billing system only knows what it billed, not what it should have billed. UK SaaS founders building on Stripe never get that second check — right up until a Series A term sheet stalls over a data-room question they can't answer.
+
+UK venture deal volumes are still below their 2021 peak, and the British Business Bank's own market data shows investors pricing in far more scrutiny before they commit. Diligence teams increasingly pull raw Stripe exports and re-derive MRR themselves rather than trust a founder's dashboard, and Stripe's own billing has grown more complex — usage tiers, proration, dunning retries — which is exactly where leakage hides.
+
+Every gap LeakGuard finds and confirms becomes a labelled leakage pattern — a specific webhook failure signature, a specific proration bug tied to a specific pricing-model shape. That library compounds across every company it runs on, so the tool gets faster at spotting new leaks with every install, in a way a single founder's own reconciliation script never could.
+
+The startup founder or first finance hire pays directly on a company card, roughly £149 to £599 a month depending on billing volume, or as a one-off pre-fundraise audit fee in the weeks before a data room opens.
+
+UK VC deal volumes remain below their 2021 peak per British Business Bank market data, so investors dig harder into revenue numbers before a term sheet; Stripe's billing has grown more complex with usage tiers and dunning retries, and that complexity is exactly where undetected leakage hides in fast-growing SaaS startups.
+
+The passages show real, quantified financial harm (involuntary churn costs 20-40% of SaaS revenue) and describe the exact failure mode LeakGuard targets — billing gaps that produce no dashboard error or alert because the failing system is the one meant to report failures. That companies already run 15-minute reconciliation workers to catch these silent gaps confirms the pain is acute enough that teams build infrastructure to solve it now.
+
+The passages cover a Google copyright line, a town budget survey, and tech-industry layoff counts — none address whether a startup founder or finance hire has £79.99 to spend or motive to buy a billing-leak audit tool.
+
+The passages show Stripe has a dashboard, a partner/app marketplace program, and a competing dunning-recovery tool with a free scanner, but none describe a self-serve channel by which a founder would discover or adopt a Stripe-reconciliation tool like LeakGuard specifically.
+
+Stripe explicitly offers products (Connect, Data Pipeline, developer APIs) for third-party apps to access billing and subscription data via API keys and webhooks with defined permissions, and existing apps like Adapty and Forminator already do exactly this to read subscription/billing data — showing that authorized API-based reconciliation is a standard, permitted integration pattern rather than a terms violation.

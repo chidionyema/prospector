@@ -1,0 +1,647 @@
+DRN-4993187 
+ 
+ 
+The complaint 
+ 
+Mr and Mrs M’s complaint is, in essence, that Shawbrook Bank Limited (the ‘Lender’) acted 
+unfairly and unreasonably by (1) being party to an unfair credit relationship with them under 
+Section 140A of the Consumer Credit Act 1974 (as amended) (the ‘CCA’) and (2) deciding 
+against paying a claim under Section 75 of the CCA. 
+What happened 
+Mr and Mrs M purchased membership of a timeshare (the ‘Fractional Club’) from a 
+timeshare provider (the ‘Supplier’) on 25 March 2013 (the ‘Time of Sale’). They entered into 
+an agreement with the Supplier to buy 7,000 fractional points (the ‘Purchase Agreement’). 
+After trading all 7,000 points in their existing timeshare (the ‘European Collection’), they 
+ended up paying £4,760 for membership of the Fractional Club. 
+ 
+Fractional Club membership was asset backed – which means it gave Mr and Mrs M more 
+than just holiday rights. It also included a share in the net sale proceeds of a property named 
+on their Purchase Agreement (the ‘Allocated Property’) after their membership term ends. 
+ 
+Mr and Mrs M paid for their Fractional Club membership by taking finance of £4,760 from the 
+Lender in both of their names (the ‘Credit Agreement’). This was paid off in October 2014. 
+ 
+Mr and Mrs M – using a professional representative (the ‘PR’) – wrote to the Lender on 4 
+December 2017 (the ‘Letter of Complaint’) to complain. They made the following points: 
+• They were told the only way out of their European Collection membership was by 
+purchasing the fractional product. 
+• They were told the Resort would be sold in December 2027 and they would recoup 
+their financial outlay plus a percentage of the profits from the sale. 
+• The Supplier has now been taken over by another company. They question who 
+would now sell the holidays since all of the sales staff were made redundant. 
+ 
+The Lender dealt with Mr and Mrs M’s concerns as a complaint and issued its final response 
+letter on 5 February 2018, rejecting it. 
+ 
+Mr and Mrs M then referred the complaint to the Financial Ombudsman Service. It was 
+assessed by an Investigator who, having considered the information on file, rejected the 
+complaint on its merits. 
+ 
+Mr and Mrs M disagreed with the Investigator’s assessment and asked for an Ombudsman’s 
+decision – which is why it was passed to me. No further comments were provided at that 
+time. 
+ 
+One of our Service’s Senior Investigators spoke to Mr and Mrs M on 1 May 2024. During that 
+conversation, they provided further comments on their purchase of Fractional Club 
+membership, including that the sale was pressured and that they weren’t given a cooling off 
+period in which to consider and cancel their purchase. 
+ 
+
+ 
+ 
+I issued a provisional decision on this case dated 24 July 2024, in which I set out my 
+reasoning as to why I didn’t think the complaint should be upheld. We’ve now received both 
+parties’ responses and so I’m finalising my findings within this final decision. 
+ 
+I have summarised my provisional decision below: 
+ 
+• In relation to alleged misrepresentation at the Time of Sale, I hadn’t seen sufficient 
+evidence to say that, on the balance of probabilities, there were any false statements 
+of fact made to them by the Supplier as alleged. So, as I didn’t think there was an 
+actionable misrepresentation by the Supplier, I didn’t think the Lender acted unfairly 
+or unreasonably when it declined Mr and Mrs M’s Section 75 claim. 
+• Mr and Mrs M said the Supplier had been taken over by another company, which 
+seemed to me to be a suggestion that the sale of the Allocated Property in the future 
+may be jeopardised by this. But, I noted that Mr and Mrs M had already relinquished 
+their membership in December 2016 and I said it would seem that any breach of 
+contract (if that occurs) lies in the future and is currently uncertain. So, based on 
+what I’d seen so far, I didn’t think the Lender was liable to pay Mr and Mrs M any 
+compensation for a breach of contract by the Supplier. 
+• Some of Mr and Mrs M’s points didn’t fall neatly into a claim under Section 75 of the 
+CCA. So, I then turned to consider their remaining points under Section 140A. 
+• The first of those points was that Mr and Mrs M suggested they were pressured into 
+making their purchase. But they had provided little evidence to support this. I also 
+noted that they were given a 14 day cooling off period, and what they had said 
+indicated that they were aware from previous sales that they could decline to make a 
+purchase. I wasn’t therefore persuaded that their credit relationship with the Lender 
+was unfair to them for that reason. 
+• Mr and Mrs M also suggested the product was sold to them as an investment. I 
+provisionally concluded that while it was possible it was marketed and sold to them 
+as an investment, I didn’t think it was likely in this case that the Supplier breached the 
+prohibition on selling timeshares as investments, based on the lack of evidence 
+provided to support that allegation. 
+• I also said that even if I was wrong about the membership being sold as an 
+investment, I wasn’t currently persuaded that the investment element(s) of the 
+membership were important enough to Mr and Mrs M’s purchasing decision to render 
+their credit relationship with the Lender unfair to them if the membership had, in fact, 
+been sold as an investment. 
+• Lastly, Mr and Mrs M also said they weren’t given a cooling off period for their 
+purchase. But, I explained in my provisional decision that I could see the 14 day 
+cooling off period was available to them and that this was clearly set out on the face 
+of the loan agreement, signed by Mr and Mrs M. And, their testimony indicated that 
+copies of the relevant documentation was sent to their home following the sale. So, I 
+didn’t think this was a reason to uphold the complaint either. 
+• So, overall, I intended to reject the complaint because I didn’t think that the Lender 
+acted unfairly or unreasonably when it dealt with Mr and Mrs M’s Section 75 claim, 
+and I wasn’t persuaded that the Lender was party to a credit relationship with Mr and 
+Mrs M under the Credit Agreement that was unfair to them. 
+ 
+The Lender responded to my provisional decision and confirmed they had nothing further to 
+add. 
+ 
+ 
+ 
+The PR responded on Mr and Mrs M’s behalf and provided some further comments from 
+them regarding the sale, which I’ve considered along with everything else which has been 
+provided previously. 
+ 
+The legal and regulatory context 
+ 
+In considering what is fair and reasonable in all the circumstances of the complaint, I am 
+required under DISP 3.6.4 R to take into account: relevant (i) law and regulations; (ii) 
+regulators’ rules, guidance and standards; and (iii) codes of practice; and (when 
+appropriate), what I consider to have been good industry practice at the relevant time.   
+  
+I will refer to and set out several regulatory requirements, legal concepts and guidance in 
+this decision, but I am satisfied that of particular relevance to this complaint is:  
+ 
+• The CCA (including Section 75 and Sections 140A-140C). 
+• The law on misrepresentation. 
+• The Timeshare Regulations. 
+• The UTCCR. 
+• The CPUT Regulations. 
+• Case law on Section 140A of the CCA – including, in particular: 
+ 
+• The Supreme Court’s judgment in Plevin v Paragon Personal Finance Ltd [2014] 
+UKSC 61 (‘Plevin’) (which remains the leading case in this area).  
+• Scotland & Reast v British Credit Trust Limited [2014] EWCA Civ 790 (‘Scotland and 
+Reast’) 
+• Patel v Patel [2009] EWHC 3264 (QB) (‘Patel’). 
+• The Supreme Court’s judgment in Smith v Royal Bank of Scotland Plc [2023] UKSC 
+34 (‘Smith’). 
+• Carney v NM Rothschild & Sons Ltd [2018] EWHC 958 (‘Carney’). 
+• Kerrigan v Elevate Credit International Ltd [2020] EWHC 2169 (Comm) (‘Kerrigan’). 
+• R (on the application of Shawbrook Bank Ltd) v Financial Ombudsman Service Ltd 
+and R (on the application of Clydesdale Financial Services Ltd (t/a Barclays Partner 
+Finance)) v Financial Ombudsman Service [2023] EWHC 1069 (Admin) (‘Shawbrook 
+& BPF v FOS’). 
+ 
+Good industry practice – the RDO Code 
+ 
+The Timeshare Regulations provided a regulatory framework. But they represented a 
+minimum standard. And as the parties to this complaint already know, I am also required to 
+take into account, when appropriate, what I consider to have been good industry practice at 
+the relevant time – which, in this complaint, includes the Resort Development Organisation’s 
+Code of Conduct dated 1 January 2010 (the ‘RDO Code’). 
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+Following the responses to my provisional decision, I’ve considered the case afresh and 
+having done so, I’ve reached the same decision as that which I outlined in my provisional 
+findings, for broadly the same reasons. 
+ 
+But before I explain why, I want to make it clear that my role as an Ombudsman is not to 
+address every single point that has been made to date. Instead, it is to decide what is fair 
+ 
+ 
+and reasonable in the circumstances of this complaint. So, if I have not commented on, or 
+referred to, something that either party has said, that does not mean I have not considered it. 
+ 
+What is more, I have made my decision on the balance of probabilities – which means I have 
+based it on what I think is more likely than not to have happened given the available 
+evidence and the wider circumstances.  
+ 
+Section 75 of the CCA: the Supplier’s misrepresentations at the Time of Sale 
+ 
+As I outlined in my provisional decision, the CCA introduced a regime of connected lender 
+liability under Section 75 that affords consumers (“debtors”) a right of recourse against 
+lenders that provide the finance for the acquisition of goods or services from third-party 
+merchants (“suppliers”) in the event that there is an actionable misrepresentation and/or 
+breach of contract by the supplier. 
+ 
+In short, a claim against the Lender under Section 75 essentially mirrors the claim Mr and 
+Mrs M could make against the Supplier. 
+ 
+Certain conditions must be met if the protection afforded to consumers is engaged, 
+including, for instance, the cash price of the purchase and the nature of the arrangements 
+between the parties involved in the transaction. The Lender does not dispute that the 
+relevant conditions are met in this complaint. And as I’m satisfied that Section 75 applies, if I 
+find that the Supplier is liable for having misrepresented something to Mr and Mrs M at the 
+Time of Sale, the Lender is also liable. 
+ 
+The PR did not explain in the Letter of Complaint whether they were making a Section 75 
+claim on Mr and Mrs M’s behalf and on what basis. And the information I’ve seen doesn’t 
+help to clear that up. On my reading of the complaint, I still think only one of the concerns 
+raised in the Letter of Complaint could reasonably be said to be a misrepresentation and 
+that’s Mr and Mrs M’s assertion that they were told at the Time of Sale that the only way to 
+exit their existing timeshare was to purchase their Fractional Club membership. 
+ 
+Mr and Mrs M haven’t disputed this in their response to my provisional decision. So, that’s 
+what I’ve considered here. 
+ 
+I recognise that Mr and Mrs M have concerns about the way in which their Fractional Club 
+membership was sold, but I remain unpersuaded that there was an actionable 
+misrepresentation by the Supplier at the Time of Sale for the reason they seem to allege.  
+ 
+I say that because, other than the allegation itself, they didn’t and still haven’t described what 
+they were told, by whom and in what context. While they did mention this point when 
+speaking over the phone to our Senior Investigator, they weren’t able to expand on it 
+besides saying they were told they would ‘lose’ their existing European Collection points. 
+And, in their response to my provisional decision, they only repeated this brief statement. 
+This is in no way a criticism of Mr and Mrs M, as I recognise that the sale in question took 
+place a long time ago. I say this to explain why I’m not sufficiently persuaded that it’s likely 
+such a misrepresentation was made at the Time of Sale. 
+ 
+What’s more, as there’s nothing else on file that persuades me there were any false 
+statements of existing fact made to Mr and Mrs M by the Supplier at the Time of Sale, I do 
+not think there was an actionable misrepresentation by the Supplier for the reason(s) they 
+allege.  
+ 
+ 
+ 
+For these reasons, therefore, I do not think the Lender is liable to pay Mr and Mrs M any 
+compensation for the alleged misrepresentation of the Supplier. And with that being the 
+case, I do not think the Lender acted unfairly or unreasonably when it dealt with the  
+Section 75 claim in question. 
+ 
+Section 75 of the CCA: the Supplier’s breach of contract 
+ 
+I’ve already summarised how Section 75 of the CCA works and why it gives Mr and Mrs M a 
+right of recourse against the Lender. So, it isn’t necessary to repeat that here other than to 
+say that, if I find that the Supplier is liable for having breached the Purchase Agreement, the 
+Lender is also liable. 
+ 
+As I explained in my provisional decision, although the PR didn’t make an explicit Section 75 
+claim that there was a breach of Mr and Mrs M’s Purchase Agreement by the Supplier, what 
+they’ve said still seems to me to be the suggestion that the sale of the Allocated Property in 
+the future may be jeopardised by the Supplier’s internal restructure. And, Mr and Mrs M 
+haven’t clarified this or provided any further comments in this regard in response to my 
+provisional decision. 
+ 
+I can understand why Mr and Mrs M might fear that, when the time comes for the Allocated 
+Property to be sold, they will not receive their share of the sales proceeds if there’s a risk 
+that the Supplier cannot keep its business going. However, I’m aware that Mr and Mrs M 
+relinquished their Fractional Club membership in December 2016 because they say they 
+could no longer afford it at that stage. I note Mr and Mrs M have said in their response to my 
+provisional decision that they relinquished their membership because they had retired and 
+were in their late sixties by that stage. And, they could no longer afford or justify paying the 
+costs of membership especially when holidays were available on other websites without 
+being a member of a timeshare. 
+ 
+I acknowledge their comments here, but to be clear, I was not questioning Mr and Mrs M’s 
+decision to relinquish their membership or their reasons for doing so. I only noted their 
+relinquishment and made reference to it in terms of how it relates to the above allegation of 
+breach of contract. 
+ 
+And, in any event, it would still seem the case that any breach of contract (if that occurs) lies 
+in the future and is uncertain. 
+ 
+Overall, therefore, for the above reasons, I do not think the Lender is liable to pay Mr and 
+Mrs M any compensation for a breach of contract by the Supplier. And with that being the 
+case, I do not think the Lender acted unfairly or unreasonably when it dealt with the Section 
+75 claim in question. 
+ 
+Section 140A of the CCA: did the Lender participate in an unfair credit relationship? 
+ 
+I have already explained why I am not persuaded that the contract entered into by Mr and 
+Mrs M was misrepresented or breached by the Supplier in a way that makes for a successful 
+claim under Section 75 of the CCA and the outcome in this complaint. But Mr and Mrs M 
+also said that they were told at the Time of Sale that, when the Allocated Property is sold, 
+they would be given their share plus a profit. 
+ 
+ 
+ 
+It is not in dispute, and I am satisfied, that Mr and Mrs M’s Fractional Club membership met 
+the definition of a “timeshare contract” and was a “regulated contract” for the purposes of the 
+Timeshare Regulations. 
+ 
+Regulation 14(3) of the Timeshare Regulations prohibited the Supplier from marketing or 
+selling membership of the Fractional Club as an investment. This is what the provision said 
+at the Time of Sale: 
+ 
+“A trader must not market or sell a proposed timeshare contract or long-term holiday product 
+contract as an investment if the proposed contract would be a regulated contract.” 
+ 
+Yet Mr and Mrs M suggest that the Supplier breached that prohibition. So, for completeness, 
+that is what I have considered here. 
+ 
+However, as I outlined in my provisional decision, as a possible breach of Regulation 14(3) 
+does not fall neatly into a claim under Section 75 of the CCA, I must turn to another provision 
+of the CCA if I am to consider this aspect of Mr and Mrs W’s complaint and arrive at a fair 
+and reasonable outcome. And that provision is Section 140A. Neither Mr and Mrs M nor their 
+PR has disputed this approach in their response to my provisional decision. 
+ 
+Under Section 140A of the CCA, a debtor-creditor relationship can be found to have been or 
+be unfair to the debtor because of one or more of the following: the terms of the credit 
+agreement itself; how the creditor exercised or enforced its rights under the agreement; and 
+any other thing done (or not done) by, or on behalf of, the creditor (either before or after the 
+making of the agreement or any related agreement) (s.140A(1) CCA). Such a finding may 
+also be based on the terms of any related agreement (which here, includes the Purchase 
+Agreement) and, when combined with Section 56 of the CCA, on anything done or not done 
+by the supplier on the creditor’s behalf before the making of the credit agreement or any 
+related agreement.  
+ 
+Section 56 plays an important role in the CCA because it defines the terms “antecedent 
+negotiations” and “negotiator”. As a result, it provides a foundation for a number of 
+provisions that follow it. But it also creates a statutory agency in particular circumstances. 
+And while Section 56(1) sets out three of them, the most relevant to this complaint are 
+negotiations conducted by the supplier in relation to a transaction financed or proposed to be 
+financed by a debtor-creditor-supplier agreement.  
+ 
+A debtor-creditor-supplier agreement is defined by Section 12(b) of the CCA as “a restricted-
+use credit agreement which falls within section 11(1)(b) and is made by the creditor under 
+pre-existing arrangements, or in contemplation of future arrangements, between himself and 
+the supplier […]”. And Section 11(1)(b) of the CCA says that a restricted-use credit 
+agreement is a regulated credit agreement used to “finance a transaction between the 
+debtor and a person (the ‘supplier’) other than the creditor […] and “restricted-use credit” 
+shall be construed accordingly.”  
+ 
+The Lender doesn’t dispute that there was a pre-existing arrangement between it and the 
+Supplier. So, the negotiations conducted by the Supplier during the sale of Mr and Mrs M’s 
+membership of the Fractional Club were conducted in relation to a transaction financed or 
+proposed to be financed by a debtor-creditor-supplier agreement as defined by Section 
+12(b). That made them antecedent negotiations under Section 56(1)(c) – which, in turn, 
+meant that they were conducted by the Supplier as an agent for the Lender as per Section 
+56(2). And such antecedent negotiations were “any other thing done (or not done) by, or on 
+behalf of, the creditor” under s.140(1)(c) CCA. 
+ 
+ 
+ 
+Antecedent negotiations under Section 56 cover both the acts and omissions of the Supplier, 
+as Lord Sumption made clear in Plevin, at paragraph 31: 
+ 
+“[Section] 56 provides that [when] antecedent negotiations for a debtor-creditor-supplier 
+agreement are conducted by a credit-broker or the supplier, the negotiations are “deemed to 
+be conducted by the negotiator in the capacity of agent of the creditor as well as in his actual 
+capacity”. The result is that the debtor’s statutory rights of withdrawal from prospective 
+agreements, cancellation and rescission may arise on account of the conduct of the 
+negotiator whether or not he was the creditor’s agent.’ […] Sections 56 and 140A(3) provide 
+for a deemed agency, even in a case where there is no actual one. […] These provisions are 
+there because without them the creditor’s responsibility would be engaged only by its own 
+acts or omissions or those of its agents.”  
+ 
+And this was recognised by Mrs Justice Collins Rice in Shawbrook & BPF v FOS at 
+paragraph 135: 
+ 
+“By virtue of the deemed agency provision of s.56, therefore, acts or omissions ‘by or on 
+behalf of’ the bank within s.140A(1)(c) may include acts or omissions of the timeshare 
+company in ‘antecedent negotiations’ with the consumer”. 
+ 
+In the case of Scotland & Reast, the Court of Appeal said, at paragraph 56, that the effect of 
+Section 56(2) of the CCA meant that “negotiations are deemed to have been conducted by 
+the negotiator as agent for the creditor, and that is so irrespective of what the position would 
+have been at common law” before going on to say the following in paragraph 74: 
+ 
+“[...] there is nothing in the wording of s.56(2) to suggest any legislative intent to limit its 
+application so as to exclude s.140A. Moreover, the words in s.140A(1)(c) "any other thing 
+done (or not done) by, or on behalf of, the creditor" are entirely apposite to include 
+antecedent negotiations falling within the scope of s.56(1)(c) and which are deemed by 
+s.56(2) to have been conducted by the supplier as agent of the creditor. Indeed the purpose 
+of s.56(2) is to render the creditor responsible for such statements made by the negotiator 
+and so it seems to me wholly consistent with the scheme of the Act that, where appropriate, 
+they should be taken into account in assessing whether the relationship between the creditor 
+and the debtor is unfair.”1 
+ 
+So, the Supplier is deemed to be Lender’s statutory agent for the purpose of the pre-
+contractual negotiations.  
+ 
+What’s more, the scope of that responsibility extends to both acts and omissions by the 
+Supplier as the Supreme Court in Plevin made clear when it referred to ‘acts or omissions’ 
+when discussing Section 56. And as Section 56(3)(b) says that an applicable agreement 
+can’t try to relieve a person from liability for ‘acts or omissions’ of any person acting as, or on 
+behalf of, a negotiator, it must follow that the reference to ‘omissions’ would only be 
+necessary because they can be attributed to the creditor under Section 56. 
+ 
+However, an assessment of unfairness under Section 140A isn’t limited to what happened 
+immediately before or at the time a credit agreement and related agreement were entered 
+into. The High Court held in Patel (which was recently approved by the Supreme Court in the 
+case of Smith), that determining whether or not the relationship complained of was unfair 
+had to be made “having regard to the entirety of the relationship and all potentially relevant 
+matters up to the time of making the determination” – which was the date of the trial in the 
+case of an existing credit relationship or otherwise the date the credit relationship ended. 
+ 
+1 The Court of Appeal’s decision in Scotland was recently followed in Smith. 
+ 
+ 
+ 
+The breadth of the unfair relationship test under Section 140A, therefore, is stark. But it isn’t 
+a right afforded to a debtor simply because of a breach of a legal or equitable duty. As the 
+Supreme Court said in Plevin (at paragraph 17):  
+ 
+“Section 140A […] does not impose any obligation and is not concerned with the question 
+whether the creditor or anyone else is in breach of a duty. It is concerned with […] whether 
+the creditor’s relationship with the debtor was unfair.” 
+ 
+Instead, it was said by the Supreme Court in Plevin that the protection afforded to debtors by 
+Section 140A is the consequence of all of the relevant facts. 
+ 
+So, having considered the entirety of the credit relationship between Mr and Mrs M and the 
+Lender along with all of the circumstances of this complaint afresh, I do not think the credit 
+relationship between them was likely to have been rendered unfair for the purposes of 
+Section 140A. 
+ 
+Were Mr and Mrs M pressured into purchasing Fractional Club membership at the Time of 
+Sale? 
+ 
+In their conversation with our Senior Investigator, Mr and Mrs M suggested that they were 
+pressured by the Supplier into purchasing Fractional Club membership at the Time of Sale. 
+ 
+I acknowledge that they may have felt weary after a sales process that went on for a long 
+time. But they say little about what was said and/or done by the Supplier during their sales 
+presentation that made them feel as if they had no choice but to purchase Fractional Club 
+membership when they simply did not want to. And they haven’t provided any further 
+comments in this regard in response to my provisional decision as to how exactly they were 
+pressured. 
+ 
+They were also given a 14-day cooling off period2 and they have not provided a credible 
+explanation for why they did not cancel their membership during that time. From what 
+they’ve had to say, it also seems they were aware from previous sales meetings they had 
+attended that they could refuse to purchase and leave if they wanted to. And with all of that 
+being the case, there is insufficient evidence to demonstrate that Mr and Mrs M made the 
+decision to purchase Fractional Club membership because their ability to exercise that 
+choice was significantly impaired by pressure from the Supplier. 
+ 
+I’m not persuaded, therefore, that Mr and Mrs M’s credit relationship with the Lender was 
+rendered unfair to them under Section 140A for this reason. But, as mentioned above, there 
+is another reason why it’s suggested their credit relationship with the Lender was unfair to 
+them. And that’s the suggestion that Fractional Club membership was marketed and sold to 
+them as an investment in breach of prohibition against selling timeshares in that way. 
+ 
+Was Fractional Club membership marketed and sold at the Time of Sale as an investment in 
+breach of regulation 14(3) of the Timeshare Regulations? 
+ 
+As I have already said, Mr and Mrs M seem to suggest that the Supplier breached 
+Regulation 14(3) of the Timeshare Regulations. 
+ 
+The term “investment” is not defined in the Timeshare Regulations. In Shawbrook & BPF v 
+FOS, the parties agreed that, by reference to the decided authorities, “an investment is a 
+ 
+2 I’m aware that Mr and Mrs M dispute this, so I’ve addressed the point below. 
+ 
+ 
+transaction in which money or other property is laid out in the expectation or hope of 
+financial gain or profit” at [56]. I will use the same definition in this complaint. 
+ 
+Mr and Mrs M’s share in the Allocated Property clearly constituted, in my view, an 
+investment as it offered them the prospect of a financial return – whether or not, like all 
+investments, that was more than what they first put into it. But the fact that Fractional Club 
+membership included an investment element did not, itself, transgress the prohibition in 
+Regulation 14(3). That provision prohibits the marketing and selling of a timeshare contract 
+as an investment. It doesn’t prohibit the mere existence of an investment element in a 
+timeshare contract or prohibit the marketing and selling of such a timeshare contract per se.  
+ 
+In other words, the Timeshare Regulations did not ban the sale of products such as the 
+Fractional Club. They just regulated how such products were marketed and sold. 
+ 
+To conclude, therefore, that Fractional Club membership was marketed or sold to Mr and 
+Mrs M as an investment in breach of Regulation 14(3), I have to be persuaded that the 
+Supplier told them or led them to believe that Fractional Club membership offered them the 
+prospect of a financial gain (i.e., a profit) given the facts and circumstances of this complaint. 
+ 
+I accept that it’s possible that Fractional Club membership was marketed and sold to them 
+as an investment in breach of Regulation 14(3) given the difficulty the Supplier was likely to 
+have had in presenting a share in the net sales proceeds of the Allocated Property as an 
+important feature of Fractional Club membership without breaching the relevant prohibition.  
+ 
+So, I have taken all of that into account. However, on my reading of the evidence provided, I 
+remain unpersuaded it’s more likely than not that Fractional Club membership was sold to 
+Mr and Mrs M as an investment and I’ll explain why. 
+ 
+The Letter of Complaint said: 
+ 
+“Our clients are requesting a refund of their loan amount plus interest paid for their 
+‘investment’…they were told that the Resort would be sold in December 2027 and they 
+would recoup their financial outlay PLUS a percentage of the profits from the sale.” 
+ 
+No further explanation was provided beyond this brief statement as to who told them that, 
+using what statements or information and in what context.  
+ 
+As I’ve already mentioned, one of our Senior Investigators spoke to Mr and Mrs M recently 
+(in May 2024) and, as part of that conversation, he discussed this point. 
+ 
+Mr and Mrs M were asked about what made them decide to purchase Fractional Club 
+membership, and they said that it was “decided for them” because they were told that they 
+would simply lose what they had acquired as part of their European Collection membership if 
+they didn’t become Fractional Club members. They also briefly mentioned that purchasing 
+Fractional Club was an investment.  
+ 
+Our Senior Investigator asked Mr and Mrs M to explain what they meant by some of those 
+comments. They explained that they had 7,000 European Collection points and the ‘only way 
+forward was to change [them] to fractional [points], but it would cost them more money’. 
+They also said that they would get some money back as Fractional Club members. 
+ 
+Mr and Mrs M were then asked to explain what they understood by being told that Fractional 
+Club membership was an investment. Mr and Mrs M said it was ‘for a particular property and 
+should it be sold then they would get a fraction of the money it sold for’. They also said that 
+ 
+ 
+they were trading in 7,000 European Collection points and “when the [Allocated] property 
+was sold, they would get reimbursed a fraction of the money that the property was sold for”. 
+ 
+Our Senior Investigator asked Mr and Mrs M if there was anything the sales agents said to 
+them at the Time of Sale that made them think Fractional Club membership was an 
+investment. Mr and Mrs M said that they were told that “they would get money back”.  
+ 
+Our Senior Investigator then followed that up by asking Mr and Mrs M if there was anything 
+that was said to them by the Supplier that gave them the confidence that Fractional Club 
+membership was an investment. Mr and Mrs M said: “only that if they didn’t change the 
+7,000 points to fractional then they would lose what they’d already paid out and couldn’t go 
+any further with holidays unless they took out the fractional points”. 
+ 
+Mr and Mrs M were then asked to clarify whether they thought the money they would get 
+from the sale of the Allocated Property would be in addition to what they had paid for 
+Fractional Club membership or simply that it would be a percentage, by which they would 
+receive a smaller amount of money than what they paid for their membership. Mr and Mrs M 
+said they understood it to be only a portion. 
+ 
+Mr and Mrs M’s recollections and understanding of the sales presentation at the Time of 
+Sale show that they understood how their share in the Allocated Property worked and that 
+they were told by the Supplier that, when the Allocated Property is sold, they would simply 
+receive their share of the proceeds of that sale.  
+ 
+Indeed, Mr and Mrs M told our Senior Investigator that they were told by the Supplier (and 
+understood) that their share in the Allocated Property would not lead to a financial gain. 
+ 
+In response to my provisional decision, Mr and Mrs M said: 
+ 
+“The adviser informed us, that when the properties were eventually sold, because the 
+price of the property would go up, thus making us a profit. It was an investment for us 
+and we would only gain.” 
+ 
+I acknowledge they’ve said this, but this has been said at a late stage. If this was something 
+they remembered from the Time of Sale, it’s difficult to explain why this wasn’t included in 
+the Letter of Complaint and why they didn’t explain this during the above conversation with 
+our Service’s Senior Investigator when asked. 
+ 
+Indeed, some of what they’ve said in response to my provisional decision appears to be in 
+direct contradiction to what they said in the aforementioned conversation. For example, in 
+the previous conversation Mr and Mrs M were asked if there was anything that was said to 
+them by the Supplier that gave them the confidence that Fractional Club membership was an 
+investment. Mr and Mrs M said: “only that if they didn’t change the 7,000 points to fractional 
+then they would lose what they’d already paid out and couldn’t go any further with holidays 
+unless they took out the fractional points”. They didn’t mention what they’ve now said the 
+salesperson told them regarding the price of the property going up and making them a profit. 
+ 
+Mr and Mrs M also said in that previous conversation, that they understood what they would 
+receive from the sale of the Allocated Property would only be a portion, which was a smaller 
+amount of money than what they paid for their membership. And they told our Senior 
+Investigator that they were told by the Supplier (and understood) that their share in the 
+Allocated Property would not lead to a financial gain. So, it’s difficult to explain why they’ve 
+only now said that they thought they would be making a profit and they would ‘only gain’ if 
+this was something they remembered from the Time of Sale. And again, they still haven’t 
+provided much colour or context to their testimony beyond the brief statement above. 
+ 
+ 
+ 
+And with all of that being the case, in the absence of persuasive evidence to suggest 
+otherwise, I find that it is unlikely that the Supplier led them to believe that membership 
+offered them the prospect of a financial gain (i.e., a profit). 
+ 
+But even if I am wrong to conclude that, on this occasion, Fractional Club membership was 
+unlikely to have been sold in that way given what I have already said about Mr and Mrs M’s 
+recollections of the sales process at the Time of Sale, I am not currently persuaded that 
+would make a difference to the outcome in this complaint anyway. 
+ 
+Was there an unfair relationship between the Lender and Mr and Mrs M? 
+ 
+As the Supreme Court’s judgment in Plevin makes clear, it does not automatically follow that 
+regulatory breaches create unfairness for the purposes of Section 140A. Such breaches and 
+their consequences (if there are any) must be considered in the round, rather than in a 
+narrow or technical way.  
+ 
+I am also mindful of what HHJ Waksman QC (as he then was) and HHJ Worster had to say 
+in Carney and Kerrigan (respectively) on causation.  
+ 
+In Carney, HHJ Waksman QC said the following in paragraph 51:  
+ 
+“[…] In cases of wrong advice and misrepresentation, it would be odd if any relief could be 
+considered if they did not have at least some material impact on the debtor when deciding 
+whether or not to enter the agreement. […] in a case like the one before me, if in fact the 
+debtors would have entered into the agreement in any event, this must surely count against 
+a finding of unfair relationship under s140A. […]”  
+ 
+And in Kerrigan, HHJ Worster said this in paragraphs 213 and 214:  
+ 
+“[…] The terms of section 140A(1) CCA do not impose a requirement of “causation” in the 
+sense that the debtor must show that a breach caused a loss for an award of substantial 
+damages to be made. The focus is on the unfairness of the relationship, and the court's 
+approach to the granting of relief is informed by that, rather than by a demonstration that a 
+particular act caused a particular loss. Section 140A(1) provides only that the court may 
+make an order if it determines that the relationship is unfair to the debtor. […] 
+ 
+[…] There is a link between (i) the failings of the creditor which lead to the unfairness in the 
+relationship, (ii) the unfairness itself, and (iii) the relief. It is not to be analysed in the sort of 
+linear terms which arise when considering causation proper. The court is to have regard to 
+all the relevant circumstances when determining whether the relationship is unfair, and the 
+same sort of approach applies when considering what relief is required to remedy that 
+unfairness. […]”  
+ 
+So, it seems to me that, if I am to conclude that a breach of Regulation 14(3) led to a credit 
+relationship between Mr and Mrs M and the Lender that was unfair to them and warranted 
+relief as a result, whether the Supplier’s breach of Regulation 14(3) (deemed to be 
+something done by the Lender under section 140(1)(c) of the CCA) lead them to enter into 
+the Purchase Agreement and the Credit Agreement is an important consideration.  
+ 
+But as I’ve already said, I remain unpersuaded by the evidence provided that the Supplier 
+more likely than not led them to believe that the Fractional Club membership was an 
+investment from which they would make a financial gain nor was there any sufficiently 
+persuasive indication that they were induced into the purchase on that basis. 
+ 
+ 
+ 
+On balance, therefore, even if the Supplier had marketed or sold the Fractional Club 
+membership as an investment in breach of Regulation 14(3) of the Timeshare Regulations, I 
+am not persuaded that Mr and Mrs M’s decision to purchase Fractional Club membership at 
+the Time of Sale was motivated by the prospect of a financial gain (i.e., a profit). On the 
+contrary, I think the evidence suggests they would have pressed ahead with their purchase 
+whether or not there had been a breach of Regulation 14(3). And for that reason, I do not 
+think the credit relationship between Mr and Mrs M and the Lender was unfair to them even 
+if the Supplier had breached Regulation 14(3). 
+ 
+Other concerns 
+ 
+Mr and Mrs M also said that they weren’t given a cooling off period for their purchase. 
+ 
+However, I can see the 14 day cooling off period was available to them and that this was 
+clearly set out on the face of the loan agreement, signed by Mr and Mrs M. What they’ve had 
+to say also suggests that copies of the relevant documentation were sent to their home 
+following the sale. Mr and Mrs M didn’t provide any further comments in this regard in 
+response to my provisional decision. 
+ 
+So, for the reasons I’ve explained, I don’t think this is a reason to uphold the complaint 
+either. 
+ 
+Section 140A: Conclusion 
+ 
+In conclusion, therefore, given all of the facts and circumstances of this complaint, I don’t 
+think the credit relationship between the Lender and Mr and Mrs M was unfair to them for the 
+purposes of Section 140A. And taking everything into account, I think it’s fair and reasonable 
+to reject this aspect of the complaint on that basis. 
+ 
+Conclusion 
+ 
+In conclusion, given the facts and circumstances of this complaint, I do not think that the 
+Lender acted unfairly or unreasonably when it dealt with Mr and Mrs M’s Section 75 claim, 
+and I am not persuaded that the Lender was party to a credit relationship with them under 
+the Credit Agreement that was unfair to them for the purposes of Section 140A of the CCA. 
+And having taken everything into account, I see no other reason why it would be fair or 
+reasonable to direct the Lender to compensate them. 
+ 
+My final decision 
+For the reasons set out above, I don’t uphold this complaint. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr M and Mrs M to 
+accept or reject my decision before 27 September 2024. 
+   
+Fiona Mallinson 
+Ombudsman

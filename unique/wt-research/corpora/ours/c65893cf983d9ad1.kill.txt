@@ -1,0 +1,23 @@
+PlankLock – The Builder's Material Price Cap.
+
+A solo-operated service that lets small builders lock in today's price for key building materials on upcoming projects; if the market price soars, the difference is paid out, for a per-project fee.
+
+Small builders often lose profit when material prices spike after quoting a fixed price to clients. Borrowing from commodity futures hedging (cross-sector: finance), this transfers the risk to the operator, who uses a proprietary AI model of local price trends to price the risk and manage a pooled reserve.
+
+Self-employed builders and small contracting firms bidding on residential renovations.
+
+Post-pandemic supply chain disruptions have made material prices unpredictable; inflation squeezes margins; builders seek ways to quote fixed prices without exposure.
+
+The passages discuss AI for construction quoting, BOM generation, and owner-builder cost analysis, but none address whether a service locking in material prices for small builders provides real, durable value.
+
+Passages describe AI estimating and CRM tools for contractors (Zracle, Chisel, BuilderRole), none of which offer a price-hedging or price‐lock service for materials; therefore no dominant incumbent is shown solving this need.
+
+Passages describe material-cost pain and some builder bankruptcies, which suggests motive, but do not provide evidence that small builders have budget or willingness to pay for a hedging service; the ability to pay is not addressed.
+
+None of the passages describe a distribution route for PlankLock; they only mention a supplier’s price-lock offer and unrelated contractor tools, leaving the candidate’s channel to the buyer unaddressed.
+
+None of the passages address the lawfulness of a material price cap hedging service; they discuss builder licensing, a co-operative for supplies, and risks of unlicensed tradies, which are irrelevant to whether the described margin would require lawbreaking.
+
+The passages discuss construction estimating software and volume pricing strategies, but none provides evidence that small builders are currently suffering from or paying to solve the problem of material price spikes after quoting fixed prices.
+
+The service is dead because a direct alternative exists: BUILDERS STORE already offers a Price Lock Guarantee that fixes material prices at booking, making a third-party hedging fee redundant. Small builders have thin margins and alternative cost-saving methods like co-operatives, so they are unlikely to pay for an unproven service. The lack of evidence for a distribution channel or real pain confirms the idea has no defensible market.

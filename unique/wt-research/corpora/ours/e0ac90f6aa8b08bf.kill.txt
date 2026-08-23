@@ -1,0 +1,13 @@
+ClipGuard – The Micro-Creator's Unauthorised Re-Upload Recovery Service.
+
+A done-for-you service that monitors short-form video platforms for re-uploads of a creator's content, issues automated takedowns, and recovers monetisation revenue or settlement fees, keeping 50% of recovered sums.
+
+Analogical transfer from The Creative Rights Recovery Agent (visual artists) to short-form video creators, providing a hands-off IP enforcement layer that tiny creators can't otherwise afford or operate.
+
+Micro-creators (10k-100k followers) on TikTok/Reels/YouTube Shorts who regularly have their clips stolen, from recovered revenue (contingent fee).
+
+Explosion of short-form video and reupload culture, with no native cross-platform Content ID system; platforms focus on their own ecosystem.
+
+Three independent services (Lila, Privly, Fanlock) operate in the re-upload recovery and takedown market, confirming real, revenue-generating value for creators. No passage indicates commoditization or evaporation; competitors are not free first-party tools that remove all margin.
+
+Multiple services like Lila (revenue recovery across TikTok and more) and CreatorGuard (AI-powered takedowns/seo) already exist, showing that the IP enforcement and revenue recovery space for creators has funded rivals, contradicting the claim of no dominant incumbent.

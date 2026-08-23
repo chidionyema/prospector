@@ -1,0 +1,23 @@
+AI Wellness Act bias audit for Illinois health insurance AI.
+
+A fixed-fee memo that maps a health insurance AI tool to the Illinois AI Wellness Act and shows where it risks an IDOI enforcement letter.
+
+Plain version: Illinois's AI Wellness Act (Public Act 103-0809, codified in 215 ILCS 5) requires any health insurer using AI in coverage, utilization management, or care management to maintain a written anti-bias program, and the Illinois Department of Insurance (IDOI) has issued companion guidance telling carriers what the program must contain. A health insurance AI vendor selling to an Illinois-licensed carrier (HCSC, Centene Illinois, Molina, Aetna IL) must hand the buyer's compliance officer a written anti-bias program that satisfies the IDOI guidance before the contract closes.
+
+This borrows the way actuarial consultants do reserve adequacy audits for life insurance carriers (a fixed-format report that maps the carrier's actual numbers to the regulator's published expectations), and applies it to AI bias audit memos for health insurance AI vendors selling into Illinois.
+
+Why it works: each new Illinois carrier contract triggers the same anti-bias program prep. The compliance lead at a health insurance AI vendor (think an AI prior-auth or AI underwriting startup pitching Blue Cross Blue Shield of Illinois) cannot afford to lose the deal because their product counsel could not hand the carrier a written anti-bias program that maps to the IDOI guidance. A fixed-fee memo turns this into a two-week engagement.
+
+Why it holds: what makes this durable is proprietary data. A hand-collected log of every IDOI market conduct report and consent decree in which AI was named, plus the structure of the IDOI companion guidance. The closest free alternative is the IDOI bulletin itself, which is a framing document and does not pre-map to a specific vendor's AI system; IDOI cannot take a commercial side, cannot certify a vendor's product, and cannot indemnify the carrier.
+
+Compliance lead, product counsel, or regulatory affairs lead at a health insurance AI vendor (think an AI prior-auth or AI underwriting startup) selling to Illinois-licensed carriers like Blue Cross Blue Shield of Illinois, Health Care Service Corp, Centene Illinois, Molina, or Aetna IL.
+
+Illinois AI Wellness Act effective January 2025; IDOI has issued companion guidance implementing the Act; the first wave of carrier AI audits is underway; IDOI has begun naming AI vendors in market conduct reports.
+
+The passages do not show anyone actively searching for or paying to solve an AI Wellness Act bias audit for Illinois health insurance AI specifically. The closest evidence of demand is the Techné AI WOPR Act Compliance Review [df09b49fa6a89297], but that is a productized service for the Wellness and Oversight for Psychological Resources Act (PA 104-0054, psychotherapy), which is a different statute from the candidate's AI Wellness Act (PA 103-0809, health insurance).
+
+All passages discuss the Wellness and Oversight for Psychological Resources (WOPR) Act — Public Act 104-0054 / HB 1806 — which regulates AI in therapy and behavioral health. The candidate instead references the 'Illinois AI Wellness Act (Public Act 103-0809)' covering health insurance AI bias audits under 215 ILCS 5. None of the passages address Public Act 103-0809, health insurance AI bias programs, IDOI companion guidance, or enforcement against insurers, so the currency of the candidate's specific opportunity cannot be assessed from this evidence.
+
+The passages describe the Illinois health insurance market landscape (carriers like HCSC, Cigna, UnitedHealthcare; AI vendors like Hindsait; platforms like Rx Almanac and OpenPayer), but none of them establish a concrete, beginner-executable route to reach the candidate's buyer (compliance leads at health insurance AI vendors). No open ad channel, marketplace, or existing audience for selling AI bias audit memos is identified. Rx Almanac's vendor map targets pharma access teams, not vendor compliance officers, and OpenPayer is a payer data service, not a channel for vendor outreach.
+
+The passages establish that Illinois prohibits unauthorized practice of law under Rule 5.5 and that non-attorneys providing healthcare compliance/legal interpretations risk UPL exposure, but none of them resolves whether a fixed-fee memo mapping a vendor's AI tool to the AI Wellness Act and flagging IDOI enforcement risk specifically constitutes the practice of law. The service can be provided lawfully by a licensed Illinois attorney, and nothing in the passages shows the provider (tagged as 'agency_owner') is barred from doing so.

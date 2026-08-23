@@ -1,0 +1,27 @@
+CalFresh Desktop – the fixed-fee service that gets California gig workers approved for food stamps, without the stress.
+
+A flat-fee service that assembles your CalFresh application, schedules the interview, and fights denials so you eat while you work.
+
+CalFresh (California’s SNAP program) can give a single gig worker up to $291/month in food support, but county offices reject one in three applications because of missing documents, ambiguous income reporting, or missed phone interviews. This service works like a tax preparer for public benefits: the Gen Z worker shares their gig-platform earnings and expense details, and CalFresh Desktop builds a county‑perfect application packet, pre–screens for common denial triggers, and provides a script for the interview. If a denial comes, the service files the appeal with a tailored brief, drawing on a proprietary database of county‑level denial reasons pulled from public records and client outcomes.
+
+This borrows the way immigration attorneys productized green‑card applications into a fixed‑fee line of business and applies it to the means‑tested benefits system. California has 58 counties, each with its own processing quirks; a solo operator can compound a dataset of denial patterns and approval tactics that no single county office ever publishes. With each successful client, the dataset grows, making future applications faster and more likely to succeed.
+
+The core durable wedge is proprietary data: a collection of FOIA‑derived adjudication statistics, redacted denial notices, and crowd‑sourced interview questions that allows the service to pre‑empt rejection before submission. A solo operator can run this entirely with AI assistance—document parsing, interview scheduling, template generation—and distribute via Instagram and TikTok where Gen Z gig workers already search for help.
+
+Commodity free alternative: each county’s online MyBenefits CalWIN or CalFresh portal and its phone helpline. But those tools offer generic advice, no tailoring to gig income patterns, and zero appeal support; counties are structurally understaffed, so they cannot give each applicant the proactive, adversarial assistance this service provides.
+
+Gen Z gig workers in California—rideshare drivers, delivery riders, TaskRabbit taskers, freelance creatives—who are eligible for CalFresh but have been denied or are too time‑stretched to navigate the paperwork.
+
+California’s cost of living is squeezing low‑income workers, and the state has expanded CalFresh eligibility while many county offices still rely on paper‑heavy processes. Gig platforms like DoorDash, Uber, and Instacart now dominate the under‑27 workforce, but their variable income makes self‑certification error‑prone. A productized service that translates platform earnings into CalFresh’s reporting requirements fills a gap neither the platforms nor the state can close.
+
+The passages confirm CalFresh benefits exist, denial forms exist, self-employment income counts toward eligibility, and GetCalFresh offers free ten-minute application help that is sunsetting by September 2025. They never say whether paid help assembling applications, preparing interviews, or appealing denials for gig workers still has lasting paid demand that free tools have not already taken.
+
+Some passages mention community centers, food-bank outreach staff, and similar groups that help people apply for CalFresh, including in gig-worker contexts, but none name a market leader or funded rival that already owns paid, end-to-end application and appeal help for California gig workers. Whether that paid niche is open or already dominated is never stated.
+
+The tax-fee passages only price CPA/tax preparation, not whether CalFresh-eligible gig workers pay for benefits help. The CalFresh passages describe free applications and free nonprofit help for low-income households, but never say these workers can, will, or refuse to pay a private fixed fee.
+
+Social posts already reach California audiences with CalFresh help messaging and send them to apply, including an organic plug for GetCalFresh.org and a TikTok about CalFresh work rules. That shows an ordinary, low-friction path to the same people this service would sell to—feed discovery on social platforms where CalFresh tips already spread.
+
+The passages cover Social Security representative fee rules, California workers’ compensation non-attorney appearance, SNAP eligibility/education/E&T topics, and public-charge immigration guidance. None address whether charging a fixed fee to prepare CalFresh applications, coach interviews, or file SNAP denials appeals is allowed or forbidden.
+
+The passages describe CalFresh as California’s SNAP food program and an essential hunger safety net, plus routine eligibility, proof, and apply-online guidance. They never say applicants are denied at high rates, struggle with gig-income paperwork or interviews, or pay anyone to get approved or appeal.

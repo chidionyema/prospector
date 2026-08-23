@@ -1,0 +1,23 @@
+RentHaggle – The Tenant’s Renewal Negotiation Agent.
+
+A done‑for‑you service that negotiates lower rent increases (or reductions) for Gen Z renters at lease renewal, armed with hyperlocal comparative data, landlord psychographics, and battle‑tested escalation scripts.
+
+Salary negotiation services proved that domain‑specific data and coaching can unlock earnings; applying the same model to residential leases gives tenants who lack confrontation skills and market knowledge a way to save hundreds of dollars a year for a small, one‑off success fee.
+
+A 22‑year‑old rideshare driver or delivery worker living in a shared urban apartment whose lease is up for renewal, paying a $99 success‑based fee from the resulting savings.
+
+Softening rental markets in many metro areas, a wave of lease renewals post‑pandemic, and a generation that defaults to accepting proposed increases because they don’t know negotiation is possible.
+
+Passages confirm the existence of rent negotiation advice and need, but do not speak to the durability of a paid service's value versus free information or potential commoditization.
+
+The passages provide tips and statistics on self-negotiation of rent, but none mention any existing service that acts as a negotiation agent for tenants, so the presence or absence of a dominant incumbent cannot be determined.
+
+Passages discuss renter cost burden and negotiation trends but do not address whether a 22‑year‑old rideshare driver specifically has the budget or willingness to pay a $99 success fee.
+
+The passages discuss general rent negotiation tips and market conditions, but none mention or imply any low-friction distribution channel for a third-party negotiation service like RentHaggle.
+
+The passages describe rent negotiation as a standard, legal practice with tips and success rates; nothing indicates that representing a tenant in negotiations would be unlawful.
+
+Passages show renters are cost-burdened and that negotiation is possible, but none indicate people are paying for a service to negotiate on their behalf, which is required to show they 'pay to solve it NOW'.
+
+The evidence shows an abundance of free, high-quality rent negotiation guides, scripts, and tips available from sources like Realtor.com, ReadYourLease, TrueWealthMoves, Fidelity, and others. These resources arm tenants with the same hyperlocal data and negotiation tactics that RentHaggle promises, undermining any durable pricing power. The target demographic (cost-burdened Gen Z rideshare drivers) is already spending a high percentage of income on rent, making a $99 success fee a potentially prohibitive outlay despite potential savings. No evidence indicates tenants are currently paying for a third-party negotiation service, suggesting the pain might not be acute enough to overcome the free alternatives. The combination of readily available free substitutes and uncertain payer solvency presents a serious obstacle to viability, though the absence of direct refutation means the case is not decisive.

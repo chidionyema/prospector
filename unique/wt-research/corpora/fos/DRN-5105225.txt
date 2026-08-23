@@ -1,0 +1,107 @@
+DRN-5105225 
+ 
+ 
+The complaint 
+ 
+Mrs N complains that Revolut Ltd didn’t protect her from an investment recovery scam. 
+What happened 
+In mid-2022 Mrs N fell victim to two investment scams. In 2023, Mrs N was contacted by 
+someone claiming she was owed a £20,000 refund. Mrs N downloaded screensharing 
+software and allowed the scammer access to her accounts. She also shared personal 
+information with the scammer. They explained she needed to pay different fees and taxes to 
+access her money. As a result of this scam Mrs N and her partner lost nearly £60,000. 
+Mrs N’s Revolut account was opened around the time of the first scam and used once. It 
+wasn’t then used again until the scam in 2023. £20,000 was sent from this account to a 
+cryptocurrency merchant due to this scam. Mrs N complained to Revolut and asked for it to 
+help her get the money back. It wasn’t able to recover her funds and didn’t uphold her 
+complaint.  
+Mrs N came to our Service. She brought a complaint about her bank as well as Revolut and 
+the other firm involved in the scam. Our Investigator didn’t uphold her Revolut complaint as 
+he said he didn’t think Revolut could’ve prevented Mrs N’s losses, even if it had intervened 
+on her payments. Mrs N disagreed and asked for an ombudsman to review her complaint.  
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+In broad terms, the starting position at law is that an Electronic Money Institution (“EMI”) 
+such as Revolut is expected to process payments and withdrawals that a customer 
+authorises it to make, in accordance with the Payment Services Regulations (in this case the 
+2017 regulations) (PSRs) and the terms and conditions of the customer’s account. 
+But, taking into account relevant law, regulators rules and guidance, relevant codes of 
+practice and what I consider to have been good industry practice at the time, I consider it fair 
+and reasonable in February 2023 that Revolut should:  
+ 
+• have been monitoring accounts and any payments made or received to counter 
+various risks, including preventing fraud and scams;  
+• have had systems in place to look out for unusual transactions or other signs that 
+might indicate that its customers were at risk of fraud (among other things). This is 
+particularly so, given the increase in sophisticated fraud and scams in recent years, 
+which firms are generally more familiar with than the average customer;   
+• in some circumstances, irrespective of the payment channel used, have taken 
+additional steps, or made additional checks, or provided additional warnings, before 
+processing a payment – (as in practice Revolut sometimes does including in relation 
+to card payments);  
+
+ 
+ 
+• have been mindful of – among other things – common scam scenarios, how the 
+fraudulent practices are evolving (including for example the common use of multi-
+stage fraud by scammers, including the use of payments to cryptocurrency accounts 
+as a step to defraud consumers) and the different risks these can present to 
+consumers, when deciding whether to intervene. 
+While I think Revolut ought to have recognised thar Mrs N was at heightened risk of financial 
+harm from fraud when making some of the payments to this scam, I don’t think any 
+proportionate intervention by Revolut would have prevented her loss in this case. I’ll explain 
+why. 
+First, it’s important to set out that I’m in agreement with our Investigator that these payments 
+should be treated as authorised. While Mrs N may not have been completing all the 
+payments steps herself – she was of the understanding that the scammer could and would 
+be making payments from her account. So under the PSRs, these payments would be 
+considered authorised and so Mrs N is liable for them. 
+However, considering the amounts that were sent and the destination of the payments – a 
+known, identifiable cryptocurrency merchant, I’m satisfied that Revolut ought to have 
+recognised that the £4,900 card payment on 16 February 2023 carried a heightened risk of 
+financial harm from fraud. And that when Mrs N sent three payments totalling £11,500, 
+minutes apart, on 6 March 2023, she was also at risk of financial harm. 
+But, had Revolut intervened on these payments, either by showing Mrs N a tailored warning 
+around cryptocurrency scams or by speaking to Mrs N using the in-app chat, I’m not 
+persuaded this would have prevented her losses. 
+Mrs N was being heavily coached by the scammer and she says they were controlling her 
+screens and carrying out the steps for the payments. It’s not my understanding that the 
+scammer could have completed all the steps in the way Mrs N has described, but I do 
+accept she was allowing the scammer to take the lead on these payments and that she’d 
+been subject to social engineering. With that in mind, I’m satisfied they would’ve had her 
+click through/past any warnings and assured her the information there wasn’t relevant or 
+important to her. And had her mislead Revolut in the chat about their involvement and 
+reassured her around any warnings given.  
+I’m persuaded Mrs N would’ve followed the scammer’s instructions as I’m aware she was 
+coached by the scammer to mislead her bank – and that she followed this instruction and 
+didn’t share the true purpose of her making transfers with the bank when it spoke to her. Her 
+bank also said it thought she may be being scammed and sent her into branch twice, but this 
+didn’t uncover the scam. It’s clear she greatly trusted the scammer and their instructions. So 
+I don’t consider Revolut could’ve uncovered the scam if it provided a tailored warning, or 
+spoken to Mrs N or provided her information by in-app chat. 
+Mrs N’s bank has shared the calls it had with Mrs N and she doesn’t reveal what she’s 
+doing, despite being pressed for this information. I accept Revolut held more information 
+than the bank and knew Mrs N was trying to buy cryptocurrency, so would’ve asked different 
+questions. But I’m satisfied she’d have been coached to conceal concerning information. 
+And the scam warnings I consider Revolut ought to have shared would’ve covered the 
+common risks associated with these scams, but we’re aware Mrs N had only recently been 
+victim to another very similar scam, which she’d reported by the time Revolut ought to have 
+intervened. But this awareness didn’t prevent her falling victim to this scam.  
+Revolut was only required to take proportionate steps to try and protect Mrs N from financial 
+harm, and due to the extensive coaching, I’m not persuaded she would’ve responded to it, 
+had it done this. So I’m not persuaded that the scam would’ve been uncovered by any 
+ 
+ 
+proportionate intervention by Revolut.  
+Whilst Mrs N has undoubtedly been the victim of a cruel scam and I accept the scammer 
+exploited her vulnerabilities in this case, I can only uphold her complaint if I’m satisfied 
+failings by Revolut made a material difference to what happened. For the reasons given, I’m 
+not persuaded they did.   
+My final decision 
+For the reasons set out above, I don’t uphold Mrs N’s complaint.  
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mrs N to accept or 
+reject my decision before 20 February 2025. 
+   
+Amy Osborne 
+Ombudsman

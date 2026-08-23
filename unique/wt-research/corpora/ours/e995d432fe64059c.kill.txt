@@ -1,0 +1,25 @@
+Care Flight Recorder — helps NHS staff who foster keep an independent record of a child’s care.
+
+A private app for NHS nurses and other public-sector workers who foster, turning daily observations into clear review and court records.
+
+The product captures voice notes, appointments, contact arrangements, incidents and expenses offline. It turns them into dated timelines, review summaries and evidence packs without asking the carer to write everything twice.
+
+It borrows the way airline flight recorders preserve an independent account after a disruption, and applies that discipline to foster placements. The carer gets a reliable record when memories, messages and paperwork are scattered across a difficult placement.
+
+The product supports duties under the Care Planning, Placement and Case Review (England) Regulations 2010 and the National Minimum Standards for Fostering Services. It does not replace the local authority’s records or claim to be an official compliance tool.
+
+Its important difference is independence. A local authority or fostering agency cannot provide the carer’s private account of disputed contact, missing support or agreed instructions. The app keeps a separate, exportable history that the carer controls, with UK GDPR safeguards and strict access controls.
+
+A subscription could start at £12 per month per household. Growth can come from search-led acquisition around foster review paperwork, fostering communities and referral links from independent fostering agencies. Each new placement creates more recurring use and makes abandoning the accumulated record increasingly costly.
+
+An NHS nurse, teaching assistant or local-government employee who fosters pays personally for the household subscription.
+
+Foster carers face regular reviews under the Care Planning, Placement and Case Review (England) Regulations 2010. Ofsted’s National Minimum Standards for Fostering Services also expect clear, reliable information about children’s care. More pressured public-sector workers need records that take minutes rather than another evening of administration.
+
+The passages cover allegation investigations, record-keeping for safeguarding complaints, a recruitment campaign, agency placement shortages, and carer allowances — none address whether foster carers currently struggle to maintain independent records of care events, appointments, or contact arrangements, or whether they pay to solve that specific problem.
+
+None of the passages address NHS staff pay, disposable income, or willingness to spend on private services; they cover NHS racism surveys, AI adoption, gallstones, Cambridgeshire fostering allowances, and a copyright notice.
+
+Three passages are generic dictionary definitions of 'health' with no connection to fostering, distribution, or channels. The remaining three mention independent fostering agencies comparing themselves to local authorities, but say nothing about any app, subscription, or route to reach NHS-worker foster carers.
+
+The passages only describe the UK's constitutional structure, ISO country codes, a map, the GDPR homepage link, a US children's privacy rule, and a music channel — none say anything about whether an independent foster-carer record app can lawfully collect and store this data.

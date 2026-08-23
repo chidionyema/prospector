@@ -1,0 +1,1661 @@
+{
+  "harness": "g_generation_ab",
+  "mode": "fixture",
+  "complete": true,
+  "stopped_because": "",
+  "distinct_k_saturated": false,
+  "primary_metric": "distinct_k",
+  "providers": [
+    "mock"
+  ],
+  "elapsed_s": 1.9,
+  "config": {
+    "signals": [
+      "discovered_2026-06-14_epa_finalises_first_national_pfas_drinking_water_l",
+      "discovered_2026-06-14_eu_data_act_forces_connected_vehicle_data_out_of_o"
+    ],
+    "repeats": 2,
+    "k": 12,
+    "arms": [
+      "baseline",
+      "g2_incumbent",
+      "g3_denylist",
+      "g4_verbalized_sampling",
+      "g8_critique_revise",
+      "shipped"
+    ]
+  },
+  "calls": {
+    "total": 80,
+    "by_arm": {
+      "baseline": 12,
+      "g2_incumbent": 12,
+      "g3_denylist": 12,
+      "g4_verbalized_sampling": 12,
+      "g8_critique_revise": 20,
+      "shipped": 12
+    }
+  },
+  "cells_completed": {
+    "baseline": 4,
+    "g2_incumbent": 4,
+    "g3_denylist": 4,
+    "g4_verbalized_sampling": 4,
+    "g8_critique_revise": 4,
+    "shipped": 4
+  },
+  "paired_deltas_vs_baseline": {
+    "g2_incumbent": {
+      "distinct_k": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "distinct_ratio": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "mean_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "max_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_structural_form": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_audience": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_market": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_ambition_tier": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      }
+    },
+    "g3_denylist": {
+      "distinct_k": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "distinct_ratio": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "mean_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "max_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_structural_form": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_audience": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_market": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_ambition_tier": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      }
+    },
+    "g4_verbalized_sampling": {
+      "distinct_k": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 2,
+        "lost": 2,
+        "tied": 0
+      },
+      "distinct_ratio": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 2,
+        "lost": 2,
+        "tied": 0
+      },
+      "mean_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.1885,
+        "median_delta": 0.1885,
+        "won": 4,
+        "lost": 0,
+        "tied": 0
+      },
+      "max_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_structural_form": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_audience": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_market": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": -0.0192,
+        "median_delta": -0.0192,
+        "won": 0,
+        "lost": 4,
+        "tied": 0
+      },
+      "entropy_ambition_tier": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": -0.0192,
+        "median_delta": -0.0192,
+        "won": 0,
+        "lost": 4,
+        "tied": 0
+      }
+    },
+    "g8_critique_revise": {
+      "distinct_k": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": -2.5,
+        "median_delta": -2.5,
+        "won": 0,
+        "lost": 4,
+        "tied": 0
+      },
+      "distinct_ratio": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": -0.2083,
+        "median_delta": -0.2083,
+        "won": 0,
+        "lost": 4,
+        "tied": 0
+      },
+      "mean_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.4356,
+        "median_delta": 0.4356,
+        "won": 4,
+        "lost": 0,
+        "tied": 0
+      },
+      "max_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_structural_form": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_audience": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_market": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_ambition_tier": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      }
+    },
+    "shipped": {
+      "distinct_k": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 2,
+        "lost": 2,
+        "tied": 0
+      },
+      "distinct_ratio": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 2,
+        "lost": 2,
+        "tied": 0
+      },
+      "mean_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.1885,
+        "median_delta": 0.1885,
+        "won": 4,
+        "lost": 0,
+        "tied": 0
+      },
+      "max_pairwise_overlap": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_structural_form": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_audience": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "won": 0,
+        "lost": 0,
+        "tied": 4
+      },
+      "entropy_market": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": -0.0192,
+        "median_delta": -0.0192,
+        "won": 0,
+        "lost": 4,
+        "tied": 0
+      },
+      "entropy_ambition_tier": {
+        "mixed_provider_pairs": 0,
+        "n_pairs": 4,
+        "mean_delta": -0.0192,
+        "median_delta": -0.0192,
+        "won": 0,
+        "lost": 4,
+        "tied": 0
+      }
+    }
+  },
+  "raw": {
+    "discovered_2026-06-14_epa_finalises_first_national_pfas_drinking_water_l#0": {
+      "baseline": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.13535353535353536,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.4991666666666667,
+          "atypical_fraction": 0.4166666666666667
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "uk": 4,
+              "us": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "incremental": 4,
+              "ambitious": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g2_incumbent": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.13535353535353536,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.4991666666666667,
+          "atypical_fraction": 0.4166666666666667
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "data_intelligence": 1,
+              "productized_service": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "agency_owner": 1,
+              "startup_operator": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "us": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "ambitious": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g3_denylist": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.13535353535353536,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.4991666666666667,
+          "atypical_fraction": 0.4166666666666667
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "uk": 4,
+              "us": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "incremental": 4,
+              "ambitious": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g4_verbalized_sampling": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.40183982683982683,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5616666666666666,
+          "atypical_fraction": 0.3333333333333333
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 5,
+              "uk": 3
+            },
+            "entropy": 0.9808340377961403
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 5,
+              "incremental": 3
+            },
+            "entropy": 0.9808340377961403
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g8_critique_revise": {
+        "n": 12,
+        "distinct_k": 3,
+        "distinct_ratio": 0.25,
+        "mean_pairwise_overlap": 0.5292207792207793,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.4991666666666667,
+          "atypical_fraction": 0.4166666666666667
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "uk": 4,
+              "us": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "incremental": 4,
+              "ambitious": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 5,
+        "_call_kinds": {
+          "generate": 3,
+          "critique": 1,
+          "revise": 1
+        },
+        "_provider": "mock"
+      },
+      "shipped": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.40183982683982683,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5616666666666666,
+          "atypical_fraction": 0.3333333333333333
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 5,
+              "uk": 3
+            },
+            "entropy": 0.9808340377961403
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 5,
+              "incremental": 3
+            },
+            "entropy": 0.9808340377961403
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      }
+    },
+    "discovered_2026-06-14_epa_finalises_first_national_pfas_drinking_water_l#1": {
+      "baseline": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.13535353535353536,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.4991666666666667,
+          "atypical_fraction": 0.4166666666666667
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "data_intelligence": 1,
+              "productized_service": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "agency_owner": 1,
+              "startup_operator": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "us": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "ambitious": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g2_incumbent": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.13535353535353536,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.4991666666666667,
+          "atypical_fraction": 0.4166666666666667
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "uk": 4,
+              "us": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "incremental": 4,
+              "ambitious": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g3_denylist": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.13535353535353536,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.4991666666666667,
+          "atypical_fraction": 0.4166666666666667
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "uk": 4,
+              "us": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "incremental": 4,
+              "ambitious": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g4_verbalized_sampling": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.40183982683982683,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5616666666666666,
+          "atypical_fraction": 0.3333333333333333
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 5,
+              "uk": 3
+            },
+            "entropy": 0.9808340377961403
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 5,
+              "incremental": 3
+            },
+            "entropy": 0.9808340377961403
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g8_critique_revise": {
+        "n": 12,
+        "distinct_k": 3,
+        "distinct_ratio": 0.25,
+        "mean_pairwise_overlap": 0.5292207792207793,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.4991666666666667,
+          "atypical_fraction": 0.4166666666666667
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "uk": 4,
+              "us": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "incremental": 4,
+              "ambitious": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 5,
+        "_call_kinds": {
+          "generate": 3,
+          "critique": 1,
+          "revise": 1
+        },
+        "_provider": "mock"
+      },
+      "shipped": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.40183982683982683,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5616666666666666,
+          "atypical_fraction": 0.3333333333333333
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 5,
+              "uk": 3
+            },
+            "entropy": 0.9808340377961403
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 5,
+              "incremental": 3
+            },
+            "entropy": 0.9808340377961403
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      }
+    },
+    "discovered_2026-06-14_eu_data_act_forces_connected_vehicle_data_out_of_o#0": {
+      "baseline": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.1553030303030303,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5458333333333333,
+          "atypical_fraction": 0.16666666666666666
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g2_incumbent": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.1553030303030303,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5458333333333333,
+          "atypical_fraction": 0.16666666666666666
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g3_denylist": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.1553030303030303,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5458333333333333,
+          "atypical_fraction": 0.16666666666666666
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g4_verbalized_sampling": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.26590909090909093,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.44916666666666666,
+          "atypical_fraction": 0.3333333333333333
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "us": 5,
+              "uk": 3
+            },
+            "entropy": 0.9808340377961403
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "ambitious": 5,
+              "incremental": 3
+            },
+            "entropy": 0.9808340377961403
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g8_critique_revise": {
+        "n": 12,
+        "distinct_k": 2,
+        "distinct_ratio": 0.16666666666666666,
+        "mean_pairwise_overlap": 0.6325757575757576,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5458333333333333,
+          "atypical_fraction": 0.16666666666666666
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 5,
+        "_call_kinds": {
+          "generate": 3,
+          "critique": 1,
+          "revise": 1
+        },
+        "_provider": "mock"
+      },
+      "shipped": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.26590909090909093,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.44916666666666666,
+          "atypical_fraction": 0.3333333333333333
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "us": 5,
+              "uk": 3
+            },
+            "entropy": 0.9808340377961403
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "ambitious": 5,
+              "incremental": 3
+            },
+            "entropy": 0.9808340377961403
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      }
+    },
+    "discovered_2026-06-14_eu_data_act_forces_connected_vehicle_data_out_of_o#1": {
+      "baseline": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.1553030303030303,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5458333333333333,
+          "atypical_fraction": 0.16666666666666666
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g2_incumbent": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.1553030303030303,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5458333333333333,
+          "atypical_fraction": 0.16666666666666666
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g3_denylist": {
+        "n": 12,
+        "distinct_k": 4,
+        "distinct_ratio": 0.3333333333333333,
+        "mean_pairwise_overlap": 0.1553030303030303,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5458333333333333,
+          "atypical_fraction": 0.16666666666666666
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g4_verbalized_sampling": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.26590909090909093,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.44916666666666666,
+          "atypical_fraction": 0.3333333333333333
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "us": 5,
+              "uk": 3
+            },
+            "entropy": 0.9808340377961403
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "ambitious": 5,
+              "incremental": 3
+            },
+            "entropy": 0.9808340377961403
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      },
+      "g8_critique_revise": {
+        "n": 12,
+        "distinct_k": 2,
+        "distinct_ratio": 0.16666666666666666,
+        "mean_pairwise_overlap": 0.6325757575757576,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.5458333333333333,
+          "atypical_fraction": 0.16666666666666666
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "us": 4,
+              "eu": 4,
+              "uk": 4
+            },
+            "entropy": 1.0
+          },
+          "ambition_tier": {
+            "histogram": {
+              "ambitious": 4,
+              "moonshot": 4,
+              "incremental": 4
+            },
+            "entropy": 1.0
+          }
+        },
+        "_calls": 5,
+        "_call_kinds": {
+          "generate": 3,
+          "critique": 1,
+          "revise": 1
+        },
+        "_provider": "mock"
+      },
+      "shipped": {
+        "n": 12,
+        "distinct_k": 6,
+        "distinct_ratio": 0.5,
+        "mean_pairwise_overlap": 0.26590909090909093,
+        "max_pairwise_overlap": 1.0,
+        "typicality": {
+          "n_reported": 12,
+          "mean": 0.44916666666666666,
+          "atypical_fraction": 0.3333333333333333
+        },
+        "axes": {
+          "structural_form": {
+            "histogram": {
+              "vertical_tool": 10,
+              "productized_service": 1,
+              "data_intelligence": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "audience": {
+            "histogram": {
+              "software_developer": 10,
+              "startup_operator": 1,
+              "agency_owner": 1
+            },
+            "entropy": 0.5152734452350943
+          },
+          "market": {
+            "histogram": {
+              "eu": 4,
+              "us": 5,
+              "uk": 3
+            },
+            "entropy": 0.9808340377961403
+          },
+          "ambition_tier": {
+            "histogram": {
+              "moonshot": 4,
+              "ambitious": 5,
+              "incremental": 3
+            },
+            "entropy": 0.9808340377961403
+          }
+        },
+        "_calls": 3,
+        "_call_kinds": {
+          "generate": 3
+        },
+        "_provider": "mock"
+      }
+    }
+  }
+}

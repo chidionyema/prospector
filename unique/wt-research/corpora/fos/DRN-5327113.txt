@@ -1,0 +1,1934 @@
+DRN-5327113 
+ 
+ 
+The complaint 
+ 
+Mr D complains that Options UK Personal Pensions LLP (formerly Carey Pensions) 
+(‘Options’) shouldn’t have accepted a transfer of his occupational pension scheme into a 
+self-invested personal pension (‘SIPP’). 
+What happened 
+In or around late 2012, Mr D was approached by a representative of an overseas 
+incorporated unregulated pensions advisory company, Caledonian International Associates 
+(‘Caledonian’), after hearing about them from a colleague. The representative made 
+promises of providing a better return on his pension than Mr D’s current scheme. As a result, 
+Mr D transferred his Armed Forces pension to an Options SIPP. 
+I’ll set out below a high-level background to what happened, although as the parties are both 
+fully aware of the details to this complaint, I don’t intend to repeat everything that has already 
+been rehearsed in correspondence between them and set out in our investigator’s opinion. 
+Mr D had a defined benefit Armed Forces occupational pension following his service in the 
+military. In 2012, Mr D had a home in the UK. It doesn’t appear that he had any interest in 
+changing his pension until he met face to face with a representative of Caledonian who 
+offered him a better return if he was to transfer it to a SIPP. He says that he was told that he 
+“would have a pot of money … at retirement, there was little risk and he could retire from a 
+dangerous job far earlier” if he was to transfer his military pension. 
+Mr D had little financial expertise. He wasn’t an experienced or sophisticated investor, nor 
+was he a high net worth individual. Mr D was guided and influenced by Caledonian’s advice 
+to transfer his pension to an Options SIPP. Mr D signed the pre-completed paperwork at the 
+end of January 2013. The new SIPP was set up shortly afterwards and the investments 
+(approximately £36,500) were processed by Options in April 2013. The investments into 
+which Mr D’s money went are held by James Brearley & Sons Ltd (‘JBL’), a UK regulated 
+entity, as custodian for investment manager Business C (details below).  
+Mr D is unhappy because he thinks that Options should have recognised that Caledonian 
+had been providing him with advice to transfer a defined benefit pension to a SIPP, 
+something that the regulator, the Financial Conduct Authority (‘FCA’), views in most 
+instances to be inherently unsuitable. Mr D was unaware that Caledonian wasn’t regulated 
+by the FCA (then the Financial Services Authority (‘FSA’)), to provide financial advice and 
+thinks Options should have made him aware of the risks of this - and so not accepted the 
+transfers. He just signed the pre-completed forms he was given by Caledonian, trusting the 
+advice to transfer that he’d been given. 
+Mr D’s investments haven’t achieved the returns promised and carried high fees. Mr D now 
+knows the investment was unlikely to provide him with a better return than his original armed 
+forces pension. And the benefits were likely to be worse. 
+In response to Mr D’s complaint, Options has told us that it thinks it was brought to us out of 
+time. And it doesn’t consent to us investigating it. Mr D’s investment was made in April 2013 
+
+ 
+ 
+and the complaint was made to Options by Mr D’s representative in March 2024. So that’s 
+longer than the six years allowed under our rules. Options also says that Mr D should have 
+known more than three years before he complained that he had cause to complain to 
+Options. It says it thinks that because Mr D signed paperwork when he applied for the SIPP, 
+acknowledging the rights that he was giving up from his existing scheme, this means he 
+should have known he could complain back then in 2013. It has also said that following the 
+suspension of some his funds in 2018, Mr D should have realised that he may have suffered 
+a loss and complained about it then, if not before. 
+Our investigator didn’t think that Mr D was aware, or should reasonably have become aware, 
+that he could complain before February 2023. That’s when he was contacted by an ex-
+colleague who told him that there may have been a problem with his transfer out of his 
+Armed Forces pension. He contacted his representative and was advised that his pension 
+shouldn’t have been transferred and that he could complain. Mr D’s complaint was brought 
+to Options in March 2024, once he’d been advised by his representative that Options had 
+likely done something wrong. So, our investigator considered that the complaint had been 
+brought within three years of when Mr D knew, or should reasonably have known, he had 
+cause for complaint against Options. 
+Our Investigator also didn’t think that Options had provided sufficient evidence to show that 
+Mr D ought reasonably to have been aware that he had suffered a loss before speaking to 
+his ex-colleague and contacting his representative. They noted that whilst Mr D was made 
+aware of the suspension of some his funds in 2018, Mr D’s annual valuations at the time 
+showed no significant losses and the updates he had been provided at the time were 
+unlikely to cause him any concerns. So, they thought the complaint had been brought in 
+time.  
+Our investigator also thought that the due diligence that Options undertook on Caledonian 
+was deficient. If Options had carried out its obligations properly, it would have recognised 
+that Caledonian was likely to be providing unsuitable advice to Mr D, contrary to regulation. It 
+should also have seen that there was a significant risk of consumer detriment in accepting 
+instructions from Caledonian - and hence it shouldn’t have accepted any business from it. 
+So, they recommended that Mr D’s complaint be upheld. And compensation be paid. 
+Options didn’t respond to the merits’ aspects of our investigator’s opinion but it did make 
+some further points on jurisdiction. 
+So, the matter has come to me for a decision. 
+Background 
+I’ll summarise below the relationship between the various parties and how that led to Mr D’s 
+pension being transferred to the Options SIPP. 
+The entities involved 
+ 
+ 
+Options UK Personal Pensions LLP 
+Options is a SIPP provider and administrator. It was regulated by the FSA at the time of the 
+events complained about – now the FCA. It was – and still is – authorised to arrange (bring 
+about) deals in investments; deal in investments as principal; establish, operate and wind up 
+a personal pension scheme; and make arrangements with a view to transactions in 
+investments. 
+Caledonian 
+Caledonian was the trading name of MMG Associates which was registered in the British 
+Virgin Islands. Caledonian wasn’t authorised in the UK to undertake regulated activities and 
+it doesn’t appear on the FCA’s Financial Services Register. There is no evidence it was 
+authorised to carry out such activities in any other jurisdiction. 
+Business C 
+Business C is an investment manager based in the Isle of Man. The evidence is that 
+Business C agreed to manage or provide oversight of investments taken out by Caledonian’s 
+customers after they had transferred their pensions. I shall call the individual representing 
+Business C, who is mentioned in this decision, Mr P. 
+James Brearley & Sons Ltd (JBL) 
+JBL is regulated in the UK by the FCA. It was custodian for the investments into which 
+Mr D’s money was invested. 
+The relationship between Caledonian and Options 
+Options’ relationship with Caledonian began in early 2012. Options has confirmed there 
+were 509 introductions to it made by Caledonian between 27 April 2012 and 20 May 2013. 
+Options has said that it carried out due diligence checks on Caledonian and has provided 
+supporting evidence of the checks it made. 
+I have set out below a summary of what I consider to be the key events and/or actions 
+during the relationship between Options and Caledonian, which I have observed from the 
+available evidence (this includes evidence from Mr D’s case file and generic submissions 
+Options has made to us about its due diligence on, and its relationship with, Caledonian). 
+March 2012 
+A business profile was completed which recorded Options’ first meeting with Mr C of 
+Caledonian. This set out Caledonian’s proposed business model as follows (redacted as 
+appropriate): 
+“[Mr C] detailed his business model, 
+He was preferred adviser for the Armed Forces occupational pension scheme for individuals 
+who had left the armed forces and were taking up positions in close security work in places 
+such as Iraq/Afghanistan/lran etc... and also anti piracy positions. 
+The profile of the clients were described as: 
+• 30 to 50 year olds 
+ 
+ 
+• Had been in the armed forces for between 6 to 10 years 
+• Had left the armed forces and wanted to transfer their pension arrangements 
+• They had no expectation of long life expectancy 
+• They were living today so wanted to access funds earlier then they could if their 
+pension stayed in the armed forces pension scheme 
+• They were generally still resident in UK but some were now living abroad in various 
+countries such as Thailand, Germany, Spain etc. 
+• They were now earning quite large salaries circa £70k plus 
+[Mr C] was provided referrals from the armed forces pensions contact he had and also he 
+received enquiries as a result of his clients speaking to other ex-armed forces personnel. 
+He had been doing large volumes of QROPS business with a provider called (business M) 
+but recognised the fact that a UK SIPP was probably more appropriate for the majority of his 
+clients. 
+He was currently putting them into an international Friends Provident Bond, the underlying 
+investments were regulated. 
+[Mr C] himself was not a regulated adviser, he was a consultant to these clients and advised 
+(my emphasis) them on their armed forces transfers only, he was a qualified accountant and 
+was a member of the Chartered Institute of Accountants. 
+His company was trading as Caledonian although the holding company was a BVI company 
+called MMG Associates. 
+He was developing a relationship with (Mr P), and may consider [Business C] as an 
+alternative investment provider in due course. Although he was currently wanting a 
+relationship with a SIPP provider. 
+[Mr C] was looking at volume business in the region of 50 schemes a month.” 
+16 March 2012 
+Mr C of Caledonian signed and dated Options’ “Non-Regulated Introducer Profile”. The form 
+set out its purpose as follows: 
+“As an FSA regulated pensions company we are required to carry out due diligence as best 
+practice on unregulated introducer firms looking to introduce clients to us to gain some 
+insight into the business they carry out.” 
+On the Non-Regulated Introducer Profile, Caledonian responded to a number of questions. 
+The key points were: 
+Under the section headed “Company Information” the following was recorded: 
+• It had branches in Chile, Peru, Columbia, Argentina, Brazil and Switzerland. 
+• It had been trading since 1997. 
+ 
+ 
+Under the section headed “Product Information”, in response to the question, “what products 
+does the firm promote/distribute” the answer noted was: 
+“Offshore savings plans + investment bonds – Friends Provident International + …..” 
+Caledonian set out that the products had been accepted by other SIPP providers, including 
+Options, and they hadn’t been declined by other product providers. 
+Under the section headed “Sales and Marketing Approach”, in response to the question as 
+to how Caledonian would obtain clients, the answer was: 
+“Referral” 
+In response to a request to describe the sales process adopted by Caledonian, it was set 
+out: 
+“Referral – Visit – Analysis – Visit.” 
+When asked to describe the average profile of the type of client Caledonian took on, the 
+answer was: 
+“Income £70,000, Age 36, Self employed in the security industry.” 
+When Caledonian was asked how much business would be sold through pension 
+arrangements the answer given was: 
+“50/50 Pension Transfer/Regular Savings Plan” 
+In response to a question about the typical commission structure the answer was: 
+“7% up front from bond – 0.5% Trail.” 
+Under the section headed, “Training and Information”, in response to the question, “what 
+training was provided to its agents” the answer was: 
+“Ongoing product training and accompanied meetings.” 
+In response to a question about what specific pension training was delivered to its agent the 
+answer was: 
+“Visits to providers directly.” 
+In response to how the business by its agents was monitored, the answer was: 
+“Fully administrative structure – Caledonian, Careys – Compliance.” 
+In response to a question about the kind of service it sought from a SIPP provider, the 
+answer was: 
+“Administrative & Compliance.” 
+Under the section headed, “Legal and Regulatory Information” the following was recorded: 
+• Caledonian did not work with any FSA regulated company or adviser. 
+• It wasn’t a member of any professional or trade body. 
+ 
+ 
+• It had no PI cover in place at the time. 
+• It hadn’t been subject to any (or ongoing) FSA supervisory visits or censure. 
+In response to a question about what measures were in place to: 
+“ensure the Firm engage legal advice on the activities it carries out to ensure regulated 
+activities are not carried out?” 
+The following answer was given: 
+“Majority of business carried out in unregulated jurisdictions but where regulations apply we 
+are licensed to carry out our activities.” 
+In response to the question as to how Caledonian demonstrates it treats its customers fairly 
+it said that: 
+“Compliance & Procedures in current alignment with FSA TCF.” 
+In response to a question about what Caledonian’s objectives were for the coming 12 
+months it was noted: 
+“To continue to develop a fully compliant business of PT to HM Forces” 
+With regards to members pension scheme business it was noted that Caledonian was 
+seeking a “Compliant structure in a Regulated structure.” 
+An email was sent from Options’ compliance department to Mr C, requesting a copy of 
+Caledonian’s latest company accounts and certified copy of the passport for its 
+principals/directors. 
+3 April 2012 
+Options’ compliance department sent a chaser email to Caledonian for the documents it 
+requested on 23 March 2012. A senior consultant at Caledonian replied on the same day 
+and provided a copy of Mr C’s passport. The consultant said she would speak with Mr C 
+when he returned from a trip, regarding the company accounts. 
+4 April 2012 
+Mr C says he’s been in Iraq and will send documents once he’s back 
+27 April 2012 
+Options started to receive introductions from Caledonian. 
+1 August 2012 
+An Options’ employee sent an internal email to another Options employee, who it seems 
+was responsible for managing the relationship with Caledonian. The first employee said to 
+the second employee that Options still required certified passports for the principals/directors 
+and company accounts, and that ‘compliance’ would raise it in the audit that was being 
+completed on that day. 
+The second employee confirmed on the same day that they had spoken with Mr C. It was 
+noted that Mr C had said the company secretary was on holiday, but he would send an 
+ 
+ 
+urgent request for the outstanding documentation. 
+4 September 2012 
+A “Non-regulated Introducer Agreement Terms of Business” document between Options and 
+“MMG Associates Ltd T/A Caledonian International Associates” was signed and dated by 
+Mr C. That agreement included: 
+“The Business Introducer undertakes that they will not provide advice as defined by the Act 
+in relation to the SIPP – for the avoidance of doubt this includes reference to advice on the 
+selection of The SIPP Operator, contributions, transfer of benefits, taking benefits and 
+HMRC rules:” 
+Options has said that these terms of business were actually received by Caledonian on 21 
+March 2012. 
+1 November 2012 
+Options conducted a ‘World Check’ (a risk intelligence tool which allows subscribers to 
+conduct background checks on businesses and individuals) on two Caledonian employees - 
+Mr [redacted] and Mr C. This check did not reveal any issues. 
+Undated document likely to have been created in March 2013 
+Options has provided an undated document called the “Overseas Introducer Assessment 
+Proforma”. The document listed several criteria and assessed its internal measurement 
+criteria as ‘low risk’, ‘medium risk’ or ‘high risk’ with supporting notes. 
+This document isn’t dated but the earliest this is likely to have been completed is around 
+March 2013 when Options appears to have been looking more closely at its compliance 
+requirements for Caledonian, having also received some recent business that didn’t fit the 
+armed forces profile. 
+I have set out below what the sections of this document recorded and the level of risk that 
+was noted: 
+• Google Search and FCA 
+This section was assessed as ‘low risk’. The notes set out that there were no adverse 
+comments. 
+• Regulatory 
+This section was assessed as ‘high risk’. The notes said that: “Cannot find any regulatory 
+information from the details held.” 
+• Company 
+This section had a mixture of assessments which were mainly medium risk. It was set out 
+that Caledonian had: 
+“No UK branch. Cannot see any EEA regulatory details.” And this was classed as ‘high risk’. 
+Caledonian’s trading history was recorded as ‘medium risk’. The notes set out that: 
+“Unknown company establishment time – cannot find any details from information received.” 
+ 
+ 
+It was also noted in relation to Caledonian’s accounts that: 
+“No accounts requested ?.” 
+• Articles of Association 
+It was noted that this was ‘medium risk’ and that: “No articles of association 
+requested/received” 
+• Advice 
+This section was assessed as ‘high risk’ and it was noted: 
+“Unregulated – No details of how advice given. No regulatory bodies / permissions seen. 
+Although suggested on email that advice given in Jordan?” 
+And: 
+“Advice possibly given in Jordan, although not sure if true for UK based clients”. 
+• Transfer / Switches. 
+This section was assessed as ‘high risk’ and in particular it was noted that the funds for 
+investment within the SIPP were to be generated from: 
+“Transfers from Armed Forces Pension occupational scheme.” 
+• Client Profile 
+This section was assessed as ‘high risk’. The notes set out: 
+“Client Profile: 30-50 years old. Part of armed forced 6-10 years. Generally still UK residents, 
+some abroad. Now working in security earning £70k pa. HOWEVER, recently received 
+business outside of profile.” 
+• Acceptance – Result 1 
+This section was assessed as ‘medium risk’. The notes don’t explain the reason for this. 
+However, the measurement criteria explanation under medium risk set out that: 
+“company details are a mixture of green and amber raise with technical review committee 
+before proceeding.” 
+• Acceptance – Result 2 
+This section was assessed as a mixture of ‘high risk’ and ‘medium risk’. It is set out under 
+the high-risk section that if the section was a mixture of ‘red’ and ‘amber’ this section should 
+be declined. 
+‘Professional Qualification’ was recorded as ‘high risk’. The notes recorded: 
+“No qualifications documented other than meeting notes from March 2012 where [Mr C] 
+stated he was a qualified accountant and member of Chartered Institute of Accountants.” 
+‘Meeting’ was recorded as ‘medium risk’. The notes recorded: “Meeting held at Carey 
+ 
+ 
+Pensions UK office March 2012.” 
+7 March 2013 
+An internal email was sent by an Options’ manager to other Options employees summarising 
+a call Options had held with Caledonian (Mr C). The summary said: 
+• Options had noted that following recent FSA (now FCA) review and guidance all 
+SIPP operators were being asked to look at the business received from their 
+introducers against their expectations surrounding the type of profile. 
+• Options’ understanding was that the introductions from Caledonian would be ex-
+military, aged approximately 36 years old and who were self-employed in the 
+security industry with earnings of approximately £70,000. However, out of the seven 
+new business cases that they reviewed on 6 March 2013, three of them had moved 
+away from the expected profile. 
+• Options had asked Caledonian if its profile was changing/extending. Caledonian 
+explained: 
+predominantly the members were in the close protection industry which as @ 5 years ago 
+they all went into. He said that foreign operatives were now coming in in a more organised 
+structure. Some were getting promoted into senior positions. Many were previously divers in 
+the military and so going into Diving elsewhere. 
+• Options had asked Caledonian to put together a note to update its file as to the 
+business it would receive. 
+20 March 2013 
+Options sent Caledonian an email. Options noted that it was waiting for Caledonian to 
+provide an update to the changes in its profile. Options also noted it had received further 
+business that day which was against the expected profile. One was a taxi driver with 
+earnings of £15,000 and the other was a tutor with earnings of £23,000. 
+26 April 2013 
+An Options employee in its compliance department sent an email to several Options 
+employees. She raised concerns about Caledonian’s business practices. She said: 
+“We have a responsibility to proactively monitor our distribution channels to ensure our 
+products do not end up with customers for whom it is not suitable. Based on recent 
+correspondence with Caledonian I am increasingly concerned by their business practices 
+and therefore believe we should review our relationship with them and the business they 
+have introduced. I will arrange a meeting for next week to discuss. In the meantime we need 
+to determine the answers to the questions below to help facilitate our discussions.” 
+The employee asked in April 2013 for answers to several questions, the responses to which 
+I have set out below. 
+“Overview of business 
+Date relationship commenced: April/May 2012 
+What is the agreed profile of clients introduced by Caledonian: Ex Armed Forces, Approx 
+ 
+ 
+age 38, working in the Close protection industry (security), earnings of Approx £70k 
+Number of clients introduced: 497 (363 now invested, 134 ongoing) Value of investments 
+held: £16m 
+Nature of investments, i.e. any alternative investments: Friends Provident Int. (Funds) or…. 
+Investment Platform with [Business C] acting as DFM. Number of complaints from 
+Caledonian introduced clients: None 
+How many transfers were also accompanied by a TVAS? Who has provided the TVAS? 37 - 
+Only TVs over £100k (from Armed Forces Pension) or any amount no matter how small on 
+other TVs. TVAS provided by (Mr P) [Business C] 
+Overview of Caledonian: 
+What due diligence was undertaken on Caledonian prior to establishing the relationship? 
+- Unknown but AML was received. 
+Location of head office: Geneva, Switzerland 
+Do they have a business address in the UK? They confirm that they do not have a 
+permanent place of business in the UK, however they have a business address for 
+correspondence and [Mr C] is based in the UK. 
+Where do they meet with clients, i.e. in the UK? Unknown. 
+What is Caledonian's regulatory status, i.e. are they regulated in their home jurisdiction? 
+[Mr C] - The Chartered Insurance Institute - ID Number [ redacted ]. [Mr C] certifies all ID and 
+signs the investment Application Form. 
+Are they regulated to provide advice in their home jurisdiction? Unknown 
+They have confirmed that they provide advice in Jordan. How does this work? Do they have 
+a place of business in Jordan? Do they need to be regulated in Jordan to provide advice? 
+Unknown - Caledonian provide a Non Solicitation Letter which is sent to Friends Provident 
+with the investment App. A copy of a Non Solicitation Letter is attached 
+How did we establish Caledonians knowledge of SIPPs and UK pension rules? Unknown 
+Based on our contact with Caledonian and reviewing the illustrations they provide to clients, 
+do we have concerns that Caledonian is providing poor advice/ information? Yes due to 
+illustrations 
+Do Caledonian provide advice on investments within the SIPP? Caledonian send to us the 
+Friends Provident Investment Applications with the Application to set up the SIPP. The funds 
+table in the investment App is pre-populated by Caledonian. The Member does see a copy 
+of this document - which we send to them prior to investing their funds. 
+What due diligence did we undertake on (Business C)? Unknown” 
+30 April 2013 
+An email reply was provided internally by Options in response to some of the queries in the 
+previous email (see above): 
+ 
+ 
+“Where do they meet with clients? Generally abroad depending on where their next 
+assignment is, they will also hold meetings in the UK 
+Are they regulated to give advice in their home jurisdication (sic)? No because they are not 
+regulated they are introducers of business 
+They have confirmed they give advice in Jordan? When they mean advice they are talking 
+about consultancy they are not regulated in any jurisdication (sic) 
+How did we establish their knowledge of UK Pension and SIPP marketplace? By meeting 
+with them twice and by running a workshop for them output from which is attached 
+Based on our contact with Caledonian and reviewing the illustrations they provide to clients, 
+do we have concerns that Caledonian is providing poor advice/ information? I am not sure it 
+is our place to comment on this maybe on the information but not on advice, if we 
+commented on whether we thought even our regulated advisers were providing poor advice I 
+would probably think we would say yes. Think we need to be careful what questions we are 
+looking to answer comfortable on the information piece but not on the advice piece 
+Do Caledonian provide advice on investments within the SIPP? No they don't, they consult 
+with the client on the feasibility of transferring their Armed Forces Pension Scheme into a 
+SIPP and their partner to manage the investment is [Business C]” 
+10 May 2013 
+Options sent Caledonian an email requesting further information. The email confirmed 
+Options were reviewing the terms of business in light of recent announcements from the 
+FCA. 
+Options said it was keen to continue to do business with Caledonian, but it must be within 
+the regulatory framework and that it must satisfy “the regulators should they come in and 
+review this area of our business, so we must start with ensuring we understand each stage 
+of the process, to enable us to develop a robust and compliant process for this business 
+moving forward.” Options asked Caledonian a number of questions, which I have set out 
+below. 
+1. Can you provide your organisational structure and the jurisdiction in which each is 
+registered and the regulation/regulator that each company operates within. If you are 
+relying on any exemptions please state which exemptions and the reasons you believe 
+you can operate within those exemptions 
+2. Are you giving advice and if so in what capacity and under what regulatory environment 
+are you providing this advice. 
+3. What offices do you have and where, do the jurisdictions in which you have offices have 
+a regulatory regime, if so can you provide details of the regulators in those jurisdictions. 
+4. On what basis are you providing illustrations and the reasons for this basis 
+5. Do you meet all your clients in Jordan, if not why do your Non Solicitation forms signed 
+by yourself confirm the advice was given in Jordan 
+6. Please confirm the profile of your clients 
+7. Please confirm how you receive introductions to your clients 
+ 
+ 
+8. Can you update information about your team their background, expertise in dealing with 
+pensions 
+9. On the Non Solicitation letters you note that Caledonian does not have a permanent 
+place of business in the UK. However, you request correspondence to be sent to The 
+Pensions Service Centre, ….. Please can you clarify Caledonian's presence in the UK 
+and the nature of the office in ….. 
+Options said that from 1 May 2013 it had implemented changes to its requirements, and 
+Caledonian must have a “UK FCA regulated adviser providing the TVAS and the sign off for 
+the suitability of transfers from occupational schemes of any values.” 
+15 May 2013 
+Options sent an internal email which was a summary of a telephone conversation with Mr P 
+of Business C. The summary recorded that: 
+• Mr P confirmed that an FCA Regulated Adviser would be providing the TVAS 
+reports on all Caledonian introduced clients. This adviser would be placed in 
+their Milton Keynes office for a period of time and would produce TVAS 
+reports on the back book of business with Caledonian. 
+• On this understanding Options had agreed they would continue to process 
+applications where the TVAS report was currently being issued by Mr P. 
+20 May 2013 
+Options says this was the date of the last introduction made to it by Caledonian. 
+23 May 2013 
+A handwritten summary was made of a meeting between Caledonian (Mr P and Mr C) and 
+Options. This included the following. 
+• Mr C said he was a consultant to armed forces and not an adviser in the FCA 
+sense. 
+• The [….] address was a postal address and not a working office. 
+• Mr C said he meets with clients in the UK. It was noted that the profile document 
+said that he met them in Jordan. So, a letter was needed about where advice was 
+given. 
+• The initial contact was abroad. The client contacts Caledonian if they want to 
+transfer their pension. 
+• Caledonian’s website didn’t mention that it would give advice. And their 
+documents made it clear that no advice was given and that clients should take 
+advice from a regulated adviser. 
+• Caledonian explained that the reason for lots of transfers was because of the 
+market and their relationship with the providers. 
+• The proposal going forward involved an appointed representative of a 
+Manchester IFA being a pension specialist and it had the necessary 
+ 
+ 
+qualifications. Going forward the Manchester IFA would deal with business. 
+• Options agreed to allow Caledonian a four-week window to put measures in 
+force. 
+• The question about providing Options with a letter if advice was being given was 
+irrelevant as Caledonian didn’t provide any advice. 
+• Caledonian said its illustrations were provided to facilitate the transfer of the 
+pensions. Options query was whether this was advice. 
+• There also appears to be an internal note which said it should be established if 
+there was a Caledonian terms of business. 
+I have not seen evidence that any of the agreed actions were completed. 
+May 2013 
+Options decided to review its relationship with Caledonian. Options has provided a copy of 
+its document headed, “Caledonian Relationship Review 2013”. I have reviewed the 
+document in full, but have only quoted below what I consider to be the key part: 
+“ … Following a detailed review of the process and documentation concerns were raised 
+regarding whether the clients [of Caledonian] could be deemed to be receiving advice 
+through an unregulated entity. 
+Following a request for further clarification on these points we have not been able to satisfy 
+ourselves that this is not the case. 
+We have insisted that they move to a model that all cases are fully advised by an FCA 
+regulated firm/individual, which has been accepted … 
+Following a meeting in the Milton Keynes office … where [Mr C] from Caledonian, and [Mr P] 
+of [Business C] explained their current process and documentation and described their 
+future process, [and] further discussions … it was decided that they had not satisfied us 
+enough with their current processes for us to continue to allow taking on new business in the 
+interim without the use of a UK regulated firm or individual who was suitably qualified. 
+[Options] has instructed the team of this decision so from week beginning 28th May any new 
+business received will be rejected unless it comes through an FCA regulated firm.” 
+It set out a detailed process by which Caledonian proposed to move to a model where all 
+clients would be fully advised by an FCA regulated firm/individual, and it highlighted the 
+benefits of this new approach as being: 
+“All schemes are coming in on an advised basis 
+Brings the process and clients into the UK regulated process 
+Brings the clients into the FSCS and FOS protections 
+Ensures all occupational schemes undergo analysis and advice” 
+I have not seen evidence that this advised or regulated process described ever came into 
+effect for any applications made by Caledonian. 
+ 
+ 
+Mr D’s dealings with Options and Caledonian 
+I’ve set out above the background to how Mr D came to deal with Caledonian, so I won’t 
+repeat that again. 
+Mr D was promised a better return than he’d get by staying with his then Armed Forces 
+pension. He trusted Caledonian and accepted its advice to transfer into the Options SIPP 
+and Business C investments to be held with JBL. He wasn’t financially knowledgeable. 
+I’ll refer below to the correspondence that Mr D signed, although I understand these to all 
+have been pre-completed. 
+22 January 2013 – Mr D signed an authorisation providing for Options to deal with 
+Caledonian in relation to his pension transfer and investment. 
+22 January 2013 - Mr D completed Options’ SIPP application form. In brief this confirmed 
+his age, UK address, employment status, details of his Armed Forces pension and the 
+intended investment – which was to be a Business C investment, with the custodian later 
+being named as JBL. 
+ 
+The front page of the SIPP application stated the following: 
+ 
+“The Carey Pension Scheme Application Form For Direct Clients. (SIPP 
+to be established on execution only). 
+This Form should be used if you are a client establishing a SIPP without advice. You have 
+made this decision independently and are aware of the implications of this decision 
+ 
+Please read the Key Features Document, Terms & Conditions and Fee Schedules prior to 
+completing this application form… 
+ 
+Carey Pensions UK LLP, and Carey Pensions Trustees UK Ltd have not provided any 
+advice and are not responsible for the suitability or appropriateness of your decision to 
+establish a SIPP" 
+ 
+Page 4 under the section headed Transfers it said that: 
+ 
+"Please Note, whilst we cannot give advice, we recommend that in these circumstances 
+you seek appropriate advice…" 
+ 
+Page 5 under the section headed Investments it said that: 
+ 
+"As you do not have a Financial Adviser, your investment choices are your sole 
+responsibility. You will instruct us and we will act on those instructions as long as it is an 
+accepted investment in the Carey Pension Scheme." 
+ 
+Carey Pensions UK LLP and Carey Pension Trustees UK Ltd will not at any time review 
+any aspects of your appointed Investment Manager's financial status or investment and 
+risk strategies nor have any involvement in your investment choices and selection, nor 
+give advice on the suitability of your investment choices. We would always recommend 
+independent advice be obtained from a suitably qualified adviser.…[my emphasis] 
+ 
+You are responsible for the ongoing review and monitoring of the investments you have 
+chosen - and remember - all investments can go down in value as well as up. Carey 
+Pensions is not responsible for any investment choices or decisions." 
+ 
+ 
+ 
+Page 9 under the section headed Declaration (which was signed and dated by Mr D) it said 
+that: 
+ 
+“I hereby apply for membership as a direct client of the Carey Pension Scheme 
+ 
+I acknowledge and accept the Terms & Conditions of the Carey Pension Scheme and 
+agree to be bound by the Scheme Rules of the Carey Pension Scheme. 
+ 
+I confirm that I have read and understand the relevant Key Features Documents, 
+Terms & Conditions and all aspects of the application form. 
+ 
+I confirm that all details provided are true and complete to the best of my knowledge and 
+belief. 
+ 
+I hereby consent to Carey Pensions UK LLP requesting the transfer of my policies listed 
+in the application form. 
+ 
+I confirm that I will instruct Carey Pensions UK LLP to make the investments as 
+detailed in the application form. 
+ 
+I understand that it is my sole responsibility to make decisions relating to the purchase, 
+retention or sale of any investments held within the Carey Pension Scheme. 
+ 
+I understand that Carey Pensions UK LLP and Carey Pension Trustees UK Ltd are not in 
+any way able to provide me with any advice. 
+ 
+I confirm that I am establishing the Carey Pension Scheme on an execution only basis. 
+ 
+I confirm that I understand that the value of my pension scheme can go down as well as up 
+depending on the performance of the investments chosen." 
+ 
+22 January 2013 – Mr D signed Options’ member declaration form.  
+ 
+This confirmed the following: 
+ 
+I the above named write to instruct Carey Pensions UK LLP to establish a Self Invested 
+Personal Pension (SIPP) and Carey Pension Trustees UK Ltd to proceed with the 
+transfer of Occupational Pension Scheme benefits from The Armed Forces Pension to 
+the Carey Pension Scheme. 
+ 
+I confirm that I have received full and appropriate advice from Caledonian 
+International and following this advice I wish to proceed with the transfer. 
+[my emphasis] 
+ 
+I am fully aware and understand that by giving an instruction to proceed with the transfer 
+of my Occupational Scheme Benefits to the Carey Pension Scheme I may lose 
+substantial benefits. 
+ 
+However, being of sound mind and in full possession of the facts I have considered the 
+matter of the transfer and as an individual confirm my decision and instruction to both 
+Carey Pensions UK LLP and Carey Pension Trustees UK Ltd to proceed with the transfer 
+of the Occupational Scheme Benefits. 
+ 
+ 
+ 
+I am fully aware that in acting on my instructions both Carey Pensions UK LLP and 
+Carey Pension Trustees UK Ltd act on an Execution Only Basis. 
+ 
+Neither Carey Pensions UK LLP nor Carey Pension Trustees UK Ltd have provided any 
+advice whatsoever in respect of this transaction. 
+ 
+Should any tax charges be deemed by HMRC to apply in future these will be paid 
+directly from the fund or by me as the member of the Scheme. 
+ 
+I do not hold Carey Pensions UK LLP or Carey Pension Trustees UK Ltd responsible for 
+any fluctuations in value of either of the Occupational Pension Scheme or the Carey 
+Pension Scheme. 
+ 
+I agree to provide Carey Pension Trustees UK Ltd with any further information and/or 
+documentation they may require prior to completing this transaction. 
+ 
+I fully indemnify both Carey Pensions UK LLP and Carey Pension Trustees Ltd at all times 
+against any and all liability arising from this transaction. 
+ 
+1 February 2013 – Options received all the application paperwork for Mr D’s SIPP 
+from Caledonian. 
+ 
+1 February 2013 – Mr D’s SIPP was established, and he was sent a welcome letter. 
+ 
+On or around 17 April 2013 – Approximately £36,500 of Mr D’s pension transfer was 
+invested with Business C and held by JBL.  
+ 
+In or around February 2023 – Mr D spoke to an ex-colleague who told him that there might 
+be a problem with the transfer out of his Armed Forces pension. He contacted his 
+representative shortly after. 
+ 
+26 March 2024 - Mr D’s representative wrote to Options to raise a complaint about its role in 
+accepting his pension transfer and facilitating the investments through Business C and JBL. 
+ 
+14 May 2024 – Options sent a final response letter to Mr D in which it didn’t uphold his 
+complaint and said that it thought that it had been brought out of time. 
+ 
+29 May 2024 – Mr D’s representative brought his complaint to this Service. 
+ 
+Options responded to our investigator’s opinion on jurisdiction but didn’t address the merits 
+of this complaint any further. However, I have in any event considered the arguments that 
+Options has raised on other similar complaints that have been dealt with by this Service 
+before. I’ve addressed those that I think are important for me to reach my decision, although 
+in the interests of brevity, I don’t intend to repeat the detail of everything that my ombudsman 
+colleagues have said to Options before in response to those. Our casework process is 
+intended to be relatively informal. And being overly repetitive in our decisions on every 
+complaint with similar issues shouldn’t be necessary. 
+ 
+My Provisional Decision 
+In advance of this decision, I issued a provisional decision to the parties in which I said that I 
+thought Mr D’s complaint was within our jurisdiction and that it should be upheld. Mr D 
+confirmed his acceptance of my provisional decision, but Options didn’t reply.   
+ 
+ 
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.  
+ 
+As the parties didn’t make any further representations, I don’t consider that I need to change 
+the findings that I reached in my provisional decision. So, I’ve repeated those findings below, 
+with a few minor changes, to reflect my decision. 
+ 
+Having considered everything carefully, I remain of the opinion that Mr D’s complaint is 
+within our jurisdiction and should be upheld on its merits.  
+Our jurisdiction 
+I agree with our investigator that this complaint is within our jurisdiction to consider. I have 
+carefully considered the representations that Options has made. These are similar to those 
+that it has made on many of the complaints brought to us of late. And my ombudsmen 
+colleagues have already addressed the points raised on other cases. So whilst I shall 
+address the factual situation in Mr D’s case, I don’t intend to deal with all the arguments 
+again in detail here. 
+Our investigator found that the complaint was in jurisdiction, as it had been brought to us 
+within three years of when Mr D was aware, or ought reasonably to have become aware, 
+that he had cause to complain about Options. 
+I too have found that Mr D wasn’t aware, and shouldn’t reasonably have become aware, that 
+he could complain to Options until he consulted with his representative in 2023. He then 
+went on to bring his complaint in March 2024, which was within three years of his 
+awareness. 
+Options has said that it sent Mr D letters in 2018, telling him of the suspension of some of 
+the funds Mr D was invested in. It thinks this ought to have made Mr D aware that there may 
+be a problem with his investments and that he’d suffered, or may suffer, a material loss.  
+Options has also said that following the publicity surrounding the Berkeley Burke SIPP 
+Administration Limited v Financial Ombudsman Service [2018] EWHC 2878 (admin) judicial 
+review judgment in October 2018, Mr D should have known that, in certain circumstances, 
+SIPP operators may owe responsibilities to their customers – and that they may be 
+responsible for some of the losses consumers have suffered in their pensions. So it thinks 
+that this should have started the three-year time period in which he could have brought a 
+complaint. 
+Having considered the available evidence, including copies of the letters that Options 
+provided, I don’t consider that Mr D ought reasonably to have been aware that he’d suffered, 
+or may suffer, a material loss in 2018. I say this because as I understand it, the value of the 
+suspended funds was relatively small, and in any case, the suspensions were highlighted to 
+be temporary, as can be seen in the letter shared with Mr D in September 2018. It provides 
+information on a number of suspended funds (some of which Mr D was invested in) giving 
+timescales on when the suspensions are likely to be lifted and when the distributions of the 
+funds are expected to be completed.  
+In an earlier communication, dated July 2018, Business C provides Mr D with an overall 
+ 
+ 
+update on its investment strategy. Regarding suspended funds, the update letter states (my 
+emphasis):  
+“One of the asset allocation decision (sic) we took at inception was the inclusion of monthly 
+dealing funds. The key advantage was they have historically provided lower volatility returns 
+as opposed to the daily dealing funds – especially during periods of ‘stress’. The downside is 
+that on occasions of high redemption requests the Directors may suspend or ‘gate’ 
+the fund and delay the payment of redemptions to avoid incurring the need for forced 
+sales. The advantage is that all investors are protected but this does come at a cost of 
+delaying the receipt of redemption proceeds for those wishing to exit.  
+At the end of this document we have included the latest update regarding the suspended 
+funds and we will continue to provide regular updates with regards to the progress of these.  
+Although we expect the suspended funds to have progressed towards settling their 
+outstanding redemptions in the near term we have taken on board the comments from 
+some of our clients. As a result, we have evolved our asset allocation policy to exclude going 
+forward any fund that does not provide daily liquidity.” 
+The update concludes by providing an ‘Outlook’ which states:  
+“From a financial market perspective our view is that the coming years look positive with a 
+good base of strong economic growth, rising employment coupled with muted inflation and 
+modest interest rate increases…Therefore, overall the combination of the evolved portfolio 
+composition and positive outlook for financial markets bodes well for the investment returns 
+over the coming 3-5 years.” 
+Before Mr D could consider bringing a complaint to Options, he needed to first know that he 
+had a problem and had suffered a loss. Only then could he begin to think about who might 
+be responsible for his loss. But I’ve seen nothing that ought to have caused Mr D 
+considerable concern or would have indicated to him that he had suffered a significant loss 
+in 2018. The communications Mr D was receiving were generally positive, and I don’t 
+consider the temporary suspension of some of his funds ought to have made him aware that 
+there was a problem with his investments, or indeed with the original transfer of his Armed 
+Forces pension. So there is no reason for Mr D to have been looking for more information 
+following the Berkeley Burke case to find out about Options’ responsibilities and whether it 
+may be responsible for a loss that Mr D wouldn’t have been aware he had suffered.  
+In one of its more recent submissions, Options has said that Mr D ought to have “reasonably 
+become aware that his investment was failing to perform as expected” and so, by the start of 
+2019, following the publication of the Berkeley Burke case, Mr D ought to have been aware 
+he could make a complaint to Options about this. But I disagree. Mr D agreed to transfer his 
+pension on the advice that he would be better off in retirement, which was 20 years in the 
+future at the time of the transfer (in 2013). By the start of 2019, Mr D had only been invested 
+for a relatively short term of 6 years in what he had been told would be a long-term 
+investment – and still over 14 years away from his likely retirement. And he suffered no 
+considerable loss during this time. So I’m not persuaded that the performance of Mr D’s 
+pension up until 2019 ought to have given him cause for complaint against Options.   
+Options has also referred to another decision, in a complaint involving Caledonian, where 
+my colleague found that the consumer was aware he’d suffered a loss more than three years 
+before he complained. But, as Options is aware, I have to decide each case on its own facts, 
+and in this case, as I’ve said above, I’ve seen nothing to indicate that Mr D was aware he 
+had suffered or may suffer a loss that Options may be responsible for until 2023. It was at 
+this time that Mr D got in touch with his representative after having spoken to an ex-
+ 
+ 
+colleague who told him that there may have been a problem with his Armed Forces pension 
+transfer. After the representative carried out its investigations, Mr D‘s complaint was made to 
+Options in March 2024. And that was within three years of when Mr D knew he could 
+complain, and indeed ought reasonably to have known. 
+Options has said that we have misinterpreted the requirements of the FCA’s DISP rules as 
+to what a consumer needed to know before the three-year time period started to run. In 
+particular, it disagrees that the consumer needed to know that Options may be responsible 
+for their loss. It thinks that if another regulated party was involved, and the consumer knew 
+that party may bear them some responsibility, then this would have been sufficient for them 
+to have investigated the matter further and so found out that Options may be responsible 
+too. 
+I have thought about this, and whilst I don’t agree with what Options has said, I also don’t 
+consider the arguments made to be relevant in the circumstances of Mr D’s complaint, so I 
+won’t be addressing them in detail in this decision. As I said above, before Mr D could 
+consider Options, or any other potential respondent to the complaint, responsible for a loss, 
+he needed to first know that he had a problem and had suffered a loss. And here I’ve found 
+that Mr D didn’t know about the potential for loss until much later. So, he wasn’t on notice to 
+investigate matters further, and the decision in Berkeley Burke will also not have changed 
+this, as he’d have had no reason to be looking for this or to link Options, or anyone else, with 
+responsibility.  
+Options also asserts that by Mr D signing an acknowledgement of the pension rights he was 
+giving up during the transfer, this meant he should have known he could complain back in 
+2013. The evidence I’ve seen doesn’t indicate that Mr D had any desire to move his pension 
+until he spoke with Caledonian and was told he could achieve a better return if he was to 
+move it. So, his motivation to move wasn’t, as Options has said, that he wanted his 
+beneficiaries to be able to take a lump sum in the event of his untimely death. 
+Mr D’s complaint is that Options didn’t conduct sufficient due diligence on Caledonian and 
+should have prevented his pension transfer. And I can’t see that signing a declaration about 
+what he was giving up would have highlighted to Mr D that he had incurred a loss for which 
+Options might be responsible. So he wouldn’t have seen any need to conduct further 
+investigations back in 2013 to determine if he had cause for complaint either. And even if he 
+had done so, it’s unlikely that he would have understood at the time that Options may have 
+been responsible, it being Caledonian that had advised him on the transfer. 
+Mr D approached his representative in 2023, who he then appointed to look into whether he 
+may have a claim. And it was thereafter that it was first confirmed to him what may have 
+gone wrong, and that Options may be responsible for it. 
+So, it’s my finding that Mr D only knew in 2023 that he might be able to complain. And that 
+although six years from when the transfer and Business C / JBL investment was made have 
+expired, Mr D has brought his complaint within three years from when he should reasonably 
+have known something was wrong, he’d suffered a loss and could complain to Options about 
+it. So, we can consider the merits of Mr D’s complaint. 
+ 
+ 
+The merits of Mr D’s complaint 
+In considering what is fair and reasonable in all the circumstances of this complaint, I have 
+taken into account relevant law and regulations; regulators’ rules, guidance and standards; 
+codes of practice; and, where appropriate, what I consider to have been good industry 
+practice at the relevant time. 
+The Principles 
+The FCA’s Principles for Businesses are of particular relevance to my decision. The 
+Principles for Businesses, which are set out in the FCA’s handbook “are a general statement 
+of the fundamental obligations of firms under the regulatory system” (PRIN 1.1.2G). And, I 
+consider that the Principles relevant to this complaint include Principles 2, 3 and 6 which 
+say: 
+“Principle 2 – Skill, care and diligence – A firm must conduct its business with due skill, care 
+and diligence. 
+Principle 3 – Management and control – A firm must take reasonable care to organise and 
+control its affairs responsibly and effectively, with adequate risk management systems. 
+Principle 6 – Customers’ interests – A firm must pay due regard to the interests of its 
+customers and treat them fairly.” 
+Regulatory publications 
+The FCA (and its predecessor, the FSA) has issued a number of publications which remind 
+SIPP operators of their obligations and set out how they might achieve the outcomes 
+envisaged by the Principles: 
+• The 2009 and 2012 thematic review reports. 
+• The October 2013 finalised SIPP operator guidance. 
+• The July 2014 “Dear CEO” letter. 
+I have set out below what I consider to be the key parts of the publications. 
+The 2009 Thematic Review Report 
+The 2009 report included the following statement: 
+“We are very clear that SIPP operators, regardless of whether they provide advice, are 
+bound by Principle 6 of the Principles for Businesses (‘a firm must pay due regard to the 
+interests of its customers and treat them fairly’) insofar as they are obliged to ensure the fair 
+treatment of their customers. COBS 3.2.3(2) states that a member of a pension scheme is a 
+‘client’ for COBS purposes, and ‘Customer’ in terms of Principle 6 includes clients. 
+It is the responsibility of SIPP operators to continuously analyse the individual risks to 
+themselves and their clients, with reference to the six TCF consumer outcomes. 
+We agree that firms acting purely as SIPP operators are not responsible for the SIPP advice 
+given by third parties such as IFAs. However, we are also clear that SIPP operators cannot 
+absolve themselves of any responsibility, and we would expect them to have procedures and 
+controls, and to be gathering and analysing management information, enabling them to 
+identify possible instances of financial crime and consumer detriment such as unsuitable 
+ 
+ 
+SIPPs. Such instances could then be addressed in an appropriate way, for example by 
+contacting the member to confirm the position, or by contacting the firm giving advice and 
+asking for clarification. Moreover, while they are not responsible for the advice, there is a 
+reputational risk to SIPP operators that facilitate the SIPPs that are unsuitable or detrimental 
+to clients. 
+Of particular concern were firms whose systems and controls were weak and inadequate to 
+the extent that they had not identified obvious potential instances of poor advice and/or 
+potential financial crime. Depending on the facts and circumstances of individual cases, we 
+may take enforcement action against SIPP operators who do not safeguard their clients’ 
+interests in this respect, with reference to Principle 3 of the Principles for Businesses (‘a firm 
+must take reasonable care to organise and control its affairs responsibly and effectively, with 
+adequate risk management systems’). 
+The following are examples of measures that SIPP operators could consider, taken from 
+examples of good practice that we observed and suggestions we have made to firms: 
+• Confirming, both initially and on an ongoing basis, that intermediaries that advise 
+clients are authorised and regulated by the FSA, that they have the appropriate 
+permissions to give the advice they are providing to the firm’s clients, and that they 
+do not appear on the FSA website listing warning notices. 
+• Having Terms of Business agreements governing relationships, and clarifying 
+respective responsibilities, with intermediaries introducing SIPP business. 
+• Routinely recording and reviewing the type (i.e. the nature of the SIPP investment) 
+and size of investments recommended by intermediaries that give advice and 
+introduce clients to the firm, so that potentially unsuitable SIPPs can be identified. 
+• Being able to identify anomalous investments, e.g. unusually small or large 
+transactions or more ‘esoteric’ investments such as unquoted shares, together with 
+the intermediary that introduced the business. This would enable the firm to seek 
+appropriate clarification, e.g. from the client or their adviser, if it is concerned about 
+the suitability of what was recommended. 
+• Requesting copies of the suitability reports provided to clients by the intermediary 
+giving advice. While SIPP operators are not responsible for advice, having this 
+information would enhance the firm’s understanding of its clients, making the 
+facilitation of unsuitable SIPPs less likely. 
+• Routinely identifying instances of execution-only clients who have signed disclaimers 
+taking responsibility for their investment decisions, and gathering and analysing data 
+regarding the aggregate volume of such business. 
+• Identifying instances of clients waiving their cancellation rights, and the reasons for 
+this.” 
+The later publications 
+In the October 2013 finalised SIPP operator guidance, the FCA states: 
+“This guide, originally published in September 2009, has been updated to give firms further 
+guidance to help meet the regulatory requirements. These are not new or amended 
+requirements, but a reminder of regulatory responsibilities that became a requirement in 
+April 2007. 
+ 
+ 
+All firms, regardless of whether they do or do not provide advice must meet Principle 6 and 
+treat customers fairly. COBS 3.2.3(2) is clear that a member of a pension scheme is a 
+“client” for SIPP operators and so is a customer under Principle 6. It is a SIPP operator’s 
+responsibility to assess its business with reference to our six TCF consumer outcomes.” The 
+October 2013 finalised SIPP operator guidance also set out the following: 
+“Relationships between firms that advise and introduce prospective members and 
+SIPP operators 
+Examples of good practice we observed during our work with SIPP operators include the 
+following: 
+• Confirming, both initially and on an ongoing basis, that: introducers that advise clients 
+are authorised and regulated by the FCA; that they have the appropriate permissions 
+to give the advice they are providing; neither the firm, nor its approved persons are 
+on the list of prohibited individuals or cancelled firms and have a clear disciplinary 
+history; and that the firm does not appear on the FCA website listings for un-
+authorised business warnings. 
+• Having terms of business agreements that govern relationships and clarify the 
+responsibilities of those introducers providing SIPP business to a firm. 
+• Understanding the nature of the introducers’ work to establish the nature of the firm, 
+what their business objectives are, the types of clients they deal with, the levels of 
+business they conduct and expect to introduce, the types of investments they 
+recommend and whether they use other SIPP operators. Being satisfied that they are 
+appropriate to deal with. 
+• Being able to identify irregular investments, often indicated by unusually small or 
+large transactions; or higher risk investments such as unquoted shares which may be 
+illiquid. This would enable the firm to seek appropriate clarification, for example from 
+the prospective member or their adviser, if it has any concerns. 
+• Identifying instances when prospective members waive their cancellation rights and 
+the reasons for this. 
+Although the members’ advisers are responsible for the SIPP investment advice given, as a 
+SIPP operator the firm has a responsibility for the quality of the SIPP business it administers. 
+Examples of good practice we have identified include: 
+• conducting independent verification checks on members to ensure the information 
+they are being supplied with, or that they are providing the firm with, is authentic and 
+meets the firm’s procedures and are not being used to launder money 
+• having clear terms of business agreements in place which govern relationships and 
+clarify responsibilities for relationships with other professional bodies such as 
+solicitors and accountants, and 
+• using non-regulated introducer checklists which demonstrate the SIPP operators 
+have considered the additional risks involved in accepting business from non-
+regulated introducers 
+In relation to due diligence the October 2013 finalised SIPP operator guidance said: 
+ 
+ 
+“Due diligence 
+Principle 2 of the FCA’s Principles for Businesses requires all firms to conduct their business 
+with due skill, care and diligence. All firms should ensure that they conduct and retain 
+appropriate and sufficient due diligence (for example, checking and monitoring introducers 
+as well as assessing that investments are appropriate for personal pension schemes) to help 
+them justify their business decisions. In doing this SIPP operators should consider: 
+• ensuring that all investments permitted by the scheme are permitted by HMRC, 
+or where a tax charge is incurred, that charge is identifiable, HMRC is informed 
+and the tax charge paid 
+• periodically reviewing the due diligence the firm undertakes in respect of the 
+introducers that use their scheme and, where appropriate enhancing the 
+processes that are in place in order to identify and mitigate any risks to the 
+members and the scheme 
+• having checks which may include, but are not limited to: 
+o ensuring that introducers have the appropriate permissions, 
+qualifications and skills to introduce different types of business to the 
+firm, and 
+o undertaking additional checks such as viewing Companies House 
+records, identifying connected parties and visiting introducers 
+• ensuring all third-party due diligence that the firm uses or relies on has been 
+independently produced and verified 
+• good practices we have identified in firms include having a set of benchmarks, 
+or minimum standards, with the purpose of setting the minimum standard the 
+firm is prepared to accept to either deal with introducers or accept investments, 
+and 
+• ensuring these benchmarks clearly identify those instances that would lead a 
+firm to decline the proposed business, or to undertake further investigations 
+such as instances of potential pension liberation, investments that may breach 
+HMRC tax-relievable investments and non-standard investments that have not 
+been approved by the firm” 
+The July 2014 “Dear CEO” letter provides a further reminder that the Principles apply and an 
+indication of the FCA’s expectations about the kinds of practical steps a SIPP operator might 
+reasonably take to achieve the outcomes envisaged by the Principles. 
+The “Dear CEO” letter also sets out how a SIPP operator might meet its obligations in 
+relation to investment due diligence. It says those obligations could be met by: 
+• Correctly establishing and understanding the nature of an investment 
+• Ensuring that an investment is genuine and not a scam, or linked to fraudulent 
+activity, money-laundering or pensions liberation 
+• Ensuring that an investment is safe/secure (meaning that custody of assets is 
+through a reputable arrangement, and any contractual agreements are 
+correctly drawn-up and legally enforceable) 
+ 
+ 
+• Ensuring that an investment can be independently valued, both at point of 
+purchase and subsequently 
+• Ensuring that an investment is not impaired (for example that previous 
+investors have received income if expected, or that any investment providers 
+are credit worthy etc) 
+I acknowledge that the 2009 report (and the 2012 report and the “Dear CEO” letter) are not 
+formal guidance (whereas the 2013 finalised guidance is). However, I don’t think the fact that 
+the reports and “Dear CEO” letter didn’t constitute formal (i.e. statutory) guidance means 
+their importance or relevance should be underestimated. 
+The publications provide a reminder that the Principles for Businesses apply and are an 
+indication of the kinds of things a SIPP operator might do to ensure it is treating its 
+customers fairly and to produce the outcomes envisaged by the Principles. In that respect, 
+these publications also go some way to indicate what I consider amounts to good industry 
+practice at the relevant time. I’m therefore satisfied it’s appropriate to take them into account. 
+I don’t think the fact that the later publications (i.e. those other than the 2009 and 2012 
+Thematic Review Reports), post-date the events that are the subject of this complaint mean 
+that the examples of good industry practice they provide were not good practice at the time 
+of the relevant events. It is clear from the text of the 2009 and 2012 reports, (and the “Dear 
+CEO” letter published in 2014), that the regulator expected SIPP operators to have 
+incorporated the recommended good industry practices into the conduct of their business 
+already. So, whilst the regulators’ comments suggest some industry participants’ 
+understanding of how the standards shaped what was expected of SIPP operators changed 
+over time, it is clear the standards themselves had not changed. 
+The later publications were published after the events complained about, but the Principles 
+that underpin them existed throughout, as did the obligation to act in accordance with those 
+Principles. I am required to take into account good industry practice at the relevant time. 
+And, as mentioned, the publications indicate what I consider amounts to good industry 
+practice at the relevant time. 
+That doesn’t mean that in considering what is fair and reasonable, I will only consider 
+Options’ actions with these documents in mind. The reports, Dear CEO letter and guidance 
+gave non-exhaustive examples of good industry practice. They did not say the suggestions 
+given were the limit of what a SIPP operator should do. As the annex to the “Dear CEO” 
+letter notes, what should be done to meet regulatory obligations will depend on the 
+circumstances. 
+To be clear, I do not say the Principles or the publications obliged Options to ensure the 
+pension transfer was suitable for Mr D. It is accepted Options was not required to give 
+advice to Mr D, and could not give advice. And I accept the publications don’t alter the 
+meaning of, or the scope of, the Principles. But they are evidence of what I consider to have 
+been good industry practice at the relevant time, which would bring about the outcomes 
+envisaged by the Principles. 
+I would also add, that even if I took the view that any publications or guidance that post-
+dated the events complained of don’t help to clarify the type of good industry practice that 
+existed at the relevant time (which I don’t), that doesn’t alter my view on what I consider to 
+have been good industry practice at the time. That’s because I find that the 2009 and 2012 
+reports, together with the Principles, provide a very clear indication of what Options could 
+and should have done to comply with its regulatory obligations that existed at the relevant 
+time before accepting any introduction from Caledonian, setting up the SIPP and facilitating 
+ 
+ 
+the pension transfer into the SIPP. 
+Ultimately, in determining this complaint, I need to consider whether Options complied with 
+its regulatory obligations as set out by the Principles to act with due skill, care and diligence, 
+to take reasonable care to organise its business affairs responsibly and effectively, to pay 
+due regard to the interests of its customers, to treat them fairly, and to act honestly, fairly 
+and professionally. And, in doing that, I’m looking to the Principles and the publications listed 
+above to provide an indication of what Options could’ve done to comply with its regulatory 
+obligations. 
+COBS2.1.1R 
+I’ve taken account of the judgment of the High Court in the case of Adams v Options SIPP 
+[2020] EWHC 1229 (Ch) and the Court of Appeal judgment in Adams v Options UK Personal 
+Pensions LLP [2021] EWCA Civ 474. 
+I’m of the view that neither of the judgments say anything about how the Principles apply to 
+an ombudsman’s consideration of a complaint. But to be clear, I don’t say this means Adams 
+isn’t a relevant consideration at all. As noted above, I have taken account of both judgments 
+when making this decision on Mr D’s case. 
+I acknowledge that COBS2.1.1R (A firm must act honestly, fairly and professionally in 
+accordance with the best interests of its client) overlaps with certain of the Principles and 
+that this rule was considered by HHJ Dight in the High Court case. Mr Adams pleaded that 
+Options SIPP owed him a duty to comply with COBS 2.1.1R, a breach of which, he argued, 
+was actionable pursuant to section 138(D) of the Financial Services and Markets Act 2000 
+(‘FSMA’) (“the COBS claim”). HHJ Dight rejected this claim and found that Options SIPP had 
+complied with the best interests rule on the facts of Mr Adams’ case. 
+Although the Court of Appeal ultimately overturned HHJ Dight’s judgment, it rejected that 
+part of Mr Adams’ appeal that related to HHJ Dight’s dismissal of the COBS claim on the 
+basis that Mr Adams was seeking to advance a case that was radically different to that found 
+in his initial pleadings. The Court found that this part of Mr Adams’ appeal did not so much 
+represent a challenge to the grounds on which HHJ Dight had dismissed the COBS claim, 
+but rather was an attempt to put forward an entirely new case. 
+I note that, in Adams v Options, HHJ Dight found that the factual context of a case would 
+inform the extent of the duty imposed by COBS 2.1.1R. HHJ Dight said at para 148: 
+“In my judgment in order to identify the extent of the duty imposed by Rule 2.1.1 one has to 
+identify the relevant factual context, because it is apparent from the submissions of each of 
+the parties that the context has an impact on the ascertainment of the extent of the duty. The 
+key fact, perhaps composite fact, in the context is the agreement into which the parties 
+entered, which defined their roles and functions in the transaction.” 
+However, the facts in Mr D’s case are very different from those in Mr Adams’ cases. There 
+are also significant differences between the breaches of COBS 2.1.1R alleged by Mr Adams 
+and from the issues in Mr D’s complaint. The breaches were summarised in paragraph 120 
+of the Court of Appeal judgment. In particular, HHJ Dight considered the contractual 
+relationship between the parties in the context of Mr Adams’ pleaded breaches of COBS 
+2.1.1R that happened after the contract was entered into. In Mr D’s complaint, I am 
+considering whether Options ought to have identified that the introductions from Caledonian 
+involved a risk of consumer detriment and, if so, whether it ought to have ceased accepting 
+introductions from Caledonian prior to entering into a contract with Mr D. 
+ 
+ 
+I think it is also important to emphasise that I must determine this complaint by reference to 
+what is, in my opinion, fair and reasonable in all the circumstances of the case. And, in doing 
+that, I am required to take into account relevant considerations which include: law and 
+regulations; regulators’ rules, guidance and standards; codes of practice; and, where 
+appropriate, what I consider to have been good industry practice at the relevant time. This is 
+a clear and relevant point of difference between this complaint and the judgments in Adams 
+v Options SIPP. That was a legal claim which was defined by the formal pleadings in Mr 
+Adams’ statement of case. 
+To be clear, I have proceeded on the understanding Options was not obliged – and not able 
+– to give advice to Mr D on the suitability of its SIPP, the pension transfer or the subsequent 
+investments made for him personally. But I am satisfied Options’ obligations included 
+deciding whether to accept particular investments into its SIPP and/or whether to accept 
+introductions of business from particular businesses. 
+I note for completeness that Options wasn’t granted permission to appeal the Court of 
+Appeal judgment to the Supreme Court.  
+Section 27/28 FSMA 
+ 
+The Court of Appeal overturned the High Court judgment in Adams on the basis of the 
+claim pursuant to S27 FSMA. 
+ 
+S27 FSMA provides that an agreement between an authorised person and another party, 
+which is otherwise properly made in the course of the authorised person’s regulated 
+activity, is unenforceable as against that other party if it is made “in consequence of 
+something said or done by another person (“the third party”) in the course of a regulated 
+activity carried on by the third party in contravention of the general prohibition”. 
+ 
+S27(2) provides that the other party is entitled to recover: 
+ 
+“(a) any money or other property paid or transferred by him under the agreement; and 
+ 
+(b) compensation for any loss sustained by him as a result of having parted with it.” 
+ 
+s28(3) FSMA provides that “If the court is satisfied that it is just and equitable in the 
+circumstances of the case, it may allow– 
+ 
+a. the agreement to be enforced; or 
+b. money and property paid or transferred under the agreement to be retained.”  
+ 
+The General Prohibition is set out in S19 FSMA. It stipulates that: 
+. 
+“No person may carry on a regulated activity in the United Kingdom, or purport to do so, 
+unless he is –  
+ 
+a) an authorised person; or  
+b) an exempt person.” 
+In Adams, the Court of Appeal concluded that the unauthorised introducer of the SIPP had 
+carried out activities in contravention of the General Prohibition, and so S27 FSMA applied. 
+It further concluded that it would not be just and equitable to nonetheless allow the 
+agreement to be enforced (or the money retained) under the discretion afforded to it by 
+S28(3) FSMA. 
+ 
+ 
+ 
+At paragraph 115 of the judgment, the Court set out five reasons for reaching this 
+conclusion. The first two of these were: 
+ 
+“i) A key aim of FSMA is consumer protection. It proceeds on the basis that, while 
+consumers can to an extent be expected to bear responsibility for their own decisions, 
+there is a need for regulation, among other things to safeguard consumers from their own 
+folly. That much reduces the force of Mr [redacted]’s contentions that Mr Adams caused 
+his own losses and misled Carey; 
+ 
+ii) While SIPP providers were not barred from accepting introductions from unregulated 
+sources, section 27 of FSMA was designed to throw risks associated with doing so onto the 
+providers. Authorised persons are at risk of being unable to enforce agreements and being 
+required to return money and other property and to pay compensation regardless of 
+whether they had had knowledge of third parties’ contraventions of the general prohibition;” 
+ 
+The other three reasons, in summary, were: 
+• The volume and nature of business being introduced by the introducer was such as 
+to put Options on notice of the danger that the introducer was recommending 
+clients to invest in the investments and set up Options SIPPs to that end. There 
+were therefore reasons for Options to be concerned about the possibility of the 
+introducer advising on investments within the meaning of article 53 of the Financial 
+Services and Markets Act 2000 (Regulated Activities) Order 2001 (“the RAO”). 
+• Options was aware that: contrary to what the introducer had previously said, it 
+was receiving high commission from the investment provider, there were 
+indications that the introducer was offering consumers “cashback” and one of 
+those running the introducer was subject to a FCA warning notice. 
+• The investment did not proceed until after the time by which Options had reasons 
+for concern and so it was open to Options to decline the investment, or at least 
+explore the position with Mr Adams, but it did not do so. 
+I shall address later in this decision how I consider S27 FSMA to be an additional and 
+alternative ground upon which this complaint should be upheld. But before that, I’ll address 
+below what I think Options should have concluded from the information it had on 
+Caledonian and what this should have meant for Mr D’s proposed pension transfer and 
+investment. 
+What did Options obligations mean in practice? 
+In this case, the business Options was conducting was its operation of SIPPs. I am satisfied 
+that meeting its regulatory obligations when conducting this business would include deciding 
+whether to accept or reject particular investments and/or referrals of business. 
+The regulatory publications provided some examples of good industry practice observed by 
+the FSA and FCA during their work with SIPP operators including being satisfied that a 
+particular introducer is appropriate to deal with and a particular investment is an appropriate 
+one for a SIPP. 
+I’m satisfied that, to meet its regulatory obligations, when conducting its business, Options 
+was required to consider whether to accept or reject particular referrals of business, with the 
+Principles in mind. 
+ 
+ 
+The due diligence carried out by Options on Caledonian and what it should have 
+concluded 
+I have considered what a level of due diligence consistent with Options’ regulatory 
+obligations and the standards of good practice at the time ought to have revealed. And what, 
+with those same obligations and standards in mind, Options ought to have concluded about 
+Caledonian. And, when doing this, I have taken into account the evidence I have mentioned 
+above. 
+As set out above, the 2009 Thematic Review Report deals specifically with the relationships 
+between SIPP operators and introducers or “intermediaries”. And it gives non-exhaustive 
+examples of good practice. In my view, to meet these standards, and its regulatory 
+obligations, set by the Principles, Options ought to have identified a significant risk of 
+consumer detriment arising from business brought about by a business introducing 
+consumers to Options which appeared to be specialising in pension transfers from one 
+occupational pension scheme purporting to be on an execution only (that is, non-advised) 
+basis. And so Options ought to have ensured it thought very carefully about accepting 
+applications from Caledonian and, therefore, Mr D. 
+I think it is fair and reasonable to say such consideration should have involved Options 
+getting a full understanding of the business model of the introducer, the nature of the 
+investments to be made and putting a clear agreement in place between it and the 
+introducer and ensuring careful thought was given to the risk generally posed to consumers 
+by the introducer. 
+Options did gain some information about Caledonian, as I have detailed earlier in this 
+decision. In my view, if Options had carried out adequate due diligence on Caledonian, and 
+drawn reasonable conclusions from this, it ought to have been aware of several points of 
+concern and to have concluded it should not accept this business from it in respect of Mr D. 
+It’s clear that Options understood and accepted that it had a responsibility to carry out due 
+diligence on Caledonian – something that we’ve seen on other complaints that have been 
+brought to us and is confirmed on its statement in the Non-Regulated Introducer Profile form 
+of 16 March 2012 that I’ve referred to above. 
+I acknowledge Options did take some steps – initially and on an ongoing basis – which it 
+could be argued did amount to good practice consistent with its regulatory obligations. 
+But I think, with its regulatory obligations and good industry practice in mind, Options ought 
+to have done more at the outset of its relationship with Caledonian and didn’t, in any event, 
+draw fair and reasonable conclusions from the information available to it by the time of 
+Mr D’s application. Had Options done more at the outset and/or drawn fair and reasonable 
+conclusions from what it knew, it ought in my view to have concluded that it shouldn’t accept 
+Mr D’s application from Caledonian. 
+I’ve set out my reasons for this in more detail below. 
+ 
+ 
+Should Options have been aware that Caledonian was providing advice to Mr D? 
+In my view, acting fairly and reasonably, including a reasonable level of investigation and 
+due diligence on Caledonian’s operation, and based on the information available to it, 
+Options ought to have concluded at the outset of its relationship with Caledonian and 
+certainly before the conclusion of Mr D’s application, that Caledonian was providing advice 
+as to the benefits of transferring his pension to the SIPP. 
+At the very least there was information that should have caused it to suspect that advice was 
+being given and it should’ve carried out further investigation into that. If it had done so, I 
+believe it likely that it would have discovered that Mr D had been advised by Caledonian to 
+transfer his pension. 
+Taking account of the available evidence, I consider that Caledonian did provide advice to 
+Mr D as to the benefits of transferring his pension, selecting the SIPP to do so and the 
+investment with Business C and JBL to follow.  
+Caledonian’s representatives promised a greater return on Mr D’s pension than he would 
+obtain if he were to stay with the armed forces scheme. I consider Mr D’s testimony to be 
+credible. There would have been no other reason for Mr D to consider a transfer to the 
+Option SIPP, the Business C / JBL investment or anything else connected with this 
+transaction had he not received advice from Caledonian to do so. 
+I consider it to be highly unlikely that Mr D came to his own conclusion to make this transer 
+and the subsequent investment. Mr D wasn’t financially knowledgeable. And enterring into 
+an execution only relationship with Options would only have happened if he’d been advised 
+to do so. 
+Options argue that it treated Caledonian as a business which was not giving advice. It has 
+submitted that, as far as it was aware, it was receiving introductions from Caledonian on an 
+execution only (non-advised) basis. 
+Options’ terms of business with Caledonian was signed in September 2012; however, 
+Options says this was provided to Caledonian in March 2012. I note the terms made it clear 
+that no advice would be given by Caledonian: 
+“The Business Introducer undertakes that they will not provide advice as defined by the Act 
+in relation to the SIPP – for the avoidance of doubt this includes reference to advice on the 
+selection of The SIPP Operator, contributions, transfer of benefits, taking benefits and 
+HMRC rules:” 
+I also note on the SIPP application form which was signed and dated by Mr D in April 2013, 
+it was stated that: 
+“This Form should be used if you are a client establishing a SIPP without advice. You have 
+made this decision independently and are aware of the implications of this decision”. 
+And: 
+“As you do not have a Financial Adviser, your investment choices are your sole 
+responsibility. You will instruct us and we will act on those instructions as long as it is an 
+accepted investment in the Carey Pension Scheme.” 
+However, there is a significant degree of inconsistency between these documents and other 
+documentary evidence. 
+ 
+ 
+As highlighted above, in Mr D’s Options member’s declaration that he signed in January 
+2013, it was confirmed that: 
+“I confirm that I have received full and appropriate advice from Caledonian International and 
+following this advice I wish to proceed with the transfer.” 
+The member’s declaration is in clear conflict with the SIPP application form. As a minimum, 
+these contradictions should have alerted Options to the possibility that Mr D may very well 
+have been given advice – and therefore further steps to clarify this were required. I know that 
+Options considers this to be a simple clerical error. But I think that the fact that there are 
+conflicting statements in the documentation just lends to the assertion that Options’ attention 
+to detail was lacking in so far as what was happening between its clients and Caledonian 
+went. 
+If Options had undertaken a reasonable level of due diligence it should have been aware 
+that there was a significant risk that advice had been given to Mr D to transfer his pension by 
+Caledonian. Similarly, the available evidence also shows that Options should have 
+concluded at the start of its relationship with Caledonian that it may be providing advice as to 
+the benefits of transferring pension. 
+I would also comment that it is unusual for individuals such as Mr D, with no particular 
+financial understanding or background, to want to carry out what is quite a complex transfer 
+of occupational pension scheme benefits without receiving advice or a recommendation. 
+Given all the evidence, I believe Options should have been aware that there was significant 
+risk that advice was being provided by an unregulated business. 
+Had Options sought clarification from Mr D, which would have been a reasonable course of 
+action in the circumstances, I think it would likely have been made aware he was receiving 
+advice from Caledonian. Alternatively Options could have simply declined to proceed with 
+the application – given the obvious conflicts (discussed above) about the provision of advice. 
+So I think Options ought reasonably to have been aware advice was being given to Mr D by 
+Caledonian. 
+I also think it was reasonably clear from the outset of Options’ relationship with Caledonian 
+that Caledonian’s business model meant there was a risk that advice would be given on the 
+merits of transferring out of the armed forces scheme to an Options’ SIPP and on the 
+investments to be made within that SIPP. 
+In March 2012, Mr C described Caledonian’s business model to Options. It was recorded:  
+“He was (sic) preferred adviser (my emphasis) for the Armed Forces occupational pension 
+scheme for individuals who had left the armed forces and were taking positions in close 
+security work in places such as Iraq, Afghanistan/Iran etc.…and also anti-piracy positions… 
+Mr C] himself was not a regulated adviser, he was a consultant to these clients and 
+advised them on their armed forces transfers only (my emphasis), he was a qualified 
+accountant and was a member of the Chartered Institute of Accountants. 
+He was currently putting them into an international Friends Provident Bond (my 
+emphasis), the underlying investments were regulated.” 
+This describes an advice process. It indicates that Caledonian was advising consumers on 
+transfers out of armed forces schemes and “putting them into” an investment bond. At that 
+time, Friends Provident was being used, although by the time of Mr D’s investment he was 
+ 
+ 
+directed to invest with Business C and JBL. I think the only reasonable conclusion which 
+could be drawn from the above description was that advice was likely being given. Given 
+these statements, it would be difficult to imagine a situation where Caledonian were giving 
+that kind of tailored guidance without giving advice on the merits of transferring. 
+In the ‘Non-Regulated Introducer Profile’ signed and dated in March 2012, Caledonian’s 
+sales process was described as: 
+“Referral – Visit – Analysis – Visit” 
+That clearly involved more than just a simple introduction. It is a description that also 
+supports my finding that Caledonian were involved in an advice process. 
+At the very least this should have led to further questions being asked by Options of 
+Caledonian and Mr D. In terms of Mr D, a reasonable line of enquiry would have been to ask 
+him if he thought he was receiving advice as to whether to set up a SIPP and/or transfer his 
+pension benefits to it and/or then make subsequent investments within the SIPP. And I think 
+given Mr D’ subsequent testimony, the answers to those questions would have led to the 
+conclusion that advice was being given. 
+On 26 April 2013 an Options employee in its compliance department sent an email to a 
+number of Options employees. She raised concerns about Caledonian’s business practices. 
+She said: 
+“We have a responsibility to proactively monitor our distribution channels to ensure our 
+products do not end up with customers for whom it is not suitable. Based on recent 
+correspondence with Caledonian I am increasingly concerned by their business practices 
+and therefore believe we should review our relationship with them and the business they 
+have introduced. I will arrange a meeting for next week to discuss. In the meantime we need 
+to determine the answers to the questions below to help facilitate our discussions.” 
+There are a couple of different answers to those questions, one expressing more concern 
+than the other. But of critical importance is that following the ensuing internal discussion, 
+Options asked questions on 10 May 2013 (that I’ve set out in the history above) about any 
+advice given by Caledonian. 
+Although we haven’t been provided with a copy of the actual response to this e-mail, a 
+discussion of Caledonian’s responses to these questions led Options to conclude: 
+“Following a detailed review of the process and documentation concerns were raised 
+regarding whether the clients could be deemed to be receiving advice through an 
+unregulated entity. 
+Following a request for further clarification on these points we have not been able to satisfy 
+ourselves that this is not the case.” 
+And this effectively ended the relationship with Caledonian. 
+In my view these are investigations and questions, which Options, acting fairly and 
+reasonably to meet its regulatory obligations and good practice at the time, ought to have 
+been undertaking or asking at the outset of its relationship with Caledonian. The need to ask 
+these questions was clear based on the information available to Options before Mr D was 
+introduced to it. Options clearly had its own concerns about Caledonian’s operation in 2013 
+– and this was something that it should and could have explored and interrogated much 
+earlier and certainly before accepting Mr D’sintroduction and making the investments. This is 
+ 
+ 
+particularly the case given the timing of Mr D’sapplication and subsequent investment was 
+the same time these investigations and discussions were taking place. The investment was 
+indeed made after Options ceased accepting introductions from Caledonian. 
+I believe the knowledge that Caledonian was providing advice – whether acquired at the 
+outset of the relationship with Caledonian or before or during the course of Mr D’sapplication 
+– should’ve been a red flag and given Options significant cause for concern. I say this 
+because it suggests a number of risks/issues, including: 
+• The potential for breaches of the Principles, regulations and/or law. 
+• There being no evidence to show Caledonian had competency to give advice, 
+particularly with respect to pension transfers. 
+• There being nothing to show proper advice processes were being followed. 
+• The risk of obvious significant detriment to large numbers of individuals to 
+forgo guaranteed pension benefits. 
+I think these are all things which, acting fairly and reasonably to meet its regulatory 
+obligations and good industry practice, Options should have factored into its thinking. 
+Where were the activities taking place? 
+I haven’t seen evidence that, prior to May 2013, Options established where Caledonian 
+would be conducting business. It was therefore in no position to know what, if any, regulatory 
+regimes applied. 
+The business profile completed at the outset of Options’ relationship with Caledonian 
+records that Caledonian said its clients, “were generally still resident in UK but some were 
+now living abroad in various countries such as Thailand, Germany, Spain etc.”. The 
+introducer profile completed at the outset of the relationship records that Caledonian had 
+branches in Chile, Peru, Columbia, Argentina, Brazil and Switzerland. 
+Options noted in 2013 that, as to the question of where Caledonian was meeting with clients 
+and its regulatory status, the position was, “unknown”. 
+So it is fair to say Options wasn’t in a position to know whether Caledonian was following 
+any applicable regulations and laws as it simply didn’t know where it was carrying out its 
+activities or, at the very least, was aware the activities were potentially being carried out in 
+several different jurisdictions. And then it didn’t take sufficient steps to ascertain what 
+regulations and laws applied in each of those countries and whether Caledonian was acting 
+within them. 
+In this case, I think Options should’ve been particularly concerned about whether advice was 
+being given (or any other regulated activity carried on) in the UK as Caledonian wasn’t 
+authorised by the FSA or, later, the FCA. 
+On the Non-Regulated Introducer Profile form completed in March 2012, in response to the 
+question asking what measures were in place to “ensure the Firm engage legal advice on 
+the activities it carries out to ensure regulated activities are not carried out?”, the following 
+answer was given by Caledonian: 
+“Majority of business carried out in unregulated jurisdictions but where regulations apply we 
+are licensed to carry out our activities.” 
+ 
+ 
+But, as mentioned above, Options was also made aware that “generally” consumers who 
+would be introduced to it were UK residents. So it’s not clear how the Caledonian business 
+model worked logistically - how could Options be satisfied, on a general basis, that the 
+relevant activities would not take place in the UK? I think Options should’ve been alive to the 
+risk that in some of the cases at least, some of the activities might take place in the UK. 
+Rights under a personal pension scheme are a security and a relevant investment. Under 
+Article 25(1) RAO, making arrangements for another person to buy and sell these types of 
+investments is a regulated activity. And under Article 25(2) RAO, making arrangements with 
+a view to a person who participates in the arrangements buying and selling these types of 
+investments is also a regulated activity. 
+So, in this case if Caledonian made arrangements – i.e. assisting in the completion of the 
+SIPP application form for onward investment with Business C and JBL in the UK, that would 
+be a regulated activity. It is clear Caledonian did undertake this activity in this case and so 
+Options should have been aware a regulated activity had been undertaken by Caledonian in 
+the UK even if it assumed any advice had been given in Jordan or otherwise overseas. 
+Furthermore, if Options accepted the advice was given in Jordan or overseas, I’ve not seen 
+any evidence to show it checked that Caledonian had any required authority to undertake 
+this activity in Jordan. And there’s no evidence that Mr D had any connection to Jordan or 
+ever met anyone from Caledonian there. Indeed, it appears that he met with Caledonian’s 
+representative in the UK. 
+Caledonian’s competence to undertake pension transfers 
+The proposed business model involved former members of the armed forces who worked in 
+security related jobs in hazardous areas. The business model was not one involving, say, 
+former financial advisers or other finance professionals. 
+There is therefore no reason to think that the typical client Caledonian was proposing on 
+introducing had a good level of understanding of pensions or were in a position to work out 
+for themselves if a pension transfer was in their best interests. They would be reliant on 
+Caledonian’s advice. 
+The introductions involved transfers out of a defined benefit pension scheme into a UK SIPP 
+for investment with Business C / JBL. As discussed, the transfer of defined benefit (final 
+salary) pensions are usually not in the customer’s best interests, are complex and present a 
+variety of consequences and matters which the ordinary individual would be hard pressed to 
+understand without professional financial advice. 
+Given that Options knew that the intention was to introduce around 50 individuals a month, I 
+think it’s fair to say Options should’ve satisfied itself that there was no risk of detriment to 
+these consumers. In any event, as I will refer to later in this decision, it should have had 
+concerns that a small business such as Caledonian could competently deal with such a 
+volume of business. 
+However, the information Caledonian disclosed to Options revealed that it didn’t have any 
+particular qualifications or expertise in pension transfers. 
+On the Non-regulated Introducer Profile document completed in March 2012, under the 
+section headed Training and Information, the following response was given to a question as 
+to what training was provided to its agents: 
+“Ongoing product training and accompanied meetings.” 
+ 
+ 
+In response to a question about the specific pension training that was delivered to its agents 
+the answer given was: 
+“Visits to providers directly.” 
+There is no mention of any type of professional qualification (whether that be in the UK or 
+any other territorial jurisdiction) relating to pensions. 
+On the undated Overseas Introducer Proforma Document, the section headed Professional 
+Qualification was recorded as ‘high risk’. The notes said that: 
+“No qualifications documented other than meeting notes from March 2012 where [Mr C] 
+stated he was a qualified accountant and member of Chartered Institute of Accountants.” 
+I think this demonstrates that Options didn’t know if any of Caledonian’s staff had any 
+qualifications to give advice on occupational pension scheme transfers. 
+So Options was aware that Caledonian’s employees didn’t likely have any qualifications to 
+give advice as to pensions. And it seems that any steps to ascertain whether any 
+qualifications were held would have revealed they weren’t. The steps taken in May 2013, 
+where Options belatedly made enquiries of Caledonian, which as outlined above I think it 
+should have actioned much earlier, and certainly before accepting Mr D’sapplication, 
+resulted in Options requiring all the transfers to be reviewed by a UK FCA regulated adviser.  
+To my mind, this indicates that when Options did ask further questions about Caledonian’s 
+expertise in dealing with pensions, it would appear that not only did it become aware that 
+Caledonian’s staff did not possess adequate expertise but it also took steps to try and 
+address that. 
+So, acting fairly and reasonably to meet its regulatory obligations and good practice, Options 
+should’ve concluded at the outset of its relationship with Caledonian, or at the very least by 
+the time of Mr D’s application, that Caledonian was proposing to give advice to bring about a 
+large volume of business relating to a complex product for which it didn’t have the 
+appropriate qualifications. 
+The transfer process 
+As mentioned above, a defined benefit transfer is a complex transaction. It also involves 
+many risks, and potentially the loss of significant guaranteed benefits. For this reason, 
+advice on such transactions is tightly regulated in the UK and there are standards of good 
+practice that those giving the advice are expected to follow. This means several steps need 
+to be taken as part of the advice process and documentation such as fact-finds, suitability 
+reports, transfer value analysis reports (TVAS), and illustrations, all of which generally 
+feature in the advice process. The purpose is to ensure any advice given takes into account 
+all relevant factors, is suitable, and the recipient of the advice is in a fully informed position, 
+where they understand the benefits they are giving up and the risks associated with the 
+transfer. 
+Although the relevant UK regulatory requirements only apply in the UK, I think Options, 
+acting fairly and reasonably, should have satisfied itself that a similar process was being 
+followed here, even if it thought the advice was being given outside the UK. I say this 
+because, given that Caledonian’s starting point appears to have been that the consumers it 
+dealt with would be transferring out of the defined benefit scheme (i.e. it seems to have 
+taken the view a transfer was suitable for all) there was a clear risk of consumer detriment if 
+consumers were not in a fully informed position and therefore able to understand the risks 
+ 
+ 
+associated with the transfer. 
+I do not say Options should have checked any advice that was given – but it should have 
+taken steps to ascertain if a reasonable process was in place and consumers were taking 
+these steps on an informed basis. And I think if it had undertaken such steps and carried out 
+even a cursory investigation of the individuals being introduced to it, then it would have 
+become aware no reasonable process was in place and consumers were not fully informed 
+of the risks. As discussed, I think it would have also quickly discovered that at least some of 
+the individuals being introduced to it, including Mr D, had received what amounted to advice 
+about the transfer from an unregulated introducer. And that this advice may well have been 
+provided, at least partially, in the UK. 
+It seems Options took these steps, to an extent, belatedly in May 2013. And, in common with 
+the other steps taken in May 2013 that appears to have led it to the conclusion that what was 
+in place was insufficient. However, acting fairly and reasonably to meet its regulatory 
+obligations and good practice, Options should have concluded at the outset of its 
+relationship with Caledonian, or at the very least by the time of Mr D’s application and 
+subsequent investment, that there was a significant risk of consumer detriment, that 
+Caledonian didn’t have a process in place which supported suitable advice being given or 
+that ensured consumers were fully informed of the risks. 
+Other issues Options ought to have identified and considered 
+There were also further issues Options ought to have identified and considered, based on 
+what it knew or ought to have known by the time of Mr D’s application. In summary, Options 
+should’ve considered that: 
+• The high volume of business being proposed and brought about by Caledonian 
+suggested a risk of consumer detriment. 
+• Caledonian was typically taking a high level of commission, which may not have been 
+disclosed. 
+• Caledonian failed to provide its company accounts, despite repeated requests for 
+copies of them from Options. 
+Volume of business 
+Prior to accepting Mr D’s introduction, Options was told that Caledonian would be 
+introducing about 50 applications a month. I also note that Caledonian introduced around 40 
+applications a month over the course of its relationship with Options and Options would 
+therefore have been aware a similar volume was being seen in practice. 
+It’s clear that Options kept a good level of management information about the number and 
+nature of introductions that Caledonian had made. I think this is an example of good 
+practice. However, I don’t think it was fair and reasonable to simply keep records rather than 
+evaluating that information and taking steps based on it. As highlighted in the 2009 Thematic 
+Review Report, the reason why the records are important is so that potentially unsuitable 
+SIPPs can be identified. 
+I think that Options should have been concerned that such a high volume of introductions 
+from only occupational pension schemes was being referred to it, and according to Options, 
+on an execution only basis. As discussed above, as a professional in the pension industry, 
+Options ought to have known about the following guidance in the FSA (later FCA’s) 
+handbook in 2012: 
+ 
+ 
+“COBS 19.1.6 G 
+When advising a retail client who is, or is eligible to be, a member of a defined benefits 
+occupational pension scheme whether to transfer or opt out, a firm should start by assuming 
+that a transfer or opt out will not be suitable (my emphasis). A firm should only then 
+consider a transfer or opt out to be suitable if it can clearly demonstrate, on contemporary 
+evidence, that the transfer or opt-out is in the client’s best interests.” 
+I accept this aims to define the expectation of a regulated financial adviser when determining 
+suitability of a pension transfer, but it emphasises the regulator’s concern about the potential 
+detriment such a transaction could expose a consumer to. And, being a regulated firm with a 
+requirement to ensure its clients were being treated fairly, I’d expect Options to have been 
+familiar with the guidance contained in COBS – even if it didn’t apply to it. 
+Caledonian’s business model, as set out to Options, appears to run counter to this, insofar 
+as the starting point appeared to be an assumption that the transfer was suitable. When 
+considered alongside the high volume of business being brought about by Caledonian, 
+Options, acting fairly and reasonably, should’ve identified a significant risk of consumer 
+detriment. 
+Options ought to have been aware that the introduction of such a large volume of 
+applications for pension transfers (an estimated 50 a month), including Mr D’s application, on 
+a non-advised basis was unusual. I think Options should have been concerned about the 
+motivations and competence of Caledonian and have had adequate risk management 
+controls in place to have allowed it to conclude very quickly that there was a high probability 
+that much, if not all, of the business introduced by Caledonian (which was transfers from 
+occupational pension schemes) carried with it a high risk of significant consumer detriment. 
+Was it really reasonable to believe that all these introductions would be from non-advised 
+individuals and that significant consumer detriment wouldn’t result? And not make further 
+enquiries on that assumption? I don’t believe so and I don’t believe Options was fulfilling its 
+duties under the Principles by accepting introductions on that basis, and with that 
+knowledge, without interrogating the matter further. 
+Commission 
+I also think the level of commission that was being paid to Caledonian on the majority of 
+applications made was anomalous, given what limited service Caledonian said to Options it 
+was providing. In a lot of cases this was 7% of the sum invested and I think this should have 
+given Options cause for concern. In Mr D’s case, a fee of £1,300 was payable to 
+Caledonian. In addition to this, commission may well have been paid to Caledonian by 
+Business C or JBL out of the approximately £36,500 investment value of his pension too. So 
+that’s quite a considerable sum for what was an apparently non-advised introduction. 
+It isn’t clear, from the evidence I have seen, that Mr D was made aware of the level of any 
+commission at the time. I think Options would have been privy to the details of this 
+commission at the time, and would have known about similar levels of commission on other 
+applications it dealt with. 
+In my opinion, the commission paid on what was a relatively small pension pot, was very 
+high for an ‘introduction’ and should’ve given Options cause for concern, given the nature of 
+the business being introduced. As noted earlier in my findings, there is no evidence to show 
+Caledonian carried out any of the usual work associated with a defined benefit transfer that 
+would justify such a fee. Nor have I seen any other evidence to show there was any 
+justification for such a high level of commission in the circumstances. I think this level of 
+ 
+ 
+commission ought to have been another cause for Options to be concerned that Caledonian 
+was putting its own interests ahead of the interests of the customers. 
+Overall, when considered alongside the high volumes of near identical introductions of 
+business being made by Caledonian, I think this level of commission raises questions about 
+the motives and role of Caledonian and shows an additional risk of consumer detriment. 
+Caledonian’s Accounts 
+I note that Options made repeated requests for Caledonian's accounts. It sent several emails 
+to Caledonian between March and August 2012. Options also explained in its email of 23 
+March 2012 that in order to comply with its own compliance procedures this was needed. 
+Options started accepting introductions (including Mr D’) from Caledonian having not 
+received its requested company accounts or the passports of all its directors. This is 
+something that was discussed in August 2012 by Options employees as being required. The 
+‘undated document’, but likely of March 2013 - the “Overseas Introducer Assessment 
+Proforma” - set out that Options had noted that Caledonian had no UK branch or EEA 
+regulatory details and it could not discover how long it had been trading. It also noted that it 
+still hadn’t received any accounts from Caledonian. 
+But I haven’t seen any evidence that the accounts were ever provided. In my opinion, it is 
+fair and reasonable that Options should have met its own standards and should have 
+checked Caledonian’s accounts at the outset before accepting any business from it. And, 
+based on Caledonian’s conduct, it seems very unlikely accounts would ever have been 
+forthcoming. 
+Caledonian’s reluctance to provide basic information should also have been a further factor 
+which ought to have led Options to question whether it should enter into or continue a 
+relationship with Caledonian. It calls into question the competence and motivations of 
+Caledonian and the ability of Caledonian to organise its affairs. It also meant Options was 
+missing information which might be critical to the decision as to whether to enter into 
+business with Caledonian. It isn’t clear why Options accepted introductions without it. 
+It’s also notable that Options accepted and set up Mr D’s SIPP when it was still waiting for 
+this information from Caledonian. 
+In conclusion 
+Taking all of the above into consideration – individually and cumulatively – I think in the 
+circumstances it is fair and reasonable for me to conclude that Options ought reasonably to 
+have concluded, had it complied with its regulatory obligations which required it to conduct 
+sufficient due diligence on Caledonian before accepting business from it, and to act on 
+information received about the conduct of Caledonian before continuing to accept business 
+from it, that it should not accept business from Caledonian, including Mr D’. 
+I therefore conclude that it is fair and reasonable in the circumstances to say that Options 
+shouldn’t have accepted Mr D’s application from Caledonian. 
+I say this because, as discussed in more detail above: 
+ 
+ 
+• Options says that at the outset of its relationship with Caledonian the arrangement 
+was to accept introductions on the basis they would be non-advised/execution only. 
+But the evidence should have caused it to question that, including in the case of 
+Mr D. 
+• Options says it acted on the basis that all of the introductions made by Caledonian 
+would be made so that individuals could transfer pensions from an occupational 
+defined benefit pension scheme. 
+• Options was aware that there was to be a significant number of such introductions – 
+around 50 a month. 
+• Options should’ve undertaken a reasonable level of due diligence as to the 
+introductions to be made and the introductions it was receiving. If it had done so, then 
+it would have likely discovered that Caledonian was giving advice as to transferring 
+pensions and the investments to follow, something Options says was not the basis on 
+which it was to accept introductions. 
+• Options should’ve been aware that Caledonian was undertaking one or more 
+regulated activities in the UK, without authorisation. And there was no evidence to 
+show it was meeting any relevant regulations or laws, if activities were taking place 
+outside the UK. 
+• Options should have been, or were, aware that Caledonian’s staff didn’t have the 
+qualifications – and therefore expertise – to give advice on defined benefit scheme 
+transfers. 
+• There was no evidence to show a proper advice process had been followed and Mr D 
+was therefore not able to make a fully informed decision about the transfer. 
+• Caledonian was taking a very high level of fees and commission for what it said was 
+an execution only service. 
+• Options hadn’t obtained a reasonable level of information about Caledonian as a 
+business before it started accepting introductions – and this persisted for most of its 
+relationship with Caledonian. 
+Each of these points shows a high risk of potential consumer detriment, and calls into 
+question the motivation and competency of Caledonian. So I think that, acting fairly and 
+reasonably, Options should’ve declined to accept Mr D’s application because of any of these 
+points – and certainly should have done so when considering them cumulatively. 
+Did Options act fairly and reasonably in proceeding with Mr D’s instructions? 
+In my view, for the reasons given, Options simply should’ve refused to accept Mr D’s 
+application. So things shouldn’t have got beyond that. Had Options acted in accordance with 
+its regulatory obligations and best practice, it’s fair and reasonable in my view to conclude 
+that it should not have accepted Mr D’s application to open a SIPP. 
+I acknowledge Mr D was asked to sign an Options member’s declaration and it would have 
+put some reliance on that. I note this document does give clear warnings about the loss of 
+benefits that would result in the transfer to the Options SIPP. The indemnities also sought to 
+confirm that Mr D wouldn’t hold Options responsible for any liability resulting from the 
+investments. 
+ 
+ 
+But I don’t think this document demonstrates Options acted fairly and reasonably when 
+proceeding with Mr D’s instructions. 
+For the reasons set out, I don’t think Options should’ve accepted the application from 
+Caledonian. So, Mr D shouldn’t have got to the point of signing a member declaration as the 
+business shouldn’t have come about at all. Furthermore, asking Mr D to sign a declaration 
+absolving Options of all its responsibilities when it ought to have known that Mr D’s dealings 
+with Caledonian were putting him at significant risk wasn’t the fair and reasonable thing to 
+do. I also note that the declaration was based on Mr D having “received full and appropriate 
+advice from Caledonian International” where, for the reasons I have given, Options ought to 
+have been aware Caledonian didn’t have the competency to give such advice. 
+My remit is, of course, to make a decision on what I think is fair and reasonable in all the 
+circumstances. And my view is that it’s fair and reasonable to say that just asking Mr D to 
+sign declarations wasn’t an effective way for Options to meet its regulatory obligations to 
+treat him fairly, given the concerns Options ought to have identified about his introduction. 
+I’m also satisfied that, had Options not accepted Mr D’s application to open a SIPP 
+introduced from Caledonian, the arrangement for Mr D wouldn’t have come about in the first 
+place, and the loss he suffered could’ve been avoided. 
+Mr D wasn’t actively looking to do anything with his pension until he spoke with Caledonian. 
+And Caledonian was clearly reliant on Options to facilitate things – but for Options’ 
+acceptance of the application, Mr D’s business wouldn’t have been able to proceed. 
+In any event, I think it’s fair to say Mr D should simply have been unable to complete this 
+transaction. I don’t think any SIPP operator, acting properly, would have dealt with 
+Caledonian. 
+Options might argue that another SIPP operator would’ve accepted Mr D’s application, had it 
+declined it. But I don’t think it’s fair and reasonable to say that Options shouldn’t compensate 
+Mr D for his loss on the basis of speculation that another SIPP operator would have made 
+the same mistakes as I’ve found it did. 
+I think it’s fair instead to assume that another SIPP provider would have complied with its 
+regulatory obligations and good industry practice, and therefore wouldn’t have accepted the 
+application from Caledonian, or would have terminated the transaction before completion. 
+For all the reasons I’ve set out, I’m satisfied that it would not be fair to say Mr D’s actions 
+mean he should bear the loss arising as a result of Options’ failings. In the circumstances, 
+I am satisfied that Options should not have asked him to sign the declaration at all. For the 
+reasons I have set out, I am satisfied that the application should never have been 
+accepted in the first place. 
+S27 and S28 FSMA 
+ 
+Furthermore, I am satisfied S27 FSMA offers a further and alternative basis on which it 
+would be fair and reasonable to conclude Mr D’s complaint should be upheld. I’m satisfied 
+that S27 FSMA applies here, as regulated activities were undertaken by Caledonian, in 
+breach of the General Prohibition. So, Mr D is entitled to recover any money or other 
+property paid or transferred by him under the agreement (i.e. the SIPP), as well as 
+compensation for any loss suffered. I am also satisfied that, in the circumstances, a court 
+would not exercise its discretion to allow the agreement to be enforced; or money paid or 
+transferred under the agreement to be retained. 
+ 
+ 
+ 
+I have set out the key sections of S27 and S28 above and have considered them carefully, 
+in full. In my view I need to apply a four-stage test to determine whether S27 applies and 
+whether a court would exercise its discretion under S28, as follows: 
+ 
+1. Whether an unauthorised third-party was involved; 
+ 
+2. whether there is evidence that the third-party acted in breach of the General 
+Prohibition in relation to the particular transaction and, if so; 
+ 
+3. whether the customer entered into an agreement with an authorised firm in 
+consequence of something said or done by the unauthorised third-party in 
+the course of its actions that contravened the General Prohibition; and 
+ 
+4. whether it is just and equitable for the agreement between the customer 
+and the authorised firm to be enforced in any event. 
+ 
+Test 1 is clearly satisfied here – Caledonian was an unauthorised third party. Test 2 is also 
+satisfied – for the reasons I have set out above, I am satisfied Caledonian carried out 
+activities in breach of the General Prohibition – and any one regulated activity is sufficient 
+for these purposes so this test would be met if Caledonian had only undertaken arranging 
+(which, for the reasons I have set out, I do not think is the case as advice was clearly 
+provided as well). Test 3 is satisfied too – the SIPP was opened in consequence of the 
+advice given, and arrangements made, by Caledonian. 
+ 
+That brings me to the final test, 4. Having carefully considered this, I am satisfied a court 
+would not conclude it is just and equitable for the agreement between Mr D and Options to 
+be enforced in any event. I think very similar reasons to those mentioned by the Court of 
+Appeal in the Adams case apply here: 
+ 
+• A key aim of FSMA is consumer protection. It proceeds on the basis that, while 
+consumers can to an extent be expected to bear responsibility for their own decisions, 
+there is a need for regulation, among other things to safeguard consumers from their 
+own folly. 
+ 
+• While SIPP providers were not barred from accepting introductions from 
+unregulated sources, section 27 of FSMA was designed to throw risks associated with 
+doing so onto the providers. Authorised persons are at risk of being unable to enforce 
+agreements and being required to return money and other property and to pay 
+compensation regardless of whether they had had knowledge of third parties’ 
+contraventions of the General Prohibition. 
+ 
+• For all the reasons set out above, Options should have concluded Caledonian 
+was giving advice, or have suspected it was (and it seems it did belatedly draw this 
+conclusion); and it was giving advice to consumers who were not necessarily 
+financially sophisticated. 
+ 
+• As set out above, Options was aware, or ought to have been aware that: 
+ 
+• Caledonian’s staff did not have the qualifications – and therefore expertise – to 
+give advice on defined benefit pension transfers. 
+ 
+ 
+ 
+• There was no evidence to show a proper advice process had been followed and 
+consumers such as Mr D were therefore unable to make a fully informed 
+decision about the transfer to the SIPP and investment. 
+ 
+• The high volume of business being proposed/brought about by Caledonian. 
+ 
+• The high level of commission Caledonian was taking, which may not 
+have been disclosed. 
+ 
+• That Caledonian had failed to provide its company accounts, despite 
+repeated requests for copies of them by Options. 
+ 
+• The investment did not proceed until well after all these things were known to 
+Options and so it was open to it to decline the investment, or at least explore the 
+position with the consumer. 
+ 
+I have therefore gone on to consider the question of fair compensation. 
+Putting things right 
+My aim is to return Mr D to the position he would now be in but for what I consider to be 
+Options’ failure to carry out adequate due diligence checks before accepting his SIPP 
+application. 
+In light of the above, I require Options to calculate fair compensation by comparing the 
+current position to the position Mr D would be in if he had not transferred from his existing 
+pension. 
+ 
+In summary, Options should: 
+ 
+1. Calculate the loss Mr D has suffered as a result of making the transfer. 
+ 
+2. Take ownership of any remaining investments that cannot be surrendered if 
+possible. 
+ 
+3. Pay compensation for the loss either to Mr D direct or into his pension, depending 
+on what he chooses. In either case the payment should take into account the 
+necessary adjustments set out below. 
+ 
+4. Pay £500 for the trouble and upset caused to Mr D. 
+ 
+I’ll explain how Options should carry out the calculation set out at 1-3 above in further detail 
+as well as explaining my reasons for awarding 4: 
+ 
+1. Calculate the loss Mr D has suffered as a result of making the transfer (“the loss 
+calculation”) 
+Options must undertake a redress calculation in line with the rules for calculating redress for 
+non-compliant pension transfers, as detailed in the FCA’s policy statement PS22/13 and set 
+ 
+ 
+out in the regulator’s handbook in DISP App 4: 
+https://www.handbook.fca.org.uk/handbook/DISP/App/4/?view=chapter.  
+For clarity, as far as I am aware, Mr D has not yet retired, and has no plans to do so at 
+present. So, compensation should be based on his normal retirement age as provided for in 
+the Armed Forces Pension Scheme and following the usual assumptions in the FCA’s 
+guidance. 
+This calculation should be carried out using the most recent financial assumptions in line 
+with DISP App 4. In accordance with the regulator’s expectations, this should be undertaken 
+or submitted to an appropriate provider promptly following receipt of notification of Mr D’s 
+acceptance of any final decision I make. 
+2. Take ownership of any investments held within the SIPP which cannot be surrendered 
+ 
+In order for the SIPP to be closed and further SIPP fees to be prevented, any remaining 
+investment(s) need(s) to be removed from the SIPP. To do this, Options should calculate an 
+amount it is willing to accept as a commercial value for any investments that cannot be 
+surrendered and pay that sum into the SIPP and take ownership of the relevant investments. 
+This amount should be taken into account for the loss calculation. 
+ 
+If Options is unwilling or unable to purchase the investment(s), the value of them should be 
+assumed to be nil for the purposes of the loss calculation. Options may ask Mr D to provide 
+an undertaking to account to it for the net amount of any payment the SIPP may receive 
+from the investment(s). That undertaking should only take effect once Mr D has been 
+compensated in full, to include his receipt of any loss that may be above our award limit, and 
+should allow for the effect of any tax and charges on the amount Mr D may receive from the 
+investment(s) and any eventual sums he would be able to access. Options should meet any 
+costs in drawing up the undertaking and any reasonable costs for advice required by Mr D to 
+approve it. 
+ 
+If Options doesn’t take ownership of the investment(s), and it/they continue to be held in 
+Mr D’s SIPP, there will be ongoing fees in relation to the administration of that SIPP. Mr D 
+would not be responsible for those fees if Options hadn’t accepted the transfer of his pension 
+into the SIPP. So, I think it is fair and reasonable that Options must waive any SIPP fees 
+until such a time as Mr D can dispose of the investment(s) and close the SIPP. 
+ 
+3. Pay compensation to Mr D for any loss he has suffered as calculated in (1). 
+If the redress calculation demonstrates a loss, as explained in policy statement PS22/13, 
+and set out in DISP App 4, Options should: 
+• always calculate and offer Mr D redress as a cash lump sum payment, 
+• explain to Mr D before starting the redress calculation that: 
+- his redress will be calculated on the basis that it will be invested prudently (in 
+line with the cautious investment return assumption used in the calculation), 
+and 
+- a straightforward way to invest his redress prudently is to use it to augment 
+his DC pension 
+• offer to calculate how much of any redress Mr D receives could be augmented rather 
+than receiving it all as a cash lump sum, 
+ 
+ 
+• if Mr D accepts Options’ offer to calculate how much of his redress could be 
+augmented, request the necessary information and not charge Mr D for the 
+calculation, even if he ultimately decides not to have any of his redress augmented, 
+and 
+• take a prudent approach when calculating how much redress could be augmented, 
+given the inherent uncertainty around Mr D’s end of year tax position. 
+ 
+Redress paid to Mr D as a cash lump sum in respect of a future loss includes compensation 
+in respect of benefits that would otherwise have provided a taxable income. So, in line with 
+DISP App 4.3.31G(3), Options may make a notional deduction to allow for income tax that 
+would otherwise have been paid. Mr D’s likely income tax rate in retirement is presumed to 
+be 20%.  In line with DISP App 4.3.31G(1) this notional reduction may not be applied to any 
+element of lost tax-free cash. 
+ 
+If Options believes other parties to be wholly or partly responsible for the loss, it is free to 
+pursue those other parties. So, if Mr D’s loss does not exceed £195,000, or if Options 
+accepts my recommendation below that it should pay the full loss as calculated above, the 
+compensation payable to Mr D should be contingent on the assignment by him to Options of 
+any rights of action he may have against other parties in relation to his transfer to the SIPP 
+and the investments if Options is to request this. Options should cover the reasonable cost 
+of drawing up, and Mr D’s taking advice on and approving, any assignment required. 
+ 
+If the loss exceeds £195,000 and Options does not accept my recommendation to pay the 
+full amount, any assignment of Mr D’s rights should allow him to retain all rights to the 
+difference between £195,000 and the full loss as calculated above. 
+ 
+4. Pay £500 for the trouble and upset caused. 
+ 
+Mr D transferred his pension away from a valuable defined benefits pension to a SIPP and 
+had to suffer the loss of those benefits. Mr D has told us this “has had a massive impact on 
+my future in being able to plan any kind of retirement, I risked my life in my job and the 
+financial loss means mine and my familys’ (sic) future is completely uncertain, I now know I 
+would have had a safe and secure income with the Armed Forces Pension”.  
+ 
+I think it’s fair to say this caused Mr D considerable distress and inconvenience. He’s clearly 
+upset about how this has all affected him and it must have been a shock to him. So, I 
+consider that a payment of £500 is appropriate to compensate for that. 
+ 
+determination and money award: It’s my decision that I require Options to pay Mr D 
+compensation as set out above, up to a maximum of £195,000 plus any interest payable. 
+ 
+As I’ve said above, until the calculations are carried out, I don’t know how much the 
+compensation will be, and it may be nowhere near £195,000, which is the maximum sum 
+that I’m able to award in Mr D’s complaint. But I’ll also make a recommendation below in the 
+event that the compensation is to exceed this sum, although I can’t require that Options pays 
+this. 
+ 
+recommendation: If the amount produced by the calculation of fair compensation exceeds 
+£195,000, I also recommend that Options pays Mr D the balance.  
+ 
+If Mr D accepts my final decision, the money award and the requirements of this decision will 
+be binding on Options. My recommendation won’t be binding on Options. 
+ 
+ 
+ 
+Further, it’s unlikely that Mr D will be able to accept my final determination and go to court to 
+ask for the balance of the compensation owing to him after the money award has been paid. 
+Mr D may want to consider getting independent legal advice before deciding whether to 
+accept my final decision. 
+ 
+My jurisdiction decision 
+It’s my decision that this complaint was made in time and can be considered by the Financial 
+Ombudsman Service. 
+My final decision 
+It’s my final decision that I uphold Mr D’s complaint. I require Options UK Personal Pensions 
+LLP to calculate and pay the award, and take the actions, set out above. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr D to accept or 
+reject my decision before 12 March 2025. 
+   
+Catarina Machado Pinto Simoes 
+Ombudsman

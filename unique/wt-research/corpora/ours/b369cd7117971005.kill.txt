@@ -1,0 +1,21 @@
+TermTape — see exactly how a VC negotiated its last ten UK deals, before you sign yours.
+
+A self-serve tool that shows a UK startup founder what a specific investor actually agreed to in past funding rounds, built from public Companies House filings, so they can push back on unfair terms with evidence instead of guesswork.
+
+This borrows the way professional sports teams break down an opponent's last ten matches, clip by clip, before a game — and applies the same idea to a funding negotiation. A founder about to sign a term sheet from a UK VC almost never knows what that same fund agreed to with the last ten companies it backed: did it really always ask for 2x participating preference, or is this founder being pushed harder than most? Right now that history is technically public but practically invisible.
+
+Every UK limited company that raises equity has to file a Statement of Capital and updated Articles of Association at Companies House. Those filings describe the actual share classes created — liquidation preference, anti-dilution, veto rights — for every round a VC has ever done, going back years. Nobody reads this at scale, because the filings are unstructured PDFs scattered across thousands of company records with no way to search by investor.
+
+TermTape is a downloadable analysis tool a founder runs during a live raise: they name the VC on their term sheet, and it pulls, OCRs and parses that fund's filing history across every UK portfolio company it can find, turning it into a plain-English negotiation brief — 'this fund has taken 1x non-participating preference in 9 of its last 11 UK deals; the 2x participating clause in your term sheet is not their norm.' Founders can also privately log their own final negotiated terms after closing, in exchange for unlocking deeper history on other funds — the same trade Glassdoor and levels.fyi use to build a dataset nobody else has. That crowdsourced layer, stacked on top of the parsed public filings, is what a rival can't just copy by scraping Companies House once; it compounds with every raise that runs through the tool.
+
+Founders and finance leads at UK seed-to-Series-A startups actively raising a round, who pay a one-off fee (around £200-£400) for a report on the specific VC they're negotiating with, or a subscription (around £40/month) if they're fundraising over several months and comparing multiple term sheets. The money is small relative to the round size and the downside of accepting bad terms, so it's an easy purchase to justify from the founder's own pocket or the deal's legal budget.
+
+The Economic Crime and Corporate Transparency Act 2023 is forcing Companies House to move to mandatory software-only filing and better-verified, more structured data by 2027, with identity verification for filers already rolling out through 2025-2026 — the underlying filings this tool depends on are getting cleaner and more machine-readable at exactly the moment they're most useful. At the same time, UK seed and Series A rounds in 2025-2026 have seen more aggressive investor terms as valuations reset, so founders are negotiating harder than they were two years ago and have real reason to want leverage.
+
+The passages only describe what term sheets are and that standardised model documents (NVCA/BVCA) and legal advisors exist for them; none show founders actively suffering from information asymmetry or paying to gain negotiating leverage against a specific VC's history.
+
+The passages report round sizes and valuation benchmarks but say nothing about whether founders would spend £200-400 or £40/month on a term-sheet negotiation tool, nor about founders' legal/diligence budgets.
+
+The passages discuss general fundraising bootcamps, investor-outreach coaching, and lawyer commentary on term sheets, but none describe any channel, platform, or forcing mechanism through which founders would discover or adopt a Companies House data-parsing tool like TermTape.
+
+The passages confirm Companies House registers company data and makes it public, but none states the reuse terms, licence, or restrictions that would determine whether scraping and reselling analysis of these filings is lawful; the defamation and generic open-data passages don't address this either.

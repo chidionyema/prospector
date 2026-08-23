@@ -1,0 +1,19 @@
+Interview evidence maps for Texas research agencies.
+
+Turn each study's interviews into a reviewed evidence map and draft findings for a small Texas research agency.
+
+Interview evidence maps are a productized service for the owner of a small Texas market-research or user-research agency. It commits to the AI-native model, option A. A completed focus group, depth interview, or usability study starts the work. The model performs the first pass normally assigned to a junior qualitative analyst. It groups responses, drafts a codebook, links each proposed finding to verbatim evidence, and prepares a findings outline. A senior methodologist reviews the interpretation and consent before delivery.
+
+The American Association for Public Opinion Research's Transparency Initiative, the University of Texas at Austin's Texas Politics Project, and Texas Workforce Commission occupation data are the public sources. The buyer already pays recruiters, moderators, junior coders, and methodologists to turn recordings into findings. The model supports interpretation. It does not invent respondents or treat a frequency as a universal fact.
+
+The accumulating advantage is a consented, de-identified set of code-to-verbatim pairs, analyst corrections, and final findings. Raw recordings are not used across clients without permission. A new provider starts without that pattern library. Distribution comes through Texas user-research recruiters and fractional methodologists, plus a free public sample built from published interview excerpts. Each client then buys a fixed study pack while a methods lead handles sensitive decisions.
+
+It fails on tiny recordings with poor consent or too little variation, where ordinary human coding is better than forcing a pattern.
+
+The owner of a small Texas market-research or user-research agency pays a fixed fee in U.S. dollars per completed study. That owner already pays recruiters, moderators, junior coders, and a methodologist to turn recordings into findings clients can trace.
+
+The American Association for Public Opinion Research's Transparency Initiative asks researchers to explain how findings were produced. The University of Texas at Austin's Texas Politics Project shows that standard in Texas polling. Texas Workforce Commission data confirms that social-science research staff are paid roles. Clients need a direct route from every finding to the respondent's words, so this work repeats for each study.
+
+The passages cover stock-market tickers, broad index data, and generic definitions of AI; none mention Texas market-research agencies, qualitative coding, interview evidence maps, AAPOR, the Texas Politics Project, Texas Workforce Commission, or tools like Dovetail/NVivo, so they say nothing about whether the value of this service is durable or already commoditised.
+
+Dovetail is described as 'the leading customer intelligence platform' that performs transcription analysis, coding interpretation of interviews, survey responses, and creates summarized insights—exactly the workflow the candidate proposes—and has raised funding at a AU$150M+ valuation as a well-funded incumbent in this space.

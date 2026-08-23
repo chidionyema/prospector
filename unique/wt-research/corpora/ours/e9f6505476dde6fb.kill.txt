@@ -1,0 +1,23 @@
+WasteBill Audit – The Small Food Business Waste Contract Dispute Engine.
+
+A vertical tool that scans commercial waste invoices for cafes and restaurants, identifies overcharges against actual bin usage and contract terms, and auto-generates dispute letters to recover excessive fees.
+
+Small food business owners are unknowingly overpaying for waste collection because complex tariffs, phantom extra pickups, and auto-renewal traps are rarely scrutinised. A first-principles rebuild from the raw pain of cash outflows reveals that recovering these hidden overcharges is a high-value, repeatable task that can be automated from invoice data alone, without needing to change provider. Compounding a dataset of overcharge patterns by waste hauler and region trains more accurate detection rules and arms users with benchmarking evidence to strengthen disputes.
+
+Independent cafe or restaurant owners managing 1-3 locations, personally handling all admin.
+
+Rising waste disposal costs, mandatory food waste separation regulations (e.g., UK 2023 legislation, California SB 1383) increasing billing complexity and error frequency, and inflationary pressure on haulage are making overcharges more painful and more common, while owner time to audit remains zero.
+
+None of the provided passages address the value, durability, or commoditization risk of an automated waste invoice audit tool for small food businesses; they cover broad solid waste management sustainability, a dictionary definition, and AI moats without touching on billing overcharges or this specific business model.
+
+All passages discuss unrelated topics (competition law, dictionary definition, climate waste analysis, general analytics) and none address the existence or dominance of an incumbent in automated waste invoice auditing for small food businesses.
+
+The passage states that restaurants budget for waste as a cost, but it does not address whether they have the budget and motive to pay for a separate waste invoice audit service. No passage provides direct evidence of the payer's solvency or willingness to pay for this tool.
+
+None of the passages mention waste contracts, invoices, small food businesses, or any distribution channel; they are entirely irrelevant to the question.
+
+The passages discuss waste classification, segregation rules, and carrier licensing, none of which address whether an automated invoice audit and dispute tool is lawful.
+
+The passage mentions waste as a cost risk in hospitality, but does not confirm that small food business owners are overpaying for waste collection or that they are paying to solve it now. No direct evidence supports the specific pain claim.
+
+No explicit evidence found in the provided passages to support any critical risk; all checks returned unverifiable.

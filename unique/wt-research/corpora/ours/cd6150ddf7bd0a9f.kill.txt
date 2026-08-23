@@ -1,0 +1,25 @@
+Denial Decoder — your Florida Medicare Advantage appeal win‑rate brief.
+
+A single‑page report that gives the real chance of overturning a coverage denial for your exact condition and plan, using CMS’s own hidden numbers.
+
+Over half of Florida’s seniors are in a Medicare Advantage plan, and every year thousands of claims for skilled nursing, rehab, or specialist treatment are denied as 'not medically necessary.' When a retiree appeals, the data shows that denials are overturned at wildly different rates depending on the diagnosis, the plan, and the level of review — but nobody hands you those odds. We pull the CMS Part C and Part D appeals outcomes by plan and diagnosis code (public but buried) and cross‑reference it with each plan’s complaint history. The output is a short, personalised brief: ‘For a COPD rehab denial with your plan, 38 of 100 appeals succeed at the first level; here’s the single strongest argument used by the winners.’
+
+The adversarial inversion: the federal government sets the rules requiring plans to publish denial data, but it will never build a tool that helps an enrollee weaponise those numbers. Every time CMS tightens the marketing or network‑adequacy standards, more plans tighten their denials — and our archive becomes more valuable.
+
+Florida seniors (us-fl) aged 65–80 who are enrolled in a Medicare Advantage plan and have received a denial of care. They are often overwhelmed by the appeals process and willing to pay a modest fee for a clear, evidence‑based look at whether it is worth the fight.
+
+Enrollment in Medicare Advantage has hit an all‑time high in Florida, and CMS’s own reports show a steady increase in pre‑service denials post‑pandemic. At the same time, the Office of the Inspector General is auditing plans’ denial patterns, meaning the pressure on plans to deny is matched by a growing body of public data on their behaviour — data an individual retiree cannot easily parse.
+
+The passages confirm Medicare Advantage and Part D appeal steps still exist and that CMS publishes related tools and de-identified claims files, including an Appeals Decision Search. They never say whether a paid, diagnosis-and-plan-specific win-rate brief still has lasting paid value, or whether free CMS materials already take that margin away.
+
+The passages describe Medicare Advantage denial volumes, low appeal filing rates, and generic win-rate or process guidance, but none name a market leader or funded rival already selling personalised plan-and-diagnosis appeal odds briefs. They therefore never show whether this exact niche is open or already captured.
+
+The passages describe Medicare appeal steps and free SHINE/SHIP counseling in Florida and nationally, but they never say whether Florida Medicare Advantage enrollees have money or will pay for a paid denial-odds brief. Free counseling does not show ability or willingness to buy this product, and nothing else addresses their budget or payment behavior.
+
+Passages show Florida Medicare Advantage denial recipients are steered into a clear appeal funnel: plans must give written appeal instructions, denial letters start the process, and Florida-specific how-to appeal guidance already reaches them. That is an executable path to the same people who would buy a denial win-rate brief—via the denial notice and existing appeal-help content—without any passage showing that path is blocked.
+
+CMS states it makes certain data products available to external stakeholders as allowed by federal laws, and that those public products are freely available on its open data sites. Packaging that released Medicare data into a paid report therefore does not require breaking the law; the fragmentary unauthorized-practice snippets never say this use of public CMS figures is forbidden.
+
+Passages show Medicare Advantage denials are routinely overturned when appealed (about 80–82%) while only ~11.5% of denials are appealed, and commercial materials pitch strategies and high-ROI appeal work for those denials. That establishes a real, present harm—wrongful coverage denials—and active demand to fight them.
+
+CMS says it releases certain Medicare data products to outside parties as federal law allows, and the passages never say a third party may not sell a brief built from those public figures (6fff80ed30b9775a, 13c61b09a04ae244). No passage names one company that controls most of the path to denied Florida enrollees, and none compare what it costs to reach one buyer with what that buyer could ever pay (5d5f0e66d2a9cce8, 590908d02172bdb5).

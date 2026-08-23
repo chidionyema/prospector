@@ -1,0 +1,392 @@
+DRN-5060507 
+ 
+ 
+The complaint 
+ 
+Mr D has complained, with the help of a professional representative, about the transfer of his 
+Aviva Life & Pensions UK Limited (‘Aviva’) personal pensions to a Qualifying Recognised 
+Overseas Pension Scheme (“QROPS”) in May 2016. Mr D says the investments made 
+through the QROPS have failed and he has lost out financially as a result.  
+Mr D says Aviva failed in its responsibilities when dealing with the transfer request. He says 
+that it should have done more to warn him of the potential dangers of transferring, and 
+undertaken greater due diligence on the transfer, in line with the guidance he says was 
+required of transferring schemes at the time. Mr D says he wouldn’t have transferred, and 
+therefore wouldn’t have put his pension savings at risk, if Aviva had acted as it should have 
+done. 
+What happened 
+On 23 April 2015, Mr D signed a letter of authority giving Aviva permission to share 
+information about his pension with Howden Insurance Brokers LLC (‘HIB LLC’), a business 
+based in Dubai in the United Arab Emirates (‘UAE’). Howden Insurance Brokers with the 
+denotation LLC does not appear on the Financial Conduct Authority (‘FCA’) register. But a 
+business called Howden Insurance Brokers Limited, based in London, is on the FCA register 
+and authorised and regulated by the FCA. And Howden Insurance Brokers Limited (DIFC 
+Branch) is currently registered with the Dubai Financial Services Authority, the regulator in 
+Dubai. 
+The letter of authority was sent to Aviva on 27 April 2015. The email enclosing this stated 
+that HIB LLC was also registered in England & Wales and provided a company number. A 
+search of Companies House shows that the company number given belongs to Howden 
+International Broking Limited. This business is registered and authorised by the FCA. And it 
+operates from the same address in London as Howden Insurance Brokers Limited and the 
+businesses share directors in common. All of these businesses appear to refer to 
+themselves more simply as Howden. 
+The email however came from an email address belonging to Gladstone Morgan Ltd 
+(‘GML’). The email signature referred to Howden as working in association with GML. GML 
+appears to be a business registered in Hong Kong, and registered with the Hong Kong 
+Insurance Authority, although the email gave a postal address in the UAE. 
+On 11 May 2015, Aviva wrote to GML at the address in the UAE providing information about 
+Mr D’s pensions and the relevant transfer forms for an application to transfer benefits to an 
+overseas pension. 
+On 10 March 2016, HIB LLC produced a recommendation report for Mr D. It advised him to 
+transfer his pension benefits from Aviva to the Centaurus Retirement Benefits Scheme 
+(‘CRBS’) – a QROPS based in Malta. 
+Mr D then signed several documents. These included a letter of authority for Aviva to 
+correspond with the administrators of the CRBS, Sovereign Pension Services Limited 
+
+ 
+ 
+(‘SPSL’), an application to the administrators to join the scheme, Aviva’s overseas transfer 
+forms and relevant HMRC forms. I can see that HIB LLC also certified copies of Mr D’s 
+identification documents. 
+SPSL wrote to Aviva on 29 March 2016, applying on Mr D’s behalf to transfer his pension 
+benefits to the QROPS. It enclosed all of the forms Mr D had completed, along with evidence 
+that the CRBS was registered with the Department of Inland Revenue in Malta in July 2012 
+and recognised by HMRC on its QROPS list from December 2012. 
+Aviva transferred the value of Mr D’s pensions to the QROPS in May 2016. The total amount 
+transferred was £114,923.64. Approximately £70,000 appears to have been invested in 
+mutual managed funds and a further £40,000 across three ‘bonds’. A recent statement 
+suggests two of the bonds potentially have a nil value and the amount currently held in 
+managed funds is now significantly less than when the QROPS was first invested. 
+In January 2024, Mr D complained to Aviva. Briefly, he said Aviva had failed to meet FCA 
+principles and didn’t carry out sufficient due diligence into the transfer. If it had, Mr D said 
+that Aviva would’ve found, amongst other things, that he wasn’t receiving regulated advice 
+and was being advised to transfer to a QROPS to make high risk, unregulated investments. 
+And so, he says Aviva should not have allowed the transfer because of the risk of detriment 
+to him. 
+Aviva didn’t uphold the complaint. It said it had received a valid application to transfer and 
+Mr D was receiving advice from HIB LLC, who had responsibility to ensure the transfer was 
+suitable.  
+Our investigator was unable to resolve the dispute informally, so the matter was passed to 
+me to decide. 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+While doing so I’ve taken into account relevant law and regulations, regulator’s rules, 
+guidance and standards and codes of practice, and what I consider to have been good 
+industry practice at the time. And where the evidence is incomplete, inconclusive or 
+contradictory, I reach my conclusions on the balance of probabilities – that is, what I think is 
+more likely than not to have happened based on the available evidence and the wider 
+surrounding circumstances. I’d also say that while I’ve considered everything on file and that 
+the parties have said, in light of our role as an impartial alternative dispute resolution service, 
+I haven’t addressed everything that’s been said. Rather I’ve addressed what I see as being 
+the key matters at the heart of Mr D’s complaint and the reasons for my decision. 
+My findings are similar to those our Investigator reached in her assessment of the complaint. 
+So, my analysis as described below occasionally echo’s the wording our Investigator 
+presented. 
+The relevant rules and guidance 
+Personal pension providers are regulated by the FCA. Prior to that they were regulated by 
+the FCA’s predecessor, the Financial Services Authority (‘FSA’). As such Aviva was subject 
+to the FSA/FCA Handbook, and under that to the Principles for Businesses (‘PRIN’) and to 
+the Conduct of Business Sourcebook (‘COBS’). There have never been any specific 
+FSA/FCA rules governing how personal pension providers deal with pension transfer 
+ 
+ 
+requests, but the following have particular relevance here:   
+• Principle 2 – A firm must conduct its business with due skill, care and diligence; 
+• Principle 6 – A firm must pay due regard to the interests of its customers and treat them 
+fairly; 
+• Principle 7 – A firm must pay due regard to the information needs of its clients, and 
+communicate information to them in a way which is clear, fair and not misleading; and 
+• COBS 2.1.1R (the client’s best interests rule), which states that a firm must act honestly, 
+fairly and professionally in accordance with the best interests of its client. 
+In February 2013, The Pensions Regulator (‘TPR’) issued its Scorpion guidance to help 
+tackle the increasing problem of pension liberation, the process by which unauthorised 
+payments are made from a pension (such as accessing a pension below minimum 
+retirement age). In brief, the guidance provided a due diligence framework for ceding 
+schemes dealing with pension transfer requests and some consumer-facing warning 
+materials designed to allow members decide for themselves the risks they were running 
+when considering a transfer.    
+The Scorpion guidance was described as a cross-government initiative by Action Fraud, The 
+City of London Police, HMRC, the Pensions Advisory Service (‘TPAS’), TPR, the SFO, and 
+the FSA/FCA, all of which endorsed the guidance, allowing their names and logos to appear 
+in Scorpion materials.  
+The FSA’s endorsement of the Scorpion guidance was relatively informal: it didn’t take the 
+form of Handbook Guidance, because it was not issued under s.139A of the Financial 
+Services and Markets Act (‘FSMA’), which enabled the FSA to issue guidance provided it 
+underwent a consultation process first. Nor did it constitute “confirmed industry guidance”, as 
+can be seen by consulting the list of all such FSA/FCA guidance on its website. So, the 
+content of the Scorpion guidance was essentially informational and advisory in nature. 
+Deviating from it doesn’t therefore mean a firm has necessarily broken the Principles or 
+COBS rules. Firms were able to take a proportionate approach to transfer requests, 
+balancing consumer protection with the need to also execute a transfer promptly and in line 
+with a member’s right to transfer. 
+That said, the launch of the Scorpion guidance in 2013 was an important moment in so far it 
+provided, for the first time, guidance for personal pension providers dealing with transfer 
+requests – guidance that prompted providers to take a more active role in assessing those 
+requests. The guidance was launched in response to widespread abuses that were causing 
+pension scheme members to suffer significant losses. And the guidance’s specific purpose 
+was to inform and help ceding firms when they dealt with transfer requests in order to 
+prevent these abuses and save their customers from falling victim to them.  
+In those circumstances, I consider firms which received pension transfer requests needed to 
+pay regard to the contents of the Scorpion guidance as a matter of good industry practice. It 
+means February 2013 marks an inflection point in terms of what was expected of personal 
+pension providers dealing with transfer requests as a matter of fulfilling their duties under the 
+regulator’s Principles and COBS 2.1.1R.  
+The Scorpion guidance was updated in July 2014. It widened the focus from pension 
+liberation specifically, to pension scams more generally – which included situations where 
+someone transferred in order to benefit from “too good to be true” investment opportunities 
+such as overseas property developments. An example of this was given in one of the action 
+ 
+ 
+pack’s case studies. 
+There was a further update to the Scorpion guidance in March 2015. This guidance 
+referenced the potential dangers posed by “pension freedoms” (which were about to give 
+people greater flexibility in relation to taking pension benefits) and explained that pension 
+scams were evolving. In particular, it highlighted that single member occupational schemes 
+were being used by scammers.  
+At the same time, a broader piece of guidance was initiated by an industry working group 
+covering both TPR and FCA regulated firms: the Pension Scams Industry Group (PSIG) 
+Code of Good Practice. The intention of the PSIG Code was to help firms achieve the aims 
+of the Scorpion campaign in a streamlined way which balanced the need to process 
+transfers promptly with the need to identify those customers at material risk of scams.  
+The Scorpion guidance for businesses was updated again in March 2016. This said 
+business should direct members to the government’s Pension Wise website and reiterated 
+the recommendation for businesses to use TPR’s checklist and carry out due diligence on all 
+transfer requests. And it said business should communicate any suspicions to consumers, 
+record these and direct consumers to TPAS. 
+The Scorpion guidance 
+The March 2015 update to the Scorpion guidance asked schemes to ensure they provided 
+their members with “regular, clear” information on how to spot a scam. It recommended 
+giving members that information in annual pension statements and whenever they requested 
+a transfer pack. It said to include the pensions scam “leaflet” in member communications. 
+The March 2016 update to the Scorpion guidance set out how business could protect 
+members from falling victim to scams. And the first step listed was to read and share TPR’s 
+scams booklet for consumers. Directing members to TPR’s information was also repeated 
+separately. 
+In the absence of more explicit direction, I take the view that the member-facing Scorpion 
+warning materials were to be used in much the same way as previously, which is for the 
+shorter insert to be sent when someone requested a transfer pack and the longer version 
+made available when members sought further information on the subject. 
+And again, when a transfer request was made, transferring schemes were asked to use a 
+three-part checklist to find out more about a receiving scheme and why their member was 
+looking to transfer. 
+The PSIG Code of Good Practice 
+The PSIG Code was voluntary. But, in its own words, it set a standard for dealing with 
+transfer requests from UK registered pension schemes. It was “welcomed” by the FCA and 
+the Association of British Insurers (amongst others). And several FCA regulated pension 
+providers were part of the PSIG and co-authored the Code. So much of the observations I’ve 
+made about the status of the Scorpion guidance would, by extension, apply to the PSIG 
+Code. In other words, personal pension providers didn’t necessarily have to follow it in its 
+entirety in every transfer request and failure to do so wouldn’t necessarily be a breach of the 
+regulator’s Principles or COBS. Nevertheless, the Code sets an additional benchmark of 
+good industry practice in addition to the Scorpion guidance. 
+In brief, the PSIG Code asked schemes to send the Scorpion “materials” in transfer packs 
+and statements, and make them available on websites where applicable. The PSIG Code 
+goes on to say those materials should be sent to scheme members directly, rather than just 
+ 
+ 
+to their advisers. Like the Scorpion guidance, the PSIG Code also outlined a due diligence 
+process for ceding schemes to follow. However, whilst there is considerable overlap 
+between the Scorpion guidance and the PSIG Code, there are several differences worth 
+highlighting here, such as: 
+• The PSIG Code includes an observation that: “A strong first signal of [a scam] would be 
+a letter of authority requesting a company not authorised by FCA to obtain the required 
+pension information; e.g. a transfer value, etc.” This is a departure from the Scorpion 
+guidance (including the 2015 guidance) which was silent on whether anything could be 
+read into the entity seeking information on a person’s pension. 
+• The Code makes explicit reference to the need for scheme administrators to keep up to 
+date with the latest pension scams and to use that knowledge to inform due diligence 
+processes. Attention is drawn to FCA alerts in this area.  
+• Under the PSIG Code, an ‘initial analysis’ stage allows transferring schemes to fast-track 
+a transfer request without the need for further detailed due diligence, providing certain 
+conditions are met. No such triage process exists in the 2015 Scorpion guidance – 
+following the three-part due diligence checklist was expected whenever a transfer was 
+requested. 
+• The PSIG Code splits its later due diligence process by receiving scheme type: larger 
+occupational pension schemes, SIPPs, SSASs and QROPS. The Scorpion guidance 
+doesn’t distinguish between receiving scheme in this way – there’s just the one due 
+diligence checklist which is largely (apart from a few questions) the same whatever the 
+destination scheme. 
+TPR began referring to the Code as soon as it was published, in the March 2015 version of 
+the Scorpion action pack. Likewise, the PSIG Code referenced the Scorpion guidance and 
+indicated staff dealing with scheme members needed to be aware of the Scorpion materials. 
+Therefore, in order to act in the consumer’s best interest and to play an active part in trying 
+to protect customers from scams, I think it’s fair and reasonable to expect ceding schemes to 
+have paid due regard to both the Scorpion guidance and the PSIG Code when processing 
+transfer requests. Where one differed from the other, they needed to consider carefully how 
+to assess a transfer request taking into account the interests of the transferring member. 
+Typically, I’d consider the Code to have been a reasonable starting point for most ceding 
+schemes because it provided more detailed guidance on how to go about further due 
+diligence, including steps to potentially fast-track some transfers which – where appropriate 
+– would be in the interest of both parties. 
+The considerations of regulated firms didn’t start and end with the Scorpion guidance and 
+the PSIG Code. If a personal pension provider had good reason to think the transferring 
+member was being scammed – even if the suspected scam didn’t involve anything 
+specifically referred to in either the Scorpion guidance or the Code – then its general duties 
+to its customer as an authorised financial services provider would come into play and it 
+would have needed to act. Ignoring clear signs of a scam, if they came to a firm’s attention, 
+or should have done so, would almost certainly breach the regulator’s principles and  
+COBS 2.1.1R.  
+The circumstances surrounding the transfer: what does the evidence suggest happened?  
+Mr D was living in Dubai at the time of the transfer. He says he was approached by a 
+representative of HIB LLC / GML who indicated they were an independent financial adviser 
+and wealth manager. Mr D said this adviser specialised in QROPS and told him that a 
+ 
+ 
+QROPS would be far superior to his personal pension, given Mr D’s status as an expat. Mr D 
+was told he’d receive better returns as the QROPS provided more flexibility and specialist 
+wealth managers, he could access his pension from age 55 and he’d benefit from optimal 
+tax structuring and lower cost to his beneficiaries in the event of his death due to living 
+overseas. 
+Mr D says he had a limited understanding of how the funds would be invested in the QROPS 
+and just followed the investments proposed by HIB LLC. He says he wasn’t offered any cash 
+or other incentives to transfer – just told he’d receive better returns which persuaded him to 
+do so. Mr D says he never received any warnings about potential risks from Aviva. 
+I’ve seen a copy of written advice from HIB LLC in March 2016, and I’m satisfied that it did 
+advise Mr D to transfer. I’ve also not seen any evidence of him being sent any warnings, nor 
+of him being paid any incentives from the pension. So overall, I don’t have any reason to 
+doubt what he’s said about how the transfer came about or his motivation for doing so. 
+I also think Mr D appears to be correct that his pension has suffered some losses. As I’ve 
+said, statements that Mr D has provided indicate at least two of the bonds he invested in 
+have run into difficulty and potentially have a nil value. The amount invested in managed 
+funds is also lower than when the initial investment through the QROPS was made. Although 
+I haven’t seen any detailed statements showing whether this was in anyway impacted by 
+withdrawals or transfers to another scheme(s). 
+What did Aviva do and was it enough? 
+The Scorpion insert: 
+For the reasons given above, my view is that personal pension providers should, as a matter 
+of course, have sent transferring members the Scorpion insert or given them substantially 
+the same information.  
+Aviva has said that it no longer holds notes about the transfer and can’t confirm if it sent 
+Mr D the Scorpion insert. It has said it wasn’t part of its process to scan the insert onto a file 
+at the time, so one could have been issued and not scanned. 
+I haven’t seen any evidence that Aviva wrote directly to Mr D during the transfer process. So, 
+I can’t see that it sent him the Scorpion information. 
+I’ve seen copies of the letters that Aviva sent to HIB LLC / SML. But none of these indicate 
+that the Scorpion leaflet was included as there isn’t a reference to it in either the body text or 
+the list of enclosures.  
+So, on balance, I don’t think I can reasonably say that this information was shared with Mr D, 
+in line with good industry practice at the time.  
+Due diligence: 
+In addition to sending the Scorpion warning information, Aviva was also expected to perform 
+due diligence to determine whether or not to process the transfer. As explained above, I 
+consider the PSIG Code to have been a reasonable starting point for most ceding schemes. 
+I’ve therefore considered Mr D’s transfer in that light. But I don’t think it would make a 
+difference to the outcome of the complaint if I had considered Mr D’s actions using the 
+Scorpion guidance as a benchmark instead. 
+I can’t see, beyond asking the receiving scheme to complete a checklist, that Aviva did any 
+ 
+ 
+due diligence other than reviewing the paperwork it received. It had evidence that the 
+receiving scheme had been recognised by HMRC since 2012, which I think would’ve 
+provided some reassurance that the scheme was not being used for pension liberation - as 
+otherwise it would most probably have already been removed from the QROPS list. And 
+checking this ensured that the transfer payment both qualified as an authorised payment for 
+tax purposes and also satisfied Mr D’s statutory right, and potentially other legal rights, to 
+transfer. 
+But I haven’t seen anything that makes me think Aviva had identified the receiving 
+scheme/administrator as being free of scam risk, bearing in mind what the Code said about 
+this in Section 6.11. So, the initial triage process under the PSIG Code should have led to 
+Aviva asking Mr D further questions about the transfer as per Section 6.2.2 (“Initial analysis 
+– member questions”). I won’t repeat the list of suggested questions in full. Suffice to say, at 
+least one of them would have been answered “yes” - have you been informed of an 
+overseas investment opportunity?  
+Admittedly Mr D lived overseas. But under the Code, further investigation should follow a 
+“yes” to any question. The nature of that investigation depends on the type of scheme being 
+transferred to. The QROPS section of the Code (Section 6.4.4) has the following statement: 
+“The key items to consider are the rationale for moving funds offshore, and the likelihood 
+that the receiving scheme is a bona fide pension scheme, as if HMRC determine 
+retrospectively that it is not, there may be a scheme sanction charge liability regardless of 
+whether the receiving scheme was included on the list or not.” 
+In order to address those two items – the rationale for moving funds offshore and the 
+legitimacy of the QROPS – the Code suggests the transferring scheme should broadly follow 
+the same due diligence process as for a SSAS, which outlined four areas of concern. Under 
+each the Code set out a series of example questions to help scheme administrators assess 
+the potential risk facing a transferring member. 
+Not every question would need to be addressed under the Code. Indeed, the Code makes 
+the point that it is for scheme administrators to choose the most relevant questions to ask 
+(including asking questions not on the list if appropriate). But the Code makes the point that 
+a transferring scheme would typically need to conduct investigations into a “wide range” of 
+issues to establish whether a scam was a realistic threat.  
+What should Aviva have found out – and would it have made a difference? 
+As I’ve said, I think Aviva had enough information to establish the legitimacy of the QROPS. 
+But that appears to have been the extent of its due diligence. And I think it also ought to 
+have addressed Mr D’s rationale for transferring. If it had asked Mr D about this – which it 
+should have done, using the framework outlined above – I think he’d have said he was 
+considering the transfer because of advice he’d received after initially being approached by 
+an adviser. And that he’d been advised to transfer to the QROPS by HIB LLC for greater 
+flexibility and tax efficiency (as confirmed by the suitability report) and to benefit from 
+improved returns.  
+But again, Aviva would also have been aware that Mr D was living in Dubai. So, transferring 
+his pension overseas (to a QROPS) wouldn’t have appeared unusual or out of the ordinary 
+and, in the specific circumstances, I think Aviva could reasonably have placed less weight on 
+this being an indicator of a potential scam. 
+HIB LLC’s name, in that format, did not appear on the FCA register. But it is a business 
+based in the UAE. So, it wouldn’t have been subject to FCA rules, and couldn’t hold 
+ 
+ 
+passporting rights. As I’ve said there are two other entities that appear to have some 
+affiliation with HIB LLC, that do appear on the FCA register. And Aviva could potentially have 
+taken some reassurance from this, if it had looked into HIB LLC’s status – although I would 
+note those FCA regulated businesses do not appear, from the available paperwork, to have 
+had a part in giving Mr D advice. 
+But ultimately, I don’t think Aviva needed to look into the adviser in any great detail, in this 
+specific case. To give advice in the UK on the transfer of benefits from a personal pension, 
+businesses have to be authorised by the FCA. And being advised by an unauthorised firm 
+would be a breach of the general prohibition imposed by FSMA, which states no one can 
+carry out regulated activities unless they’re authorised or exempt. But Mr D was not in the 
+UK nor was he being advised in the UK to make the transfer. Mr D lived abroad, in Dubai. 
+Which is where his adviser was located. So, the advice was given outside of the FCA’s 
+jurisdiction and therefore the adviser wouldn’t need to be FCA authorised, as they would not 
+have been subject to FSMA. And so, I think, HIB LLC not appearing on the FCA register, 
+would not have been a cause for concern for Aviva. 
+I don’t think it would be reasonable to expect Aviva to have knowledge of the regulatory 
+regime in Dubai or whether HIB LLC was subject to this, or indeed if it needed to be to 
+provide this type of advice. And given Mr D was taking advice from an adviser based where 
+he lived, I think it would’ve been reasonable for Aviva to think, in this case, that there wasn’t 
+anything unusual about this and that there was no reason to provide any explicit warnings 
+about this or recommend that he take UK regulated advice. 
+Overall, I think even if it had asked Mr D for further information about his motivations, I think 
+it would’ve been reasonable for Aviva to conclude, based on what it knew, that there wasn’t 
+cause to delay the transfer or provide warnings beyond the general ones in the Scorpion 
+information. 
+As I’ve said, I don’t think the Scorpion information was provided to Mr D, and I think it 
+should’ve been. But, while I know Mr D disagrees, like our Investigator, I don’t think the 
+Scorpion leaflet would’ve changed his mind about a transfer. Mr D’s representatives said we 
+can’t know what would have happened. But in scenarios like that I make my decision on the 
+balance of probabilities. The Scorpion insert that ought to have been provided to Mr D 
+warned about the signs of how to spot a scam. But the majority were not relevant to Mr D’s 
+situation. While he has said accessing his benefits from age 55 had been discussed, the 
+warning was about being told of being able to access pension benefits before that age. 
+There hasn’t been any suggestion that documents were couriered to him and based on how 
+the QROPS was invested, its apparent that the adviser Mr D spoke to recommended 
+diversification.  
+The one thing that the insert did highlight that would’ve been relevant to Mr D’s 
+circumstances was the transfer of funds overseas. But the context of this was someone 
+living in the UK and being advised to transfer their funds abroad. Mr D was not living in the 
+UK at the time. And so, I don’t think this would’ve resonated with him. In addition the 
+recommendation from the adviser to transfer to a QROPS – which appears to have been 
+made after several months and, according to the written advice, following the completion of 
+fact finds and attitude to risk assessments – appears to have been based on several factors, 
+including taxation and inheritance benefits. So, investing in a specific way wasn’t the only 
+motivation or reason for the advice. 
+I also don’t think that Aviva asking Mr D questions as part of any due diligence would’ve led 
+to him not going ahead with the transfer. While I don’t doubt Mr D may have valued Aviva’s 
+opinion given its standing in the pensions industry in the UK, his circumstances and 
+motivations for the transfer weren’t the same as the majority of people that the Scorpion 
+ 
+ 
+guidance was aimed at. He appears to have had a relationship with HIB LLC for around a 
+year, culminating in the advice to transfer. And given, as I’ve explained, I wouldn’t have 
+expected Aviva to have knowledge of the financial regulatory regime in the UAE, I don’t think 
+it would’ve had cause to say anything that would have led Mr D to doubt the advice he was 
+being provided. 
+Taking everything into account, even if Aviva had sent Mr D the Scorpion insert when I think 
+it should have and had carried out additional due diligence, I don’t think this would have 
+resulted in Mr D being in a different position. So, I don’t require Aviva to do anything here. 
+My final decision 
+For the reasons given above, I don’t uphold this complaint. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr D to accept or 
+reject my decision before 28 March 2025. 
+   
+Ben Stoker 
+Ombudsman

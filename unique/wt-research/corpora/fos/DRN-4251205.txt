@@ -1,0 +1,108 @@
+DRN-4251205
+The complaint
+Mr J complains that Nationwide Building Society (“Nationwide”) won’t refund over £57,000 
+he lost to a cryptocurrency investment scam.
+What happened
+The details of this complaint are well known to both parties, so I won’t repeat everything 
+again here. In brief summary, Mr J fell victim to an investment scam after he was contacted 
+by a scammer (“H”) on social media in May 2021. 
+Mr J was encouraged to invest and made the following payments from his Nationwide 
+account to his crypto wallet, where his funds were subsequently transferred on to the 
+scammer:
+18/5/21 – £20 to Cryptopay Ltd (card payment)
+18/5/21 – £20 to Cryptopay Ltd (card payment)
+19/5/21 – £10 to Cryptopay Ltd (transfer)
+20/5/21 – £56 to Cryptopay Ltd (card payment)
+4/6/21 – £3,600 to Cryptopay Ltd (card payment)
+23/6/21 - £348 to Cryptopay Ltd (card payment)
+28/6/21 - £150 to Cryptopay Ltd (card payment)
+2/7/21– £356 to Cryptopay Ltd (card payment)
+12/7/21 – £10,000 to Cryptopay Ltd (transfer)
+14/7/21 – £50 to Cryptopay Ltd (card payment)
+19/7/21 – £1,100 to Cryptopay Ltd (transfer)
+20/7/21 – £60 to Cryptopay Ltd (card payment)
+27/7/21 - £75 to Cryptopay Ltd (card payment)
+2/8/21 – £10,000 to Cryptopay Ltd (transfer)
+2/8/21 – £10,000 to Cryptopay Ltd (transfer)
+2/8/21 – £10,000 to Cryptopay Ltd (transfer)
+3/8/21 – £4,500 to Cryptopay Ltd (transfer)
+
+9/8/21 – £8,250 to Cryptopay Ltd (transfer)
+Mr J realised he’d been scammed when he was unable to withdraw his profits in August 
+2021. 
+Mr J reported the fraud to Nationwide and asked it to consider reimbursing the money he’d 
+lost. Nationwide agreed that it could have done more to protect Mr J from falling victim to the 
+scam in light of the unusual spending activity on his account and said it should have made 
+further enquiries when he came to make the £3,600 payment on 4 June 2021. It therefore 
+agreed to refund the money lost from this point onwards, albeit with a 50% deduction in 
+recognition of Mr J’s own contributory negligence – totalling £28,517.08. Mr J didn’t think this 
+was fair, so he referred the matter to our service.
+Our investigator didn’t uphold the complaint. He thought Nationwide’s offer of settlement was 
+fair because he didn’t think an intervention by the bank would have ultimately prevented his 
+loss to the scam, given Mr J said he’d carried out extensive research into H before investing 
+with them. Mr J disagreed, so the matter has been escalated to me to determine.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so, I agree with the conclusions reached by the investigator and I don’t think 
+Nationwide needs to offer anything more to Mr J. 
+It isn’t in dispute that Mr J authorised the disputed payments he made to the cryptocurrency 
+exchange platforms from his Nationwide account (where his funds were subsequently 
+transferred on to the scammers from those platforms). The payments were requested by him 
+using his legitimate security credentials provided by Nationwide, and the starting position is 
+that banks ought to follow the instructions given by their customers in order for legitimate 
+payments to be made as instructed.
+Nationwide has accepted that it should have intervened from the £3,600 payment on 4 June 
+2021. And having reviewed the payments that took place before, I don’t think there would’ve 
+been any cause for the bank to intervene prior to the £3,600 payment, as the transactions 
+were not unusual enough to warrant an intervention. As a result, Nationwide has agreed to 
+refund 50% of the payments made from 4 June 2021 onwards. And having considered all 
+the evidence, I’m satisfied its offer is fair. I’ll explain why.
+Mr J has explained that he carried out substantive due diligence into H, and that he 
+understood the broker to be operating under the trading name of a company that was FCA 
+registered. He queried various aspects of H’s credentials, such as why it was listed as a 
+dormant company but said he was provided with screenshots and evidence from the 
+scammer that assured him it was fully operational and legitimate. 
+Therefore, if Nationwide had intervened and warned him of a potential scam and told him to 
+carry out further research into H to check its legitimacy, it seems unlikely that this would’ve 
+ultimately revealed the scam. Mr J said he’d already carried out extensive research into the 
+broker and was convinced of its legitimacy. So, it’s hard to see what else Nationwide could 
+have done to break that spell, as it seems there is little else he could have found at the time 
+that would have led him to believe he was being scammed. In such circumstances, a bank 
+wouldn’t be expected to refund any of its customer’s losses, which is why I don’t think 
+Nationwide needs to pay anything over and above what it has already offered.
+Even if I were to accept that an intervention would have likely prevented any further loss, I’m 
+still satisfied it would be fair for Nationwide to deduct 50% from Mr J’s compensation due to 
+his own contributory negligence. Mr J has said that he was guaranteed a return on his 
+investment, where he was told that he would “get the exact 100%, nothing less”. Any 
+investment broker offering a 100% guaranteed or “risk-free” return on investment should give 
+reasonable cause for concern that it’s a scam. Such a promise ought to have seemed too 
+good to be true, but it appears Mr J didn’t do anything to independently verify the unrealistic 
+guarantees being made by H and decided to invest regardless. 
+As a result, I’m satisfied his own actions have contributed to his loss, such that it would be 
+fair for Nationwide to deduct 50% of the money lost in recognition of this if it were accepted 
+that the bank could’ve prevented the scam, which, as I’ve set out above, I’m not persuaded it 
+reasonably could’ve done in these circumstances. So, either way, I don’t consider 
+Nationwide would be liable to pay anything further to Mr J than it has already offered.   
+Mr J’s representatives have also made numerous submissions relating to the Contingent 
+Reimbursement Model (CRM Code). However, as they will no doubt be aware, the CRM 
+Code does not apply to card payments or bank transfers made to an account in the 
+customer’s own name, so none of the payments Mr J made as part of the scam would fall 
+within the scope of the Code for reimbursement. 
+I also don’t think there was anything more Nationwide could’ve done to recover the money 
+Mr J lost. In terms of the debit card payments, a chargeback claim would’ve had little 
+prospect of succeeding given Mr J received the asset he had purchased (i.e. the 
+cryptocurrency). Similarly, for the faster payments, there would’ve been no prospect of 
+recovering the money from the receiving accounts either, given we know these accounts 
+were controlled by Mr J, who had already transferred the cryptocurrency on to the scammer 
+by the time the fraud had been reported. 
+I appreciate this will likely come as a disappointment to Mr J, and I’m sorry to hear he has 
+been the victim of a cruel scam. However, I will not be asking Nationwide to take any further 
+action in these circumstances. 
+My final decision
+For the reasons given above, I do not uphold this complaint.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr J to accept or 
+reject my decision before 19 February 2024.
+ 
+Jack Ferris
+Ombudsman

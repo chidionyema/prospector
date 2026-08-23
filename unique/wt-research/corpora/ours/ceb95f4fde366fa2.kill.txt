@@ -1,0 +1,13 @@
+The Probate Inventory & Valuation Toolkit.
+
+A mobile app for probate clearance professionals that uses camera and AI to automatically catalogue household contents, assign defensible resale or charity‑donation values, and generate a formal inventory report ready for executors.
+
+Solo probate clearance operators spend days manually listing and pricing chattels for estate administration, a repetitive task that delays settlements and limits the number of jobs they can handle. An AI‑powered tool that scans a room, identifies items, scrapes real‑time sold prices from eBay/Sotheby’s/etc., and produces an HMRC‑ready inventory drastically cuts this time while giving the clearance professional a higher‑value service to sell.
+
+Probate clearance firms and independent house‑clearance professionals (mostly solo operators with 1–2 employees).
+
+Object recognition is mature; pricing APIs are abundant; an ageing population is driving a steady increase in probate work; executors increasingly demand transparent, formal inventories, raising the standard from a handwritten list.
+
+The passages show several existing AI estate-inventory/valuation products (ClearHeir, SnapFind, EstateGenie), which speaks to competition/incumbency but not to whether the underlying value is durable versus evaporating; none describes a free first-party tool or total commodity that removes all margin, so durability is neither affirmed nor refuted.
+
+At least three rivals already solve AI-powered estate/probate inventory: ClearHeir offers AI-assisted cataloging and 'defensible estate inventories' for probate court filing [3b00fa266bbf955a], EstateGenie extracts items from a walkthrough video and delivers valuations [dc07527da86f2c01], and SnapFind catalogs estate belongings [13cc698b0eec7512]. The space is occupied, not underserved.

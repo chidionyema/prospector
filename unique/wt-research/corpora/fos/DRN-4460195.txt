@@ -1,0 +1,109 @@
+DRN-4460195
+The complaint
+Mrs W complains that Lloyds Bank PLC have not sent the required details to a third party.
+What happened
+Mrs W says she sent £26,600 from her Lloyds account to a third party company, but Lloyds 
+did not include all of the relevant details. When Mrs W called the recipient to confirm the 
+payment, she was initially told the payment was not received, but then they later confirmed 
+they received a payment of £26,600, but they had no idea who it was from. Mrs W was 
+advised by the recipient to contact Lloyds for them to send a letter, confirming Mrs W sent 
+the funds. Mrs W says Lloyds told her they do not send letters, but they could send a 
+statement. As a result of what happened, the price of the shares she wanted to buy had 
+risen, which would cost her more to purchase the same number of shares. Mrs W made a 
+complaint to Lloyds. 
+Lloyds did not uphold Mrs W’s complaint, so she brought it to our service. Our investigator 
+did not uphold Mrs W’s complaint. He said that Lloyds used the existing payee details that 
+she requested that they use, and that during the call she reconfirmed the reference details, 
+and she stated that the payment has been fine previously, so he couldn’t agree that it is the 
+fault of Lloyds that the third party did not apply Mrs W’s funds to her account straight away. 
+Our investigator said that Lloyds carried out her transfer as instructed, and most notably, she 
+did not explicitly inform Lloyds that her name needed to be included as part of the reference. 
+Mrs W asked for an ombudsman to review her complaint. She made a number of points. In 
+summary, she said she previously had no issues with transfers to the third party company, 
+and she said she had previously transferred £130,000 which was successful. She said the 
+third party would not be able to allocate the £26,600 based on the information they received 
+from Lloyds otherwise they would be laundering money. She sent us a newspaper article 
+highlighting anti money laundering rules.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Mrs W has made a number of points to this service, and I’ve considered and read everything 
+she’s said and sent us. But, in line with this service’s role as a quick and informal body I’ll be 
+focusing on the crux of her complaint in deciding what’s fair and reasonable here. 
+I must make it clear to Mrs W that I can only look into the actions of Lloyds as part of this 
+complaint she originally brought to our service, and not the third party company who 
+requested certain information from Mrs W. This is because this complaint has been brought 
+against Lloyds only here. While Mrs W has sent us a newspaper article about anti money 
+laundering rules, the events that are described in the article are not exactly the same as Mrs 
+W’s events. Instead I will be investigating if Lloyds have made an error with the payment she 
+made to the third party.
+
+Lloyds would be responsible for sending the money to the third party based on the 
+instructions Mrs W gave them. It would be Mrs W’s responsibility if she was in any doubt with 
+what information they required, to check with the third party company first before she made 
+the payment. It would not be proportionate for Lloyds staff to know exactly what information 
+each company requires as part of a payment, as different companies will require different 
+information and will have their own processes in place even regarding how they implement 
+anti money laundering rules.
+I’ve listened to the call Mrs W had with Lloyds on 23 January 2023. Mrs W asks the call 
+handler to send a payment to the third party company and she says “it’s all set up”. The call 
+handler locates the bill payment already set up and Mrs W gives her the reference and tells 
+the call handler how the reference ends, which the call handler agrees. The call handler says 
+it says, “share beside that” and Mrs W says “right”. Mrs W asks her to send £26,600. The 
+call handler explains that is above her limit to transfer and Mrs W asks to be put through to 
+the team who could process this for her. Mrs W is transferred to the high value team.
+Mrs W reiterates she wants to send £26,600 to the third party company and she tells the call 
+handler the numbers of the reference which the call handler confirms they match up on the 
+bill payment. He reads a script to Mrs W. He also asks Mrs W “and you’ve paid those details 
+before, and it’s got there absolutely fine?” and Mrs W replies “yeah”. The call handler asks 
+Mrs W if she would like to double check anything and she says “no that’s fine because 
+you’ve got the right reference number on”. The call handler processes the payment. 
+So I wouldn’t have expected the call handler to have done anything differently here. Mrs W 
+confirmed that she had used those details previously and the funds got there absolutely fine. 
+Mrs W reiterated the reference on more than one occasion and confirmed Lloyds “got the 
+right reference number on”. It would be out of Lloyds control how these details are displayed 
+on the third party’s system (for example, Mrs W made the payment over the phone using a 
+bill payment, but the information the third party provided to Mrs W on their system displays 
+the payment being made as a “Counter Deposit”).
+As Mrs W said she had used those details before and confirmed the payment reached the 
+third party absolutely fine, and she told us she’s had no problems with any transfers 
+previously to the third party, I looked at her bank statements to see if she had made a 
+payment to the third party via this method (a bill payment) previously. 
+I can confirm that Mrs W’s bank statements show her making a bill payment to the third party 
+company on 7 December 2021 (for £50,000) and 13 December 2022 (for £20,050). This 
+shows the same numbers (the third party sort code and account number) on the statement 
+as the £26,600 payment she made on 23 January 2023. So as Mrs W said she never had 
+any problems before this, it appears the third party could locate her account in the previous 
+month (13 December 2022) when Lloyds used the same payment details, with her £20,050 
+payment to the third party without them requesting a bank statement from her, possibly as 
+this had her client reference number as the reference (which her January 2023 payment also 
+included).
+I’ve considered what Mrs W has said about the £130,000 payment she had previously sent 
+to the third party company. I’ve looked at her statement and I’ve noticed this has a different 
+payment type reference to her bill payments she made in December 2021, December 2022 
+and January 2023. The payment type for the £130,000 payment shows as “FPO” and the bill 
+payments are shown as “PAY”. So I asked Lloyds for the reason the payment types were 
+different even though Mrs W was paying the same company. 
+Lloyds explained that the bill payment is a faster payment, where Mrs W would set up a 
+recipient as a payee entering their sort code, account number and reference number, and 
+then this would already be prepopulated when she wanted to pay them again, and she would 
+then just enter the amount of money to be sent to them. The difference between this and the 
+faster payment out is that Lloyds have said that Mrs W (or someone she has instructed, such 
+as a call handler) has manually keyed in the account number, sort code and reference 
+number. So this is why the payments could show differently on her bank statements, 
+although I do note that the £130,000 payment shows the same reference as the 23 January 
+2023 payment, and this doesn’t display her name either on the reference. 
+Ultimately, Lloyds processed the payment Mrs W asked them to make on 23 January 2023 
+and used the reference number that she quoted to them on the phone which was already 
+prepopulated from when she had set up the bill payment originally. It appears she had used 
+this method in the previous month to make a payment to the third party for £20,050 without 
+any issues, so I’m not persuaded that Lloyds made an error with the payment Mrs W 
+instructed them to make on 23 January 2023. So it follows I don’t require Lloyds to do 
+anything further.
+My final decision
+I do not uphold this complaint.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Ms W to accept or 
+reject my decision before 22 February 2024.
+ 
+Gregory Sloanes
+Ombudsman

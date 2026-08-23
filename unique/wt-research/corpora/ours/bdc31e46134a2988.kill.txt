@@ -1,0 +1,23 @@
+MedNegotiator: The Gig Worker's Medical Bill Dispute Kit.
+
+A done-for-you service that audits surprise out-of-network medical bills for rideshare and delivery drivers, identifies overcharges using real-time payer settlement data, and negotiates down the balance for a share of savings.
+
+Analogous to property tax appeal firms, medical billing is an opaque, error-ridden system where individuals pay far more than necessary. Gen Z gig workers facing unexpected healthcare costs have neither the time nor the knowledge to fight alone. By ingesting real-time price transparency data from APIs like Turquoise Health and training a proprietary NLP model on thousands of successful appeal rationales, a solo operator builds a settlement database that benchmarks bills against actual carrier payout patterns. This data compound—covering which codes and argument types succeed with specific payers—creates a defensible engine that outperforms generic advice and the providers' own billing offices.
+
+Gen Z gig workers (18–30, primarily rideshare/food delivery) who lack employer-sponsored insurance and receive a surprise out-of-network medical bill, facing $1,000+ in unexpected costs.
+
+Now: The No Surprises Act (2022) mandates independent dispute resolution for out-of-network bills, but 80% of consumers never use it due to complexity. Simultaneously, CMS price transparency rules have forced hospitals and insurers to publish machine-readable rate sheets, enabling tools like Turquoise Health (launched 2021) to provide API access. GPT-4 can now parse EOBs and medical coding jargon at human-expert level, making it feasible for a solo operator to automate a negotiation pipeline that previously required a lawyer.
+
+The passages mention past secrecy of negotiated rates and hospital price transparency regulations, but neither directly addresses whether the proposed service's value is durable, already commoditised, or evaporating. The evidence is tangential and insufficient to confirm or refute the claim.
+
+Passage 51a6 directly states that financially at-risk and uninsured patients are 'underserved by billing experiences', implying no incumbent adequately solves their bill negotiation needs.
+
+No passage addresses whether the target payer (Gen Z gig workers facing surprise bills) has budget or motive to pay for a contingency-fee bill negotiation service. One passage mentions gig worker expenses exceeding remuneration, but that does not speak to their ability to pay from bill savings in a no-upfront-cost model.
+
+None of the supplied passages describe or suggest any existing channel, platform, or low-friction route that would deliver a medical bill negotiation service specifically to gig workers with surprise bills. The passages mention benefits platforms and temp agencies but do not address distribution for this candidate.
+
+The passages mention the No Surprises Act and helping consumers resolve billing issues, but none address whether a for‑profit service that audits and negotiates surprise medical bills for gig workers is lawful or requires a license. No passage confirms or refutes the legality of this specific margin.
+
+Passage 8c94da8e1abda2ca states gig workers with low and irregular income are particularly exposed to financial stress from unexpected medical expenses, confirming the problem is real and acute.
+
+No evidence supports any of the three risk categories: legality is unverifiable, unit economics are unaddressed, and no single company controls distribution.

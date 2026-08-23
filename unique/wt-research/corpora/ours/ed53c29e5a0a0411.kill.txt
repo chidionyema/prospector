@@ -1,0 +1,29 @@
+RangeProof — a sensor kit that logs when your hens go outside and proves their free-range life to buyers.
+
+Automatically generate batch-level free-range evidence for supermarket buyers, using door sensors and weather data to replace manual logbooks.
+
+Small UK free-range egg producers struggle to convince retail buyers that their hens genuinely spend enough time outdoors each day. The current method is a daily manual logbook — imprecise, easy to forget, and often met with scepticism by auditors. RangeProof gives them a simple, self-install sensor kit (door reed switch, outdoor weather station, base unit with GPS) that records each flock's pop-hole openings and the exact local conditions. Every batch of eggs leaves with a tamper-proof digital report showing hours of outdoor access in all weathers, timestamped and mapped. The producer uses it to secure better contracts with regional supermarkets or farm shops, because the buyer can trust the evidence. A free dashboard preview shows a sample report; a one-off hardware purchase (£199) plus monthly subscription (£19) unlocks live logging and automated batch reports. The solo behind it writes the firmware and web app once, dropships pre-assembled kits, and supports users with a searchable knowledge base and weekly community video call.
+
+Owner-operators of free-range egg farms with 500–2,000 hens, selling to regional supermarkets or high-end farm shops. They pay for the hardware and a monthly subscription because the alternative is losing a premium supply contract or getting a lower price.
+
+Major UK retailers are tightening free-range verification after repeated welfare scandals. The British Lion Code already demands range-access records, and the Defra ‘cage-free’ transition plus the Animal Welfare (Kept Animals) Bill (which contains stricter labelling rules) makes verifiable proof urgent. At the same time, cheap IoT components and low-code platforms make it possible for one person to build and run this without venture capital.
+
+None of the passages show UK free-range egg producers struggling to prove outdoor access to buyers, distrust of manual logs, or anyone paying for verification tools. They only mention feed-investment scepticism, unrelated audit wording, a Canadian barn tour, a UK free-range shed approval, and labelling-standard debate—none of which establish that this proof problem is real or paid for now.
+
+The passages discuss free-range egg CO2, farm tours, large-farm planning disputes, animal-welfare occupations, and Australian stocking-density rules. None of them say whether small UK free-range egg producers have money to spend or any reason to buy a sensor kit or subscription.
+
+Passage a267857c263d08b0 shows agricultural sensing and monitoring devices are already sold online and in local farm-supply stores, so farmers already have an ordinary, self-serve way to buy this class of kit. That existing purchase path is a workable route to the same buyers RangeProof targets.
+
+None of the passages say whether a door-sensor and weather-logging kit for free-range egg proof is allowed, banned, or dependent on falsifying data. They cover game marketing, counseling, a car listing, farm fencing, Canadian hen flooring rules, and generic farm-record templates—not the lawfulness of this product’s margin.
+
+The passages cover seafood welfare commitments, a general UK farming review, egg production volumes, packing-station categories that include free range, and the existence of Free-Range Egg Marketing Standards regulations in England and Wales. None of them say whether automated outdoor-access proof for egg buyers is a lasting paid need, or whether manual logs or other free options have already removed that margin.
+
+The passages describe automatic hen-house doors (including one UK maker with 300,000 units sold), a crowded retail listing for such doors, and general poultry farm software or monitoring for climate, production, feed, and health. None of them say whether any product already leads—or fails to lead—the specific job of logging outdoor access and issuing buyer-facing free-range proof reports.
+
+Passages from December 2025 state the UK is planning to ban caged hens, and 2025 figures show very large shell-egg imports alongside ongoing concern about low-welfare eggs entering the UK. That places egg-production welfare and how birds are reared as a live regulatory and market issue now, not a peaked leftover.
+
+None of the passages show people searching for, paying for, or asking about free-range outdoor-access proof for hens. Mentions of egg grading machines, general food traceability, UK weather, or a 1988 salmonella scare do not evidence demand for this specific solution.
+
+Passages confirm the British Lion Code was updated as an auditable scheme and that codes address range access for free-range birds, and they confirm a 2025 cage-free egg transition plus Defra/government action on cages for laying hens. Those match the candidate’s stated public drivers and nothing in the set contradicts them; wildlife-lion text is irrelevant.
+
+The passages never say this sensor-and-report product is banned, that winning one farm costs more than that farm could ever pay, or that one seller owns most of the route to buyers. Related kit and farm software appear from several makers, with no share figure showing a single firm closing the channel.

@@ -1,0 +1,23 @@
+The Gig Worker Status Claim Dossier.
+
+A productized service that uses a proprietary employment tribunal outcome database to generate a tailored legal claim pack for misclassified gig workers seeking back holiday pay and worker rights.
+
+Analogous to how the school appeal dossier engine uses FOI‑sourced panel data to build winning appeals, this applies the same model to gig worker status claims—leveraging scraped tribunal decisions to surface pattern‑matched arguments that free ACAS guidance and no‑win‑no‑fee lawyers miss, especially for low‑value claims.
+
+Gen Z gig workers (rideshare, delivery, freelance) who suspect they are misclassified as independent contractors and want to recover unpaid holiday pay, minimum wage, or pension contributions without signing away a large percentage to a law firm.
+
+Post‑Uber Supreme Court ruling, gig workers have reinforced legal rights but the employment tribunal process remains daunting; millions of workers potentially affected, yet few accessible low‑cost tools exist that translate precedents into actionable claim packs.
+
+None of the passages address the durability, commoditization, or reality of the candidate's value; they discuss unrelated topics like a Chinese Q&A site, research sponsorship, second-hand style, and generic tribunal explanations.
+
+No passage addresses the presence or absence of dominant incumbents or funded rivals in gig worker claim services; the isolated, context-free word 'Underserved' in one snippet cannot be linked to this specific market.
+
+The passages do not mention the payer (Gen Z gig workers) or any evidence about their budget, willingness to pay, or solvency. They discuss employment tribunal judgments, employer insolvency, unrelated figures, and employer costs, none of which bear on whether gig workers have motive and ability to pay for a claim pack.
+
+No passage describes a distribution route for gig worker legal claim packs; they discuss generic productization, YouTube settings, consulting frameworks, AWS, or redundancy law, none of which address how the service reaches gig workers.
+
+Passages mention tribunals and litigant bans but none address whether the margin requires breaking laws, breaching terms, or falsifying data. The legality of the service is not discussed.
+
+No passage addresses whether gig workers are actually suffering or paying to solve misclassification claims. The AI tools mention is vague and does not show acute pain or payment.
+
+No source passage addresses regulation, unit economics, or market dominance for the gig worker claim service. The evidence is insufficient to confirm any of these risk vectors.

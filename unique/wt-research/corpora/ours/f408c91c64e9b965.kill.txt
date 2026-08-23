@@ -1,0 +1,23 @@
+CrewShare Books — the shared VAT and tax return service for film and TV crew who work through their own company.
+
+For under-27s working as runners, camera assistants and art department crew in UK film and TV, this handles the whole company year — payroll, VAT, and the CT600 — for £59 a month.
+
+A 24-year-old camera trainee finishes a job at Elstree, gets asked to invoice through a limited company, and now owns a company they never wanted. HMRC wants a Corporation Tax return, Companies House wants a confirmation statement, and a missed VAT quarter costs a penalty they cannot absorb. Most high-street accountants quote £900 a year and want a phone call; most cheap apps hand them software and leave the filing to them.
+
+This borrows the way farm secretarial firms serve small farms in the UK — one specialist who knows exactly one trade, does the whole paperwork year for a fixed monthly fee, and never asks the client to learn the system. Applied to below-the-line film crew, whose year looks near-identical to each other's: a handful of production companies as clients, per-diems, kit hire income, mileage, and long gaps between jobs.
+
+The repeatability is the whole business. Every client's paperwork looks the same, so one person with a checklist can carry 200 clients. The service covers company payroll, the VAT return under Making Tax Digital, the annual accounts and CT600, the confirmation statement, and the personal Self Assessment — all included, all filed by us.
+
+The part crew actually pay for is the deduction knowledge. We hold a written position on what film and TV crew can claim, built from real HMRC correspondence and enquiry outcomes across our own client base, and updated each time one of our returns is challenged. HMRC publishes general guidance and has a long-standing agreement with BECTU on tax treatment for crew, but nobody publishes what actually survives an enquiry on a runner's kit hire or a gaffer's van. That file grows with every client and every challenge, and a new entrant starts with none of it.
+
+Distribution is physical and cheap. Production offices, film school graduation weeks, the Screen Skills trainee schemes, the BECTU new-entrant branches, and the Facebook groups where every crew job in the UK gets posted. One operator can be at three wrap parties a month.
+
+At £59 a month with a mostly-templated year, gross margin holds above 60% once a bookkeeper handles the routine filings. Two hundred clients is roughly £140,000 a year of revenue for two people.
+
+UK film and TV crew aged 18-30 who work through a personal service company — camera assistants, art department, sound trainees, production assistants — typically earning £22,000 to £45,000 a year across several productions.
+
+Making Tax Digital for VAT became compulsory for all VAT-registered businesses in April 2022, so quarterly digital filing is no longer optional. The streaming production boom pushed thousands of new entrants into UK studios, and most productions insist crew invoice through a company rather than go on payroll. Companies House began verifying director identity under the Economic Crime and Corporate Transparency Act 2023, adding another step young directors miss and get penalised for.
+
+The passages show firms already selling and advertising fixed monthly-fee accountancy to UK contractors who trade through their own limited company (25d4af0b9780c20e, 3316636939b6ad3c, e6626610713e616e), so people in this situation are already paying someone to handle company filings. Nothing in the passages covers film and TV crew specifically, but paid demand for the underlying service is clearly evidenced.
+
+Two 2025 union surveys of this exact workforce report roughly half of UK film and TV crew are out of work — 52% in film, 51% in TV drama, and 45% in TV drama by a second count — with low pay named as a defining problem, so a large share of the intended customers currently have no production income to pay a monthly fee from [12e0a096c469a520][ee491d2823e6c104][354d955d51c7948b]. The only passages showing money flowing to crew are negotiated pay scales for those actually hired [fb64573d067f9c60][33ad343f67f5f0c0], and nothing here shows crew buying accountancy help or being able to fund it durin

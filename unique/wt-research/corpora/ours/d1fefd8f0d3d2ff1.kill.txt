@@ -1,0 +1,23 @@
+Gig Platform Trust Score.
+
+A weekly data brief that tracks and rates the actual reliability, pay delays, and unfair deactivation patterns of gig platforms—using only worker-generated signals scraped from public forums and social media—so a rider knows which app to prioritize today.
+
+Gig platforms wield immense data power over workers by rating and deactivating them, yet workers have no equivalent collective intelligence about which platforms are decent. By inverting the surveillance, a solo operator can scrape Reddit, GigCX communities, Twitter/X, and app-store review sentiment (filtered for worker-relevant keywords) to build a proprietary Platform Dependability Index. This insight is valuable to riders and drivers who multi-app and can instantly shift hours to the most dependable platform in a given city.
+
+London-based Uber Eats and Deliveroo riders (18–27) who multi-app and have a few pounds a month to spend on a tool that increases their daily take-home.
+
+Gig platforms are increasingly aggressive with opaque pay cuts, unfair deactivations, and hidden surge policies; a million UK workers now rely on them. Regulators can't move fast, and platforms structurally won't share real reliability data. Scraped, curated intelligence from the worker's perspective is a new asymmetric asset.
+
+Passages cover a newsletter for AI gig workers, not London delivery riders; they neither confirm nor refute durability of a proprietary index for that distinct segment.
+
+The passages describe a data-intelligence service for AI gig platforms (DataAnnotation, Outlier, etc.), not for the food-delivery gig platforms (Uber Eats, Deliveroo) that the candidate targets. They do not show a dominant incumbent serving the specific niche of delivery riders.
+
+No passage discusses the financial capacity or willingness of London-based Uber Eats and Deliveroo riders to pay for a data tool. The passages cover general gig worker stress and trucking industry trends, not the target payer segment.
+
+The passages show an existing Buttondown newsletter ('Breaking Even') that delivers weekly worker intelligence briefs, demonstrating a low-friction, self-serve distribution channel exactly like the one proposed.
+
+No passage addresses the legality of scraping public forums or social media for a trust score, nor terms of use violations.
+
+The passages describe acute gig-worker pain (mass deactivations, income crises, pay cuts) but provide no evidence that workers are currently paying for curated reliability ratings. The cited 'Breaking Even' newsletter exists but its payment status is unstated.
+
+No evidence found that London food-delivery riders would pay for such a trust score. The only discovered analogous data brief, 'Breaking Even' (c0a552faa9c87b6c, c0456dd8f861831e), targets AI gig workers, not delivery drivers. Despite intense pain signals in the delivery space, zero indication of existing paid curation for that niche emerged, and distribution via Buttondown is already cheap and easy—suggesting if demand existed, a competitor would have emerged. The absence of validation across all core assumptions (payer solvency, specific pain monetization, durable differentiation) leaves the concept unsubstantiated, but not definitively disproven.

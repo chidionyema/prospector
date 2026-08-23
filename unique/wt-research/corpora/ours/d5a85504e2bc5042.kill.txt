@@ -1,0 +1,11 @@
+The Gig Worker's Medical Bill Audit & Dispute Engine.
+
+A productized service that audits a gig worker's surprise medical bill, identifying coding errors and overcharges using a proprietary database of hospital pricing data, and delivers a ready-to-submit dispute pack to slash the bill.
+
+Analogous to the successful 'School Appeal Dossier Engine' model, this service transplants the done-for-you legal document pack concept into medical billing. Gen Z gig workers, often uninsured, face opaque medical bills and lack the expertise to challenge them. By building a proprietary dataset of chargemaster prices and common billing errors, a solo operator can offer a high-value, fixed-fee audit that more than pays for itself.
+
+Uninsured or underinsured Gen Z gig workers (DoorDash, Uber, freelancers) in the US who receive a medical bill they cannot afford.
+
+Growing gig workforce without employer health coverage; US Hospital Price Transparency rule makes chargemaster data accessible but unusable by consumers; AI advances (OCR, LLMs) enable a solo operator to process complex bills at scale; consumers increasingly open to paying for financial advocacy.
+
+The passage shows BillSherpa already offers the core value (line-by-line audit that finds billing errors and totals overcharge savings) completely free, instantly, with no signup, commoditising the paid audit wedge and removing the margin for a fixed-fee error-check service.

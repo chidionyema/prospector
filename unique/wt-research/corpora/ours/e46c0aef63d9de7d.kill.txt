@@ -1,0 +1,23 @@
+PanePrice – The Window Cleaner's Street-View Estimator.
+
+An app that uses Google Street View imagery to count windows and their accessibility on a property, instantly producing a binding quote based on local rate cards, saving window cleaners hours of pre-visit estimation.
+
+First-principles pain reversal: the core friction is the need to physically count and assess windows before quoting – the tool rebuilds quoting from public street‑level imagery alone, using a fine‑tuned object‑detection model to identify panes, frames, and hard‑to‑reach spots, then translates that into a priced offer.
+
+Independent window cleaners (sole traders and micro‑businesses with 1‑2 employees).
+
+Street View APIs have matured, and modern computer vision (YOLO, SAM) can be trained on architectural features by a single developer; remote quoting is becoming a competitive differentiator for home‑service businesses.
+
+The cited passages concern making Google Street View accessible to blind users (StreetReaderAI) and ADA infrastructure scanning (AcceCity); none address window-cleaning quoting, pane detection for estimation, or whether that value is durable or commoditised.
+
+The passages show adjacent Street View AI work — Google's 'Street View Insights' for infrastructure (f9c607a2), an accessibility tool for blind users (7af42680), and an academic window-to-wall-ratio detector for building simulations (97ddf454) — but none addresses whether a dominant incumbent or funded rival already offers window-cleaner quoting from street imagery. With no passage affirming the niche is open or naming an incumbent that owns it, the incumbency question is not addressed.
+
+The passages describe Street View feature-extraction tools and academic façade-parsing research; none address whether independent window cleaners have the budget, motive, or willingness to pay for such a tool.
+
+The passages describe competing products and visual-analysis pipelines (QuoteIQ, Revealio, multi-vertical lead-gen) but say nothing about an actual low-friction route, channel, or forcing mechanism for reaching independent window cleaners as buyers.
+
+The Google Geo Guidelines passage [d746a9d1d62c13b4] only states that uses must be reviewed against guidelines and may require an approval request, but is truncated before establishing whether commercial Street View window-counting is permitted or prohibited; the other passages [d4682024e53fd36a, 3ada3220c15cf48d] concern research use, not the legality of a commercial quoting margin. No passage affirms the use is lawful nor establishes a binding terms breach.
+
+All passages concern making Google Street View accessible to blind/visually impaired users (StreetReaderAI, the Curie repo); none address window cleaners, quoting friction, or whether anyone pays to solve window-counting estimation pain.
+
+The candidate's entire thesis rests on a 'technical_ip' durable wedge: a fine-tuned model to count/assess windows from Street View that 'no existing franchise has a software team to build' and that generic AI 'is not tuned' to replicate. The evidence refutes that wedge on every axis. (1) The core IP is already commodity, not proprietary: a peer-reviewed method already detects glazing/windows from Google Street View with a YOLOv9 model at 94-100% facade accuracy [97ddf4548ec8bed7], and the identical 'address -> Street View -> vision model -> structured building/window attributes' pipeline is being built by solo developers and hackathon teams (Open Door LLM Tool, Revealio) and explicitly marketed as reusable across multiple verticals at trivial cost (~$125 for 150 buildings) [80675a8d68a74e55]. A single developer fine-tuning YOLO/SAM is the baseline, not a moat. (2) A direct incumbent already ships the exact wedge to the exact buyer: QuoteIQ's 'Property Street View' is built into the quoting workflow for home-service businesses, surfaces access/obstacle/condition assessment for remote quoting, and is bundled at $0 extra cost [94a29ac7dc048b00] - collapsing both the 'no incumbent' claim and the willingness-to-pay for a standalone tool. Google itself sells Street View Insights for at-desk infrastructure feature extraction [f9c607a2f52efa66]. (3) The 'free street-view' economics that the binding-quote loop depends on are legally constrained: Google's ToS restrict bulk image downloads and the generation of street-view-image-based indices [d4682024e53fd36a], and any commercial revenue-generating use must run on the paid Google Maps Platform [d746a9d1d62c13b4] - so the cost base is neither free nor unencumbered. The differentiated, defensible, free-to-run wedge does not exist; what remains is a thin feature already commoditised and already offered free inside a competing product to the same sole-trader buyer.

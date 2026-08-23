@@ -1,0 +1,21 @@
+SpinStock — same-day spare parts for the washer-extractor that just died in your laundry room.
+
+A UK stockist of the exact bearings, seals and drain valves that fail most often in commercial laundry machines, shipped same-day to the hotel, care home or gym running the machine.
+
+Start from the plain fact: a hotel, care home or gym that washes its own linen has one or two Miele Professional, Electrolux Professional or Girbau washer-extractors running flat out, and when a bearing or drain valve goes, the laundry stops. There is no spare machine. Ordering the genuine part from the manufacturer's own parts network, or waiting for the engineer JLA sends under a rental-and-service contract, routinely takes one to three weeks once you count the callout booking, the part coming from a depot in Spain, Germany or Italy, and Brexit-era customs paperwork on top. For a 120-room hotel or a care home doing daily infection-control laundry, that is thousands of pounds a week in outsourced emergency laundry hire.
+
+The business is a distributor, not a service company: hold UK stock of the roughly 40-60 parts that fail most often across the five or six machine brands that dominate the UK commercial laundry park, and dispatch same or next day. The stock comes from independent component makers in Italy and Turkey who already manufacture compatible bearings, seals and valves for the European market but have no UK distribution deal of their own — a direct relationship a two-person team can set up and a big generic distributor like RS Components has no commercial reason to chase, because the volume per SKU is too small for their catalogue economics.
+
+The part that compounds is the cross-reference: every job that comes in gets logged against the machine model, the fault code shown on the display, and which part actually fixed it. After a few hundred repairs that becomes a lookup a facilities manager without any laundry-engineering background can use themselves — type in the fault code, get the right part number, order it — something no generic parts catalogue offers because they don't collect real repair outcomes, only OEM part numbers.
+
+The operations or facilities manager at a hotel, care home group, gym chain or launderette who runs an in-house laundry and holds the maintenance budget — the person who gets the call at 6am when the only working machine won't drain.
+
+Post-2022 energy prices pushed many hotels and care homes to bring laundry back in-house rather than pay a commercial laundry contractor, so the UK park of self-owned washer-extractors has grown. Many of those machines were bought in the 2021-2022 refurbishment wave and are now hitting the five-to-seven-year mark where bearings and seals routinely fail. At the same time, Brexit customs checks have added days to parts shipments from the EU-based manufacturers that supply most UK machines, stretching OEM lead times just as the machines needing parts are increasing.
+
+JLA already sells 24/7 emergency engineer response specifically for broken-down laundry equipment, and other firms run paid emergency repair services for commercial appliances and chillers, showing operators already pay to fix breakdowns fast — the exact pain SpinStock targets.
+
+None of the passages address a UK hotel, care home, gym or launderette's laundry maintenance budget or willingness to pay for emergency parts; they are vlogs, generic laundry tips, an unrelated care-home COVID trading note, a conspiracy broadcast, and dash-cam footage.
+
+None of the passages address UK commercial-laundry spare parts distribution, hotel/care-home procurement, or any channel a facilities manager could use to buy same-day parts; they are generic definitions of 'distributor agreement' and unrelated B2B marketplace/fleet/facilities-supplier snippets.
+
+None of the passages address whether OEMs, distributors, or manufacturers legally restrict third-party sourcing of aftermarket laundry-machine parts; they cover unrelated products (Lamborghini, Ford, GM, Hotpoint) and generic IP-infringement/counterfeit warnings that don't establish any legal barrier to this specific business.

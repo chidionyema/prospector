@@ -1,0 +1,21 @@
+G-Cloud bid loss analysis for UK govtech ops managers.
+
+We fuse FTS award notices, CCS framework score sheets and the vendor's own bid history into a per-framework win-rate and scoring pattern read.
+
+A per-framework scorecard for UK GovTech ops managers that fuses FTS award history, CCS framework scoring criteria, the vendor's own bid records and the published framework refresh schedules, ranking each framework by the vendor's pattern of scoring gaps and the competitors' track record.
+
+An ops manager at a UK SaaS company selling to government through G-Cloud, the Digital Marketplace, or Crown Commercial Service frameworks loses bids constantly without knowing why. The Framework Agreement award notices on the Find a Tender Service (FTS) show who won and at what price. The CCS framework score sheets show the weighting criteria. The vendor's own bid history shows what they bid and how they scored. The ops manager has to read all three and figure out which framework they'll win next. The buyer is the ops manager or bid manager at a UK GovTech SaaS with 5-30 people; the deliverable is a per-framework readiness read with concrete gap-fix suggestions.
+
+This widens the data the ops manager reads from a single register to the structured scoring pattern across frameworks. The lasting advantage is the dataset: the cross-referenced FTS awards + CCS score sheets + the vendor's own bid history grows with each new framework refresh and no competitor can replicate the per-vendor scoring pattern. FTS is free but raw, and the vendor's own bid history is private to the vendor. The closest commercial competitor is a procurement consultancy (Bidhive, Hackett) which reads the data but cannot scale per-vendor scoring patterns across hundreds of frameworks.
+
+Ops managers and bid managers at UK SaaS companies selling to government: 5-30 people, with annual revenue between £1m and £20m, with active G-Cloud or CCS framework listings.
+
+G-Cloud 14 is opening in 2025 with new scoring criteria. The Procurement Act 2023 came into force in February 2025 changing the rules. Each new framework refresh resets the scoring pattern, and the ops manager needs to read every award notice.
+
+The passages describe US GovTech bid qualification tools (SAM.gov, GovWin IQ, SamSearch, Velocibid) and US-centric procurement (NIST 800-171), but none address UK G-Cloud, FTS, CCS frameworks, or the Procurement Act 2023, so UK-specific demand for a per-framework scoring-pattern product is not established. The three game-site passages are irrelevant, and the EU academic reference contains no buyer-intent signal.
+
+No passage addresses UK GovTech ops managers' budget, willingness to pay, or affordability of a £49.99 G-Cloud bid analysis product; the GovTech passages concern India and US markets, and the UK SaaS passages concern unrelated topics (latency, ecommerce, telecom).
+
+None of the passages describe a reachable channel (self-serve product, forcing mechanism, or existing community) that could deliver UK GovTech SaaS ops or bid managers as buyers; sources 562cdca, 1af2b0e0, 82e1b37e are general UK geography/history, 71fa27d4 is a PUBLIC.co blog about GovTech policy, 4b91bd67 is a techUK staff profile, and 7df5c973 is a supplier contracts table — none establish a route to the target buyer.
+
+Passage [fc84772a86a28d1e] confirms that UK public sector information (including FTS award notices) is licensed under the Open Government Licence v3.0, which explicitly permits commercial reuse subject to attribution — so fusing FTS/CCS data into a paid scorecard does not breach law or terms. Passage [7fc4f6af697d47fd] further demonstrates that a competitor (Bidovate) already integrates FTS into commercial capture workflows, confirming the legal path is open. The vendor's own bid history is provided by the vendor, and no passage indicates any restriction on its analysis.

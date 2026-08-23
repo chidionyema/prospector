@@ -1,0 +1,23 @@
+MarginCheck — the pharmacy dispenser's real-time loss alert for NHS prescriptions.
+
+Flags every NHS prescription that would lose money before you dispense it, using the latest Drug Tariff and your own purchase costs.
+
+Independent pharmacy owners lose hours each month cross-referencing the NHS Drug Tariff PDF against their wholesaler invoices to find which items will be reimbursed at less than cost. When they miss one, every jar dispensed widens the hole. MarginCheck is a web-based tool where you enter the drug name, pack size, and your purchase price once. It then pulls the latest reimbursement from the tariff (updated monthly) and shows you a live margin per item. For recurring prescriptions, it sends an alert when a tariff price drops below your cost floor. By turning a fuzzy monthly panic into a five-second check, the tool stops profit leaks before the label prints. It works because no one else — not the NHS, not the wholesalers — has an incentive to surface the loss per dispense. The sole operator builds a paid-subscription utility that compounds a dataset of tariff volatility and purchase-cost benchmarks, making each customer’s margin history more valuable over time.
+
+Independent pharmacy owners (typically single-shop operators with 1–4 staff) who do their own buying and cannot afford a full-time procurement analyst.
+
+The NHS community pharmacy contract is under severe funding pressure, with flat global sums and rising costs. The Drug Tariff changes monthly and over half of all items see a price adjustment each month. Many pharmacies are unknowingly dispensing at a loss, and closures are accelerating. A simple tool that turns tariff data into a live margin check is urgently needed.
+
+The July 2026 Drug Tariff still publishes monthly changes, the medicines retained-margin budget has stayed fixed at £800m for ten years, and Community Pharmacy England is still chasing price adjustments after NHS list-price rises—so reimbursement-versus-cost pressure remains live. A marketed pharmacy platform for margin optimization and reimbursement intelligence further shows that spotting loss-making reimbursements is a real, ongoing need, not something free raw tariff PDFs have already erased.
+
+Drug Comparison is described as an ordering and operations platform used by 3000+ UK pharmacies, and Cegedim as pharmacy business/manager software, but no passage says either (or anyone) already offers or dominates real-time Drug Tariff vs purchase-cost margin or loss alerts. The passages therefore never show whether that specific gap is open or already captured.
+
+UK community pharmacy funding rose 10.3% to £3.636 billion in the May 2026 settlement, so the sector is not shown as insolvent. Pharmacy owners already weigh switching ordering software to save about £100 a month, which shows they both spend on operational tools and care about cutting costs.
+
+The passages mention pharmacies, a pharmacy-management platform, and a struggling pharmacy owner, but none describe how a UK independent pharmacy owner would be reached or sold a tariff/margin tool—no self-serve path, partner channel, or forcing mechanism is shown. Australia/UAE retail sites, BC welfare self-serve, and trading-floor book ads are unrelated to that route.
+
+None of the passages say whether a pharmacy tool that compares NHS Drug Tariff reimbursement to a shop’s purchase costs, or alerts on loss-making dispenses, is allowed under UK law or provider terms. One excerpt bans scraping and mining of the NICE BNF, and others cover Scotland’s devolved powers, US/India generics trade, the NHS App’s device status, and SSP rule changes — none of which settle whether this margin check can operate lawfully.
+
+The pharmacy-related passages discuss diversification beyond dispensing and full PMR workflow software, but none state that owners lose money on NHS tariff reimbursement versus purchase cost or that anyone is paying to fix that. The remaining passages are about US/India generics trade and unrelated craft content, so they never speak to whether this margin-check pain is real or paid for now.
+
+The passages never say UK law or provider terms ban a third-party tool that compares NHS Drug Tariff reimbursement to a pharmacy’s purchase costs, and they never show that winning one customer would cost more than that customer could ever pay. Drug Comparison is trusted by 3000+ UK pharmacies and Cegedim sells pharmacy software, but no passage names a single firm that controls most of how such tools reach owners.

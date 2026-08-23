@@ -1,0 +1,11 @@
+CodeQuote – The Auto Repair Shop's Instant DTC‑to‑Quote Engine.
+
+A vertical tool that reads a car’s diagnostic trouble codes and instantly produces a fixed‑price customer quote by combining live parts pricing, labour guides, and aggregated shop repair data, all while the service advisor is still plugging in the scanner.
+
+First-principles pain: when a check‑engine light comes into an independent shop, the service advisor spends 10–20 minutes manually looking up codes, phoning parts stores, and consulting labor guides to build a quote — a delay that loses price‑sensitive customers to dealerships or quick‑lube chains. An AI that automates that 20 minutes into a 30‑second quote, using real‑time parts APIs and proprietary actual‑repair‑time data from participating shops, can lift conversion rates and reduce key‑to‑quote time dramatically.
+
+Owner of an independent auto repair shop (3–12 bays, typically 2–8 mechanics) who directly feels the competitive pressure from chains and the daily friction of customers waiting for a price during diagnostics.
+
+Modern OBD‑II tools can stream codes to a smartphone; vehicle parts pricing APIs are mature; and GPT‑class models can reliably map a DTC to a repair plan with a confidence score. Simultaneously, rising dealership prices have pushed more out‑of‑warranty vehicles into independent shops, creating a volume surge that makes quoting speed a real differentiator.
+
+The passages show labour-time and DTC-code data are already commoditised: paid industry-standard tools (AutoData, HaynesPro) are entrenched in independent garages, while a free community-sourced database offers 700K+ labor times, DTC codes, and specs with API access from $49/mo, and another offers a free offline DTC lookup database. This undercuts the claim that repair-time-per-DTC data is a durable proprietary asset worth building a paid quoting tool around.

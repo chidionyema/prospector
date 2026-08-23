@@ -1,0 +1,27 @@
+Ocean Freight Demurrage & Detention Refund Engine.
+
+A SaaS that automatically audits shipping container demurrage and detention invoices for small importers, identifies overcharges and refundable fees, and files claims with carriers on a contingency basis.
+
+Small importers lack the logistics expertise to audit complex ocean carrier invoices for erroneous demurrage/detention charges, which carriers routinely over-bill. A solo operator can build a rules engine parsing carrier tariff files and container gate-in/gate-out data from free port APIs, flag discrepancies, and automate claim filing. The value is direct cash recovery with zero upfront cost to the importer.
+
+Small-to-mid-size importers (e.g., a 50-person food importer in Miami) paying 30% of recovered overcharges as a fee.
+
+Ocean carriers have aggressively pushed demurrage and detention fees since 2020 supply chain disruptions; regulatory scrutiny (FMC in the US) is rising, but enforcement is slow. The free carrier tools only offer basic invoicing, not audit. No first-party tool audits for overcharges because carriers profit from errors.
+
+The passage confirms the existence of BlueCargo, an AI-powered service already being used by companies like iFIT to audit freight invoices and automate disputes, demonstrating clear buyer demand for such solutions.
+
+The passage confirms that AI-powered freight audit and spend management services are currently active, with existing platforms providing verifiable cost avoidance and dispute success for international supply chains.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+Existing freight audit solutions, such as those provided by Portcast, demonstrate that automatically verifying invoices and flagging discrepancies is a recognized, legitimate, and lawful business activity.
+
+The provided passage describes a service for automating customs declarations, which is distinct from auditing ocean freight demurrage and detention invoices. Consequently, the passage does not address or support the core claims of the candidate business.
+
+The passage confirms that freight audit solutions provide cost savings, establishing a potential motive, but it provides no information regarding the solvency or willingness of small-to-mid-size importers to pay a contingency fee.
+
+The provided passage demonstrates an existing, low-friction, self-serve distribution model for automated freight invoice auditing, characterized by requiring no integrations and a 60-second setup. This confirms such a route is executable within this industry.
+
+The passage confirms that businesses actively use automated freight audit solutions to identify invoice discrepancies and realize significant cost savings, validating that the problem of freight overbilling is real and drives market demand for solutions.
+
+The venture is non-viable as a SaaS business because the market for automated freight invoice auditing is already dominated by established, highly-automated incumbents like BlueCargo, Portcast, and FreightLedger (source_ids: 7e7970a0310f21b6, e97b9029410fa957, 55dbe6e3893368a0). These competitors have already optimized for low-friction, zero-integration user experiences, such as FreightLedger's 60-second, 'just forward your invoices' model (source_id: 55dbe6e3893368a0). A solo developer cannot compete with the AI-driven document extraction, scale, and established carrier relationships these platforms have already achieved, making the proposed business model functionally obsolete.

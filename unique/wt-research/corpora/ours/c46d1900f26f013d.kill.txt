@@ -1,0 +1,25 @@
+Rig Rescue, spare test kit for firms whose gear is stuck.
+
+A subscription that ships a startup a calibrated replacement instrument within 24 hours when its own test equipment goes off to be calibrated or breaks.
+
+Hardware startups building anything electrical own a small pile of expensive test gear: signal generators, spectrum analysers, EMC pre-compliance kit, safety testers. UKAS-accredited calibration labs typically hold that gear for one to three weeks. During those weeks the startup's test bench is dark, and so is its release schedule.
+
+This borrows a practice that is normal in commercial aviation, where an airline never waits for a part to come back from overhaul because a serviceable spare rotates in from a pool. Nobody runs that rotation for small electronics firms. The service keeps a small fleet of the twenty or so instruments that show up again and again in UK hardware startups, all under live calibration certificates, and rotates one in the moment yours goes out.
+
+The operator is a two-to-six person outfit: a stores and logistics lead, a technician who checks the certificates and does the swap, and someone selling. Revenue is a monthly retainer of roughly £250 to £900 per firm depending on how much of the bench is covered, plus a per-swap fee. Delivery cost is a courier run and the depreciation on owned instruments that hold their value well on the used market.
+
+What compounds is the swap record. After a couple of hundred rotations you know which instruments fail, which labs actually turn round in the time they quote, and what a given startup's bench looks like at each stage of development. That record becomes the buying guide the customer asks for before they purchase anything, and it is why the retainer renews.
+
+It holds because ripping the service out means the firm has to buy duplicate instruments outright, re-plan its own calibration diary, and absorb the dead weeks again. Once the swap is scheduled into the release calendar, the cost of leaving is the thing that keeps them.
+
+Hardware startup founders and their first test engineer, at UK firms of five to sixty people building electronics, medical devices, e-bikes, energy hardware or audio gear, typically in Cambridge, Bristol, Sheffield and east London.
+
+UKAS-accredited calibration capacity in the UK is tight and lead times have stretched, while the UKCA and CE marking routes both require test evidence produced on instruments with valid calibration traceability. At the same time, a wave of UK hardware startups is moving from prototype to first production run, when a dark test bench directly delays revenue.
+
+The passages are generic UK government service pages — legislation archives, eVisa guidance, Self Assessment tax filing, Companies House records and an HMRC judgement test — and none of them mention test instruments, calibration labs, equipment hire, or hardware firms of any kind. Nothing here shows anyone searching for, asking about, or paying for cover while their test gear is away, so there is no evidence either way on whether buyers want this today.
+
+The passages only cover general startup funding news in Australia and Berlin, a list of YC-funded companies, and basic geographic and constitutional facts about the UK; none of them say anything about what UK hardware startups spend on test equipment, calibration, or similar services. With no evidence on these firms' budgets or willingness to pay, there is no basis to judge whether a £49.99 one-off purchase is affordable or attractive to them.
+
+The passages only describe what other companies sell — equipment rental and leasing from Electro Rent and Livingston, and calibration work from AML Instruments, Tesa Platinum and an in-house infrared lab — and say nothing about how any of them find or sign up customers. Nothing here shows how a new swap-service would reach small UK electronics firms: no passage mentions a referral arrangement with calibration labs, an industry list or event, a self-serve sign-up, or any moment at which these firms go looking for a replacement instrument.
+
+The passages describe calibration as an ordinary, legitimate technical practice — comparing an instrument against a known standard — and describe external calibration laboratories as routine suppliers of traceable measurement to manufacturers and equipment makers, with a valid certificate issued by a competent lab [7d170e517ad5eedc][9062a298351de560][f4d3982cfdaaa327][186e3431de6c4460].

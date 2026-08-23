@@ -1,0 +1,13 @@
+PackProof — The Dog Walker's Group Walk Evidence Engine.
+
+A vertical tool for solo dog walkers that captures geo-tagged group photos at walk start and per-dog handover on return, locks in signed owner waivers, and produces a one-tap insurance-defensible incident pack — built around a tamper-evident per-walk record that generic CRMs and two-sided marketplaces structurally cannot replace.
+
+First-principles lens: solo dog walkers taking 4-8 dogs per group have no standardised system to (a) photograph each dog at departure/return, (b) capture a per-walk GPS route, (c) lock in signed owner waivers at first booking, (d) produce an incident report that holds up to their insurer when a dog fight or bite occurs. The raw pain is existential — one poorly-documented incident can void £10k+ of public liability cover and end the business. A tool that makes the right documentation the path of least resistance compounds every walk into an audit trail the walker would otherwise never assemble. Distribution free via Dog Walking UK Facebook groups (50k+ members), National Association of Registered Canine Professionals, and insurance broker referral partnerships.
+
+Solo dog walkers in UK urban and suburban areas managing 30-80 dogs across daily group walks, £25k-£60k turnover, often with one part-time helper.
+
+Post-COVID dog population surge created thousands of new solo walkers without professional documentation process; UK insurer hardening on dog walker public liability (most policies now require evidence of per-walk dog-to-handler ratios and signed waivers); and proposed Dog Control Act provisions tightening the threshold for criminal liability when incidents occur with inadequate supervision evidence.
+
+The passages show generic dog-walking apps and incident-form templates exist, but none address whether PackProof's specific tamper-evident per-walk evidence ledger (hashed group/handover photos plus signed waivers) is durable or already commoditised — Dogsville and the incident-report templates lack the geo-tagged capture, waiver-locking, and tamper-evidence features the claim rests on.
+
+Rover is described as the #1 dog walking app with GPS tracking, insurance, and 24/7 support, and multiple established software products (Pet Sitter Plus, all-in-one pet care software, Wag) already serve dog-walking scheduling/tracking needs, showing a dominant incumbent and funded rivals already occupy this space rather than it being open.

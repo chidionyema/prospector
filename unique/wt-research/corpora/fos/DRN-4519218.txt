@@ -1,0 +1,201 @@
+DRN-4519218
+The complaint
+Mr W complains that delays by more 2 life Ltd in progressing his application for a lifetime 
+mortgage resulted in him having to pay a higher interest rate.
+What happened
+Mr W had an interest only mortgage which was coming to an end, so he applied to more 2 
+life for a lifetime mortgage to raise funds to pay his mortgage off. There were significant 
+problems with the application, which led to Mr W making a complaint. more 2 life upheld his 
+complaint and offered compensation, which Mr W accepted. He then made a fresh 
+application to more 2 life – this complaint is about that second application.
+Mr W applied via a broker to more 2 life in April 2022. He wanted to borrow £350,000 against 
+a property valuation of £800,000, and applied for a mortgage at 3.97%.
+On 20 April 2022 more 2 life emailed the broker asking for confirmation that Mr W’s ex-wife 
+had no interest in the property and wasn’t living in it. And it asked for confirmation of where 
+Mr W was living, as it said its own checks suggested Mr W wasn’t living at the property.
+The broker replied asking more 2 life to consult its file for the previous application. It said 
+Mr W and his ex-wife Mrs W had divorced in 2008 and she had no interest in the property, 
+but she was currently living there. The broker confirmed that Mr W was living in the property.
+more 2 life asked whether Mrs W would be moving out of the property before completion – it 
+said that having a third party live in the property fell outside its lending criteria. more 2 life 
+says it didn’t receive a reply to this email.
+In May 2022 more 2 life asked further questions about the property, which was subject to an 
+estate rentcharge. It then refused the application because it said it fell outside the lending 
+criteria for the specific product Mr W had applied for. But it said it had another product 
+available which might be suitable which Mr W might want to apply for.
+Mr W’s broker then made a further application, and more 2 life issued an offer around two 
+weeks later. This was for £347,840 at an interest rate of 4.27%. The offer included the 
+following special conditions:
+Mrs W was to leave the property and Mr W’s solicitors to confirm she had done so;
+Mr W’s previous mortgage was to be paid off in full;
+Mrs W to sign an occupier’s consent form;
+Mr W’s solicitor to confirm that the estate rentcharge did not include onerous terms;
+Mr W to provide proof of identity, age, and residency.
+The first and third conditions were contradictory, since the first required Mrs W to move out 
+
+of the property, but the third implied she could continue living there if she signed a waiver 
+form.
+Mr W’s broker therefore asked more 2 life to reconsider the special conditions, and it issued 
+a further mortgage offer on 27 May. The borrowing amount and interest rate remained the 
+same, and this offer also included special conditions:
+Mr W’s solicitor to confirm that the estate rentcharge did not include onerous terms;
+Mr W’s previous mortgage was to be paid off in full;
+Mr W’s solicitors to confirm that the property is registered in his sole name, and that 
+Mrs W provides a written undertaking that she will leave the property before 
+completion and has no interest in it.
+This time, therefore, there was no mention of Mrs W signing a waiver and continuing to live 
+in the property – more 2 life made clear it would not accept her continuing to live there after 
+Mr W took the loan out.
+Mr W called more 2 life to say that he couldn’t agree to the condition that Mrs W must leave 
+the property. His broker provided more information to confirm that Mr W and Mrs W had 
+divorced some years ago with a financial settlement and that each owned their own property 
+(though Mrs W’s was rented out). Mrs W had no claim on or interest in Mr W’s property. 
+more 2 life then agreed to issue a further offer removing the special condition that Mrs W 
+had to leave the property and replacing it with a condition that she would be required to sign 
+an occupier’s waiver. By then the valuation had expired so more 2 life also required a fresh 
+valuation, but given the delay it didn’t charge Mr W for this.
+The new mortgage offer was issued on 28 June 2022, and the mortgage completed on 29 
+July 2022.
+Mr W complained. He said that more 2 life knew about the property from the earlier 
+application that was the subject of the previous complaint, so it didn’t need to issue and then 
+withdraw the April offer. And it had taken an unreasonably long time to resolve the issue with 
+Mrs W living in the property. As a result, the interest rate he was being charged had 
+increased from 3.97% to 4.27%, and he had also had to pay interest to his previous 
+mortgage lender for longer. He estimated that if he lived another 25 years, this would cost 
+him around £27,000.
+I issued a provisional decision setting out my thoughts on the complaint and inviting the 
+parties to respond.
+My provisional decision
+I said:
+“I’ve not considered anything that happened in respect of the first application, for 
+which Mr W accepted compensation from more 2 life without our involvement. In this 
+decision, I’m only focussing on the applications Mr W made from April 2022 onwards.
+more 2 life is a lifetime mortgage lender. But it doesn’t lend money from its own 
+resources. It works with funders in the background, and offers mortgages funded by 
+those funders but with more 2 life as the owner of the mortgage and with more 2 life 
+acting as the lender. This isn’t unusual in the lifetime mortgage market. The funders 
+are essentially investors, who give money to more 2 life to lend to its customers in 
+anticipation of a return on their investment in the form of a share of the mortgage 
+interest income.
+more 2 life offers mortgages from more than one funder. Each funder sets its own 
+criteria for the sorts of risks it’s prepared to accept, and the sorts of situations it’s 
+prepared to lend in, as well as the returns it expects. That means that there can be 
+different qualification requirements for different loans offered by more 2 life. 
+Mortgages funded by individual funders might be at a lower interest rate but be 
+available in more restricted situations, or have lower maximum loan amounts, for 
+example.
+The first application Mr W made, which isn’t part of this complaint, was for a more 2 
+life product called “Capital”. The second application – the April 2022 one at 3.97% - 
+was for a product called “Flexi”. And the third application, the one Mr W ended up 
+taking in July 2022, was also a Capital product.
+The second application, for the Flexi product in April 2022, was refused because 
+Mr W’s property fell outside the lending criteria for that product. The problem was that 
+the property was subject to an estate rentcharge. This is an obligation on owners of 
+individual properties on an estate to pay an annual charge – generally as a 
+contribution to maintenance and upkeep of communal facilities such as private roads, 
+services, or communal gardens. 
+The funders of the Flexi product were prepared to accept properties subject to estate 
+rentcharges as security for lending, but only in certain limited circumstances. The 
+problem for Mr W’s application was that the rentcharges on his estate were set and 
+managed by a management company controlled by the residents – but Mr W had 
+declined to be part of the management company and therefore had no influence over 
+the level of the rentcharge or increases to it.
+However, the funders of the Capital product were prepared to accept properties 
+subject to rentcharges, even where the owner wasn’t part of the management 
+company.
+That meant that because of the specific nature of the obligations that Mr W’s property 
+was subject to, he was eligible for a Capital product but not a Flexi product.
+It’s therefore not unfair that more 2 life refused Mr W’s application for a Flexi product 
+in May 2022 once it had established that the property was subject to rentcharges but 
+Mr W wasn’t part of the management company. That meant he wasn’t eligible for it, 
+and so it was reasonable to refuse the application.
+I don’t think more 2 life could reasonably have been expected to have made this 
+decision any sooner than it did. Although it had some information about Mr W and his 
+property from the earlier application, that earlier application was for a Capital product 
+not a Flexi product, with different criteria. And so more 2 life didn’t know, and couldn’t 
+reasonably have been expected to know, that Mr W wasn’t eligible for a Flexi product 
+at the time of his application in April 2022. That only came to light later as part of the 
+specific checks it made following the application to check if he met the criteria for a 
+Flexi product.
+Once more 2 life became aware that Mr W didn’t meet the requirements for a Flexi 
+product but did meet the requirements for a Capital product, it didn’t just decline his 
+application but recommended that he re-apply for a Capital product.
+I think that was fair. And even if I’m wrong, and more 2 life should have made that 
+clear sooner than it did, this didn’t result in Mr W losing out. That’s because Mr W 
+was never going to get the 3.97% interest rate – that was the rate on the Flexi 
+product he was never eligible for. The rate for the Capital product – 4.27% - didn’t 
+change between April and May 2022. What this means is that the 3.97% interest rate 
+Mr W initially applied for was never available to him. He didn’t qualify for that product. 
+He says more 2 life offered it to him in April 2022, but that’s not correct – there was 
+no offer for a mortgage at 3.97%; the document Mr W was given dated 19 April 2022 
+was an illustration not an offer. An illustration is non-binding information about what is 
+being applied for, not an acceptance of the application or offer of a loan.
+The product Mr W did qualify for had an interest rate of 4.27% - and that rate was the 
+same in May 2022 when he did apply for it as it was in April 2022 when he could 
+have applied for it. He was never eligible for the 3.97% Flexi product, it was never 
+offered to him, and therefore he has not suffered any financial loss in ending up with 
+the 4.27% Capital product.
+I do think more 2 life caused some delay because of the confusion around whether 
+Mrs W would be living in the property or not. Mr W had always been clear that she 
+would be, though she didn’t have any interest in the property or the mortgage. more 2 
+life changed the mortgage offer special conditions three times between 25 May and 
+28 June 2022, and this therefore delayed completion on Mr W’s mortgage by around 
+a month.
+I think it would be fair for more 2 life to refund the additional interest Mr W had to pay 
+to his previous mortgage lender as a result of this delay. And it should pay him £200 
+compensation for the inconvenience caused in having to repeatedly question the 
+special conditions more 2 life included.”
+The responses to my provisional decision
+more 2 life accepted my provisional decision. But Mr W didn’t. He said more 2 life issued an 
+illustration of a loan at 3.97% in April 2022 – it shouldn’t have done this if it wasn’t an 
+appropriate product for him. Mr W is not concerned with how more 2 life is funded. He 
+wanted a lifetime mortgage and instructed his broker to apply for what was set out in the 
+illustration, expecting that was the loan that would be available to him. He could have gone 
+to other lenders who offered better rates but chose to continue with more 2 life in the 
+expectation it already had all his information and would process the loan quickly. It was more 
+2 life’s delays which meant that Mr W ended up taking a mortgage at 4.27%. This will 
+substantially increase the cost over the life of the mortgage. 
+Mr W said he had sent an occupier’s waiver form completed by Mrs W to more 2 life in 
+January as part of his earlier application – but more 2 life lost it and required another one to 
+be completed. 
+He said that more 2 life had all the information it needed about him and his property from his 
+earlier application and should not have issued an illustration if the loan at 3.97% was never 
+available to him. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I’ve also considered the responses to my provisional decision – having done so I haven’t 
+changed my mind. 
+I’m not persuaded that more 2 life has to honour the illustration of 3.97%. As I explained in 
+my provisional decision, an illustration is not an offer of a loan – it’s merely a description of 
+what is being applied for. It’s likely that the illustration was produced by Mr W’s broker when 
+the application was submitted rather than by more 2 life directly. 
+In any case, as I explained, the mortgage at 3.97% was never available to Mr W because he 
+didn’t qualify for it due to the rentcharge his property was subject to. But there was no 
+reason for either the broker or more 2 life to have known that in advance – the previous 
+application had been for a Capital product which had different criteria.
+Had Mr W applied for another Capital product in April rather than applying for a Flexi product 
+(which he wasn’t eligible for), it wouldn’t have resulted in a saving of interest since more 2 
+life has shown that the 4.27% interest rate he ended up taking was the same as the rate 
+available in April. If Mr W had the option of taking another interest rate elsewhere but chose 
+to apply to more 2 life, more 2 life isn’t responsible for that. 
+I agree that more 2 life caused delay because of the issue with Mrs W still being resident in 
+the property. It’s fair that it compensates Mr W for the extra interest he had to pay on his old 
+mortgage as a result.
+Putting things right
+To put matters right, more 2 life should pay Mr W one month’s interest on his previous 
+interest only mortgage, at the rate applicable in July 2022, adding simple annual interest of 
+8% running from 29 July 2022 to the date of refund. more 2 life may deduct income tax from 
+the 8% interest element of my award, as required by HMRC, but it should tell Mr W what it 
+has deducted so he can reclaim the interest from HMRC if he is entitled to do so.
+more 2 life should also pay Mr W £200 compensation for the distress and inconvenience 
+caused by the delay in completing his mortgage because of the problem over the special 
+condition about Mrs W’s occupation of the property.
+My final decision
+My final decision is that I uphold this complaint. more 2 life should compensate Mr W in the 
+way I’ve set out above.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr W to accept or 
+reject my decision before 15 January 2024.
+ 
+Simon Pugh
+Ombudsman

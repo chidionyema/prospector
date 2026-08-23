@@ -1,0 +1,19 @@
+ShiftCycle — timed bicycle repairs for NHS staff outside their hospital.
+
+A mobile repair round collects NHS workers’ bicycles from hospital cycle stores, fixes urgent faults, and returns them before their next shift.
+
+This is a fixed-price bicycle repair service for nurses, healthcare assistants, porters and other NHS staff who cannot visit a shop during normal opening hours.
+
+The operator starts with one NHS trust and gets permission to collect bicycles from its staff cycle store. A booking form records the bicycle, fault, hospital location and next shift. Common jobs include punctures, brake pads, chains, lights and winter corrosion.
+
+This borrows the timed turnaround used by airline ground crews and applies it to hospital commuting. The customer books a collection window around a shift rather than waiting in a repair shop.
+
+The service can run as one early-morning and one evening route. Standard parts, photographs and automated messages keep administration small. The operator only accepts repairs within their training and refers electrical bicycle faults to a qualified specialist.
+
+The strongest value is dependable timing. A bicycle shop, Halfords or a roadside recovery firm can repair a bicycle, but usually does not collect it from a hospital staff store between handovers and return it before a named shift. That scheduling gap is local rather than national, so the operator can own a trusted route through free NHS staff groups and workplace cycling communities.
+
+Individual NHS nurses, healthcare assistants, porters and administrative staff at a named NHS trust pay £25 to £45 for collection, repair and return. They are buying continuity of transport, not a cheaper repair.
+
+NHS England’s Net Zero Travel and Transport Strategy encourages NHS organisations to support walking and cycling. Cycle to Work schemes such as Cyclescheme and the Green Commute Initiative have also made bicycles and e-bikes common commuting choices. Shift workers are especially exposed when a puncture or failed brake threatens an early start, and household budgets make replacing a bicycle unattractive.
+
+The only passage on point [c4ce0227975b3602] shows Halfords already offers accessible bike repair for all bike types with no evidence of unmet demand specific to NHS staff or hospital-timed collection; the remaining passages (GP booking, pay rates, mobile network coverage, e-bike maintenance tips, Halfords new bike arrivals) show no search demand, community requests, or paying customers for this specific timed-collection service.

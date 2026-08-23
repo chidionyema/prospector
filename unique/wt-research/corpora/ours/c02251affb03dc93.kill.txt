@@ -1,0 +1,11 @@
+YieldShield – The Landscaper's Perennial Performance Bond.
+
+A per‑project warranty bond sold to independent landscapers: if newly‑planted trees or shrubs die within 90 days from disease, frost, or drought, YieldShield pays to replace them, replacing the landscaper's out‑of‑pocket risk with a predictable fixed cost.
+
+Lens: cross_sector (crop insurance + micro‑bond) — Landscapers routinely absorb the cost of dead plant replacements out of their own margin, yet no affordable insurance exists for a single garden job. By using a proprietary dataset linking plant species, soil pH, micro‑climate, and satellite NDVI imagery to survival rates, a solo can underwrite micro‑bonds with automated photo‑based claims.
+
+Solo residential landscapers and garden designers in the UK/Ireland who quote on £2k–£15k projects and are terrified of spring cold snaps wiping out a £500 plant order and killing their profit.
+
+Extreme weather (late frosts, heatwaves) is making plant losses more common; municipal garden waste apps have proven that people will photograph plants for documentation; satellite data APIs (like Sentinel Hub) are now cheap and accessible enough for a solo operator to incorporate into underwriting.
+
+Three passages show garden centres and nurseries already give free 12‑month replacement or refund guarantees on hardy plants that die (c592c2ac78eb8848, 284f094f87e83aba, 60dff50d8cdb27b7), a live, free first-party mechanism for the exact 'dead plant' event the bond is meant to cover — contradicting the candidate's own framing of this as a 'dying breed.' The RHS/drought passages confirm plant loss is a real, ongoing weather risk, but that only proves the pain exists, not that the paid-bond value is undercut by these existing free guarantees.

@@ -1,0 +1,27 @@
+Sponsor Licence Ransom Letter — the fixed-fee pack that turns a threatened visa fee clawback into a settled number.
+
+For UK professionals aged 35-55 hit with a bill after leaving a sponsored job, this fixed-fee pack proves which parts of that clawback are unlawful and drafts the letter that shrinks it.
+
+A skilled worker on a sponsored visa resigns, and the employer sends a bill for £8,000 to £15,000. It bundles the visa fees, the lawyer's fees, the relocation costs, and the Immigration Skills Charge. The person is mid-career, has a mortgage, and has children in school. They pay it because it arrives on headed paper and looks official.
+
+Much of that bill is not lawful. Home Office sponsor guidance is explicit that the Immigration Skills Charge cannot be passed to the worker, and that recouping it is a breach the employer must not commit. The sponsor licence sits in the employer's hands, not the worker's, and a sponsor found recouping that charge risks its licence. So the worker holds a lever most of them never realise they are holding.
+
+This is a one-person service, sold at a fixed fee of around £395. You take the person's contract, their offer letter, their repayment demand, and their CoS reference. You produce three things: a line-by-line breakdown showing which charges are recoverable and which are not, a note on whether the repayment clause is an unenforceable penalty rather than a genuine estimate of the employer's loss, and a ready-to-send letter to the employer's HR director.
+
+The angle here is deliberately awkward. The Home Office polices sponsors hard, and it gets harder every year. But it exists to enforce the rules on the employer, not to argue the worker's corner. It will never write a letter on a departing employee's behalf. The more aggressively the Home Office polices recouped charges, the more valuable a letter that quietly reminds an employer of that exposure becomes. This is the opposite of a compliance tool, and no compliance tool can ever be it.
+
+What compounds is the file of outcomes. Every settled bill teaches you which employers fold at the first letter, which sectors write the worst clauses, and what discount a demand of a given size actually settles at. After a hundred cases, you can tell a new client what their bill will probably become. Nobody else has that record, because nobody else is on this side of the transaction.
+
+Distribution is free and specific. Immigration and visa forums, the Reddit communities for UK skilled worker visa holders, and the WhatsApp groups that form inside every large sponsored intake. One person posting a real settled number gets more attention than any advert.
+
+Sponsored skilled workers aged 35 to 55, usually in tech, engineering, healthcare or academia, who have just resigned or been made redundant and received a repayment demand. They earn well, hold a mortgage, and decide with a partner. Paying £395 to remove several thousand pounds from a bill is an easy conversation to have at the kitchen table.
+
+The Immigration Skills Charge rose to £1,320 per year for medium and large sponsors in December 2025, so the sums employers try to recoup have jumped. Sponsor licence action by the Home Office has climbed sharply, which makes employers far more nervous about being named as one that recouped a charge it must not recoup. At the same time, layoffs across UK tech and higher education have pushed a large number of sponsored workers out of jobs early in their visa, exactly when repayment clauses bite hardest.
+
+The passages describe the mechanics of visa cost recovery — that an employer needs an enforceable repayment clause and lawful basis for deductions [874824e6b34d9941], and that the Immigration Skills Charge is recoverable in some shortened-visa cases [e4883612dbb8387b] — plus general visa descriptions and fee pages [5c11429e241c03cc, f7b6f372af8c7ab6, 88956488ceda3c8e, 6b375c3505857a52].
+
+Three passages dated 11-16 December 2025 confirm the Immigration Skills Charge rose about 32% on 16 December 2025, to £1,320 for the first year for medium and large sponsors, so the sums an employer might try to bill a departing worker have just jumped [482b12075352aa99][070e87130394f882][df2f44ac7c3c6749]. Another passage states that this charge cannot be passed to a sponsored worker and that a signed repayment clause does not guarantee recovery, which is the live legal basis the service sells against [41647f58f041133e]; the passages do not, however, say anything about current layoff volumes…
+
+One passage documents r/ukvisa, a public Reddit community of 94,275 members where UK skilled worker visa holders openly post about their own visa situations [7a3a63890c59410c], and another confirms the Skilled Worker visa is the route by which people work in the UK for an approved employer [5c11429e241c03cc] — so the affected buyers gather in a large, open forum anyone can join and post in without special expertise or permission. The passages do not mention any rule barring commercial or service posts in that community, and nothing else in the evidence describes a blocked route.
+
+The passages establish that UK immigration advice is a regulated activity with tiered accreditation and that certain legal activities are restricted to entitled persons under the Legal Services Act 2007 [0a1467a61b11b118, 544b34e1d74a10d1, 569f5e130832e2e1, 656e0ce2998fede9], but none of them says whether advising a worker on an employer's repayment demand and drafting a letter to that employer falls inside either restricted category.

@@ -1,0 +1,27 @@
+GigRight — The Gen Z Gig Worker's Worker-Status Entitlement Claim Pack.
+
+A fixed-fee service that turns your gig-work answers into a tailored legal claim for holiday pay, minimum wage and sick pay, using worker-status law and platform-specific data.
+
+Many UK gig workers are legally 'workers' rather than self‑employed, entitling them to holiday pay, sick pay, the minimum wage and pension contributions.  Platforms almost never tell them this, and asserting those rights feels impossible without a solicitor.  GigRight compresses the process into a fixed‑fee web app.  The worker answers questions about their work pattern, control, substitution rights and the platform's terms.  The engine cross‑references those answers with a proprietary database of past Employment Tribunal findings, ACAS early conciliation outcomes and platform‑specific arguments.  It then generates a pre‑action letter and a claim pack ready for ACAS and, if needed, the tribunal — with a plain‑English explanation of why the worker status test is met.  This borrows the way dispute‑resolution services in construction use a fast, pre‑scripted route to force a decision, transplanting that model into the gig economy.  The moat is a compounding proprietary dataset: every claim settled or decided feeds back into the engine, improving success rates and making the service harder for a late‑comer to replicate without that data.
+
+Gen Z gig workers (rideshare, delivery, freelance platforms) who suspect they are underpaid on holiday or basic pay. They pay a fixed fee of £99, either upfront or via a Pay in 3 from a provider like Klarna – a price that is quickly recouped from a successful claim.
+
+Since the 2021 Uber BV v Aslam Supreme Court ruling, HMRC and the Department for Business & Trade have intensified enforcement of worker status.  Hundreds of gig workers now bring successful claims for back‑dated holiday pay and minimum wage, but the process is still a maze.  Platforms rarely volunteer the rights, and ACAS conciliation is neutral rather than strategic.  This creates an immediate window for a productised service that equips individuals to enforce their entitlements without a lawyer.
+
+The passages only define gig work and describe how to obtain or submit a general UK Employment Tribunal ET1 form, including a free PDF template. They never show anyone searching for, paying for, or asking about help to claim holiday pay, minimum wage, or worker-status entitlements.
+
+The passages give UK full-time employee median earnings and note gig-worker status murkiness or solicitor advice, but none say Gen Z gig workers can or will pay a fixed fee for a claim pack. They never address that segment’s budget or willingness to pay.
+
+TikTok allows creators to post content and requires disclosure when promoting a product, brand, or business, so a working marketing path on the platform exists. That is an executable route to reach buyers via content, which is what this service relies on for acquisition.
+
+The passages state that people in England and Wales can bring an employment tribunal claim without a solicitor and that many do, and they describe a UK statutory employment-rights framework covering workers, statutory payments, and unfair deductions from pay. That means a fixed-fee tool that helps gig workers assert those entitlements through the same tribunal route does not depend on breaking the law.
+
+UK temporary workers are already losing at least £97m a year in paid holiday, which is a concrete, present shortfall of the same entitlement GigRight targets. That shortfall shows the problem is real and acute, not hypothetical.
+
+As of December 2025, UK ministers still called gig-economy status reform urgent while definitions of worker versus self-employed remained unsettled, and HMRC was still updating its employment-status tools in April 2025 for gig and delivery arrangements. A UK 2026 guide on challenging gig-worker misclassification further shows the rights and enforcement need is framed as live now, not a closed past episode.
+
+The passages only discuss TikTok creator growth, Creator Fund income, algorithm reach, spam, and censorship fears; none say a novice can reach paying UK gig workers, sell claim packs, or use an open ad marketplace or ready audience for that product. They never address whether any beginner-executable channel to those buyers exists.
+
+The passages show UK Employment Tribunal judgments are publicly searchable since 2017, and that many settlements sit behind confidentiality and are not on the court record. They do not state or confirm the candidate’s core facts—worker-status entitlements, the Uber ruling’s effects, enforcement intensity, or claim success volumes—so those claims cannot be treated as checked and affirmed on this evidence.
+
+Passages state that people in England and Wales can bring employment tribunal claims without a solicitor and that UK employment law and the tribunal cover worker rights and unfair deductions from pay (98252dca4cbc925e, 524785f193da00ef, c5da3bc8252e95af). Nothing in the evidence shows a fixed-fee claim-pack service is banned, that the cost of winning one buyer exceeds the £99 that buyer can ever pay, or that a single firm controls most of the route to these customers.

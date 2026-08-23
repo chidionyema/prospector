@@ -1,0 +1,21 @@
+CPPA enforcement risk scoring for ad-tech privacy teams.
+
+An AI-built library of every California Privacy Protection Agency enforcement, scored by similarity to your data practices, so ad-tech privacy teams spot the next action before it lands.
+
+The California Privacy Protection Agency began publishing its own enforcement actions in 2024 and is escalating under its current leadership. Ad-tech companies with California audiences now staff at least one privacy analyst. That analyst's recurring chore is reading every new CPPA action and California Attorney General privacy settlement, comparing them to the company's data flows (real-time bidding, cookie syncs, attribution, device graphs), and updating the privacy program. Each new enforcement costs the analyst days of work plus a privacy review meeting.
+
+This product reads every new CPPA action and AG settlement, extracts the specific practice that triggered the citation, the data type, the consumer segment, and the penalty, then scores each of the buyer's own data practices for similarity. The buyer logs in, sees a risk score by practice area, and reads a plain-English summary of past 'actions like yours' with their outcomes. Privacy teams use it before launching new data uses, during annual reviews, and after any regulator contact.
+
+What compounds is the buyer-uploaded anonymized practice descriptions - every customer makes the similarity model smarter, and a copycat starting tomorrow has zero prior practice library. CPPA publishes actions on cppa.ca.gov, AG settlements on oag.ca.gov, and class-action filings on CourtListener. Existing privacy tools (OneTrust, TrustArc, BigID) sell workflow products but explicitly do not score risk against prior enforcement, and their threat-intel add-ons cover generic breach news, not CPPA specifically. The CPPA itself, as the regulator, structurally cannot take a commercial side against the companies it regulates.
+
+Privacy leads and data protection officers at ad-tech and consumer-internet companies with California audiences - typically 50 to 1,000 employees, running real-time bidding, attribution, or device-graph products.
+
+The CPPA's enforcement docket crossed double digits in 2024 and is rising under its current leadership. CCPA amendments under CPRA expanded the private right of action for data breaches involving specific personal information, and consumer class-action filings have followed.
+
+The passages show OneTrust is a major privacy management platform that explicitly covers CCPA compliance and was named a Leader in the Forrester Wave for Privacy Management Software Q4 2025, indicating active spending on privacy compliance tools. However, no passage addresses search demand, specific buyers paying for, or communities asking about CPPA enforcement risk scoring as a distinct product category — the evidence establishes a broad privacy compliance market but not the specific niche of per-enforcement risk scoring against CPPA actions.
+
+The passages cover a Dutch news site, a generic job classifieds listing, and a Google Ads credit promotion; none address ad-tech privacy teams, CPPA enforcement, or the budgets and buying behavior of California-focused compliance buyers.
+
+The passages cover Italian lottery results, Dutch news, UK classifieds, and a generic Google Ads description; none address California ad-tech privacy teams, CPPA enforcement, or any distribution channel relevant to reaching them.
+
+None of the passages address the legality of scraping cppa.ca.gov or oag.ca.gov enforcement publications, the terms of service of those government sites, or the legality of aggregating/scoring public enforcement actions; the web scraping articles describe the technique generically but do not address whether this specific use is permitted or prohibited.

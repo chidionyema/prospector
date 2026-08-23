@@ -1,0 +1,27 @@
+The Derelict Dock Diver: Marina Asset Recovery Intel.
+
+A weekly subscriber-only video and dossier service for marina operators and marine insurers that identifies abandoned, derelict, or illegally moored vessels in non-tidal UK waterways, using publicly available satellite imagery and local harbour master notices, sold as a competitive intelligence and risk mitigation tool.
+
+Marinas and marine insurers face growing liability and berth-blocking costs from abandoned boats, but lack the capacity to manually monitor their patch. By cross-sector borrowing the 'asset recovery intel' model from the commercial shipping and salvage industry (e.g., Lloyd's weekly casualty reports), a solo operator can curate and sell a focused, niche intelligence feed to a captive audience of 200-300 UK marina managers and marine insurers who will pay £150-300/month for a time-saving, actionable early-warning system that reduces their cleanup and legal costs.
+
+Marina operators managing 10-200 moorings in UK coastal and inland waterways, and marine insurers underwriting marina liability policies.
+
+The UK's 'duty to remove' under the 1971 Harbours Act is being enforced more aggressively after high-profile incidents (e.g., the 2023 River Thames abandoned vessel surge). Marina operators lack a systematic watch, creating a clear information gap that a solo-curated channel can fill.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+The product fails on deliverability and demand. Satellite imagery lacks the necessary resolution and temporal frequency to reliably distinguish 'abandoned' vessels from temporarily moored boats, rendering the intelligence unactionable. Furthermore, in the UK, the legal and financial responsibility for abandoned vessel removal rests primarily with statutory harbor authorities or landowners, not private marina operators or insurers as a recurring weekly operational expense, indicating a fundamental misattribution of the buyer's pain point.

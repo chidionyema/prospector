@@ -1,0 +1,25 @@
+Accessibility regression packs for Texas web agencies.
+
+A Texas web agency owner gets an AI accessibility tester after each public-sector release, with keyboard and screen-reader evidence.
+
+Each public-sector site release triggers the package. The model performs the repeatable work of a junior accessibility tester. It finds likely keyboard, focus, structure, and contrast defects. A human retests the disputed journeys with keyboard navigation and common screen readers.
+
+The deliverable is a versioned defect list, before-and-after evidence, and a client-ready release note. Web agency owners buy a fixed monthly block, keeping the work standardized.
+
+Texas Government Code Section 2054.451 governs state electronic resources. The U.S. Department of Justice's Title II rule, 89 Federal Register 51216, requires the Web Content Accessibility Guidelines, or WCAG, 2.1 Level AA for covered Texas public entities. Agencies already pay accessibility specialists and remediation retainers.
+
+The Electronic State Business Daily creates a clear entry point. When it lists a site project with accessibility work, the responding agency can add this fixed review. Each release adds passing controls, failed journeys, and approved fixes for that agency.
+
+It sinks if public agencies rarely ask for repeatable evidence or manual retesting removes the margin. A new provider starts with public rules and scanners, not that agency's release history.
+
+The owner of a five-to-30-person Texas web agency with at least two public-sector retainers. That owner already pays accessibility specialists, manual testers, and remediation work.
+
+Texas public-sector web work is now governed by Section 2054.451 and the federal Title II accessibility rule. Procurement teams increasingly need evidence tied to a specific release, not a one-time checklist.
+
+None of the passages address web accessibility, WCAG compliance, Texas public-sector web procurement, or the pain that agency owners face with regression testing — they cover Texas.gov basics, state demographics, and UK hardware-store listings, so the passages fail to establish whether the pain is real and acute enough that agencies are paying to solve it now.
+
+The passages describe Texas.gov, Texas tourism, and general state facts; none address whether a Texas web agency owner has budget or motive to pay £79.99 for an accessibility regression pack, so payer solvency cannot be assessed.
+
+None of the passages address procurement channels, the Electronic State Business Daily, Texas public-sector web agency contracting, or any route by which accessibility testing services could reach Texas web agency owners; the provided texts concern a musician, a dictionary entry, an esports player, Texas Civil War history, a Texas map, and a Scottish band, all irrelevant to the distribution question.
+
+None of the passages address the legality of performing accessibility regression testing for Texas public-sector web agencies. The closest passage (d031e5679353fafd) describes the ADA Title II rule itself but does not state whether selling such testing services is lawful or unlawful; the remaining passages concern UK curriculum support, a UK water-management association, and generic FTC enforcement information, all of which are conceptually unrelated to the candidate's activity.

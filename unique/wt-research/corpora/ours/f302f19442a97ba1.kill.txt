@@ -1,0 +1,13 @@
+The Radon Risk Certifier – Mobile Home Sampling.
+
+A solo operator physically places and retrieves alpha‑track radon detectors in homes during property purchases, ensuring strict tamper‑proof chain of custody and delivering a risk‑assessed report with mitigation recommendations.
+
+Fusing the trend of public sector workforce relocation (nurses moving trusts, teachers changing schools) with mandatory radon risk awareness in conveyancing, many buyers skip testing due to cost/hassle. An affordable mobile service that manages the testing on‑site – rather than a forgettable DIY postal kit – adds trust, convenience, and builds a proprietary geo‑data asset on radon levels. `combine_signals` lens links public‑sector job mobility with the under‑served environmental hazard testing market.
+
+Individual home buyers employed in the public sector who need a reliable radon test before purchase, priced below traditional surveyor‑led tests (£80–120 per deployment).
+
+More UK districts are newly designated as radon‑affected, public relocation is steady, and lenders increasingly expect proper radon checks, yet an easy, trustworthy, on‑site service is missing.
+
+The passages affirm a real, durable paid market: radon testing is 'commonplace' as a standalone inspection business, and certified professionals charge $150-300 versus the $15 DIY kit, showing the premium service value is not commoditised away. The cheap DIY postal kit is a substitute but leaves clear margin (10x premium) for a professional on-site service, so it does not erase the value.
+
+Passage [1118f2aec6fabca6] shows 'Professional Home Testers' already perform alpha-track radon testing for real estate transactions (results used to release escrow funds), and [da9609f50d70de19] confirms licensed radon measurement professionals perform tests including for property contexts — so professional, real-estate-facing radon testers already serve this need.

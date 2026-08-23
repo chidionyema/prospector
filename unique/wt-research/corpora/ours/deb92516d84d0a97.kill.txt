@@ -1,0 +1,25 @@
+CloseoutBridge, sells your Amazon FBA aged stock to liquidators.
+
+A brokered sale desk that finds your Amazon FBA units about to hit long-term storage surcharges and sells the lot to a vetted US liquidator before the fee date.
+
+This is a broker, not software. You connect your Amazon Seller Central account through Amazon's own Selling Partner API. We read your FBA inventory age report, spot the units crossing the aged-inventory surcharge tier, and run a private sale of that pallet to liquidation buyers we already have on the phone. You approve a price; we handle the removal order, the freight and the payment. We take a percentage of the sale price, not a subscription.
+
+The trigger is a date, not a mood. Amazon charges an aged inventory surcharge on units held over 181 days in US fulfilment centres, assessed on the 15th of each month, on top of monthly storage fees. Sellers watch the clock and mostly do nothing until the fee lands. That deadline is the recurring event this business runs on. This is shape (B), serving the Amazon US seller ecosystem and the platform fee that hurts.
+
+The angle is combining two signals that nobody joins up. One is the surcharge calendar inside Seller Central. The other is what liquidation buyers actually paid for comparable goods last month. Neither side sees the other. Every completed sale teaches us the real clearing price by category, condition and region, which is the number that decides whether a seller should liquidate or eat the fee.
+
+That price history is the part rivals cannot copy from public data. Liquidation clearing prices are private, bilateral and never published. After a few hundred brokered pallets we can quote a seller a realistic number in an hour, which is the whole service. A new entrant starts blind.
+
+Run it small. Two people can broker pallets: one working sellers, one working buyers. No warehouse, no stock ownership, no balance sheet risk, because we never take title.
+
+US-based Amazon FBA sellers doing roughly $500,000 to $10 million a year, typically in home goods, toys, seasonal or apparel, who carry slow-moving units into the 181-day surcharge band. The person who signs is the founder or the inventory manager, and they pay us a commission of the sale price, usually 12 to 20 percent, only when a pallet actually sells.
+
+Amazon has kept tightening the cost of holding stock: the aged inventory surcharge now bites from 181 days on US inventory, alongside monthly storage fees that rise in the fourth quarter. Amazon publishes both the fee schedule and the inventory age report in Seller Central, so the deadline is public and dated. At the same time, Amazon's Selling Partner API gives an outside party permission, granted by the seller, to read that inventory age data directly, which was awkward or manual a few years ago. Sellers are also holding more stock after several years of choppy demand forecasts, so more units drift into the aged band than before.
+
+Sellers are already paying to solve exactly this problem: Amazon runs a liquidation program where sellers submit aged stock through Seller Central and contracted buyers purchase it at roughly 5-10% of average selling price [65f770529cec4065][205cdea1c6f2ff1e], and the aged-inventory surcharge that drives the urgency bites from 181 days on top of storage fees, with published guidance on clearing stock before it costs money [e7d9113a3b51df8d][d9b32ea918ec48b6].
+
+The passages describe the Amazon seller population and its economics — over 1.9 million active third-party sellers, more than 100,000 US-visible sellers above $1M in annual revenue, and net margins that often land at 8–12% rather than the 20% sellers assume — but they never say what these sellers spend on outside services, tools, or brokers. Since nothing in the evidence addresses actual willingness to pay a fee at any level, including a one-off charge of about £79.99, the claim that this payer has both budget and motive cannot be settled here.
+
+The passages show Amazon's Selling Partner API lets an outside developer's approved public application call the API on a seller's behalf once that seller authorizes it, and that FBA inventory/fee reports are available through it — so a seller can grant access in a few clicks and the broker reads the data directly. The approval step is real friction (Amazon judges applications on compliance and business criteria), but the passages describe it as a documented, obtainable process, not a blocked one; they say nothing about how the broker would actually find sellers in the first place.
+
+The passages only describe US federal trucking rules: anyone acting as a freight broker or freight forwarder — the middleman between shippers and trucking companies — must register with the FMCSA, carry required insurance, and faces civil penalties otherwise [07c6ee28c95fd4f1, 55a60f016d982627, df77679d28bbf410, ea8c9bb98bf12dab]. Nothing here addresses whether brokering the sale of goods to liquidators, reading a seller's inventory data with their permission, or taking a commission on that sale is lawful, and nothing says whether arranging the freight in this way would itself require that…

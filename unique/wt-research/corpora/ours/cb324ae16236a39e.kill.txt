@@ -1,0 +1,21 @@
+CARB ACF compliance feed for fleet SaaS vendors.
+
+A continuous feed of CARB Advanced Clean Fleets reporting deadlines and per-vehicle fines, scored against fleets in your platform, so fleet software vendors warn operators before missed filings.
+
+California's Advanced Clean Fleets rule (CARB's commercial-fleet zero-emission phase-in) requires large fleet operators to file annual vehicle-inventory and mileage reports with the California Air Resources Board. Each missed filing carries a per-vehicle fine. Fleet software vendors - Geotab, Samsara, Motive, Verizon Connect, plus the truck-maker telematics platforms - keep their California customers on the right reporting cadence. Product and compliance leads at these vendors currently rebuild CARB rule changes by hand and re-map them to fleet accounts whenever CARB publishes a new advisory.
+
+This product reads every new CARB advisory and exemption list, then scores each fleet in the buyer's platform for its next reporting deadline and the per-vehicle exposure. The buyer gets a daily alert per fleet account with the next due date, the documents required, and the prior-year penalty for the same fleet size.
+
+What compounds is the per-fleet reporting history joined to CARB advisory archives, which is rebuilt continuously and gives the buyer an audit trail a copycat starting tomorrow cannot recreate. CARB publishes the ACF rule text and advisory notices on arb.ca.gov; fleet telematics vendors do not publish a joined ACF-compliance feed. Existing fleet compliance SaaS handles IFTA fuel tax but explicitly does not cover CARB ACF.
+
+Product, compliance, and customer success leads at fleet telematics and management SaaS serving California fleets - Geotab, Samsara, Motive, Verizon Connect, plus OEM telematics from Volvo, Daimler, and Paccar.
+
+CARB accelerated ACF enforcement in 2024 and began publishing per-vehicle fines that change with the rule cycle, making each reporting deadline more consequential for fleet operators. California's 2035 ban on new diesel trucks raised the strategic value of accurate ACF reporting for fleets planning their replacements.
+
+The passages concern a Hampshire town called Fleet, a UK buy-to-let mortgage lender, and a Hampshire tourism page; none address CARB's Advanced Clean Fleets rule, California fleet compliance reporting, telematics vendors, or buyer demand for an ACF compliance feed, so the question of demonstrable buyer intent is not addressed.
+
+The passages concern Microsoft Bing quizzes, Rewards points, account management, and Microsoft Careers — none address CARB ACF compliance, fleet telematics vendors, or their budget for compliance data feeds, so payer solvency cannot be assessed.
+
+The passages concern a UK town called Fleet, a UK buy-to-let mortgage lender, and church history in that town; none address California fleet telematics vendors, CARB compliance, or any route to reach such buyers.
+
+The candidate's margin relies on reading publicly posted CARB advisory text from arb.ca.gov, and passage [d4e091da810d0f4a] states that scraping publicly visible information for legitimate business intelligence is 'generally legal,' and this data is not behind a login wall, is not PII, and comes from a government source where public dissemination is intended.

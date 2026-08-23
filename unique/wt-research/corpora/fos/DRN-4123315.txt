@@ -1,0 +1,220 @@
+DRN-4123315
+The complaint
+Miss S complains about the way Clydesdale Bank Plc trading as Virgin Money handled her 
+request for money back in respect of a hotel booking she made using her Virgin Money 
+credit card.
+What happened
+In June 2019 Miss S booked accommodation at a hotel I’ll call G via an online agent I’ll call B
+for a party of around 24 people. The accommodation was to be used in May 2020. The total
+cost was £2,630.
+Very shortly after the booking was made G contacted Miss S to explain it would require an
+upfront deposit of 50% which it said “would act as a non-refundable rental deposit”. Miss S
+paid £1,326 to G using her Virgin Money credit card.
+In early April 2020 Miss S contacted G to explain she wanted to change the dates of her
+stay. G told Miss S it would contact B “to cancel other bookings” for her and calculate new
+rates. Miss S said she looked on B’s website but couldn’t find the dates she wanted so
+asked G what would happen to the deposit she paid if she booked directly with it.
+When G got back in touch with Miss S it said her deposit was non-refundable and non-
+transferrable so she couldn’t transfer the money she’d paid already towards a new booking.
+Instead it offered discounted rates for a new booking of around 50% and it said the full cost
+could be paid on arrival with no deposit required.
+On this basis, Miss S made a new booking directly with G in April 2020 for February 2021. G
+took no deposit from Miss S and confirmed she would need to pay £1,480 on arrival.
+In October 2020 Miss S emailed G and asked if she could change the dates of her stay
+again until sometime in late 2021 or 2022.
+G said Miss S couldn’t move the booking past February 2021 as it fell into a different “rate
+plan year”. G offered to provide a credit note to Miss S for the deposit she had originally paid
+to it on the first booking, less B’s fees, to be used against a future booking.
+Miss S used the credit note to place a deposit against a new booking for September 2021.
+G confirmed Miss S would have to pay £1,578 upon arrival.
+In December 2020 G entered administration. In October 2021 the administrator wrote to
+Miss S and explained it was unlikely there would be a dividend to unsecured creditors.
+Miss S asked Virgin Money to step in and help in October 2021. Virgin Money considered 
+Miss S’s claim under Section 75 Consumer Credit Act 1974 (“section 75”) but it didn’t think it 
+could help. It said that because Miss S had cancelled her original booking and had paid G a 
+non-refundable, non-transferable deposit, this meant it only funded the original booking and 
+was not liable to her for anything that went wrong with the subsequent bookings she made 
+with G.  
+
+Unhappy with Virgin Money’s response and having not received a final response letter in
+respect of her complaint about this, Miss S referred the matter to this service.
+After this Virgin Money issued a final response letter. It said it was still not going to meet
+Miss S’s claim but offered to pay her £75 as a gesture of goodwill. Miss S did not accept this
+offer.
+I issued a provisional decision in May 2023 setting out why I didn’t plan to uphold Miss S’s 
+complaint. I said, 
+‘I am looking here at the actions of Virgin Money and whether it has acted fairly and
+reasonably in the way it handled Miss S’s request for help in getting her money back. 
+This will take into account the circumstances of the failed trip and how the supplier 
+has acted, but there are also other considerations, such as the card scheme rules a 
+bank must follow and its own obligations.
+There are two main ways a bank can help a customer to recover money paid to a 
+supplier who hasn’t provided what was promised. It can try to recover the money 
+from the supplier through a process known as chargeback. Or it can assess whether 
+its customer has a valid claim under Section 75 Consumer Credit Act 1974 (Section 
+75).
+Chargeback
+In certain circumstances the chargeback process provides a way for a bank to ask for 
+a payment a customer made to be refunded. Where applicable, the bank raises a 
+dispute with the supplier and effectively asks for the payment to be returned to the 
+customer. While it is good practice for a bank to attempt a chargeback where the 
+right exists and there is some prospect of success, the circumstances of a dispute 
+means it won’t always be appropriate.
+The relevant card scheme rules set out that Miss S could raise a chargeback if 
+(among other things) services she’d paid for hadn’t been supplied to her or if a credit 
+hadn’t been provided when it should have been.
+Looking at what happened here, Miss S agreed with G on two separate occasions  
+that it would cancel the bookings she had made and that it would make new bookings 
+for new dates. She forfeited her deposit on one booking and accepted that she’d take 
+a credit note on another. This appears to be different from a case of simply amending 
+the dates of the same booking twice.
+It appears therefore (Miss S only having used her credit card to pay the deposit on 
+the original booking and that agreement having come to an end upon cancellation) 
+that Miss S’s credit card payment did not fund the last agreement she made with G. It 
+was unlikely therefore she’d have had grounds to raise a chargeback in respect of 
+that agreement.
+This is relevant because the last agreement Miss S entered into with G was the only 
+agreement where G was unable to provide its services (as a result of going into 
+administration) and therefore was likely the only transaction that Miss S had any 
+reasonable prospect of charging back.
+I say this because when Miss S agreed with G that it would cancel her bookings in 
+April 2020 and October 2020 it wasn’t clear yet that her visits in May 2020 or 
+February 2021 would be unable to go ahead – the UK government hadn’t yet 
+extended the Covid-19 lockdown rules that far ahead. So, I don’t think it could be 
+said that G was unable to provide its services at those points.
+It seems likely therefore that a chargeback raised for services not provided would 
+have been defended on the basis the services were available at the time Miss S 
+cancelled them. There do not appear to have been grounds either to raise a 
+chargeback for where a credit hadn’t been processed because Miss S was not 
+entitled to a refund of her deposit in the event she cancelled her stay.
+This aside, it’s likely Miss S would have encountered further problems with 
+chargebacks on these transactions. The relevant scheme rules make it conditional 
+that a chargeback must be raised within 120 days of the last expected date of 
+delivery – which in this case would have been the dates Miss S was due to stay at 
+the hotel. Miss S didn’t make Virgin Money aware of her dispute until October 2021. 
+So, its likely chargebacks for services not provided would also have been defended 
+on the basis they had been raised too late.
+Overall therefore, although Virgin Money didn’t raise a chargeback in this case, it 
+doesn’t appear there was a reasonable prospect of one succeeding. So, I don’t find 
+Virgin Money treated Miss S unfairly by failing to do this.
+Section 75
+Section 75 provides that subject to certain criteria the borrower under a credit 
+agreement has an equal right to claim against the credit provider if there's either a 
+breach of contract or misrepresentation by the supplier of goods or services.
+One of those criteria was that Miss S’s claim had to relate to a transaction financed 
+by a debtor-creditor-supplier (“DCS”) agreement. In other words, given Miss S’s claim 
+here, it had to relate to a transaction between either her and G or her and B that was 
+financed by her Virgin Money credit card.
+Miss S paid the deposit to G using her Virgin Money Credit card and didn’t pay 
+anything to B. This means Virgin Money didn’t likely finance whatever transaction 
+there may have been between her and B.
+Nevertheless, B’s contract set out that Miss S had entered into a separate contract 
+with G for the provision of its services (i.e. the hotel rooms). So, it appears Virgin 
+Money did likely finance a transaction between Miss S and G in June 2019 for the 
+provision of accommodation to her in May 2020. I’ll call this agreement one.
+As I’ve said earlier in this decision, during the course of Miss S’s dealings with G in 
+April 2020, she agreed with G that on the basis the existing dates were no longer 
+suitable for her, it would cancel her booking made via B for her and make a new one, 
+directly with it, for February 2021.
+Miss S then changed the dates again with G from February 2021 to September 2021. 
+It appears from communications between Miss S and G that she had to cancel the 
+booking again in order to do this as it was not possible to simply transfer the existing 
+booking to a new date. G offered Miss S a credit note of around £800 to put towards 
+the third booking with it.
+I think all of this meant three things. Firstly, agreement one had likely been brought to  
+an end at the request of Miss S in April 2020. Secondly, Miss S entered into a new 
+agreement in April 2020 for the February 2021 booking (I’ll call this agreement two). 
+Thirdly, Miss S cancelled agreement two in October 2020 and entered into a third 
+agreement for September 2021, paid for in part using the credit note that G had 
+provided (agreement three).
+I remind myself again that Miss S’s claim had to relate to a transaction between her 
+and G that was financed by Virgin Money. I think it’s likely in this case that the only 
+transaction Virgin Money financed was agreement one and not agreements two or 
+three. In other words, there was only a DCS agreement in respect of that first 
+agreement.
+However even if agreement two was in fact an amendment to agreement one rather 
+than a whole new agreement, by the time Miss S asked to change the dates again in 
+October 2020 I think G had made it clear that it couldn’t accommodate a simple date 
+change and that a new booking would need to be made – which she secured using a 
+credit note G had provided. I think this made it even more unlikely that Virgin Money 
+financed agreement three as the deposit she paid had become even more detached 
+from the transaction by this point.
+As an aside on that point, while the issuing of the credit note when Miss S cancelled
+agreement two might appear inconsistent with G’s explanation that the deposit from
+agreement one was non-transferable, it seems likely this was offered as a gesture of
+goodwill rather than something it was obliged to do by the terms of its contract with 
+Miss S in the event of cancellation by her. So, I don’t think it meant that Miss S’s 
+initial deposit paid in respect of agreement one funded agreement three.
+I don’t find therefore that Virgin Money was being unreasonable when it told Miss S  
+that it had limited its assessment of her claim to the transaction it considered it had 
+financed.
+I’ve considered whether Virgin Money made a fair assessment of whether there had 
+been a breach of contract or misrepresentation on the earlier agreements. There has 
+been no suggestion of a misrepresentation. And there doesn’t appear to have been a 
+breach of contract either. Miss S agreed with G that it would cancel agreements one 
+and two. And in accordance with what it was permitted to under the terms of its 
+contract with her, it kept her deposit upon cancellation. Any agreements made after 
+this as to the price of a new booking or the issuing of a credit note appear to have 
+been made as gesture of goodwill by G and not something it was contractually 
+obliged to do.
+It’s very likely that G’s failure to provide the accommodation as a result of it entering 
+into administration would have been a breach of agreement three. But this happened 
+on an agreement that wasn’t funded by Virgin Money because Miss S didn’t make 
+any payments towards that agreement using her credit card. So, it’s unlikely Miss S 
+had a valid claim under section 75 in respect of that agreement. I don’t find therefore 
+that Virgin Money treated Miss S unfairly when declined to meet her claim.
+I know this will be incredibly disappointing for Miss S. I really do sympathise with her 
+that through no fault of her own, she’s lost her deposit. But it wouldn’t be fair to 
+require Virgin Money to refund Miss S’s deposit if I didn’t think it had treated her 
+unfairly by declining to meet her claim. And for the reasons I’ve explained, I don’t 
+think it did. 
+Virgin Money offered Miss S £75 as a gesture of goodwill in its final response letter. 
+It’s not entirely clear what this for. However, having considered how long it took 
+Virgin Money to consider Miss S’s claim and the likely distress and inconvenience 
+this would have caused her, I think Virgin should still pay this to Miss S, if it hasn’t 
+already.’
+Miss S disagreed with my provisional decision. She said she called Virgin Money as soon as 
+she learned G had gone into administration in December 2020 but was told she’d need to 
+call back after the date her stay was due to take place. So, she said she contacted Virgin 
+Money in time for it to raise a chargeback. 
+Virgin Money said it didn’t have any additional or comments save to confirm it had paid the 
+£75 referred to in my provisional decision to Miss S in September 2022. 
+The complaint was therefore passed back to me for a final decision. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I’ve thought about Miss S’s comments about chargeback. I explained in my provisional 
+decision that the only transaction Miss S could likely have raised a chargeback on was the 
+first one (i.e. the booking for May 2020 made in June 2019) as that’s the only booking that 
+she paid for using her credit card. That particular booking was brought to an end by 
+agreement between Miss S and G in April 2020.
+That meant Miss S had 120 days under the card scheme rules from May 2020 at the latest  
+to raise a chargeback. So even if I were to accept that Miss S made contact with Virgin 
+Money when she said she did in October 2020, there was still a strong chance the 
+chargeback would not have succeeded on the grounds it had been brought too late. 
+I also explained in my provisional decision that because the service was still available for 
+Miss S to use at the point in time she cancelled it in April 2020 and because she wasn’t 
+entitled to a refund of her deposit in the event she cancelled, it was unlikely a chargeback 
+would have succeeded even if it had been raised in time. I’ve not been provided with 
+anything that makes me see this any different. 
+I can understand why Miss S is disappointed by my conclusion. As I said in my provisional 
+decision, I sympathise that she’s lost out through no fault of her own. But the right to a 
+refund in her circumstances is not automatic and there still needs to be a reason why Virgin 
+Money was liable to her for a refund – which unfortunately for Miss S, it appears there isn’t in 
+her case. 
+So, for the reasons I have explained here and in the extract of my provisional decision 
+above, I still don’t find Virgin Money treated Miss S unfairly by declining to meet her claim for 
+a refund of her hotel deposit. 
+Virgin Money said it already paid the compensation of £75 I discussed in my provisional 
+decision to Miss S in September 2022. The communications I’ve seen suggest Miss S 
+declined to accept this. So, if Virgin Money hasn’t in fact paid this sum to Miss S yet then it 
+should do so. 
+My final decision
+For the reasons I have explained above, Clydesdale Bank Plc trading as Virgin Money 
+should pay Miss S compensation of £75 for the distress and inconvenience it caused her (if it 
+hasn’t already done this). I do not require it to do anything else. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Miss S to accept 
+or reject my decision before 15 June 2023.
+ 
+Michael Ball
+Ombudsman

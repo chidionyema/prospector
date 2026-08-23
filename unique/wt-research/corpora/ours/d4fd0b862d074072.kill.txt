@@ -1,0 +1,23 @@
+WAV Auctioneer – The Adapted Car Sourcing Desk.
+
+A solo broker that secures top-dollar prices for carers selling wheelchair-accessible vehicles by placing them directly with specialist buyers (driving schools, disability services) who value specs resellers miss, for a 10% success fee.
+
+Carers exit disability life needing quick cash; general classifieds undervalue WAVs. The broker's proprietary network of niche buyers and condition-grading model captures the true premium.
+
+Primary carer (seller) pays a fee calculated as a percentage of the uplift above a benchmark trade-in valuation.
+
+Post‑pandemic spike in private WAV ownership, aging population, and a fragmented secondary market with no price transparency.
+
+Passages mention existing WAV selling venues (BLVD.com, AMS Vans) but do not address whether the proposed broker’s proprietary network and grading model actually create a durable premium, or whether those alternatives already capture that premium.
+
+Passages mention various sellers and buyers of WAVs, but none provide evidence about market share or dominance to determine if the space is underserved by incumbents.
+
+Passages discuss vehicle costs and budget buying options but do not address whether the carer (payer) has budget and motive to pay a broker's success fee.
+
+None of the provided passages address the existence or feasibility of a distribution channel for the broker; they discuss WAV features, insurance, and general selling difficulty, not the broker's route to buyers.
+
+The passages discuss WAV pricing and selling tips but omit any mention of legal requirements, prohibitions, or falsification needed for the broker's margin.
+
+The passage states that selling a wheelchair van on the open market is hard and difficult, directly evidencing a real, acute problem.
+
+The WAV Auctioneer broker idea is not worth building because existing incumbents already serve the niche effectively. MobilityWorks (e03341c4d33b7870) operates 90+ locations nationwide with certified mobility consultants, offering a large inventory and buy-now program. AMS Vans (645b0625ab9332a4) provides direct cash purchases based on real market data, eliminating the need for a broker. Free classifieds like BLVD.com (3a89caf2545eb30d) allow sellers to list WAVs at no cost, and The Mobility Resource (3aad09bf04ebbf90) maintains a network of 104 dealers that compete to make offers, replicating the broker's matching function. These alternatives possess scale, trust, and data advantages that a solo broker cannot easily overcome, and there is no evidence of a proprietary moat that would yield sustainably higher prices. The market appears efficiently served, and the broker's 10% fee likely captures no additional value over existing options.

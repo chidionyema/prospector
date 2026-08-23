@@ -1,0 +1,11 @@
+PolyPharm Sentry.
+
+A one-time or subscription data intelligence report that cross-references a retiree's complete medication list with global adverse event databases and age-specific physiology models to deliver a plain-English Risk Score and actionable interaction warnings.
+
+First-principles rebuild: the raw pain is fear of drug side effects and interactions, which current free drug checkers address only superficially. By aggregating FDA FAERS, WHO VigiBase, and proprietary comorbidity adjustments, a solo operator can deliver a hyper-personalized risk snapshot that a static database cannot. (lens: first_principles).
+
+A retiree aged 60–75 managing multiple prescriptions, or their adult child paying on their behalf to reduce health anxiety.
+
+Polypharmacy rates in the over-65s have never been higher; adverse drug events cause thousands of preventable hospitalisations annually. NLP and AI now make it feasible to ingiest and structure unstructured adverse event reports at scale, a capability that didn't exist five years ago.
+
+The passages show that in England the NHS already provides this exact service free at the point of use: since October 2020 every primary care network must identify and give structured medication reviews to patients with problematic polypharmacy, specifically those on ten or more medicines, with referral routes into community pharmacy services [24adf00a6665efad][d8cb7a83eccaa725][0f399f7139fec842].

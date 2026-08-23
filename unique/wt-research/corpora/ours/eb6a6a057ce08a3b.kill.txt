@@ -1,0 +1,17 @@
+Texas AV compliance telemetry for fleet ops managers.
+
+A real-time feed from TxDOT, Texas DMV, and city-level AV ordinances that AV ops managers use to score their fleet's compliance posture and flag rule changes before they trigger permit trouble.
+
+Autonomous vehicle ops managers face an unusual regulatory situation in Texas. Texas has been AV-friendly but lacks a unified state AV framework, so AV companies must track TxDOT permits, Texas DMV registrations, local city ordinances (Austin and San Antonio have specific AV rules), and federal FMCSA rules. The product fuses TxDOT, Texas DMV, and city-level AV permit data into a per-fleet compliance score, and alerts when a local rule changes or when a competitor's permit signals a regulatory shift. The wedge is proprietary data: a continuously updated multi-agency Texas AV compliance corpus. Buyers already spend $1 million or more annually on regulatory compliance staff and outside counsel; this compresses the work and surfaces shifts early.
+
+regulatory ops managers at AV tech companies and fleet operators running Texas pilots or commercial routes.
+
+Texas has become the leading AV testing state; the 88th and 89th Legislatures have introduced multiple AV bills; Austin and San Antonio have begun enforcing specific AV permit rules that conflict with prior practice.
+
+None of the passages address autonomous vehicles, regulatory compliance, fleet operations, or whether AV ops managers are paying to solve compliance problems; two are general Texas geography entries and one is about the Scottish band Texas, so the evidence cannot establish whether the pain is real and acute.
+
+None of the passages address Texas AV operators, their compliance budgets, or their willingness to pay for regulatory telemetry; the cited sources are a dictionary definition of 'autonomous', a word-meaning comparison, a financial-research firm named Autonomous, and a UK home-cinema retailer called AV.com, all of which have no bearing on the buyer's solvency.
+
+The passages concern a UK home cinema retailer (AV.com), audio/video processors, general Texas tourism, and the band Texas — none address autonomous vehicle fleet operators, Texas AV regulators (TxDOT, Texas DMV, Austin/San Antonio AV ordinances), or any distribution channel for selling compliance software to AV ops managers.
+
+The passages address Texas geography, indigenous history, a music discography, and TxDOT career/website navigation; none discuss whether aggregating publicly available Texas government AV permit and ordinance data into a commercial compliance product violates any law, regulation, or data-source terms of service, so the legality of the margin cannot be assessed from this evidence.

@@ -1,0 +1,23 @@
+Anatomy of a Gig – The Medical Illustrator's Scouting Report.
+
+A weekly intelligence brief that surfaces high-budget medical illustration commission opportunities hidden in clinical trial announcements, NIH grant cycles, and pharma product pipelines, curated exclusively for freelance medical illustrators.
+
+Freelance medical illustrators miss high-value commissions because they cannot monitor thousands of clinical trial registries, medical journals, and pharma press releases for upcoming illustration needs. By aggregating and scoring these signals with domain-specific filters, a solo operator can deliver a proprietary deal flow that commands a premium subscription.
+
+Freelance medical illustrators (including scientific animators, anatomical illustrators, and medico-legal visualizers) earning $60k+ annually who allocate discretionary income to business development.
+
+Post-pandemic biotech funding surge and AI-generated art backlash in accuracy-critical medical communications create a 'human-certified' premium, while existing job boards are flooded with low-budget, non-specialist requests.
+
+The passages describe the medical illustration field, artists, and professional organizations but do not speak to the durability, commoditisation, or evaporating nature of the specific value provided by a deal-flow intelligence newsletter.
+
+No passage mentions any incumbent or funded rival solving medical illustration opportunity scouting; the passages only cover clinical trials market data and medical illustration profession description, not the niche intelligence service.
+
+All passages concern video games, clinical trial budgets, or HHS funding; none address the budget or spending habits of freelance medical illustrators earning $60k+.
+
+None of the provided passages discuss distribution channels, subscriber acquisition, or how to reach freelance medical illustrators. They only describe the profession itself, leaving the question unaddressed.
+
+The passages discuss pharmaceutical strategy, medical news, clinical trial transparency enforcement, and legal practice areas, without referencing the newsletter's aggregation of public information or its lawfulness.
+
+Passages describe medical illustration as a profession and note 'the need for their services is great' but provide no evidence that freelance illustrators miss high-value commissions due to lack of intelligence briefs or are paying to solve this problem.
+
+The hypothesis assumes freelance medical illustrators miss high-value commissions due to inability to monitor signals. However, evidence indicates the need for medical illustrators is great and employment outlook is excellent (source 39103f1804b1a935), suggesting they do not face a shortage of work. Moreover, no evidence was found that these illustrators have budget or willingness to pay for a subscription deal-flow service (payer_solvency check retrieved zero relevant data). Without a verified pain point and paying customers, the idea lacks foundational support and is not worth building.

@@ -1,0 +1,25 @@
+Making Tax Digital integration pack for UK accounting SaaS.
+
+A reference integration and test harness that lets UK accounting software ship HMRC Making Tax Digital submissions on the quarterly deadline, not six months late.
+
+From April 2026, HMRC's Making Tax Digital for Income Tax regime requires landlords and sole traders with income over £50,000 to file quarterly updates through compatible software, and from April 2027 the threshold falls to £30,000. UK accounting SaaS vendors must integrate with HMRC's MTD APIs to remain viable, but HMRC's developer documentation is fragmented and the test environment is brittle.
+
+A vertical tool for engineering leads at UK accounting SaaS startups ships a maintained, versioned client library, a sandbox test harness with synthetic agent scenarios, and a regression suite mapped to HMRC's published failure modes. Each release is regression-tested against HMRC's spec and against failure patterns the tool has accumulated across its customer base.
+
+The long-term edge is a maintained SDK, test harness and HMRC-error pattern library that engineering leads cannot reproduce by reading HMRC's docs. The first-party alternative (HMRC's MTD developer documentation at developer.service.hmrc.gov.uk) is the spec, not a maintained integration; bespoke consultancies charge forty to a hundred thousand pounds per integration. A subscription SDK at a few hundred pounds a month per vendor, plus a usage tier, is the edge consultancies cannot match at scale.
+
+Engineering leads and Heads of Platform at UK accounting SaaS startups (1 to 50 employees) that must integrate with HMRC's Making Tax Digital APIs before the April 2026 deadline.
+
+MTD for Income Tax Phase 1 hits in April 2026 with the £50,000 income threshold, and Phase 2 follows in April 2027 with the £30,000 threshold - creating a hard, non-negotiable deadline for every UK accounting SaaS to ship a working HMRC integration or lose customers to rivals that did.
+
+Passage [f1fae43b69d756e0] states that as of June 2026, HMRC is no longer accepting production credential access requests for new 2026–27 quarterly update products because 'the market window for these products has now closed,' which directly demonstrates that the underlying need for a new MTD integration pack is evaporating rather than durable.
+
+The passages list end-user MTD-compatible platforms (Xero, QuickBooks Online, FreeAgent, Sage, Odoo) and general API-client tools (Bruno, I/O Docs/Wraps), but none address whether a dominant SDK, integration pack, or test harness specifically for UK accounting SaaS vendors building against HMRC's MTD APIs already exists. The passages never establish the presence or absence of a funded rival in this developer-tools-for-MTD subsegment.
+
+None of the passages address UK accounting SaaS startup budgets, HMRC MTD integration spending, or whether engineering leads at such firms would pay £99.99 for an SDK; the closest items (a general note on VC scrutiny of smaller startups and a SaaS marketplace listing) do not characterise this buyer's solvency or willingness to pay for this product.
+
+The HMRC Developer Hub (aca2fd6161ffa2f0) is the mandatory registration point where any developer building MTD integrations must sign up and explore APIs, providing a natural concentration of the exact buyer persona. GitHub (1737bb5d10133117) is where millions of developers discover and consume SDKs and developer tools, forming a standard low-friction distribution channel for this kind of vertical SDK. Together these passages show the buyers are already congregated at identifiable, accessible points that a developer-tool vendor can reach without bespoke sales effort.
+
+Passage [799eb3a223a3fc1e] shows HMRC explicitly promotes a 'third-party software first' approach and shares APIs with commercial software vendors, while [34fe1cbb1985cbb4] sets terms of use that vendors must conform to rather than prohibiting integration tools. Building a maintained SDK that helps vendors comply with HMRC's published APIs is the intended use of the Developer Hub, and no passage identifies a contractual, legal, or data-falsification bar to this margin.
+
+Passages show MTD for Income Tax is live with 436,000 successful quarterly filings in the first round [3756d5c29ddacd71], commercial MTD tools are being sold (Swift VAT Pro at a trial/paid model) [d19e76bd28c919ad], end users already complain about paying £15/month just to bridge HMRC's box [fe2ec2c5a53c1672], and developers document real friction integrating with HMRC's APIs (OAuth handling, 30-day sandbox testing windows) [a5946e4bdab236f4] — confirming the integration pain is real and vendors are paying to solve it now.

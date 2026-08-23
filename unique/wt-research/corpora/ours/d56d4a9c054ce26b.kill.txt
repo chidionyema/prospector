@@ -1,0 +1,21 @@
+TDPSA consumer rights routing for Texas SaaS.
+
+TDPSA consumer rights requests enter one inbox, get identity-verified per Texas Business and Commerce Code Section 541, and exit as Texas AG-defensible response packets inside the 45-day clock.
+
+The Texas Data Privacy and Security Act, codified at Texas Business and Commerce Code Chapter 541, became enforceable July 1, 2024. Texas is unique among state privacy laws in being enforced directly by the Texas Attorney General rather than by a state data protection agency. Texas-specific sensitive data definitions at Tex. Bus. & Com. Code Section 541.002 include biometric data, precise geolocation identifying a street, government identifiers, and race or ethnicity.
+
+The tool routes inbound TDPSA requests from any channel (email, webform, API) into one inbox, classifies them against Texas-specific sensitive data definitions, runs Texas AG-defensible identity verification, and emits a Texas-specific response packet inside the 45-day clock. Texas is the second-most-populous state and headquarters for major consumer-facing tech companies, so request volume is high and recurring.
+
+Texas AG enforcement actions and Texas-specific sensitive data classifications accumulate as proprietary data. Every consumer request is a recurring event on a 45-day timer, and switching cost grows as the tool becomes the system of record for Texas privacy requests.
+
+Head of Privacy or Data Protection Officer at a Texas-headquartered SaaS startup serving Texas consumers who needs TDPSA-defensible workflows without hiring a privacy lawyer for every request.
+
+TDPSA became enforceable on July 1, 2024, and the Texas AG has already issued TDPSA enforcement actions; Texas SaaS startups that route Texas-specific sensitive data handling now avoid the first wave of AG enforcement that has hit laggards.
+
+None of the passages address Texas, the TDPSA, Texas Business and Commerce Code Chapter 541, or Texas SaaS companies' consumer privacy request handling; the provided texts concern political theory of states or UK/EU data subject access request procedures, which do not establish whether Texas SaaS startups are experiencing acute, paid-for pain around TDPSA request routing.
+
+No passage addresses Texas SaaS privacy budgets, TDPSA compliance tooling, or willingness to pay £79.99 for such a tool; the sources cover Xbox family safety settings and UK startup listings, which are irrelevant to the payer-solvency question.
+
+The passages describe OneTrust's privacy software capabilities and company background but do not address distribution channels for reaching Texas SaaS buyers, self-serve purchase routes, or any forcing mechanism specific to the TDPSA market.
+
+The passages discuss Texas Civil War history, a Texas map, a band's discography, and Xbox/Microsoft privacy policies; none address the TDPSA, Texas Business and Commerce Code Chapter 541, consumer rights request handling, or whether routing such requests for a fee is lawful.

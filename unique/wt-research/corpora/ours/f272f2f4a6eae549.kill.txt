@@ -1,0 +1,31 @@
+RenderProof — a file trail that protects architectural visualisers when building designs change.
+
+A UK tool for freelance architectural visualisers that proves which brief, model and approval produced every render they delivered.
+
+RenderProof records the brief, source model, software version, client approval and final render as one signed timeline. It gives a freelance architectural visualiser clear evidence when a client later claims the image showed an unauthorised design or uses an old render as if it were current.
+
+The immediate buyers are UK visualisers working alone or in teams of up to five. They serve architects, developers and contractors on higher-risk building projects. They often receive changing models through email, WeTransfer and messaging apps, then face disputes about which version they were asked to show.
+
+The Building Safety Act 2022 places information duties on people responsible for designing and constructing higher-risk buildings. The Building Regulations and the Building Safety Regulator also increase the need for a reliable record of design decisions. A visualiser is not the statutory dutyholder, but their images can become part of the project evidence.
+
+This starts with plugins for Adobe After Effects, Photoshop, Blender, 3ds Max and Revit. The freelancer clicks once when sending a render, and the tool creates a client-readable evidence page without requiring the client to adopt new project software.
+
+The product can grow through architectural visualisation studios, professional indemnity brokers and software-training providers. A growing library of disputed version patterns can automatically flag risky instructions, such as a client asking for a render that conflicts with the latest approved model.
+
+The lasting advantage comes from an independent, freelancer-owned chain of evidence. Project platforms are controlled by the developer, contractor or architect, while RenderProof preserves the visualiser's own record and cannot be quietly rewritten by the paying client. Each plugin integration and signed file format also makes the tool harder to remove from a studio's delivery process.
+
+Freelance architectural visualisers and small visualisation studios in the UK pay £25 to £80 per month, with larger studios paying for seats and retained project archives.
+
+The Building Safety Act 2022 and the Building Safety Regulator are making design records more important on higher-risk building projects. Visualisers are being asked for clearer evidence while remaining outside the main project information systems.
+
+The passages show that traceable, digital records of what changed, why, and who approved it are the core value the 'Golden Thread' concept has promoted for five years running, indicating a durable, regulation-anchored need for exactly this kind of evidence trail rather than a passing fad.
+
+These passages describe a freelance-hiring marketplace, a generic definition/job description for architectural visualisers, and a one-line corporate profile of Autodesk — none of them describe any product, feature, or player that creates a tamper-evident record of briefs, models, and approvals for visualisers. They don't show whether such a dispute-evidence tool is already dominated by an incumbent or left open.
+
+The passages give generic UK country facts, a Facebook group description, and visualiser day-rate figures for employed/contract roles, none of which show what a freelance visualiser's discretionary software budget is or whether £149 is affordable against it.
+
+None of the passages address how a freelance visualiser would discover or adopt RenderProof; they cover an unrelated web browser, an HR training course, an architecture competition listing, and a separate AI render-generation product, none of which describe a plugin, marketplace, studio, or broker channel for this tool.
+
+None of the passages address any law, regulation, or contractual restriction bearing on a freelancer recording brief/model/approval evidence; they only describe the UK generally or general architectural confidentiality practice, so there is no basis to judge whether the margin requires breaking any law or terms.
+
+The passages only describe the UK as a country and announce Autodesk cloud platform products; none mention freelance visualisers, version disputes, client evidence needs, or any pain they currently pay to solve.

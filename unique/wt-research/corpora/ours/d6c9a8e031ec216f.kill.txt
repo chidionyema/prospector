@@ -1,0 +1,23 @@
+BindBack – The Schoolbook Rescue by Mail.
+
+A mail-in bookbinding service that takes battered GCSE/A-Level textbooks from cash-strapped parents, strips the old text block, and re-cases them with rugged library‑grade covers and lay‑flat binding, making them last another three exam cycles.
+
+combine_signals: The used textbook market on eBay and charity shops is huge but the books fall apart fast; combine the age‑old craft of hand bookbinding with the modern convenience of a mail‑in logistics model and computer‑vision damage assessment. The parent avoids buying a new £40 book.
+
+Public sector workers (teachers, NHS admin) who are parents of secondary school pupils in the UK and buy second-hand textbooks on a budget.
+
+Cost‑of‑living crisis forces families to stretch the life of learning materials; exam pressure is unrelenting, and a £15 rescue is cheaper than £40 replacement.
+
+The passages show damaged books often cannot be salvaged cheaply and must be replaced, with the replacement cost falling on a real person [24f354a7fed3d02b], and that restoring a binding is an established conservator's craft rather than a trivial fix [6e3ab55aa3b26f21] — so paying less than replacement cost for a durable rebind is real value. Free do-it-yourself methods (gauze tape and glue) do appear [9fe249f39599ba71, 6e3ab55aa3b26f21], but nothing in the passages shows these home fixes match a professional rebind or have eliminated the margin for a repair service, and the exam-syllabus…
+
+The passages show small craft binderies (Index Bindery, Toddington Bound) offering general repair and rebinding with quote-on-request pricing for treasured books, plus bookbinding supply shops — competitors exist, but none is shown as a market leader, and none targets budget mail-in rescue of school textbooks at a fixed low price. No passage shows any provider dominating this segment, so the space appears open to a focused entrant.
+
+The only passages about parents' school spending concern Ireland (Barnardos survey, euro amounts, an Irish budget allowance) and Australia, not the United Kingdom, and none address whether UK public-sector-worker parents would pay for textbook repair specifically. No passage speaks to the budget or willingness of the named UK payer.
+
+The Ofcom-style report confirms UK postal services operate at national scale and are used by consumers, which is the exact channel a mail-in repair service needs — parents can post a book and receive it back through existing infrastructure. However, the passages say nothing about how parents would discover the service, so the route is proven only on the fulfilment side, which keeps confidence moderate.
+
+The passages state that once a copy of a work is lawfully sold, the rights owner's power to control that physical copy is 'exhausted', and community reports specifically conclude that rebound books are lawful under this first-sale principle; rebinding a parent's own already-purchased textbook therefore does not require breaking copyright law. One passage notes trade marks or repackaging can sometimes block resale of goods, but the service repairs the owner's own copy rather than reselling repackaged goods, and no passage shows the rebinding margin depends on anything unlawful.
+
+The passages show a market for buying GCSE books cheaply — eBay listings [7e5a135cf2aa6fb4], thousands of CGP guides for sale [cd6d10ee0e63ac44][affdacd4cdd65273], and a price-comparison site for cheap study books [1ccdb9d3eee42db9] — which confirms price-sensitive buyers exist, but nothing shows second-hand textbooks physically falling apart or anyone paying to repair a book rather than replace it.
+
+The passages show rebinding a customer's own lawfully bought book is legal in the UK — once a copy is sold, the publisher can no longer control what happens to that physical copy — and the only competitors found are small craft binderies quoting job by job, none of which is shown to hold most of the market. No passage gives the cost of winning a customer or what a customer would pay over time, so nothing in the evidence shows the economics are broken.

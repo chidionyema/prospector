@@ -1,0 +1,77 @@
+DRN-4742676
+The complaint
+Ms S complains that Starling Bank Limited won’t refund or recover the money she lost to a 
+scam.
+What happened
+In June 2023 Ms S used a well-known booking website to book a hotel. She says that she 
+was then contacted via a messaging service by someone claiming to be from the hotel, who 
+had all the details of her booking, and who asked her to arrange payment for the booking via 
+a link they sent to her. Ms A made the payment as requested, for £516.87, which is the 
+amount she was expecting to pay for her hotel booking. 
+But Ms S quickly realised she had been scammed, and that the person she had paid had not 
+been a legitimate representative of the hotel, so she contacted Starling to tell it what had 
+happened. Starling looked at what had happened, but did not agree it was liable for Ms S’ 
+loss. Ms S was unhappy with this response, she maintained that Starling should refund the 
+payment or take steps to recover it from the recipient, and so she referred her complaint to 
+our service. 
+One of our Investigators looked into what had happened, but they considered that Starling 
+had treated Ms S fairly here. They said that Starling could not have reasonably prevented 
+the payment from being made. They also noted that, given the nature of the recipient – 
+which was a payment processor rather than an individual account – there was no reasonable 
+prospect of a chargeback being successful. So, they did not consider that Starling could 
+have done anything to help prevent this scam, or to recover Ms S’ money.
+Ms S remained unhappy, so her case has now been passed to me to decide.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so I’ve reached the same conclusion as our Investigator, and for the same 
+reasons.
+It’s not disputed that Ms S authorised the payment that is the subject of this complaint. So as 
+per the Payment Service Regulations 2017 (which are the relevant regulations in place here) 
+that means Ms S is responsible for that payment. That remains the case even though she 
+was the unfortunate victim of a scam.
+Because of this, Ms S is not automatically entitled to a refund. But the regulatory landscape, 
+along with good industry practice, also sets out a requirement for account providers to 
+protect their customers from fraud and financial harm. And this includes monitoring accounts 
+to look out for activity that might suggest a customer was at risk of financial harm, 
+intervening in unusual or out of character transactions and trying to prevent customers falling 
+victim to scams.
+
+As I’m satisfied the disputed payment was made to a scam, I’ve thought about whether 
+Starling could have done more to prevent the scam from occurring altogether. Starling ought 
+to fairly and reasonably be alert to fraud and scams, so I need to consider whether it ought 
+to have intervened to warn Ms S when she tried to make the payment. But considering the   
+value and nature of the payment, in the context of Ms S’s account, I don’t think there was 
+anything that should have flagged to Starling that Ms S might be at risk. The payment was, 
+in the context of the payments Starling sees every day, not so high as to be remarkable. And 
+while it was moderately high in the context of Ms S’s usual account usage, it’s not 
+uncommon for people to make such one-off payments, and the payment was authorised 
+using Ms S’ registered device. So, I don’t think Starling missed an opportunity to intervene. 
+And Ms S only notified Starling of the scam after the payment had been made, so given that 
+it was a card payment, there was no way that Starling could have stopped the payment from 
+leaving her account at that stage.
+Because of this, even though I accept Ms A was the victim of a scam, I don’t think Starling 
+could have done anything to prevent her loss and I’m satisfied its decision not to refund the 
+money she lost to the scam was fair.
+I have though considered whether Starling could have done more to try to recover the 
+money Ms A lost once it was clear that she was the victim of a scam. 
+Chargeback is the way in which payment settlement disputes are resolved between card 
+issuers and merchants. In certain circumstances the process provides a way for Starling to 
+ask for a payment Ms S made to be refunded. There is no obligation on a card issuer to 
+raise a chargeback, nor does the raising of one guarantee a refund for the card issuer’s 
+customer. But I would consider it good practice for a chargeback to be attempted where the 
+right exists and there is a reasonable prospect of success. But in this case the payment 
+Ms S made was to a payment processor, and so the service paid for – the transfer of funds – 
+had been provided by that processor. As a result, I don’t think there would be any 
+reasonable prospect of success for a chargeback in this case. I therefore don’t consider it 
+unreasonable that Starling did not attempt one.
+I appreciate that this will be very disappointing for Ms S, and I can entirely understand why 
+she feels the way he does, but with all I’ve seen I don’t consider that I can fairly say Starling 
+should be held liable for Ms S’ loss or that it could have done more to recover her funds.
+My final decision
+I do not uphold this complaint.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Ms S to accept or 
+reject my decision before 16 May 2024.
+ 
+Sophie Mitchell
+Ombudsman

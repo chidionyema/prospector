@@ -1,0 +1,23 @@
+MarkFee Audit — gets exam markers the pay their board's own fee scale actually owes them.
+
+For teachers who mark GCSE and A-level scripts for AQA, Pearson Edexcel, OCR or WJEC on the side, this checks their marking fee against the board's own published rate card and recovers any shortfall, for a cut of what it finds.
+
+Teachers under pay caps increasingly take on exam marking each summer as a second income — tens of thousands do it for AQA, Pearson Edexcel, OCR and WJEC every May and June. The pay is set by a published rate per script, per band, per paper, but it is worked out by each board's own e-marking software, which changes every year as specifications get reformed and marking systems get updated.
+
+This borrows a business that has run quietly and profitably in freight for decades: bill auditors like Cass Information Systems who check carrier invoices against the tariff on file and are paid a share of whatever they recover, because carriers have no incentive to catch their own overcharges. Exam boards are the same shape. Their computer works out what an examiner is owed, the examiner has no way to check it against the actual rate card without spreadsheeting every script by hand mid-marking-season, and the board has zero commercial reason to go looking for its own underpayments.
+
+The service takes an examiner's claim export (script counts, bands, dates) from the board's own portal, runs it against a maintained database of each board's published fee scale for that subject and series, and flags every line where the computed pay doesn't match the rate card — a common source being carried-over per-item rates after a mid-series spec change, or bands miscounted after a re-moderation. Where there's a shortfall, the service drafts and files the formal query through the board's own examiner-payments process and takes a percentage only if money comes back.
+
+What compounds is the fee-scale and error database itself: five exam boards, dozens of subjects and tiers, and a growing history of exactly which computation errors each board's marking software has made in past series. That's not published anywhere as a single dataset, and building it requires collecting real claims data across many examiners over several exam series — which is exactly what a small operator accumulates and a board's own help desk has no reason to assemble.
+
+Teachers and lecturers who examine on top of their main teaching job for AQA, Pearson Edexcel, OCR or WJEC — typically several hundred to a few thousand pounds a summer, paid a percentage of any underpayment recovered, or a flat fee to check a season's claim.
+
+GCSE and A-level specifications have been through repeated reform cycles since 2015, and boards keep updating their e-marking and payment software each series — every change is a fresh chance for a computation error to slip in. Teacher pay has been capped for years while marking work has grown as boards push more papers onto on-screen marking, so more teachers are taking on marking specifically for the extra income and have less spare time to check what they're actually paid.
+
+The passages cover student-facing marking reviews, entry deadlines, an AI marking tool, and unrelated dispute-resolution services for banks and civil disputes — none address examiners searching for or paying to check their own marking fee against a board's rate card. There is no evidence here of buyer intent for a fee-audit service.
+
+The passages only define what a GCSE is and discuss general teacher overtime/wage-theft concepts; none mention exam marker fees, examiner pay levels, or examiners' willingness or ability to spend £49 to recover a shortfall.
+
+The passages confirm exam boards recruit and pay examiners and that marking payment problems exist (an AQA payments 'farce'), but none describe any self-serve signup path, portal, or forcing mechanism by which this audit service could reach examiners at low friction.
+
+None of the passages discuss the legality of auditing an exam board's fee calculations, filing pay queries on an examiner's behalf, or taking a percentage of recovered money — they cover exam definitions, a film plot, study materials, and unrelated AQA commentary.

@@ -1,0 +1,33 @@
+NHS Spine conformance for UK digital health vendors.
+
+A pre-built conformance pack that turns a UK digital health vendor's docs into the DCB0129 / DCB0160 evidence NHS Digital needs, so they ship to NHS in months not years.
+
+We give UK digital health vendors a pre-built DCB0129 and DCB0160 conformance pack for NHS Spine integration. The CTO uploads their existing technical documentation (clinical safety files, IG statements, system architecture). We return the NHS Digital-ready conformance pack in days, drafted against the checklist each NHS Digital assessor actually probes.
+
+UK digital health vendors integrating with NHS Spine (the national infrastructure for patient records) must pass DCB0129 (clinical safety) and DCB0160 (information governance) conformance assessments before deployment. The evidence pack is thick, covering clinical safety cases, hazard logs, IG statements, and data flow diagrams, and takes 6 to 12 months to assemble. Most vendors miss market windows because conformance takes too long. DCB0129 was updated in 2024 with new AI-specific requirements, lengthening the gap.
+
+The wedge is proprietary data. Every successful and unsuccessful conformance submission teaches us what NHS Digital flags. NHS Digital cannot take a commercial side and cannot indemnify, and conformance assessors' actual pass/fail feedback is not published. We start with around 150 UK digital health vendors needing Spine integration, prioritising those targeting primary care (GP Connect), secondary care (NHS App), and 111. The product broadens from the per-vendor conformance pack to the full UK digital health vendor to NHS market entry pipeline, including integration, onboarding, and ongoing IG compliance.
+
+CTO or Head of Regulatory at a UK digital health vendor (e.g., DrDoctor, Push Doctor, EMIS, TPP, AccuRx) needing NHS Spine integration.
+
+NHS Spine integration is the gateway to roughly 70% of NHS digital spend. DCB0129 was updated in 2024 with new AI-specific requirements, and the backlog of conformance submissions is 12+ months.
+
+Passage [3398d482667f534d] is an existing commercial service (Protect Clinical) already selling DCB0160 compliance help to GP practices, confirming the pain is real and customers pay for it. Passage [4ece26e4059c3cda] confirms a mandatory conformance process with multi-week onboarding timelines, and passage [f2c09eb53726ecb0] confirms DCB0129/DCB0160 are real standards imposed on digital health vendors and deploying organisations. The Canada college passages are irrelevant to UK NHS compliance.
+
+None of the passages address UK digital health vendor budgets, DCB0129/DCB0160 conformance purchasing behaviour, or whether a CTO or Head of Regulatory would pay £79.99 for a conformance pack; the provided texts cover UK demographics, a London conference listing, and unrelated Indian scholarship services.
+
+Passages confirm NHS Digital runs supplier-facing webinars/sessions that gather system suppliers seeking to provide products in healthcare settings (eb6a407a4365238a), and that 'new ways are being developed to help systems suppliers design IT systems... which can integrate with Spine' (6b5dfe0af1278df2); additionally, consultancies staffed with former NHS CIOs/CTOs serve this exact vendor pool (39036ff93c0f44e6). It is a safe deduction that these supplier sessions and NHS-experienced consultancies are reachable channels to the CTOs/Heads of Regulatory who are the candidate's buyers.
+
+The passages establish that DCB0129 consultancy is a legitimate, existing service category, with firms like the AbedGraham Group already providing specialist compliance support for health IT manufacturers. Nothing in the passages indicates that preparing conformance documentation on behalf of vendors requires breaking any law, NHS Digital terms, or falsifying clinical safety evidence — the candidate would be drafting against the same published standards that vendors must meet anyway.
+
+The passages confirm DCB0129 and DCB0160 are mandatory compliance standards for UK digital health vendors (a5a7cb5060c00e9d, 1dbe72015203c214, 10fa6a5b8c8f2548), establishing a real and persistent regulatory burden that vendors must clear. While a direct competitor (Protect Clinical) already exists (a0652ad269fcfeff), it is a commercial rival, not a free first-party NHS tool that removes all margin, so the value is not yet commoditised away.
+
+The passages identify at least four existing consultancies (DPM Digital Health, Digital Safety, The AbedGraham Group, and an unnamed regulatory consultancy) already offering DCB0129/DCB0160 services, but none of the passages establish market share, funding levels, or that any single provider dominates this segment, so the question of whether the space is underserved cannot be resolved from this evidence.
+
+Passages confirm DCB0129 and DCB0160 are live compliance requirements under the Health and Social Care Act 2012, and that NHS England has commenced an active review of these standards, indicating the regulatory need is current and evolving rather than stale.
+
+Multiple passages show paid consultancies actively selling DCB0129/DCB0160 conformance services to digital health vendors — DPM Digital Health ([449c555ce0c4ec63]) specialises in these standards and 8fold ([a8bf2c021df6d0aa]) offers paid Clinical Safety Officer and DTAC support with active discovery calls. A webinar with DCB0160's author ([94d58d74bca34053]) further indicates vendor demand strong enough to sustain competing commercial providers, confirming buyers are already paying to solve this RIGHT NOW.
+
+None of the passages address DCB0129, DCB0160, NHS Spine conformance requirements, the 2024 AI-specific update, the 6-12 month evidence-pack timeline, the ~150 vendor count, or the 70% NHS digital spend figure; three passages are about a Seattle vegetarian restaurant and the rest concern unrelated NHS data standards, so the core factual claims cannot be confirmed or refuted from these sources.
+
+No passage shows a single provider controlling 80%+ of the DCB0129/DCB0160 advisory market — at least seven separate consultancies (AbedGraham, DPM Digital Health, BMS Digital Safety, 8fold Governance, Protect Clinical, LFH Regulatory, Assuric) are named as active sellers, ruling out a monopoly. No passage shows the candidate's service is banned by law or NHS terms, with one existing firm (AbedGraham) explicitly advertising third-party DCB0129 consultancy, ruling out a regulatory blocker. No passage shows customer acquisition cost exceeding the revenue a vendor could generate, ruling out impossible unit economics.

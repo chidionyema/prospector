@@ -1,0 +1,11 @@
+The Cruise Sanitation Score.
+
+A weekly paid newsletter that assigns a proprietary health-risk score to every active cruise ship, blending CDC inspection data, historical outbreak FOI records, and passenger review sentiment, so health-anxious retirees avoid risky voyages.
+
+Cruise-going retirees are highly motivated to avoid gastrointestinal outbreaks but face scattered raw data; a solo-compiled, algorithmically scored intelligence product creates a trusted, must-have tool before booking.
+
+Retirees who frequently book cruises and are concerned about on-board health incidents.
+
+Post-pandemic health consciousness and recent norovirus outbreaks have heightened demand; CDC Vessel Sanitation Program data is publicly available but unstructured, and FOI requests can unearth outbreak patterns not compiled elsewhere.
+
+All passages confirm CDC sanitation scores, violations, and inspector notes are freely public and already searchable by ship name, and other free tools already exist that pull this same data into a comparable, searchable format for consumers.

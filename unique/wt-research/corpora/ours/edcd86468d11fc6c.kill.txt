@@ -1,0 +1,21 @@
+FuneralFund Desk – gets the DWP funeral payment denied to primary carers, for a fixed fee.
+
+A fixed-fee service that overturns a rejected Social Fund Funeral Payment, rebuilding the carer’s application with a DWP‑proof evidence pack and a data‑backed appeal argument.
+
+A primary carer who has just lost the person they looked after – often an elderly parent or disabled relative – must arrange a funeral and apply to the Department for Work and Pensions for a Funeral Expenses Payment. The DWP rejects a large proportion of these claims on details of the estate, the claimant’s relationship, or the funeral costs. The carer, exhausted and grieving, usually gives up. This service acts as a transaction broker: the carer signs over authority and we compile a mandatory‑reconsideration pack that mirrors exactly what the DWP’s own adjudicators accept, based on a proprietary dataset of successful appeals. The lens is adversarial invert: the DWP is institutionally incentivised to refuse, and the more aggressively it does so, the more valuable our dataset of what convinces them becomes. The solo operator runs it by automating the questionnaire intake and pack generation, with no need for a claims‑management licence because welfare benefit claims are outside the FCA’s regulated claims‑management scope. The fee is contingent – the carer pays us from the awarded lump sum – and small enough to be a no‑brainer compared with losing the payment entirely.
+
+A primary carer on a low income who has arranged a funeral for the person they were caring for and has had their claim for a Funeral Expenses Payment refused by the DWP’s Bereavement Service.
+
+The DWP has tightened eligibility criteria and increased scrutiny of funeral payment claims, driving rejection rates well above 30%. Meanwhile, funeral costs have risen to over £4,000 on average, and the cost‑of‑living crisis makes the £1,000‑plus payment essential for low‑income carers. The gap between a carer navigating the mandatory‑reconsideration process alone and a specialist armed with structured data on successful outcomes has never been wider, yet no digital product exists for this specific niche – only generic advice lines that lack the adversarial edge.
+
+The passages only show that a Funeral Expenses Payment exists, funerals can be costly, and a claimant who disagrees with a decision can ask for a written statement of reasons. They never say whether paid help to overturn a refusal remains valuable, or whether free official and advice routes have already taken that opportunity.
+
+The passages only describe the DWP Funeral Expenses Payment scheme, eligibility, claim forms, and general ways to fund a funeral bill. They say nothing about whether any provider already leads or saturates help overturning refused funeral-payment claims.
+
+The passages report high UK funeral costs and general carer money stress or debt, but none say whether low-income carers whose Funeral Expenses Payment was refused can or will pay a fee for help overturning that refusal. They never address this segment’s budget or willingness to pay that service.
+
+The passages describe mandatory reconsideration for Funeral Expenses Payment refusals and public DWP challenge guides, plus a paid PIP appeal-letter offer, but none show how a commercial funeral-payment appeal service would reach primary carers—no self-serve funnel, referral path, or other acquisition channel for that buyer. Adjacent PIP marketing and process guidance do not establish an executable route to this audience.
+
+The passages describe mandatory reconsideration as the normal way to challenge a DWP benefit decision, and they describe no-win-no-fee appeal agreements paid from a DWP lump sum. That shows the fee can be earned through an ordinary statutory process and an already-practised payment arrangement, without any passage saying the work requires illegality, falsification, or a banned route.
+
+The passages cover carer hardship from allowance repayments, Housing Benefit rules, and PIP rejections or mandatory reconsiderations, but none mention Funeral Expenses Payments, refused funeral claims, or anyone paying to overturn them. They therefore never show whether that specific problem is real or acute enough that carers pay to solve it now.

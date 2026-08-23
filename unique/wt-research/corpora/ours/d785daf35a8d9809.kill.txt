@@ -1,0 +1,13 @@
+FineGuard – The Builder's Skip Permit Penalty Cover.
+
+A subscription that instantly pays council fines for missing skip permits, backed by live integrations with skip hire companies to verify permit status and price risk.
+
+As cash‑strapped UK councils ramp up skip permit enforcement, small builders face an acute, unpredictable cost. A solo operator can profitably assume this fine risk by embedding with skip hire firms' booking systems to gain exclusive, real‑time permit data—enabling ultra‑low‑cost underwriting and claims that no traditional insurer can match.
+
+Sole‑trader builders and landscapers who regularly place skips on public roads.
+
+UK local authorities increasingly view skip permit fines as a high‑margin revenue stream, with automated camera enforcement and rising penalty levels.
+
+Multiple UK council pages confirm skip permits are a real, currently enforced legal requirement for placing a skip on a public road, with dedicated PCN payment infrastructure ([da5d7c2acc73e591], [a53e81a45dc4234d], [c3384e43783422ff], [bbd157635de3bda0]) — so the fine risk this candidate insures against is not fabricated or evaporating.
+
+The passages show a crowded, well-funded UK insurtech field, including Zego, a top-20-listed insurtech that raised $150mn and provides commercial motor cover to fleets and self-employed workers — evidence of funded rivals already serving small-business/self-employed insurance needs, not an open space.

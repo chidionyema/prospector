@@ -1,0 +1,23 @@
+The Freelancer's Precedent Reporter.
+
+A quarterly digest analyzing recent small claims court rulings on freelancer contract disputes, turning legal jargon into actionable negotiation precedents.
+
+Freelancers often cave in disputes because they fear the legal system; arming them with real-world rulings from similar cases gives them confidence and leverage to settle on better terms. (Analogical lens: Legal case law digests for lawyers, repackaged for laypeople.).
+
+Self-employed creatives (writers, designers, developers) who have experienced or fear client non-payment, scope creep, or IP theft.
+
+The rise of remote cross-border work has led to more disputes with unclear outcomes; courts are slowly establishing precedents, but freelancers lack access to structured summaries.
+
+Passages discuss judges' practice rules, a book on ADR, case law on claim dismissal, government contract disputes, and CDA updates; none address whether the value of a freelancer-focused legal digest is fabricated, commoditized, or evaporating.
+
+No passage describes a digest or incumbent that specifically covers small claims court rulings for freelancer contract disputes. The closest general contract dispute resource (source 846114da69b61ec7) is not tailored to freelancers and provides no evidence of dominant market share.
+
+Passage 57f2b8 demonstrates that individuals with small claims disputes pay for a debt recovery service, evidencing willingness and budget to pay for help with similar legal matters. This directly supports that freelancers with payment disputes have the motive and means to pay for a legal digest.
+
+The passages describe court opinion listings, an AI litigation assistant, and general court navigation, but none address a distribution channel for a freelancer-focused digest.
+
+The passages discuss unrelated legal cases, a music video, and litigation trackers, none of which address the lawfulness of summarizing small claims court rulings for freelancers.
+
+None of the passages mention freelancers, contract disputes, non-payment, scope creep, or any willingness to pay for a court rulings digest. They cover general idea validation, a tech support workaround, and generic court rules, which are irrelevant to the claim.
+
+No objective risk vectors found: no evidence of illegality, impossible economics, or an 80%+ incumbent monopoly in the provided passages.

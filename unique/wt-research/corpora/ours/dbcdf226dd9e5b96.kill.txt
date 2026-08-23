@@ -1,0 +1,23 @@
+CareFeeCut – The Carer's Contingent Rate Negotiator.
+
+A solo-operated service that negotiates lower care home fees for private-paying families, using a live, scraped and FOI-sourced dataset of local occupancy rates and council spot‑purchase prices to win recurring savings, charging a percentage of the reduction.
+
+Invert lens: care homes set opaque, often inflated fees and self‑funding families lack the data or emotional bandwidth to challenge them. By aggregating proprietary local market data (occupancy trends, council‑paid rates, financial pressures) and executing scripted adversarial negotiation, a solo operator can win fee reductions that the care home would never offer voluntarily, capturing a share of the savings.
+
+The primary carer of a self‑funding elderly relative entering a UK residential care home pays a percentage of the recurring monthly savings achieved (e.g., 30% of the reduction for the first 12 months), so payment is aligned and risk‑free upfront.
+
+The 2022 abandonment of the social care cost cap left self‑funders with unlimited liabilities; post‑pandemic overcapacity in many regions has care homes hungry for occupancy but reluctant to lower rack rates; FOI-accessible council spot‑purchase data and care home financial accounts now expose pricing floors, creating a window where a data‑armed solo negotiator can outmatch isolated families and incumbent ‘find‑a‑home’ advisors paid by providers.
+
+No passage discusses the durability, commoditisation, or sustainability of a data-driven care-home fee negotiation service. The sole care-related snippet (2c88b1cfedefb955) merely states cost is a factor in meeting care needs, with no bearing on this service's value durability.
+
+None of the passages address the existence or absence of dominant incumbents or funded rivals in the niche of care home fee negotiation for self-funding families.
+
+A carer's post about care home cost increases without notice demonstrates they are actively paying (budget) and distressed (motive), while a separate passage shows successful fee negotiation, reinforcing the incentive to pay for savings.
+
+None of the provided passages discuss a distribution channel or route for the care fee negotiation service; they are about a library catalogue, a booking system integration (unrelated to the service), fee level doubts, and tax refund claims, all irrelevant to the question.
+
+None of the passages address the legality or terms compliance of care fee negotiation, FOI data usage, or scraping; they discuss unrelated topics (library catalogues, union membership, website booking integration, and the Care Act cap framework).
+
+Two carers express distress over care home fees—one says lower negotiated fees would make a huge difference and prevent a forced move, another feels trapped by fees—demonstrating acute, real pain that makes paying for a solution plausible.
+
+No evidence of illegal activity, impossible unit economics, or a dominant incumbent monopolizing the distribution channel for this care home fee negotiation service.

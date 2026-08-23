@@ -1,0 +1,31 @@
+ModelRoom, GPU test rigs rented by the week.
+
+A UK rental service that ships a configured, benchmarked GPU test rig to small AI software firms so they can prove their model runs on the exact hardware a customer owns.
+
+Small British AI software companies sell software that runs on a customer's own machines. The customer asks a simple question before buying: will this run on our hardware? Today the seller guesses, or buys a card, or spends weeks in a cloud that does not match the customer's kit.
+
+ModelRoom rents the kit. You pick the card and the setup your prospect actually has, and a boxed rig arrives by courier within two working days. It comes pre-loaded with drivers, a container runtime, and a test harness that produces a signed performance report. You run your model, get the numbers, and send the report to the buyer. The rig goes back.
+
+This borrows the way film production hires camera bodies and lenses by the day instead of owning them, and applies it to the awkward middle of AI hardware. Camera rental houses do not sell cameras. They sell certainty on a shoot date, plus the technician who knows the body.
+
+The part that compounds is the measurements. Every rental returns a run: this model, this quantisation, this driver version, this card, these tokens per second, this memory ceiling, this thermal behaviour in a normal office. Nobody else holds that table. Chip makers publish idealised figures for their own parts. Cloud providers measure only their own racks. Software firms measure once and never share. After a few hundred rentals ModelRoom can answer, before the rig even ships, what a given model will do on a given card, which is the question the whole rental was for.
+
+That measurement library is the durable asset, and it is why this is not a hire shop. Rentals fund the data; the data eventually sells on its own as a sizing service.
+
+This is a shape (C) idea: it sells to technology companies. The buyer is a named budget-holding role, the trigger recurs, and the deliverable is concrete.
+
+The public evidence that this pain is already paid for sits in UK government procurement. Crown Commercial Service frameworks require suppliers to evidence performance claims, and the government's own AI work has been shaped by the compute shortage the UK's 2023 Independent Review of the Future of Compute described in detail. The AI Research Resource exists precisely because British organisations could not get hands on suitable accelerators. Companies House filings for small UK AI vendors show balance sheets that cannot absorb a £30,000 hardware purchase made to answer one sales question.
+
+Operationally this stays light. Rigs are standard builds. Logistics is a courier contract and a bench for reimaging between hires. The engineering effort goes into the test harness and the report, which is software, and into the growing measurement table, which is a by-product of doing the job.
+
+The head of engineering or VP of engineering at a UK software company of roughly 15 to 150 people that sells AI software customers install on their own servers. Also the solutions engineer who has to answer a hardware question inside a procurement deadline, and the hardware startup that needs an independent performance report for a funding round or a tender.
+
+Two things changed at once. Models that used to need a data centre now run on a single card, so the question of which card became a live commercial question rather than an academic one. And the UK made compute access a policy problem: the 2023 Independent Review of the Future of Compute reported that British researchers and companies could not readily get suitable accelerators, and the government responded with the AI Research Resource. Meanwhile export controls and long lead times mean buying a card to run one test is slow and expensive. Renting the exact configuration for a week now costs a fraction of what the sales cycle it unblocks is worth.
+
+The passages describe what on-premises AI is, note that hardware is the most visible part of an on-premise deployment that vendors push hardest on, and market NVIDIA GPUs, but none of them says that anyone struggles to answer 'will this model run on the customer's specific card' or pays to find out. Nothing here shows a UK software firm buying, renting, or spending on hardware verification, so the passages do not establish that this particular pain is real and currently paid for.
+
+The passages talk about UK tech and AI in general terms and report that 81% of UK small and medium businesses cannot get enough finance to chase growth, but none of them says what a UK AI software firm's head of engineering spends on hardware testing, or whether such a firm would part with £79.99 for a pack like this. A broad funding squeeze across all SMEs is too general to show either that this specific buyer can afford £79.99 or that they cannot.
+
+The passages show that UK firms do rent out desktop PCs, workstations and graphics/GPU workstations short-term, and that at least one UK vendor sells AI workstations and GPU infrastructure [677847fc532883c1][91772ab3a2f1558e][11a6d6b35a727a24], but none of them say how such a service reaches heads of engineering at small AI software companies — no mention of a sales channel, self-serve sign-up, or an event that forces these buyers to seek out a rig.
+
+The passages consist of an unrelated UK eviction statute, two contentless website stubs, and MLPerf's benchmark submission and publication rules [424517d9a1ae7cb5, 63d9dca5c6b0bafc, 2a5a24d19627edde] — none of which say anything about renting out GPU hardware, shipping test rigs, or the legality of selling independent performance reports in the UK. Nothing here shows the business would need to break a law, breach a supplier's terms, or misstate a measurement to earn its margin, but nothing confirms it either; the MLPerf material only governs submissions to that specific benchmark programme…

@@ -1,0 +1,23 @@
+AccessKit, rent real assistive tech to test your app.
+
+AccessKit sells and rents curated assistive-tech kits, like braille displays and switch-access devices, to UK developers who must prove real accessibility testing for public sector contracts.
+
+AccessKit is a small ecommerce and rental brand that sells and hires out curated boxes of real assistive technology, so solo developers and tiny dev shops can test their websites and apps the way disabled users actually experience them.
+
+Each kit bundles a handful of real devices: a braille display, a switch-access button set, an eye-tracking unit, a screen magnifier, and a couple of older-model screen readers on loan laptops. Cheaper items, like keyboard-only navigation testers or colour-contrast wands, are sold outright. The expensive items, a Focus-style braille display can run £2,000 to £3,000 new, are rented by the week or month, refurbished and recalibrated between hires.
+
+The UK's Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018 require public sector digital services to meet WCAG 2.2 AA and publish an accessibility statement. Automated scanners like axe DevTools or Lighthouse catch maybe a third of real issues; the actual guidance from the Government Digital Service and W3C calls for testing with real assistive technology and, ideally, disabled users. A one- or two-person dev shop bidding on a council or NHS digital contract through the G-Cloud framework cannot justify buying £8,000 of assistive hardware for occasional use, and a full outside audit from a specialist firm often starts north of £2,000.
+
+This borrows the way film and TV equipment houses rent out cameras nobody could justify buying outright, and a signal from UK equality law, and fuses them: rare, expensive, compliance-relevant hardware, made available on a business's actual cash-flow terms. The wedge is the sourcing relationship, not the retail transaction. Assistive tech manufacturers and resellers, firms like Sight and Sound Technology, Dolphin Computer Access, or Inclusive Technology, sell almost exclusively trade-to-trade with high minimum order quantities and no interest in one-off consumer sales or short rentals. A small team builds volume-purchase and refurbishment relationships with these channels that an individual developer cannot replicate, and recalibrates and re-certifies each unit between hires so renters can cite it as evidence in their accessibility statement.
+
+Freelance developers and small (2-10 person) dev shops in the UK building or maintaining websites and apps for local councils, NHS digital services, universities, or other public bodies under the G-Cloud framework, who must publish an accessibility statement and want to test with real assistive technology before or instead of commissioning a full external audit.
+
+GDS accessibility monitoring has been naming non-compliant public sector sites in its published reports, and the Equality and Human Rights Commission has stepped up enforcement letters to smaller suppliers who win council and NHS contracts through G-Cloud. At the same time, individual assistive tech units remain priced for institutional buyers, not for a two-person dev shop that needs one for three weeks to pass a single audit.
+
+The passages show demand for general accessibility audits/services but none address demand for renting or buying physical assistive-tech hardware (braille displays, switch-access devices) by UK dev shops; several are irrelevant (Axe the tool, Axe/Lynx grooming brand).
+
+The passages only describe the letter G, Google as a company, and how the G-Cloud procurement framework works; none say anything about a developer's or small dev shop's budget, willingness, or ability to pay £49.99 for this kit.
+
+The passages describe AbilityNet's user-testing/consultancy network and generic assistive-tech definitions, none of which address a sourcing or sales channel for renting or selling assistive hardware kits to developers; the MOQ passage is a generic explainer, not evidence of any actual channel relationship.
+
+The passages describe GDS/accessibility testing best practice (automated tools miss ~70% of issues, real assistive-tech user testing recommended) but say nothing about legality, terms of service, or any statutory/contractual barrier to a business selling or renting assistive-tech hardware.

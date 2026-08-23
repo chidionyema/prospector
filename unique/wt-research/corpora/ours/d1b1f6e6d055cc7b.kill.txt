@@ -1,0 +1,32 @@
+Defect work orders for UK boat operators.
+
+Turn each plain defect note into a prioritised work order, so a small UK boat operator can give the engineer a usable job first time.
+
+This is an AI-native tool. The model does part of a marine maintenance manager's paid work: it reads a note sent from the boat, extracts the vessel, equipment, symptom, possible safety consequence, and urgency, then drafts a work order with questions, likely spares, and the right person to check it.
+
+The founder-operator, skipper-owner, or operations manager forwards a note and pays £15 for each structured job. Each accepted order builds a private history of that operator's equipment names and past faults. This broad approach gives a one-boat operator the defect-triage practice used by larger marine fleets. The model never signs off the repair.
+
+The Maritime and Coastguard Agency's Workboat Code, Edition 3 (2023), covers commercial workboats up to 500 gross tonnes and sets safety-management requirements. The National Careers Service lists ship engineers' duties and UK pay, showing the work is already paid for. The business fails if the office still has to rewrite every draft or operators will not upload notes.
+
+The founder-operator, skipper-owner, or operations manager of a UK workboat, small ferry, or marine-services company.
+
+The current Workboat Code creates continuing safety-management duties for small commercial operators. Voice notes and photographs can now be turned into structured work without a second office visit.
+
+Passages show active buyer intent: xboat is an existing paid product (£9–£299/month) specifically built for UK Workboat Code operators that bundles a Defect Reporting module alongside WorkboatGPT AI [1aab591bf612c1d4, f6d6875fe41fb002], and multiple free vessel defect report templates are being downloaded/previewed by maritime teams [1f67a79531ea4f17, 97e54eaabcff71f1, 817f20e3b03abcb2]. This demonstrates that UK boat operators are already searching for and paying to solve defect logging/triage — commoditised demand is present.
+
+The passages show the Workboat Code Edition 3 came into force on 13 December 2023, was last updated on 22 January 2025, and a February 2026 MCA/Workboat Association message is actively urging operators to prepare for a December 2026 survey transition deadline, confirming the regulatory framework is live and driving current operational action right now rather than being a stale leftover.
+
+The passages show real UK-accessible channels: British Marine is a trade association with ~1500 members across the UK boating industry including hire/workboat operators [32d8671432ca914f], and its Commercial Marine Association specifically represents the small commercial marine sector including workboat fleet operators [b89865fae3e699af]; the maritime directory lists 120,457 verified companies with 64,790 email contacts browsable by country [cebc89c2dfcc189c]. A novice can contact British Marine directly or use the directory to reach UK workboat operators without scarce expertise.
+
+The passages describe the UK maritime regulatory framework (Workboat Code Edition 3, MGN guidance, classification procedures, Port of London Code of Practice) but do not prohibit an AI tool that drafts structured work orders from defect notes.
+No passage indicates that converting a skipper's note into a prioritised work order would violate maritime law, falsify a safety measurement, or breach any terms of service; the engineer still controls the final repair decision, so the tool supplements rather than substitutes for required compliance sign-off.
+
+The passages from GOV.UK and legal publications confirm the core claims: the Maritime and Coastguard Agency's Workboat Code Edition 3 was published in November 2023, came into force on 13 December 2023, addresses owners/operators/crews of small commercial workboats and pilot boats, and sets safety requirements [6eeccdb037977a2c][e2fb9f338612bc4b][7cfd88f7211e911b][bcd4f875a3706eb6][b9efd6d895767f97][9201a83c534899de].
+
+The passages confirm UK workboat operators exist as a sector (Workboat Association, 4352 Marine and Maritime companies, British Marine reports economic resilience) and face operational challenges (Brexit cabotage/visas, consolidation pressure, insurance needs), but none of the passages address small operators' budgets, software/tool spending, or willingness to pay for a £29.99 defect-triage pack. The check's payer_solvency question — whether the founder-operator/skipper-owner has the budget and motive — is not established by any cited source.
+
+The passages show the Workboat Association has close to 300 UK and European workboat owners/operators in its membership, representing around 2000 operational vessels, and it distributes a regular newsletter reaching those members—providing a direct, concentrated channel to the candidate's exact buyer segment of small commercial workboat operators. No passage addresses whether self-serve or paid acquisition is frictionless, but an established association with a captive membership list is a usable low-friction route.
+
+The passages confirm maintenance-tracking problems exist for boat operators (e.g., [10c4de4e6288726c] describes a 'gap between what maintenance logs record and what actually happens,' and [a56eeb7821b78c7a] notes logbooks are required) and that first-time-fix and no-fault-found issues are costly across field-service industries ([ab235723f3eb135e], [7570900363c3b1de], [e638682b60d3ba3a]), but none of the passages address UK boat operators specifically paying for AI defect-triage or structured work-order drafting, nor do they show that existing free alternatives (binders, spreadsheets…
+
+No passage shows a law or regulation banning an AI tool that drafts structured work orders from skipper notes; the candidate explicitly preserves engineer sign-off and compliance reporting. No passage demonstrates acquisition cost exceeding a customer's lifetime revenue at a £29.99 price point. No passage shows a single provider controlling 80%+ of UK workboat defect-triage distribution: xboat is one of several options (Starter £9, Pro £99, Fleet £299/month), free templates from SafetyCulture/Mitti are available, and paper logbooks remain in use, but none of these hold the channel.

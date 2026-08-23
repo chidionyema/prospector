@@ -1,0 +1,23 @@
+FitProof – The Personal Trainer's Results Translator.
+
+A tool that converts fitness client wearable data and progress metrics into tangible ROI reports (health cost savings, longevity gains) to justify premium rates and upsell packages.
+
+From first principles, personal trainers struggle to prove value beyond aesthetics, leading to price sensitivity and churn. By building a tool that ingests client data (sleep, steps, heart rate, workouts) and outputs a personalized 'health investment return' report based on actuarial health cost models, a solo operator gives trainers a powerful retention and upsell instrument. (Lens: first_principles).
+
+Independent personal trainers with 20+ recurring clients, paying $29/month or $199/year.
+
+Wearable adoption is high; health cost data is publicly available; AI can synthesize personalized reports; trainers seek to professionalize as coaching market tightens.
+
+Passages show that wearable data is being used to quantify outcomes and prove clinical/financial ROI, indicating the value of translating this data into tangible reports is real and durable.
+
+The passages discuss using wearable data to prove ROI for digital health companies and insurers, but they do not address whether there is a dominant incumbent offering a tool for personal trainers to generate client ROI reports.
+
+The passages discuss gyms and studios recovering revenue and saving staff time through automation, but do not address the budget or willingness of independent personal trainers to pay $29/month for a reporting tool.
+
+None of the passages describe any distribution route to independent personal trainers; they discuss gym/studio automation ROI and digital health companies.
+
+The passages discuss FDA general wellness guidance and the need to prove ROI, but none address whether a tool generating ROI reports from wearable data for personal trainers is lawful or requires falsification.
+
+Passage [0fe8d096be90ae6e] shows fitness studios are paying to automate wearable data workflows, recovering significant churn revenue, directly confirming the acute need to prove client value. Broader passages corroborate market demand for ROI proof from wearables.
+
+The evidence gathered demonstrates that while wearable data integration delivers measurable ROI for mid-size fitness studios (source 0fe8d096be90ae6e), there is zero evidence that independent personal trainers—the candidate's stated target payer—have the budget, willingness, or distribution access to adopt a $29/month tool. Every cited ROI example involves gyms and studios recovering churn revenue at scale, not solo operators with ~20 clients. The candidate's own premortem concedes the niche is too small for incumbents to pursue, confirming a sub-scale market. With distribution unverifiable (confidence 0.0) and payer solvency unverifiable (confidence 0.33), the business faces a fatal mismatch between the solution's proven value and the intended buyer segment. The pain is real but is already being addressed for larger fitness businesses; independent trainers remain an unproven and likely nonviable market.

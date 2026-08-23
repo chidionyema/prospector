@@ -1,0 +1,27 @@
+In-Car Data Liberation Agent for Independent Garages.
+
+A solo service that extracts, normalises, and relays telematics data from connected cars to independent repair shops, enabling them to offer OEM-grade diagnostics and predictive maintenance without manufacturer support.
+
+Under the EU Data Act, independent garages now legally own the right to request their customers' car data from OEMs, but they lack the technical ability to parse raw data streams and negotiate access against OEM friction. A solo agent can act as the technical and legal bridge—charging garages per vehicle per month—by building a library of API parsers and a standardised output format, all automatable via scripts. The wedge is proprietary data: each parser for a specific OEM model is a reusable asset that rivals must reverse-engineer from scratch, and the agent accumulates a unique database of access patterns and OEM resistance tactics that becomes harder to replicate over time.
+
+Independent auto repair shops with 1-5 bays, serving 100-500 vehicles annually, typically in suburban or rural areas, who lose service revenue to franchised dealerships offering advanced diagnostics.
+
+The EU Data Act application date (12 September 2025) has just passed, and the first disputes over access resistance are emerging. Garages are eager but helpless; no established player has filled this gap, and OEMs are actively throttling access, creating an acute pain no first-party tool will solve.
+
+The passage describes Wejo's historical business model and the general trend of vehicles generating data, but does not address whether independent garages are actively searching for or paying for a data liberation service today.
+
+The passage discusses telematics APIs for fridge vans and does not address the EU Data Act, independent garages, or the timing of the opportunity described in the candidate.
+
+The passage describes a telematics aggregator for insurers and fleets, not a route for a solo agent to reach independent garages. It provides no information about beginner-followable channels to garages.
+
+The passage discusses data processing in connected vehicles but does not address whether the candidate's margin requires breaking the law, contract terms, or falsifying measurements.
+
+The passage describes an open-source fleet telematics framework, not the candidate's in-car data liberation service for independent garages. It provides no information about the EU Data Act, OEM access resistance, or garage willingness to pay, so the core factual claims cannot be checked against this source.
+
+The passage discusses CalAmp Corp.'s bankruptcy restructuring and does not address the budget, motive, or willingness of independent auto repair shops to pay for a data-liberation service.
+
+The passage discusses unrelated SaaS niches (cannabis compliance, ghost kitchen menu engineering, indoor farming sensor normalization) and provides no information about distribution channels for an in-car data liberation agent targeting independent garages.
+
+The passage describes an open-source fleet telematics framework, not the candidate's service for independent garages. It provides no information about whether independent garages are currently suffering or paying to solve the data-access problem described in the hypothesis.
+
+The proposed 'solo agent' model is incompatible with the high capital intensity and extreme complexity of the connected vehicle data market, as evidenced by the high-profile failure of dedicated data platforms like Wejo and the bankruptcy of infrastructure providers like CalAmp. Furthermore, the regulatory landscape regarding connected vehicle data is highly stringent, requiring complex adherence to ePrivacy Directive and GDPR compliance, which represents a significant deliverability barrier for a solo operator compared to the enterprise-scale efforts of established incumbents.

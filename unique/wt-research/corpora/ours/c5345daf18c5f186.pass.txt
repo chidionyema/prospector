@@ -1,0 +1,23 @@
+Business rates challenge service for UK shop owners.
+
+A web app that checks whether business rates are excessive and prepares a ready-to-submit appeal for a fixed fee.
+
+You run a cafe, a corner shop or a small workshop. Business rates are one of your biggest fixed costs — often over £10,000 a year. The 2023 revaluation may have overvalued your property, but appealing it takes evidence and expertise you don’t have. RateRebase uses publicly available rental evidence and machine learning to compare your property with similar ones, spotting grounds for a reduction. It then generates a complete appeal pack with a valuation argument, ready to send to the Valuation Office Agency. This borrows the model of automated US property tax appeal services and applies it to the UK’s business rates system. The tool charges a fixed fee of £149 for the assessment and, if you choose to proceed, a success fee of 25% of the first year’s saving. Over time, it accumulates a proprietary dataset of what evidence the VOA accepts, making its predictions stronger and creating a data moat rivals cannot easily copy.
+
+Independent retail, hospitality and service business owners in the UK with a physical storefront, typically managing 1–5 locations, who feel business rates are eating their margins but lack the time or know-how to challenge them.
+
+The 2023 business rates revaluation in England and Wales took effect in April 2023, and the window to appeal against the 2023 rating list ends on 31 March 2026. Many small businesses were hit by large increases just as wider costs surged. The VOA’s own check-and-challenge system is intimidating, and most ratepayers won’t use it effectively — creating a narrow window of acute need and a large, solvent market.
+
+VOA figures show 57% of firms that challenge their business rates bill secure a reduction, so the saving from a successful challenge is real and still available. Ratepayers can still dispute rateable value through the Valuation Office challenge route, and nothing in the passages shows that route abolished or that a free filing portal alone wipes out any paid help in building the case.
+
+One passage names Appeal Business Rates as offering expert evaluation and savings for UK businesses, but it does not show that firm—or any other—holds most of this market or already owns the small-shop segment. The remaining passages discuss rate costs, relief thresholds, estimation maths, and a Gov.uk digital service, and say nothing about whether challenge help is already dominated or left open.
+
+The passages show UK retail and wholesale stress and elevated insolvencies, plus a truncated survey desire for government cuts to business costs, but none state that independent storefront owners have budget for or will pay a fixed-fee rates-appeal tool. Sector failures and optimism declines do not prove the remaining payers can and will buy, nor that the whole segment cannot.
+
+The passages discuss U.S. Chamber membership, federal contracting, IRS-style tax admin links, and generic retail/tax-tech adoption. None describe any path—self-serve, partner, or forced—to UK shop owners who would buy a business-rates appeal tool.
+
+The passages describe an official Valuation Office system where ratepayers may compare similar properties and ask how to appeal a business rates bill, and where RICS-regulated surveyors and agents lawfully help reduce rates on commercial terms. That shows a fixed-fee tool that prepares a valuation challenge from public comparative evidence fits a permitted statutory appeal path and does not depend on breaking the law or falsifying figures.
+
+The passages describe the 2023 revaluation, valuation methods, rate relief caps and extensions, and a ‘flawed’ system where many properties already pay no rates, but none show small shop owners suffering from overvaluation or paying anyone to challenge a rating. They never address whether appeals or paid challenge help are in real demand now.
+
+Official guidance lets ratepayers check similar properties and challenge rateable value, and rating surveyors already sell that help, so a fixed-fee appeal pack is not shown as illegal. The passages never put customer-acquisition cost above what a buyer could ever pay, and naming Appeal Business Rates as one provider does not show any single firm already controlling most of this market.

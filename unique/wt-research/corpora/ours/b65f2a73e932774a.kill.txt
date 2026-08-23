@@ -1,0 +1,23 @@
+The Subcontractor's Paper Trail Agency.
+
+A solo-operated service that reconstructs, files, and enforces late-payment claims for UK construction subcontractors using the statutory adjudication mechanism, taking a 25% success fee on recovered cash.
+
+Analogical transfer from debt collection agency model to construction adjudication: thousands of small subcontractors are owed £5k-£50k but lack the time, legal knowledge, and nerve to navigate the statutory adjudication process themselves. A solo operator can productize this by templatizing the notice, collecting the evidence pack, and filing via an online tribunal, then taking a cut. The key is that subcontractors pay nothing upfront (no cash outlay) and the process is fast (28-day max) vs. small claims court (6+ months). The solo operator uses AI to draft the initial notice from a standard contract, subcontractor's timesheets, and unpaid invoice PDF.
+
+UK construction subcontractors (plasterers, electricians, groundworkers) with 1-10 employees who have an unpaid invoice over £5k that is more than 30 days past due. They pay a 25% contingency fee on recovered amount, nothing if unsuccessful.
+
+The UK Construction Act 1996 (amended 2009) created a statutory right to adjudication with a strict 28-day timeline, but uptake by micro-firms is tiny because the process is opaque and intimidating. The post-COVID construction boom has led to a surge in payment disputes as cash flow tightens, and the government is actively promoting adjudication but provides no hand-holding. A solo-operated agency is ideally placed to act as the 'low-friction trigger' for these claims.
+
+The passage states that 'People have long sought solutions to the unique challenges faced by the construction industry, especially its vulnerability to cashflow constraints and project disruption caused by legal disputes.' This indicates that the problem the candidate addresses is real and long-standing, suggesting durable value.
+
+The passage describes the existence and use of 'smash and grab' adjudications by contractors but does not address whether there is a dominant incumbent or funded rival serving the specific need of small subcontractors who lack the time, legal knowledge, and nerve to navigate the process themselves on a contingency basis.
+
+The passage highlights that non-payment puts 'pressure on your business' and adjudication helps 'recover money and restore cash flow,' indicating a strong motive for subcontractors to pay for a service that helps them recover funds. The payment model is a contingency fee on recovered amounts, implying the budget comes from the money successfully recovered.
+
+The provided passage describes the adjudication process for NSW (New South Wales, Australia), while the candidate explicitly targets UK construction subcontractors. Thus, the passage does not provide information relevant to distribution in the UK.
+
+The passage details the 'Building and Construction Industry Security of Payment Act 2004' from Singapore, which is not relevant to the legality of a service operating under the UK Construction Act 1996.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+This idea faces critical, unaddressed challenges related to market access, regulatory compliance, and the validated intensity of the target customer's pain. Firstly, the 'distribution' check reports an 'unverifiable' verdict with a 0.0 confidence and no relevant citations, indicating a complete absence of evidence on how to effectively reach UK construction subcontractors. A business cannot succeed without a clear and validated customer acquisition strategy. Secondly, the 'legality' check is also 'unverifiable' with 0.0 confidence and no citations. There is no information provided to confirm the legality of a solo-operated agency offering adjudication services on a contingency basis in the UK, posing a significant regulatory risk that could prevent the business from operating. Finally, while the general problem of cashflow constraints in construction is acknowledged, the 'pain_reality' check also returned 'unverifiable' with 0.0 confidence and no citations. This means there is no specific external evidence to validate the core hypothesis that UK subcontractors 'lack the time, legal knowledge, and nerve to navigate the statutory adjudication process themselves' to a degree that necessitates and monetizes this specific 'human bridge' service, thereby making the market fit and demand highly speculative. These fundamental gaps in understanding customer acquisition, legal feasibility, and precise problem validation render the idea unviable with the current evidence.

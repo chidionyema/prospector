@@ -1,0 +1,13 @@
+FenceLine – The LiDAR Quote Engine for Solo Fence Installers.
+
+A LiDAR-based app that instantly generates a material list, cost estimate, and cut list for residential wood fence jobs, accounting for local ordinance restrictions and live lumber prices.
+
+Solo fence installers lose hours per job manually measuring with wheels and spreadsheets, often misjudging slope waste and local height limits. By combining iPhone LiDAR scans with a hand-curated database of municipal fence codes (starting with high-growth Texas markets) and real-time lumber pricing, a solo operator can offer the fastest, most accurate micro-quoting tool for a trade ignored by generic construction estimators. Each new municipality added deepens the data moat—competitors would need months of manual research to replicate.
+
+Solo fence installation contractors (1‑5 crews) specialising in residential wood fencing in high-growth Sunbelt states (Texas, Florida).
+
+Post-pandemic housing boom and labor shortage make speed-to-quote a direct win-rate lever; iPhone 14 Pro LiDAR delivers sub-centimetre accuracy; lumber price volatility demands real-time pricing integration. Recent ordinance updates (e.g., Austin’s 2023 fence height changes) create a moving regulatory target that manual processes can’t track—a curated database becomes a defensible moat.
+
+The passages show existing automated fence estimating tools and LiDAR scanning competitors, but they do not address whether the candidate's specific blend of ordinance database and real-time lumber pricing creates a durable value or is already commoditised.
+
+Multiple rivals already target fence estimating: ScanQuote Pro (8a1d30dcdbb28b46) offers mobile LiDAR scanning for fence quotes, and Exayard (ad548655c497c1f1) provides AI-powered fence takeoffs. The existence of these funded or active competitors shows the space is not underserved.

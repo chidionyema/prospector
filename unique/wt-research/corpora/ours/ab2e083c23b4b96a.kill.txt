@@ -1,0 +1,23 @@
+OpenTender — a protected disclosure file for public workers who spot procurement wrongdoing.
+
+A fixed-fee evidence service for NHS, council and civil service staff who need to raise procurement concerns without losing the paper trail.
+
+OpenTender turns a public worker’s scattered emails, meeting notes, tender documents and messages into a dated evidence file for a protected disclosure. It is for NHS procurement officers, council contract managers and civil servants who suspect unfair tendering, undisclosed conflicts or manipulated contract changes.
+
+The customer uploads documents through a secure portal and answers a structured interview. The service produces a source-linked chronology, a plain-English concern summary and separate versions for an internal whistleblowing officer, an audit committee or the National Audit Office. It does not decide whether wrongdoing occurred or provide legal representation.
+
+This borrows the way aviation investigators reconstruct an incident from independent flight records, and applies it to public procurement. The service compares each document with the relevant notice, decision and approval trail under the Procurement Act 2023 and Procurement Regulations 2024.
+
+The fixed price makes the service usable before a solicitor accepts the case. A repeatable workflow extracts dates, people, decisions and missing approvals automatically, while trained reviewers handle ambiguity and redact unrelated personal information.
+
+Its long-term advantage is a private, anonymised library of procurement warning patterns and disclosure outcomes. Law firms cannot safely pool that material across clients because of confidentiality, conflicts and professional duties. The company can use the aggregated patterns to improve document extraction and identify which missing records matter most.
+
+Distribution can start through public-interest whistleblowing charities, professional bodies, NHS staff networks and employment solicitors that do not want to perform low-value evidence preparation. Each completed file creates a referral opportunity when the worker needs specialist advice.
+
+An NHS trust procurement officer, council contract manager or civil servant pays personally for a fixed-fee file before making a formal disclosure.
+
+The Procurement Act 2023 and Procurement Regulations 2024 changed the transparency and exclusion rules for many public contracts from 24 February 2025. The Public Interest Disclosure Act 1998 makes timing and evidence important when a worker raises a protected concern. NHS trusts, councils and central government departments now have more procurement records for a worker to reconcile, but their internal reporting routes cannot act as an independent adviser to the person making the disclosure.
+
+The passages describe UK constitutional geography (irrelevant) and general facts about PIDA — that it has protected whistleblowers since 1998, that reform is pending, and that it does not mandate employer internal disclosure procedures — but none address whether a paid evidence-compilation service for procurement disclosures is durable, already commoditised, or losing value.
+
+Every NHS organisation appoints an independent Freedom to Speak Up Guardian to advise and support staff at any stage of raising a concern [dab846c1d06ef6b4][535ffe0117ddac88], and Protect already provides free, confidential whistleblowing legal advice and support to the public across the UK [158186c8a1b55157][4a5b5d69876de01e]. These free, established incumbents cover the advice/support niche the candidate targets, so the space is not shown to be open.

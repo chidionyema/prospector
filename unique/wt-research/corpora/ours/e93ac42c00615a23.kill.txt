@@ -1,0 +1,25 @@
+Locker Round, weekly bike-locker cleaning at rural rail stops.
+
+A weekly round that cleans, de-rusts and re-labels the secure cycle lockers at small UK railway stations, so the train operator can prove they are usable and let them out again.
+
+Small stations across Britain have banks of secure cycle lockers and cycle hubs, paid for years ago by grant money. Many now sit unusable: seized locks, wasp nests, fly-tipped rubbish, faded numbering, and a waiting list nobody clears. Station staff are stretched, and the cleaning contract usually covers the platform and the waiting room, not a metal box in the car park.
+
+This is a local round run on foot and by van. Once a week you open every locker on a station, empty abandoned items, oil and replace barrel locks, wire-brush and touch up rust, renumber with weatherproof labels, photograph each unit, and file a one-page condition sheet. You charge per locker per month, roughly £4 to £7, on a standing order from the station's budget holder.
+
+The idea borrows the way commercial window-cleaning rounds work. A window cleaner does not sell a clean window; they sell a route nobody else can serve at that price, because they are already on the street. The same logic applies here: once you hold the round for eight stations on one line, your travel cost per locker collapses, and a national facilities firm cannot bid against you without sending a crew for half a day's work.
+
+The durable part is the photo history. After a year you hold dated condition images for every locker on your line, which is exactly what a station operator needs when a customer claims a bike was damaged, when Network Rail queries an asset, or when a council asks whether its cycle grant money produced anything. That record lives on your drive, not theirs, and a competitor arriving in year two starts with nothing.
+
+Start free: email the station facilities manager of every station on one line, offer to survey one station at no charge, and hand back the photo sheet. The sheet sells the round.
+
+Station facilities managers and cycle-parking leads at train operators such as Northern, Great Western Railway and Southeastern, plus council cycling officers who funded the lockers and must show they are in use. Typical spend is £150 to £400 a month per station.
+
+Cycle parking at stations was heavily grant-funded through the last decade, and much of that kit is now at the age where locks and hinges fail. Train operators are under close scrutiny on station condition, and councils that spent active travel money are being asked what it delivered. Nobody's existing cleaning contract covers the lockers.
+
+The passages only describe train ticket and timetable information, cycle hire docking stations, and the existence of free and secure cycle parking at stations [0091bb485c884d0d, 541f38ffb110f9c6, 92d9ad88f616b501, be344033d853af79, a441a125b13412da]; none of them says anything about anyone searching for, requesting, or paying for locker cleaning, maintenance or condition reporting. The evidence confirms the lockers and hubs exist but never shows a buyer acting on that need today.
+
+None of the passages discuss UK railway stations, cycle lockers, station maintenance contracts, or cycling grant funding — they cover video game decks, a dictionary entry and disambiguation page for the word 'station', a Russian music download page, and a US sandwich chain menu. Nothing here says whether the need for locker cleaning at rural rail stops is current, growing, or already past.
+
+The passages show that a public directory lists all 2,589 National Rail stations in Great Britain and that suppliers of safety-critical goods or services who want to contract directly with Network Rail must register on RISQS and pass audits [538c9097c3c28fea, 08890868de86ebc5, e80fadf765c8603c, c7c436cffe2bb971]; none of them says how a small cleaning contractor reaches a train operator's station facilities manager, whether locker cleaning counts as safety-critical, or whether any advertising, marketplace or direct-approach route to that buyer is open.
+
+The passages describe a UK law on handling goods left behind (the Torts (Interference with Goods) Act 1977) and note that a reasonable attempt to notify the owner is required before disposal, but they discuss this only for tenants in rental properties, not for items cleared from station lockers, and they say nothing about whether such clearing can be done lawfully by a contractor [2846f1909277265c][09bc665f767cb8f2][a2a7a129f48f49a4].

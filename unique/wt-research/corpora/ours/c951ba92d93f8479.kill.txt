@@ -1,0 +1,21 @@
+TermsDesk, wins your startup's first enterprise contract.
+
+A negotiation desk that closes seed-stage startups' first big enterprise contracts, paid partly on the deal value it lands.
+
+A first-time founder selling into a large UK buyer almost never has in-house counsel, and the buyer's procurement and legal teams know it. The founder either signs whatever liability cap, payment term and data clause the buyer's template contains, or the deal stalls in redlines for months while the founder burns runway arguing terms they've never seen before.
+
+TermsDesk sends an experienced commercial negotiator to run the deal, not just review the contract. The team is paid a small retainer plus a percentage of the contract's first-year value once it closes, the way a sports agent or a talent agency is paid on the deal they land, not by the hour spent drafting.
+
+What makes the desk get faster and better with every deal is a growing private record of what specific enterprise buyers actually accepted last time: which liability cap Barclays' legal team signed off, which data processing clause Tesco's procurement waved through, which payment terms NHS trusts will and won't move on. A generic commercial lawyer starts every mandate from zero and cannot share what they learned on a different client's confidential deal; TermsDesk's whole business is built to keep and reuse that pattern across clients.
+
+The founder or head of sales at a seed to Series A UK B2B startup (roughly 5 to 40 staff) who is inside live contract negotiations with a large corporate, public sector or NHS buyer and has no general counsel.
+
+UK enterprise sales cycles have lengthened through 2024 and 2025 as buyers add tighter data processing and liability terms in response to UK GDPR enforcement and post-Schrems II data transfer rules, so first-time founders are hitting harder redlines with less legal support than ever.
+
+Startups and enterprises already pay real money for contract negotiation support: specialized legal teams serve large enterprises on contract drafting, and CLM tools like Ironclad ($25k-$320k/year) and Juro are bought specifically by startups/SMBs to manage clause-level negotiation states, showing established willingness to pay to solve contract-negotiation pain.
+
+None of the passages address whether seed to Series A startups have budget to pay for a contract-negotiation retainer plus deal percentage, or engage with the stated £49.99 price point at all; they are generic items about VC funding rounds, global funding totals, and runway calculators.
+
+The passages describe general startup accelerator programs (YC, Techstars, Antler, Morgan Stanley's Grow London) and one legal-tech accelerator seeking contract-management startups as challenge entrants, but none describe any channel, partnership, or referral path by which TermsDesk could reach founders actively negotiating enterprise contracts.
+
+The passages establish that solicitors are regulated and that a defined list of 'reserved legal activities' can only be performed by SRA-authorised persons, but none of them state what specific activities fall on that list or say whether commercial contract negotiation (as opposed to legal advice or drafting court documents) is one of them.

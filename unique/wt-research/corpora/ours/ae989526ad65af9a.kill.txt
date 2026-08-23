@@ -1,0 +1,23 @@
+ClaimStock – The Small Retailer's Shrinkage Recovery Engine.
+
+A tool that plugs into a small shop’s POS and security system to automatically detect inventory shrinkage events (theft, damage, supplier shortfalls), compile insurer‑ready evidence packs, and file claims to recover cash often left on the table.
+
+Independent retailers lose significant money to shrinkage but rarely claim because the paperwork is too heavy and they distrust insurers. A first‑principles rebuild ignores the status quo of 'just accept the loss' and instead builds a system that acts as an adversarial claim‑bot, assembling timestamped POS anomalies, camera stills, and supplier delivery notes into a claim packet that mirrors the insurer's own assessment criteria. The owner’s pain is cash leakage; the wedge is data the insurer structurally lacks. (Lens: first_principles).
+
+Owner of a small independent retail store (boutique, convenience store, off‑licence) with 1–15 employees and an active business insurance policy for stock and theft.
+
+Insurers are pushing digital claims portals that accept structured data; POS systems like Square and Lightspeed now expose shrinkage anomaly feeds via API; rising retail crime makes recovery a daily management topic.
+
+Passages discuss generic POS definitions, free POS options, electric plugs, and a vague retail security product, none of which address whether the candidate's value (automated shrinkage claims recovery) is real, durable, commoditised, or evaporating. No evidence supports or refutes the claim.
+
+No passage discusses any company offering automated inventory shrinkage claim recovery tools, so there is no evidence about the presence or absence of a dominant incumbent in this specific space.
+
+Passages discuss small business POS systems but contain no information on the budget, willingness to pay, or pain points of small retailers regarding insurance claims recovery for shrinkage; they are conceptually irrelevant to the payer's solvency for this specific tool.
+
+Passages discuss retail IT and POS data but none describe a route for the candidate to reach small retailers, nor any low-friction distribution channel.
+
+No passage addresses the lawfulness of automatically compiling and filing insurance claims using POS and security data; PCI DSS mentions data security standards but does not render such a tool illegal or in breach of terms.
+
+None of the provided passages discuss retail shrinkage, insurance claims, or any pain point related to the candidate's tool; they cover unrelated topics like electric plugs, POS checklists, sub-postmaster issues, and POS security.
+
+No explicit evidence found for any specific risk vector; all checks returned unverifiable due to lack of relevant passages.

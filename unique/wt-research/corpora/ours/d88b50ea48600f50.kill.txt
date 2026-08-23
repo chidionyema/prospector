@@ -1,0 +1,27 @@
+GrantGap Mapper — the retiree's personalised route through local and charity energy grants.
+
+A data brief that finds every council fund, charity grant and supplier scheme you qualify for, and tells you exactly how to apply.
+
+When the Government stopped the universal Winter Fuel Payment in July 2024, it left millions of pensioners facing higher bills without automatic help. The financial support that still exists is scattered across hundreds of local council schemes, energy supplier hardship funds and small charities — each with its own rules, windows and application forms. No single national service maps them all.
+
+GrantGap Mapper is a data‑intelligence product that takes a retiree’s postcode, household income, health conditions and property details, cross‑checks them against a continuously updated database of every tangible energy‑cost relief pot in that area, and delivers a personalised action plan ranked by likelihood of success. The database is built by scraping council websites, charity guidelines and supplier pages, then structuring the rules into a matching engine.
+
+This is an inversion of the usual welfare advice model. The state’s centralised safety net is shrinking precisely as energy poverty reporting rises, but central government will not build a tool that points citizens toward locally controlled, discretionary funds — doing so would highlight its own withdrawal. The value of GrantGap Mapper grows as more universal payments are chopped, because the remaining help becomes more fragmented and harder to find.
+
+A solo operator can build and run the whole thing: a web scraper, a rule‑based engine and a PDF‑generated report sold for a fixed fee. The durable protection is proprietary data — a mapping of hyperlocal grant criteria that no single council, charity comparison site or benefits calculator compiles, because none has a commercial reason to do it nationally.
+
+A recently retired person, anxious about heating costs after losing the Winter Fuel Payment, spending £29–£49 from their own savings for a tailored list of grants they would otherwise miss.
+
+The July 2024 means‑testing of Winter Fuel Payments pushed 10 million pensioners into paying for energy they previously got help with, while local and charity schemes proliferated quietly. The gap between need and awareness has never been wider, and every new council cost‑of‑living fund adds to the data moat.
+
+The passages show UK pensioners still have multiple energy grants and schemes in 2026, and that free online guides already pitch complete lists and eligibility checks. They never say whether a paid personalised map of local council, charity and supplier pots still has lasting paid value once those free round-ups exist.
+
+Passages name grant-listing and guidance sites that gather UK home energy and local-authority schemes ([b6f8d330b0be85f9], [19acc4c3e87cfbc1], [d7d8865cc4acfc93]), so rivals exist, but none state market share, funding scale, or that one provider already controls this niche. They never show whether the space is still open or already owned by a clear leader.
+
+The passages report pension-pot sizes and a tourism-sector pensions squeeze, and they point people who cannot pay energy bills toward free Citizens Advice and supplier or government grant pages. None of them say whether recently retired people can or will spend £29–£49 from savings on a paid, personalised grant-mapping brief.
+
+The passages show Age UK giving free winter heating advice, some UK internet users aged 65+ using social media, and calls for better digital inclusion among older adults. None of that establishes a workable way for a paid, personalised grant-mapping report to reach and be bought by recently retired people.
+
+The passages describe UK rules on public-sector information re-use, unauthorised computer access, and that website terms often ban scraping with civil remedies for breach. None of them say whether compiling and selling a personalised map of council, charity, and supplier energy grants from those sources can be done without breaking the law or site terms, or that it cannot.
+
+Passages state winter fuel payments were removed from millions of pensioners and that average winter 2024/25 energy bills are forecast at £1,762, with a further energy hit described as a double whammy for poor people. That shows real, acute financial pressure on the retiree energy-cost problem the product targets.

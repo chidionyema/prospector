@@ -1,0 +1,13 @@
+RouteFault — The Driving Instructor's Test-Centre Readiness Engine.
+
+A shovel for independent driving instructors: a proprietary, per-test-centre fault-and-route dataset that scores each pupil's true readiness before the DVSA does, so instructors stop burning goodwill on premature bookings.
+
+First-principles: strip away 'how do I teach' and the instructor's daily raw pain is a scarce, non-refundable test slot booked 4-5 months out against a pupil who may not be ready — a wrong call costs the pupil £62 and the instructor a furious parent and a wasted lesson block. The 'Why Now' change is the post-pandemic test backlog making slots a rationed commodity where mis-booking is uniquely expensive. I do not teach and I do not book: I sell the pick-and-shovel diagnostic input. Each instructor logs pupil lesson faults into my tool; in return they get a readiness probability calibrated to THEIR local test centre's specific examiner fault-weighting and known route hazards — data DVSA aggregates away. The corpus compounds: every logged lesson from every subscribing instructor sharpens the per-centre model, so a late copier starts from zero local data. Lens: first_principles.
+
+Independent (non-franchise) UK approved driving instructors running 15-40 active pupils, typically 35-55, who pay a franchise squeeze and eat the cost of failed early bookings.
+
+Multi-month DVSA test backlog has turned test slots into a rationed, non-refundable commodity, so the cost of booking an unready pupil is at an all-time high — and the DVSA's own free stats stop at aggregate centre pass rates.
+
+Passages [136d19df740f034d], [cf9a496141e1cf5b] confirm the underlying premise is real and durable — pass rates, wait times and first-time success vary materially across 327 test centres, the exact per-centre signal the candidate exploits. The only free/commodity alternatives shown are aggregate centre-level DVSA stats [ba809fd2e4b13101] and generic mock-test checklists [6b0c4283dd18ab67], neither of which delivers individual-pupil readiness prediction, so the specific value is not commoditised away.
+
+Total Drive is described as a UK-focused, DVSA-aligned all-in-one platform for ADIs covering lesson management and in-car progress tracking [d1a418ec26d6522c][75ffdd8597faa547], and other funded rivals offer online booking, smart diaries and DVSA pupil progress for solo UK instructors [949743951c5b627a][d67a6351837fb9b7] — the ADI-software segment is already served by established rivals. However, none of these passages address the specific per-test-centre fault/route readiness-prediction wedge, so incumbency over that exact value is not proven.

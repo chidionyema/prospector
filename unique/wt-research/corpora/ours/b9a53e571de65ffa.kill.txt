@@ -1,0 +1,23 @@
+The Concrete Dust Diaries.
+
+A paid-substack/video series that follows a solo operator documenting the entire lifespan of a single infrastructure project (e.g., a road bridge replacement) via weekly site visits, drone footage, and interviews with workers, sold to construction enthusiasts and local government procurement officers as the 'hard hat' version of a nature documentary.
+
+Analogically transfer the long-form, behind-the-scenes documentary format (popularized by automotive restoration shows or true crime podcasts) to a mundane but high-stakes construction project. The audience persona—freelancer creatives—are the producer/host themselves, not the buyer. The buyer is the curious professional (engineers, planners) and the local citizen who wants to feel the process of public works. Monetise via subscriptions and one-off deep-dive reports on project management lessons.
+
+Mid-level civil engineers (B2B via their training budgets) and infrastructure-obsessed hobbyists (B2C, paying $8/month).
+
+Infrastructure spending is surging under the IIJA and similar global programs, but the public narrative is political and abstract. There is no transparent, granular, non-academic chronicle of a real project from start to finish. This fills that void with narrative tension and practical insight.
+
+The provided passage confirms that a "paid" real-time, week-by-week build and renovation project exists on Substack, validating that this format for documenting construction processes is a viable and monetizable activity.
+
+The provided passage discusses energy infrastructure and the business strategies of Nscale and Arkon Energy, but it does not address whether there are existing incumbents providing narrative documentary-style coverage of infrastructure construction projects.
+
+The passage indicates that a paid renovation project exists on Substack, but it does not address the budget, motive, or identity of the specific payers (civil engineers and infrastructure hobbyists) proposed in the candidate.
+
+The passage confirms that a real-time, week-by-week construction project published via a paid Substack is an operational and executable model.
+
+The provided passage discusses a specific data center project in Utah but does not address the legality or potential contractual issues of the proposed infrastructure documentary series business model.
+
+The passage confirms consumers pay for a real-time, week-by-week renovation newsletter on Substack, but it focuses on a barn project rather than public infrastructure [9e55c807e1354ecf]. Consequently, it does not confirm the existence of acute pain or a willingness to pay for the candidate's specific focus on documenting high-stakes, mundane infrastructure projects.
+
+The core hypothesis relies on a high-value B2B/B2C demand for narrative-driven documentation of public infrastructure. However, evidence shows that the 'real-time, week-by-week build' model is already being commoditized on Substack for private projects [9e55c807e1354ecf]. Scaling this to large-scale, high-stakes public infrastructure faces significant, likely insurmountable, friction: unlike a private barn renovation [9e55c807e1354ecf], public infrastructure projects are subject to strict legal, security, and procurement regulations [e38fc6daeccebb2b]. A solo operator lacks the structural access required for exclusive, deep-dive interviews and site access, while established media and government reporting already cover project management and planning conflicts [e38fc6daeccebb2b]. The proposed model is not a proprietary data play; it is an amateur attempt to replicate professional industry analysis without the necessary institutional access or budget.

@@ -1,0 +1,43 @@
+Model change rehearsals for AI product agencies.
+
+A fixed-fee service that re-runs an agency's client AI features against every new model version before the old one is switched off, and hands over a signed report saying what broke.
+
+Small agencies now build client features on top of Anthropic, OpenAI and Google models. Those models get retired on published dates. Anthropic publishes model deprecations and retirement dates in its docs, and OpenAI publishes a deprecations page. When a model retires, the agency's client work silently changes behaviour, and the agency finds out from an angry client.
+
+The agency owner has no test bench for this. Their code tests check their own code. Nobody checks whether the model still answers the way the client signed off on.
+
+Built from the raw pain rather than from how anyone solves it today: the real asset is not software, it is the frozen record of how each client feature behaved on the day the client accepted it. So the service starts by capturing that. For each client feature, it records a few hundred real inputs and the outputs the client approved. That set is the acceptance record.
+
+Then, every time a supplier announces a new version or a retirement date, the service replays the acceptance record against the new model and writes a short report: which outputs moved, by how much, which ones cross the client's own acceptance line, and what the agency should change before the switch. It is delivered as a document the agency can forward to the client, or attach to a change-request invoice.
+
+This is shape (C), selling to technology companies. The buyer is the agency owner or delivery lead. The recurring trigger is a supplier's published retirement or version date. The deliverable is the replay report plus a recommended fix list. The public source proving this is already paid work is the vendors' own deprecation and model-retirement pages, which give hard dates that force the work into someone's week.
+
+The wedge is the acceptance record itself. Every quarter the service holds more of it, across more clients, and after two cycles it can tell an agency which kinds of prompts historically break on a version bump before running anything. Rivals starting later have no history. It also creates a nasty rip-out cost: the acceptance evidence for every client feature lives here.
+
+Monetisation is per client feature per quarter, roughly £400 to £900 a feature, with an urgent single-report price when a retirement date lands inside four weeks. An agency with fifteen live AI features pays real money and bills most of it on to clients as maintenance.
+
+A solo operator runs it because capture and replay are scripted, and only the written judgement at the end needs a person.
+
+Owners and delivery leads of UK digital agencies with roughly five to forty staff who have shipped AI features for clients and now carry support retainers on them. They pay today by absorbing the emergency rebuild hours themselves.
+
+Model suppliers have started publishing firm retirement dates for older versions, so agencies face a scheduled break rather than a vague risk. At the same time UK agencies have shipped a first wave of client AI features that are now old enough to be sitting on models with an end date.
+
+The passages describe model retirements and silent provider updates breaking the behaviour of live LLM apps — one writer calls deprecations "dangerous" for anyone building on OpenAI, Anthropic or Gemini, another notes prompts that were tuned to stable output regress on version changes, and research on evolving LLM APIs is cited as documenting exactly that regression [733129a3dd84db87, 7b3489a447120d49, 31929f4d7b0cd35a].
+
+The passages describe UK geography, general business conditions, and a high rate of ad-agency insolvencies (350 closures in two years per PwC), but none address whether UK digital agencies with shipped AI features and support retainers have budget or motive to pay £79.99 for a model-deprecation rehearsal service. The ad-agency insolvency data relates to a different segment and does not establish solvency or willingness for the specific buyer described.
+
+The passages confirm a public, scheduled forcing mechanism: Anthropic publishes firm retirement dates for specific Claude models (e.g. Sonnet 4 and Opus 4 retiring 15 June 2026), and best-practice guidance explicitly tells developers to 'Test your applications with newer models well before the retirement date.' Because deprecation calendars are public and dated, anyone can monitor them, identify which agencies are exposed, and reach those buyers at a hard deadline — a low-friction route tied to an unavoidable trigger.
+
+None of the passages address whether replaying client inputs against new model versions and producing comparison reports would violate API terms of service or law. The passages describe OpenAI and Anthropic's missions, mention that usage policies exist and prohibit certain activities, and note one user being blocked under a usage policy, but none enumerate what is specifically prohibited for this type of regression-replay service or state that capturing and comparing model outputs is permitted or forbidden.
+
+The passages show that free, open-source tools (Promptfoo, MIT licensed) and the vendor's own free framework (OpenAI Evals) already exist for comparing models, catching regressions, running test cases against different models, and covering deprecation dates and migration alternatives. The candidate's core technical work — replaying inputs against new model versions and identifying regressions — is already available at zero cost, undermining the claim that the value is durable rather than already commoditised.
+
+The passages list several funded LLM evaluation platforms (LangSmith, Braintrust, Humanloop, Galileo) and open-source alternatives (Langfuse, DeepEval, Phoenix), and one explicitly describes a LangSmith notebook for comparing two model versions on datasets. But none of the passages address the specific niche the candidate targets — capturing a client-signed acceptance record and producing an adversarial, client-facing replay report for UK agencies facing model retirements — so the passages do not show whether any rival has captured this exact segment.
+
+The passages show that model deprecation and version turnover is actively happening right now: OpenAI confirms a legacy model deprecation retiring GPT-5.2 and GPT-5.3-Codex, and multiple models have already been retired (GPT-3.5 Turbo, DALL·E, Whisper, four ChatGPT models), while Anthropic published a full new lineup (Opus 5, Opus 4.6, Sonnet 4.6, Haiku 4.5) in July 2026. This confirms that vendors are publishing firm retirement dates and releasing new versions on a live schedule, making the need for model change rehearsal services current rather than stale.
+
+None of the passages address buyer intent for model deprecation rehearsal services, UK agency demand, search behaviour, paid alternatives, or communities asking about AI feature regression testing. The provided sources only cover general LLM definitions, a law degree, a French ISP, and free browser games — none of which speak to whether anyone is actively searching for or paying to solve this problem.
+
+The passages confirm that Anthropic and OpenAI publish confirmed retirement dates for deprecated API models, and Google publishes deprecation tables with shutdown dates [6096503e10061212, 73914defa4b8e048]. [0d657731a66d512d] further confirms that retired models become unavailable. These public sources directly verify the candidate's core factual claim that model suppliers publish deprecation and retirement dates that force scheduled work.
+
+Nothing in the passages says this service is banned or that any law stops an outside firm from re-testing a client's AI features; the vendor policy passages only confirm that usage rules exist, without saying what they forbid [1f5f74ea901cb30f, 8666a7fac121cc5d]. No passage gives a cost of winning one agency customer or a lifetime revenue figure to compare it against, and no passage shows a single provider holding most of this market — the evaluation-tool passages name several competing options side by side (LangSmith, Braintrust, Humanloop, Galileo, Langfuse, DeepEval, Phoenix) plus free tools anyone can self-host, which is rivalry, not one-firm control [84decb82dfa79690, 75410abfedfd6b79, 6245b6ba1d7cf437, ee42af23388f3c97].

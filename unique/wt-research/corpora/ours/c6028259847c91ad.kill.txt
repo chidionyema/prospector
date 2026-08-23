@@ -1,0 +1,23 @@
+LeaseCharge Probe – The Tenant's Service Charge Forensics Tool.
+
+A SaaS tool that ingests a commercial service charge account and the lease, identifies overcharges, non‑recoverable items, and benchmarking anomalies, then auto‑generates a formal dispute letter with cited lease clauses.
+
+First‑principles: Small retail and office tenants routinely overpay service charges by 20–30% because they lack the expertise to audit the complex statements. A solo operator can build a rule‑engine trained on RICS codes, case law, and common landlord overcharge patterns, creating a self‑service tool that does what a £300+ surveyor review does, for a flat £49 per audit.
+
+Independent shop, café, or office tenants (under 5,000 sq ft) who receive service charge demands and want to challenge them without hiring a surveyor.
+
+Service charges are rising sharply with inflation and insurance costs, while high‑street and small office vacancies give tenants more motivation to cut occupancy costs; the upcoming RICS 2024 service charge code refresh also clarifies tenant rights, making challenges more winnable.
+
+The passages show existing tenant CAM audit tools (LeaseGuard) that perform similar line-by-line comparison, but they do not directly address whether the candidate's specific value (RICS-trained rules, case law, auto-dispute letter) is durable or already commoditized. No passage assesses the long-term defensibility or evaporation of the candidate's approach.
+
+Multiple incumbents already address the problem, such as CAMAudit (detects CAM overcharges), Leasecake (flags CAM errors), and CapVeri (lease abstraction for CAM reconciliation). The space is not open.
+
+The passages discuss CAM overcharges and audit software features but do not mention whether small retail or office tenants have the budget or willingness to pay for a £49 audit tool.
+
+LeaseGuard demonstrates a self-serve, instant audit tool with free preview, indicating a low-friction route exists for such a product.
+
+Passages show existing CAM audit tools (CapVeri, CAMAudit, LeaseGuard) that flag overcharges; none indicate any illegality or terms violations, so the margin is lawful.
+
+Passages affirm that CAM reconciliation is complex, error-prone, and frequently disputed, with charges representing a large share of occupancy costs, causing organizations to suffer and need verification.
+
+Multiple SaaS incumbents—CAMAudit, Leasecake, CapVeri, and LeaseGuard—already ingest commercial leases and service charge accounts to detect overcharges, apply lease clauses, and flag billing discrepancies. These tools provide self-serve audits, free previews, and automated reports, directly overlapping with the proposed tool's core functionality. The hypothesis that no dominant competitor exists is refuted by clear evidence of an already crowded market, leaving little room for a new £49 vertical tool to differentiate or capture meaningful share.

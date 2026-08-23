@@ -1,0 +1,110 @@
+DRN-4499255
+The complaint
+Mr F complains that HSBC UK Bank Plc (‘HSBC’) won’t refund a transaction he says he 
+didn’t make or authorise.
+What happened
+Mr F says that at around 11pm on 30 August he noticed a transaction on his account for 
+£8,500 that he didn’t recognise. He was logging into his account to see if a credit had been 
+received from a friend to help with a mortgage. As it was late, and Mr F didn’t know how to 
+contact his bank at that time, he waited until the morning to report the transaction to HSBC.
+When Mr F reported the transaction, he confirmed the following details:
+- He didn’t know the recipient of the funds and the reference was ‘WAGES’ but he 
+doesn’t pay wages to anyone. 
+- He hadn’t received any unusual emails, texts or calls and hadn’t clicked on any links 
+and shared his details.
+- He hadn’t shared any of his personal or banking details with anyone. 
+- He hadn’t written down any security information. 
+- Nobody else had access to his phone and it was password protected.
+HSBC said its investigation hadn’t shown that a third party was involved in the transaction or 
+could have known Mr F’s security information to access mobile banking so it wouldn’t be 
+treating the transaction as unauthorised.
+Our investigation so far
+The investigator who considered this complaint didn’t recommend that it be upheld. He felt 
+that the evidence showed it was more likely than not that Mr F authorised the disputed 
+transaction so was responsible for it. The investigator referred to the fact that the transaction 
+was made from a device Mr F had previously logged in on, Mr F’s passcode was used to 
+authorise the transaction and that no-one else had access to his phone or passcode. And Mr 
+F logged into his account multiple times before reporting the matter to HSBC. Finally, the 
+investigator said the transaction wasn’t indicative of fraud. 
+Mr F didn’t accept the investigator’s findings and asked for a final decision, so the case has 
+been passed to me to consider. In summary, he said:
+- HSBC should have contacted the bank that received the funds. 
+- Mr F questioned why HSBC didn’t call him or text him about the transaction given its 
+value.
+- He noticed the disputed transaction at night, and he checked the account lots of 
+times because he was worried about his money. Also, a friend was due to credit his 
+account with £3,000 to help with a mortgage. 
+- Mr F provided a screenshot from his mobile phone about installing a security update 
+he says was from the time of the transaction. 
+- At the time a friend was fixing an old phone he had used for five years that had 
+
+details of accounts and emails. The phone had no SIM though as this was with Mr F. 
+He got the phone back but uses a different one. 
+- He doesn’t know the person his funds went to. The reference was wages, and he 
+doesn’t pay anyone wages. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+In deciding what’s fair and reasonable in all the circumstances of a complaint, I’m required to 
+take in account relevant law and regulations; regulators’ rules, guidance and standards; 
+codes of practice; and, where appropriate, what I consider to be good industry practice at the 
+time. 
+Where there is a dispute about what happened, and the evidence is incomplete or 
+contradictory, I’ve reached my decision on the balance of probabilities – in other words, on 
+what I consider is most likely to have happened in light of the available evidence. 
+The relevant law here is the Payment Services Regulations 2017. Broadly speaking Mr F is 
+responsible for any payments that he has authorised (either by making them himself or 
+allowing someone else to) and he isn’t responsible for unauthorised payments except in 
+more limited circumstances.
+Whilst I’m sorry to disappoint Mr F, I agree with the investigator’s findings and so am not 
+asking HSBC to do anything more. In reaching this conclusion I’ve taken into account the 
+following:
+- I have seen evidence to demonstrate that the payment was made from a device that 
+was used to log into Mr F’s mobile banking app from May 2022 onwards (which is 
+when he said he registered his new mobile). The same device was also used to 
+make payments after the disputed transaction. This was the only device used at the 
+time of the disputed payment. 
+- There is no explanation for how a third party could have gained access to Mr F’s 
+mobile banking. To make a payment a third party would need to know Mr F’s 
+passcode to use his phone and would also need his security details to access online 
+banking. The payment was authorised using a passcode in the same way previous 
+payments had been, so a fraudster would have needed to know this code. Mr F has 
+been clear that his mobile phone was with him and that he hadn’t shared any 
+information that would allow a third party to make a payment. 
+I note that Mr F originally said he had an old phone that didn’t work and then as our 
+investigation progressed, he said that he had given this old phone to a friend to fix so 
+this could be how his details were obtained. But this still doesn’t explain how a 
+fraudster could gain access to Mr F’s online banking. And no new mobile devices 
+were added when the payment was made and there’s no evidence of a SIM swap. 
+- If a third party gained access to Mr F’s account without his knowledge it would be 
+normal to drain the account of funds as quickly as possible, but this isn’t what 
+happened here. After the transaction was made funds remained in Mr F’s account. 
+- I’ve seen evidence to show that Mr F logged into his account multiple times after the 
+transaction was made and before he reported the matter to HSBC the following day. 
+Given the amount of the disputed transaction I consider it likely Mr F would have 
+noticed it. Mr F has said that he was checking to see if funds had been credited to his 
+account, but I think that he ought reasonably to have noticed £8,500 leaving his 
+account. 
+I consider HSBC acted reasonably in deciding the £8,500 transaction was authorised 
+meaning Mr F is responsible for it. 
+Mr F has said that HSBC should have asked the recipient bank to return his funds. I’d expect 
+HSBC to try to recover lost funds if a customer is the victim of an authorised push payment 
+scam. An authorised push payment is one that is made by a customer who is tricked into 
+making to. But Mr F is adamant this isn’t what happened here and that he didn’t complete 
+the transaction. In these circumstances, HSBC can’t ask the recipient bank to return Mr F’s 
+funds.
+I agree with Mr F that the transaction was unusual given Mr F’s normal use of the account 
+and that for this reason HSBC ought reasonably to have contacted him before processing it. 
+Mr F says this would have prevented the payment from being made. Given that I have 
+decided it’s more likely than not that Mr F made or authorised the transaction himself, it’s 
+hard to see how any intervention by HSBC would have made a difference. The position 
+would be different if Mr F was the victim of an APP scam, but this isn’t what he’s saying. 
+Overall, I’m not persuaded that Mr F didn’t make or authorise the transaction he has 
+disputed so I can’t reasonably ask HSBC to refund it.
+My final decision
+For the reasons stated, I do not uphold this complaint. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr F to accept or 
+reject my decision before 4 January 2024.
+ 
+Jay Hadfield
+Ombudsman

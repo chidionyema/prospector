@@ -1,0 +1,23 @@
+Bench Boss, court booking software for one-court clubs.
+
+Booking, coaching and pay-as-you-go software built for the volunteer who runs a single-court UK community sports club from their kitchen table.
+
+A teaching assistant or NHS nurse ends up as honorary secretary of the local tennis, bowls or squash club. They run 300 members off a WhatsApp group, a paper key list and a shoebox of £4 subs. Clubmark and Sport England funding forms then ask for membership records, safeguarding records and court usage they cannot produce.
+
+Bench Boss is software sold per club, £39 a month, that runs the whole single-site club: court slots with smart-lock codes, junior coaching registers, DBS expiry dates, and card payments that land in the club account. It borrows the way restaurant table-booking software made its money — not from the booking, but from owning the seating map and the no-show data. Here the equivalent asset is the court occupancy record.
+
+That record compounds. After two seasons a club has proof of usage per hour, per age group, per court. Sport England's Movement Fund and most local authority asset-transfer negotiations both ask for exactly that evidence. A club with three years of Bench Boss data writes a stronger funding bid than one with a paper diary, and it cannot get that history anywhere else after the fact. That is the reason a volunteer secretary never switches away, and the reason the next secretary inherits the software rather than replacing it.
+
+Growth comes through county associations. There are county tennis, bowls and badminton bodies that each hold lists of 80 to 400 affiliated clubs and send them newsletters already. One partnership deal seeds hundreds of clubs, and the volunteer handover each September brings a fresh person into the product without any selling.
+
+The honorary secretary or treasurer of a single-site UK community sports club, usually a teacher, nurse or council officer doing it unpaid in the evenings, spending club funds of £39 a month with committee approval.
+
+Sport England's Movement Fund and local authority community asset transfers both now demand documented usage and safeguarding records before releasing money. At the same time, volunteer numbers have fallen and clubs are being asked to take over pavilions and courts councils can no longer afford to run.
+
+None of the passages mention UK community sports clubs, their volunteer secretaries, court bookings, membership or safeguarding records, or funding-bid paperwork; the closest items are an Olympic volunteer sign-up portal, a volunteer-travel advert, a Russian tennis broadcast listing, Commonwealth Games medal totals, a comic convention, and a survey of estate agents' views on property paperwork [80836aa10b777411][7af452b9fa0efcad][007e49a59d23009f][817324b394f91c7d][52eab1c1ff004bd2][f22c7cbd7fa54512].
+
+The passages show that grassroots sports clubs are short of money — 82 per cent name fundraising as their top priority and 85 per cent say government investment in the sector is insufficient [6e8e6c3e19c470da] — and that the volunteers running them are under strain [4d386f9ea65dd8ab], but none of them says what a club actually spends, holds in funds, or pays for software or services.
+
+The passages are tennis news and scores sites, a US national tennis body page, and several home and garden furniture retailers [1b5d6b7afb6b1155][d44f596fa21d66e8][bfae3cd9838b7ace][bd2e96b25fc373ba][48fbebc59f43e210][06c6355e8450ad4a]; none of them mention UK community sports clubs, county associations, club newsletters, or any other way of reaching a volunteer club secretary. Because nothing here says how such a club is contacted or who already has its attention, there is no basis to judge whether a workable route to the buyer exists.
+
+The passages consist of generic ICO web-page navigation text about individual data rights and nuisance calls, material about DBS Bank (a Singaporean bank), and material about deep brain stimulation surgery — none of which concerns UK sports clubs, criminal record checks for volunteers, membership or booking software, or payment handling. Nothing here says whether the business could earn its margin lawfully, so there is no basis to judge the question either way.

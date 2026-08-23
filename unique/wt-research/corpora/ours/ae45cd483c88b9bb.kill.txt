@@ -1,0 +1,33 @@
+CrateStart — breakfast-club food crates sized for one school, not one warehouse.
+
+A subscription crate of shelf-stable, allergen-labelled breakfast food, priced and packed for the single staff member now running England's new free breakfast club on almost no budget.
+
+Since April 2025, hundreds of English primary schools have had to open a free breakfast club under the government's early adopter scheme, with universal rollout planned for 2026. The grant covers a small amount for kit, but almost nothing ongoing for food, so the job of feeding thirty extra children each morning usually lands on one office manager, pastoral lead or teaching assistant with a spreadsheet and a petty-cash card.
+
+That person cannot place a pallet order with a big wholesaler: the volumes are too small, the delivery bay too shallow, and nobody has checked every product against the School Food Standards (England) Regulations 2014 or logged every allergen. Cash-and-carry chains are built for kitchens ordering hundreds of covers, not for one person ordering thirty portions of something safe and cheap.
+
+CrateStart borrows the model of the everyday-low-margin surplus-food resellers (Company Shop Group's short-dated stock, manufacturer overrun lines) and fuses it with the subscription-box format: a own-branded, pre-sorted crate of shelf-stable breakfast items, each one pre-checked against the 2014 Standards and clearly allergen-labelled, sized to the actual headcount the school reports each half-term. The crate ships direct to the school, addressed to the named breakfast-club lead, invoiced against the DfE grant code so it survives an audit.
+
+The durable edge is the buying relationship: consistent access to manufacturer short-dated and overrun stock at volumes small enough for one school, something the big wholesalers structurally won't sort and re-pack for. A small team can hold that relationship and do the compliance checking once per product line, then resell it thousands of times over.
+
+The staff member given responsibility for their school's breakfast club — usually a school business manager, office manager or pastoral TA — paying from the DfE breakfast-club grant, pupil premium underspend, or the school's own petty-cash budget line.
+
+The Children's Wellbeing and Schools Bill introduced a duty on English primary schools to offer a free breakfast club; the DfE's early adopter scheme started paying schools to run one from April 2025, with national rollout targeted for 2026, but the per-school funding for food itself is thin and no catering contract comes with it.
+
+The passages show DfE guidance existing for breakfast-club setup and generic school catering wholesalers, but none show anyone searching for or paying for a small-batch, allergen-checked breakfast crate sized for a single school's grant budget.
+
+The DfE grant provides £1000 start-up plus £25/day fixed costs plus £1/pupil/day specifically to cover food, staffing and delivery, showing schools have a dedicated funding line and motive to spend on food procurement [dd95666bc5465103][a24e8f4213df5325]. But one head teacher considered quitting the scheme because funding doesn't cover costs and a school reported resorting to budget supermarkets, showing the payer's budget is thin and price-sensitive rather than freely solvent [7bd4692b83b35b17][8a879c900bd33059].
+
+The passages describe generic supplier onboarding advice and DfE-approved procurement frameworks for goods like ICT, but none address a low-volume, single-user ordering channel for pre-sorted breakfast-food crates against a grant code.
+
+The passages show breakfast clubs are covered by the School Food Standards and that UK law (Natasha's Law) requires allergen labelling on pre-packed food, but none says a small reseller pre-sorting short-dated or overrun stock into school-sized crates is barred from meeting those rules. Nothing here indicates the margin depends on breaking the law rather than simply complying with the labelling and standards requirements it names.
+
+A charity reports government breakfast-club funding is 'many millions away' from what's needed, and one passage confirms schools are subsidising the shortfall from tax funds, showing the food-budget gap named in the hypothesis is real and biting now, not hypothetical.
+
+Passages show the scheme is actively expanding, not a stale leftover: it began with early adopters from April 2025, reached 1,250 schools and 300,000+ pupils by Feb 2026, and is now moving to national rollout with a further £80m for ~2,000 more schools as of Jul 2026.
+
+The passages show Booker is a market-leading UK wholesale provider serving foodservice and retail businesses nationwide, i.e. exactly the kind of large-volume incumbent channel the candidate itself says can't serve a single school's thirty-portion order — none of the passages show any open, beginner-followable channel (ad platform, marketplace, existing audience) through which a novice could reach individual breakfast-club leads directly.
+
+The passages confirm the DfE grant exists and funds early-adopter breakfast clubs from April 2025, and separately confirm Company Shop Group redistributes surplus food at scale — but none of them say anything about small-volume repackaging, allergen-labelling, or a supply channel sized for a single school's thirty portions, which is the actual factual claim under check.
+
+The passages describe compliance requirements (School Food Standards, allergen labelling) that a seller must meet, not a ban on third parties supplying schools, and show no single wholesaler with a stated 80%+ share of school food-buying; Booker is named as a large wholesale provider but no passage gives it a market-share figure. No passage prices out the crate's costs against achievable revenue per school, so no evidence shows customer-acquisition cost exceeding what a school could ever pay.

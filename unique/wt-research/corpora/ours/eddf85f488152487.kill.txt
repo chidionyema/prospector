@@ -1,0 +1,27 @@
+Kill Switch — the tool that shows a freelancer which client is about to stop paying, using the client's own filings.
+
+A desktop tool for freelance designers, writers and developers that watches your clients' Companies House filings and warns you weeks before they stop paying.
+
+Freelancers lose money the same way every time. A client goes quiet, an invoice sits, and by the time you chase it the company is in trouble. The warning signs were public the whole time — you just weren't looking at them.
+
+This tool sits on your computer. You point it at your invoices, it matches each client to a company number at Companies House, and it watches. When something changes, you get told in plain words: 'this client filed a gazette notice for striking off', or 'this client has a new charge registered against its assets', or 'this client is now four months late filing accounts'.
+
+All of it comes from the free Companies House Streaming API and the Gazette. That part is not the product. The product is the link between a specific filing event and what actually happened to freelancers who invoiced that company afterwards.
+
+Here is the compounding part. Every user's tool reports back, anonymously, one fact: this client type, at this filing state, paid on day X or never paid at all. After a few thousand freelancers, you can say something no one else can say — that a small company which registers a fixed charge and is two months late on accounts pays its freelance suppliers 63 days late on average, not 31. That outcome data does not exist anywhere. Companies House holds the filings but never sees who got paid. Credit agencies see corporate trade credit, not a £2,400 invoice from a sole trader.
+
+It spreads by itself. The free version watches three clients and shows you one warning. Sharing a warning card — 'my client just did this, here's what it means' — is how freelancers talk to each other already. Paid tiers watch your whole client list, back-date the risk on a new brief before you accept it, and pull the right words for a payment-on-account clause.
+
+One more thing it does that nothing else does. It tells you when to stop work. Not 'chase the invoice' — stop. Under the Late Payment of Commercial Debts (Interest) Act 1998 you can add statutory interest and a fixed sum, and the tool drafts that. But the real money saved is the three weeks of unpaid work you didn't do for a company that was already going under.
+
+Freelance designers, writers, developers and consultants in the UK billing £30,000-£120,000 a year across five to twenty-five clients, who have already been burned by at least one client that folded owing them money. They pay £12 a month for the full client list, or £29 a month for the tier that vets a new client before you sign. Small creative studios with three to eight people buy seats. Freelancer bodies and accountants selling to sole traders are the obvious partner channel.
+
+Companies House began enforcing identity verification and tighter filing rules through the Economic Crime and Corporate Transparency Act 2023, and its free streaming feed now pushes filing events in real time rather than in nightly batches. Company insolvencies in England and Wales have stayed near their highest levels since the 1990s, according to Insolvency Service statistics, and creditors' voluntary liquidations dominate — the exact route that leaves unsecured freelance invoices worthless. At the same time, more freelancers work through several small clients rather than one large one, which spreads the risk they cannot see.
+
+One passage reports that freelancers and micro-business owners wrote off an average of £1,804 in unpaid invoices per year (FreeAgent, invoices dated April 2014–March 2015), and other passages show guidance written specifically for freelancers chasing unpaid invoices and for suppliers dealing with a customer's insolvency [4e6f7bcff6f30d13, a5f483b6b7d40ac6, 2b5a349a6f3d7ed0].
+
+The passages only describe the UK's political structure and countries, tourism marketing, and dictionary entries for the fish and word "sole" — none of them mention freelancers, their earnings, what they spend on business tools, or their willingness to pay for anything. There is no evidence here about whether a UK freelancer would or could pay £79 for this pack.
+
+The passages show that UK freelancers exist as an organised group with a trade body (IPSE) that offers membership and partner deals, and that freelancers already buy invoicing software [20e1179370f7f4b5][803c4afed5af0d50][053fba330881575e][94fbc48b6bbb563f][71a553b0d5b1d532], but none of them says how a new tool reaches these freelancers — no passage describes signing up freelancers directly, a partner arrangement that puts a product in front of them, or any other way to get to them.
+
+Companies House says it makes registered company information available to the public, which supports using that data, but the Financial Conduct Authority passages say anyone providing credit references or credit information services must first be authorised by the FCA, and none of the passages say whether a paid tool that scores clients' likelihood of paying falls inside or outside that authorisation requirement. Because the passages leave that decisive question unanswered, they neither establish that the business can charge for this lawfully nor show that it cannot.

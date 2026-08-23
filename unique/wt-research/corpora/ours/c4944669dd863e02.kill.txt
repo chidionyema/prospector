@@ -1,0 +1,21 @@
+School expedition checks for UK providers.
+
+AI turns each school trip's records into a source-linked action list for UK expedition providers, using current Foreign, Commonwealth & Development Office advice and the operator's rules.
+
+This is AI-native: the model does the operations coordinator's daily reconciliation rather than merely summarising a web page. It imports the operator's approved itinerary, participant-status export and supplier promises, compares them with current FCDO advice, and returns a dated action list with the source and proposed owner for each exception.
+
+Charge £1,500 for setup and £299 a month per active programme. Two people can run onboarding and review because FCDO updates and user-confirmed resolutions are the main recurring inputs. A private record of accepted itinerary rules, supplier changes and safe resolutions makes each provider harder to replace. The School Travel Forum and LOtC Quality Badge provide narrow customer lists for founder-led sales.
+
+The Department for Education's health and safety guidance for educational visits and British Standard BS 8848:2014 set requirements for planning, preparation and risk management. The business sinks if FCDO or a major booking platform adds private itinerary reconciliation with the same retained case history.
+
+The operations director of a UK school-expedition provider with two to twenty staff and several live school departures.
+
+Public proof: the Department for Education says educational visits require proper planning, preparation and risk assessment, while FCDO country advice changes independently. Providers already employ coordinators to combine that public advice with private itineraries, consent records and supplier commitments.
+
+Passages show active commercial demand for school-expedition safety and risk services: Pharos sells safety consultancy and training to 'school trip providers' [12fca15d9923fa76], Anyrisks is a paid AI tool already generating DfE-aligned risk assessments for schools and trip leaders across the UK [db2df8a9e842c7cd], and search/template interest in school trip risk assessments is visible on Pinterest and Smartsheet [f48f96c11d04aa83, 5e94c7df055960ab].
+
+No passage addresses UK school expedition providers, their budgets, or their willingness to pay for itinerary reconciliation software; the cited sources cover manufacturing training, school admin software, driver turnover, math competitions, school term dates, and ECB climate policy, none of which establish payer solvency for this segment.
+
+None of the passages mention UK school-expedition providers, the School Travel Forum, the LOtC Quality Badge, or any other channel through which such operators could be reached for sales.
+
+The passages describe FCDO travel advice as publicly published government information on GOV.UK (source_ids ff9dd0110855469c, 3eb8fa21dfaa0903, bd8c2932bac0af9d, 977f4b886aac4309), and no passage contains any terms-of-service restriction, copyright prohibition, or legal barrier to reading that public advice and combining it with an operator's own private itinerary and consent records.

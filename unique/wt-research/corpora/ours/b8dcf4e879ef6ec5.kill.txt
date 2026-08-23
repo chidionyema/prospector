@@ -1,0 +1,27 @@
+NCSC cloud packs for UK G-Cloud bidders.
+
+A fixed-fee evidence pack that maps a UK dev agency's architecture to all 14 NCSC Cloud Security Principles, ready to drop into a G-Cloud or NHS Digital bid.
+
+The NCSC publishes 14 Cloud Security Principles covering data-in-transit protection, asset protection and resilience, supply chain, operational management and the rest. G-Cloud buyers (Crown Commercial Service, NHS Digital, DWP, Ministry of Justice) require suppliers to evidence alignment with these principles, and the assessor typically rebuilds the evidence manually for each bid.
+
+A productized service that, for a fixed fee, takes the agency's reference architecture (Azure landing zone, AWS landing zone, GCP organisation, hybrid) and returns within seven working days a 14-principle evidence pack with the named control references, the assessor-grade language, and a lot-by-lot mapping for G-Cloud, NHS Digital, DWP and MoJ, would replace a £6,000 to £15,000 cyber consultancy pre-bid engagement.
+
+The compounding asset is a corpus of NCSC-aligned architecture patterns tied to specific UK G-Cloud lots and named buyer requirements. Each engagement adds to the corpus and lets the next bid's evidence pack be assembled faster.
+
+The first-party alternative is the NCSC's own cloud security guidance, which publishes the 14 principles but not pre-filled evidence tied to a specific architecture. The Big 4 (PWC, EY, KPMG, Deloitte) charge £20,000 to £50,000 for a CSP-aligned engagement and only serve enterprise clients; agencies bidding on £500,000 to £5,000,000 G-Cloud lots need a fixed-fee, fast-turnaround pack sized to their bid, with lot-by-lot mapping for CCS, NHS Digital, DWP and MoJ.
+
+Cloud architect or technical director at a UK dev or cloud consultancy bidding on G-Cloud, NHS Digital, DWP or Ministry of Justice cloud framework lots.
+
+G-Cloud 14 closed in December 2024 and G-Cloud 15 is expected in late 2025; NHS England published its NHS Cloud Strategy in 2024 raising the bar on principle-evidenced bids; agencies are queueing submissions and need evidence packs ready before the framework opens.
+
+Passages confirm the NCSC's 14 Cloud Security Principles were published in December 2013 as enduring UK government guidance, with major vendors (Salesforce, Microsoft) aligning their offerings to them — demonstrating the principles are real, established, and have persisted as a procurement framework for over a decade. No passage suggests this value is evaporating or fully commoditised away for the smaller-bidder segment the candidate targets.
+
+The passages mention /arckit as a BETA/ALPHA tool covering TCoP, NCSC Secure by Design, and G-Cloud procurement references [0a55e381891f716e], and show individual vendors documenting their own responses to the 14 Cloud Security Principles [0dfc6e2ccec7768d], but neither passage establishes whether a dominant incumbent or well-funded rival already serves this specific fixed-fee 14-principle evidence pack niche for G-Cloud bidders.
+
+The passages confirm G-Cloud frameworks exist and that suppliers like DeeperThanBlue bid on them, but none address whether a UK cloud consultancy bidding on G-Cloud has budget and motive to pay £99.99 for an NCSC-aligned evidence pack, nor whether such a pack is something they actually purchase.
+
+The passages confirm UK cloud consultancies exist and list on G-Cloud (2309935da884e355, fd48d9d0e3c368f1), but none address whether there is a low-friction route to reach cloud architects or technical directors at those firms specifically for an evidence-pack product; the generic outreach passages (243fc03f36bf6167, af7be43def76d8fc, b8c3c888d59b95b2) describe cold outreach as difficult rather than establishing a concrete channel.
+
+The passages show companies aligning their architectures with the 14 NCSC Cloud Security Principles [cff1cf7e4326b10c, 4594c47550555086, c2c45f8741977e6d] and reference CCS/G-Cloud procurement channels, but none address whether selling pre-built evidence packs for G-Cloud or NHS Digital bids is lawful, prohibited by procurement rules, or breaches NCSC or CCS terms. The passages do not establish any legal barrier or clearance for this specific service model.
+
+No passage addresses NCSC Cloud Security Principles, G-Cloud procurement, NHS Digital/DWP/MoJ bidding requirements, or evidence-pack production for UK public-sector cloud bids; the passages cover prompt injection risk, cloud gaming infrastructure, a healthcare AI platform, Google acquiring Wiz, and encyclopedia entries on the letter G, which do not establish whether agencies are paying to solve this problem.

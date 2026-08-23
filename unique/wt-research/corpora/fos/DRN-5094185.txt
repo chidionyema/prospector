@@ -1,0 +1,222 @@
+DRN-5094185 
+ 
+ 
+The complaint 
+ 
+Mrs W is unhappy that a car supplied to her under a conditional sale agreement with 
+Santander Consumer (UK) Plc (Santander) was of an unsatisfactory quality. 
+What happened 
+In August 2023 Mrs W was supplied with a used car through a conditional sale agreement 
+with Santander. She paid an advance payment of £2,500 and the agreement was for 
+£37,915 over four years; with 48 monthly payments of £421.50 and a final payment of 
+£15,183. At the time of supply, the car was around five years old and had done 65,633 
+miles. 
+ 
+Mrs W said on the way home from collecting the car she noticed the air conditioning wasn’t 
+working. She took it to a local main dealer who repaired the air conditioning (the supplying 
+dealer later paid for this). It also inspected the car and reported, amongst other things, an oil 
+leak from the rear of the engine, and a whistling noise from the turbo. It said both required 
+further investigation. 
+ 
+Mrs W arranged a further investigation. This was carried out in March 2024 and reported the 
+car was low on oil despite Mrs W topping it up just eight days previously. It found excessive 
+oil was passing through the turbo, and suspected internal damage due to oil loss from turbo. 
+ 
+Mrs W complained to Santander after the supplying dealer refused to pay for repairs or 
+further investigation. Santander arranged for an independent inspection. 
+ 
+The independent inspection concluded that the car had suffered from a turbocharger failure, 
+and this had drained the oil level, causing increased soot accumulation in the turbocharger. 
+The report said further stripping of the engine was needed to confirm this, but it said it was 
+supported by the frequent oil top ups, and the symptoms displayed. 
+ 
+It said that the DPF blockage and the EML being on were likely to be a consequence of the 
+turbocharger failure. 
+ 
+It said that whilst confirmation was required, it suspected that the fault was deemed to have 
+been developing at the time of sale. This was because the fault was first reported by an 
+independent manufacturer specialist approximately 1,000 miles after it was supplied to Mrs 
+W, and there was no evidence that they were caused by wear and tear. 
+ 
+Mrs W told Santander she wanted to reject the car given the length of time that had passed 
+since she reported the issues to the supplying dealer. 
+ 
+Santander said that Mrs W had complained about noise from the engine, the engine 
+management light, a minor oil leak, and a slight whistle from the turbo. They arranged for an 
+independent inspection, and based on the report’s conclusions, agreed to arrange and pay 
+for repairs. They said they would consider allowing Mrs W to reject the car if these repairs 
+failed. 
+ 
+
+ 
+ 
+Mrs W was unhappy with this response. She was unhappy with the length of time that had 
+passed before the supplying dealer agreed to do repairs, and she had lost faith in them. She 
+said she wanted to reject the car. So she referred her complaint to our service for 
+investigation.  
+ 
+Our investigator said he was satisfied that there was a fault with the car, and that it was likely 
+to have been developing at the point of sale. He said that due to the time that had passed it 
+was fair and reasonable that Mrs W be able to reject the car. 
+ 
+Santander didn’t agree with the investigator and provided reasons why from the supplying 
+dealer. It said it disagreed with the findings of the independent inspection, and that the report 
+suggested further investigation was required. It also said the delay in repairs ignored a 
+genuine dispute over liability for the repairs. 
+ 
+Because Santander didn’t agree, this matter has been passed to me to make a final 
+decision. 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+Having done so, I’ve reached the same overall conclusions as the investigator, and for 
+broadly the same reasons. If I haven’t commented on any specific point, it’s because I don’t 
+believe it’s affected what I think is the right outcome. Where evidence has been incomplete 
+or contradictory, I’ve reached my view on the balance of probabilities – what I think is most 
+likely to have happened given the available evidence and wider circumstances. 
+ 
+In considering this complaint I’ve had regard to the relevant law and regulations; any 
+regulator’s rules, guidance and standards, codes of practice, and (if appropriate) what I 
+consider was good industry practice at the time. Mrs W was supplied with a car under a 
+conditional sale agreement. This is a regulated consumer credit agreement which means we 
+are able to investigate complaints about it. 
+ 
+The Consumer Rights Act 2015 (CRA) covers agreements such as the one Mrs W entered 
+into. Under this agreement, there is an implied term that the goods supplied will be of 
+satisfactory quality. The CRA says that goods will be considered of satisfactory quality where 
+they meet the standard that a reasonable person would consider satisfactory – taking into 
+account the description of the goods, the price paid, and other relevant circumstances. I 
+think in this case those relevant circumstances include, but are not limited to, the age and 
+mileage of the car and the cash price. The CRA says the quality of the goods includes their 
+general state and condition, as well as other things like their fitness for purpose, appearance 
+and finish, freedom from minor defects, safety, and durability. 
+ 
+So, if I thought the car was faulty when Mrs W took possession of it, or that the car wasn’t 
+sufficiently durable, and this made the car not of a satisfactory quality, it’d be fair and 
+reasonable to ask Santander to put this right. 
+ 
+The issue I need to decide in this case is whether the car was faulty, and if so, when did this 
+fault develop. 
+ 
+I’ve seen a copy of the independent engineer’s report dated 21 May 2024. He found that the 
+turbocharger had failed. He also explained that this was the likely cause of the problems Mrs 
+W had described. So I’m satisfied that the car was faulty. 
+ 
+ 
+ 
+I’ve seen the earlier reports. The report from March 2024 suspected internal damage had 
+been caused by the oil loss from the turbocharger. And the report from an independent 
+manufacturer specialist in August 2023 identified a whistle from the turbo. 
+ 
+The independent report in May 2024 also confirmed the presence of a “whistle from the 
+turbocharger”.  
+ 
+The engineer expressed his view that the because the independent manufacturer specialist 
+had inspected the car “approximately 1,000 miles following sale indicating that the 
+turbocharger was displaying a whistle” he considered that “this fault would have been in the 
+stages of development at the point of vehicle sale”. 
+ 
+I acknowledge that the independent engineer said that the car would need stripping to 
+confirm the actual cause of the turbocharger failure. But he also said that in his view there 
+were: 
+ 
+“no faults we consider to have developed due to wear and deterioration solely within 
+the ownership of the current client”, and  
+ 
+“we consider that the turbocharger failure has caused for (sic) the consequential 
+damage to the DPF and EML illumination”. 
+ 
+So, based on the engineer’s conclusions, supported by the earlier report from the 
+independent specialist, and Mrs W’s description of the issues she’s had since she got the 
+car, I’m persuaded that it’s more likely than not that the faults were developing at the time of 
+sale. 
+Putting things right 
+Section 23 (2) of the CRA states: 
+ 
+If the consumer requires the trader to repair or replace the goods, the trader must – 
+(a) do so within a reasonable time and without significant inconvenience to the 
+consumer 
+ 
+Thinking about Mrs W’s rights under the CRA, I don’t think a repair would be appropriate. I 
+say this as this situation has been going on for several months.  
+ 
+The supplying dealer told Santander that the delay was due to a “genuine dispute regarding 
+liability for the repairs”. 
+ 
+I’ve carefully considered that comment. Mrs W reported the issues to the supplying dealer 
+within six months. But it told her to obtain evidence that the fault was present at the point of 
+sale. In March 2024 Mrs W provided evidence that the car was using too much oil and this 
+was related to a faulty turbocharger. But the supplying dealer referred her to the warranty 
+provider and told her to get a full diagnostic report – despite the onus being on it, or 
+Santander, to show that the car was of satisfactory quality at the time of supply. 
+ 
+I don’t deny the right to dispute liability, but I think the supplying dealer could have 
+investigated the problems Mrs W reported in February 2024. And Mrs W had to wait four 
+months before the dealer finally agreed to inspect the car. 
+ 
+So, in this case, I don’t think the repairs were done “within a reasonable time”. The delay 
+also caused “significant inconvenience” to Mrs W. I say that because she had to buy another 
+car, and borrow other vehicles to carry out her normal family life. 
+ 
+ 
+ 
+I’m persuaded that, in these circumstances, Mrs W should be able to reject the car. 
+ 
+Mrs W told us she stopped using the car in March 2024 and the mileage remains the same 
+as on the independent inspection – 72,109 miles. I’ve seen nothing to suggest Mrs W was 
+advised to stop driving the car. But given the failures noted in the report, and the engineer’s 
+comment that running the engine could cause further consequential damage, I don’t think 
+that was an unreasonable decision. So, I think it would be fair for Mrs W to receive a full 
+refund of the payments she’s made for the period after March 2024. 
+ 
+Costs 
+ 
+Mrs W incurred costs for diagnostics and repairs to the car. Given that the car wasn’t of a 
+satisfactory quality when supplied, I think it’s only fair that Santander reimburse these costs. 
+Mrs W told us the supplying dealer paid for the work done in August 2023. Santander should 
+reimburse Mrs W the cost of other reports and diagnostics – if she can provide proof of 
+payment, such as a receipt or bank statement. 
+ 
+Mrs W asked if she could be reimbursed the cost of keeping the car insured whilst she 
+wasn’t using it. I won’t be asking Santander to pay that cost as Mrs W was legally required to 
+keep the car insured whilst it was in her possession 
+ 
+Distress & Inconvenience 
+ 
+Mrs W has described the inconvenience caused by being supplied by a car that wasn’t of a 
+satisfactory quality. This disrupted her daily family life, including transporting her children to 
+normal daily activities. So, I think Santander should pay her £300 in compensation to reflect 
+the distress and inconvenience caused. I understand Santander has already paid £200 to 
+Mrs W so they need to pay her an additional £100. 
+ 
+Therefore, Santander should: 
+ 
+• end the agreement with nothing more to pay; 
+• collect the car at no cost to Mrs W; 
+• remove any adverse entries relating to this agreement from Mrs W’s credit file; 
+• refund the £2,500 deposit Mrs W paid (if any part of this deposit is made up of funds 
+paid through a dealer contribution, Santander is entitled to retain that proportion of 
+the deposit); 
+• refund the payments Mrs W has made from 1 March 2024 until the agreement is 
+ended; 
+• on production of receipts, refund Mrs W costs for diagnostics and other reports not 
+already refunded as explained above; 
+• apply 8% simple yearly interest on all refunds set out above, calculated from the date 
+Mrs W made the payment to the date of the refund†; and 
+• pay customer an additional £100 (a total of £300) to compensate her for the distress 
+and inconvenience caused by being supplied with a car that wasn’t of a satisfactory 
+quality. 
+ 
+ 
+ 
+†If Santander considers that tax should be deducted from the interest element of my award, 
+they should provide Mrs W with a certificate showing how much they have taken off so she 
+can reclaim that amount, if she is eligible to do so. 
+My final decision 
+For the reasons explained, I uphold Mrs W’s complaint about Santander Consumer (UK) Plc 
+and they are to follow my directions above. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mrs W to accept or 
+reject my decision before 4 June 2025. 
+   
+Gordon Ramsay 
+Ombudsman

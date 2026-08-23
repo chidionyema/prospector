@@ -1,0 +1,15 @@
+Online Safety Act evidence packs for UK platform CTOs.
+
+We draft Ofcom's risk assessment and mitigation log for UK platform CTOs, so the founder clears the Online Safety Act at launch, not in a panic.
+
+The Online Safety Act 2023 covers UK platforms with user-generated content. Ofcom's first Statement of Designated Codes (Illegal Harms Code, applying from 17 March 2025 for Category 1 services; Children's Safety Codes applying widely through 2025) requires in-scope platforms to run a Risk Assessment, document content moderation measures, and publish an annual Transparency Report; records must be kept for at least six years. A UK startup platform with user-generated content (an AI companion, a marketplace, a social app) falls in-scope at modest user thresholds. Hiring an in-house Trust & Safety team is disproportionate; consultancies such as ActiveFence and TrustLab cost above £50,000 a year.
+
+We read the platform's feature spec, moderation policy and a sample of moderated content, and draft an Ofcom-format Risk Assessment tied to specific code clauses, plus a record-keeping log linked to the platform's content events.
+
+What we keep over time and an incumbent Trust & Safety consultancy does not have a single queryable index of is a corpus of Ofcom's published enforcement decisions and investigations, mapped to specific code clauses.
+
+This compounds with the regulator's enforcement intensity: every Ofcom notice we map adds to the corpus a chief technical officer uses at the next product change, which an incumbent consultancy does not centralise.
+
+UK platform chief technical officer or trust & safety lead at a user-generated-content platform, typically Series Seed to Series A, with 50,000 to 5 million monthly UK users and an in-house team too small to staff dedicated Trust & Safety.
+
+Ofcom's Illegal Harms Code applied to Category 1 services from 17 March 2025 and continues rolling out to later categories through 2025 and 2026; smaller in-scope platforms face Ofcom deadlines before formal enforcement opens.

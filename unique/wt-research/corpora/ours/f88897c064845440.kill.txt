@@ -1,0 +1,23 @@
+SuspensionShield – daily income when your contractor license is suspended, paid automatically.
+
+Daily income for California contractors when the state licensing board suspends your license, paid automatically with no forms to fill.
+
+A parametric income product for self‑employed contractors in California. It pays a fixed amount per day whenever the Contractors State License Board (CSLB) issues a mandatory suspension order against their license. The payment is automatic; we monitor the CSLB’s public enforcement database, and the moment a covered suspension is posted, the payout begins. No claim, no adjuster, no delay.
+
+A license suspension—even for a simple administrative reason like letting workers’ compensation insurance lapse—can stop work for weeks. A sole trader without income has no safety net. Traditional business interruption insurance does not cover this risk, and disability policies require medical proof. Contractors pay a recurring subscription based on their daily income needs. We risk‑pool using a parametric model: we only need to verify that the CSLB posted a qualifying suspension on a covered license. That data is public and structured, making the product near‑zero fraud and highly automatable.
+
+Our advantage is the proprietary dataset we compound over time: suspension frequencies and durations broken down by trade classification, license history, and enforcement reason. With that, we set premiums far more accurately than any general insurer could. As the CSLB gets tougher—and it has been ramping up sting operations and automatic suspensions since 2020—our product becomes more necessary, and our data advantage widens. The board cannot offer income itself; it is a regulator, not a payer. This inverts the enforcement pain into a sustainable business.
+
+Licensed sole‑proprietor contractors in California: plumbers, electricians, HVAC techs, and general builders who work alone or with a few subs. They pay a monthly subscription (e.g., $50–$150), and if suspended, they receive a daily benefit (e.g., $200/day) for up to 90 days. Distribution comes through partnerships with trade associations like the Plumbing‑Heating‑Cooling Contractors Association of California, and with insurance brokers who already sell liability policies to these contractors, offering the product as an add‑on.
+
+The CSLB suspended over 2,000 licenses in 2022 for expired insurance alone. Enforcement is tightening, with online sting operations and automatic suspensions increasing since 2020. Contractors feel the risk acutely, yet no insurance product covers it. The moment is right for a fully automated, parametric solution that turns a regulatory threat into a manageable income guarantee.
+
+The passages only confirm generic facts — that CSLB is a licensing body, that parametric insurance exists as an industry, and unrelated DMV/NSW news — none address whether demand for this specific suspension-income product is durable or already served by a free/bundled alternative.
+
+The passages show CSLB regulates contractor licensing and CA law requires surety bonds and bond brokers exist [764c93923cb8b481][67556217bd308149][9b2b5d731e4c6879], but bonds are collateral instruments, not income-replacement insurance for suspension events. The only parametric income insurer in evidence, ShieldRoute, targets Zomato/Swiggy delivery gig workers, not CA-licensed contractors [8be894a5d9d70b33], so no passage shows a dominant or funded incumbent already serving this specific suspension-income niche.
+
+The passages cover contractor license bond costs and general/UK construction insolvency statistics, none of which address whether a California sole-proprietor contractor would pay £199.99 for this specific parametric suspension-income product.
+
+None of the passages describe a channel to reach California contractors specifically for this product — they cover unrelated topics (Covered California health insurance, a single plumbing business, an Oregon trade association, general trade theory, and E*TRADE) with no mention of CSLB-suspended contractors, trade association distribution deals, or insurance-broker add-on channels.
+
+The passages show insurance is state-regulated and licensed in California, and that offering insurance-like payouts without a license is illegal and actively enforced, including lawsuits and enforcement actions against unlicensed unlicensed insurance/adjusting activity. The candidate's plan to directly 'risk-pool' and pay contractors on a trigger, with no mention of obtaining an insurer license or partnering with a licensed carrier, matches the unlicensed-activity pattern the passages describe as illegal.

@@ -1,0 +1,13 @@
+PharmClaim – The Independent Pharmacy Reimbursement Arbitrage Tool.
+
+A SaaS tool that connects to a pharmacy's management system, detects NHS prescription reimbursement underpayments, and generates a claim pack with evidence and clinical justification to recover the difference—automatically.
+
+Small pharmacy owners lose thousands annually because they lack time to manually cross-reference complex Drug Tariff rules and wholesale invoices. A solo operator can build this tool leveraging a proprietary database of successful claim patterns and automate appeals.
+
+Independent community pharmacy owners in the UK (1–5 locations, owner-operator).
+
+Increasing frequency of generic drug price fluctuations and NHS contract changes create more discrepancies; pharmacy margins are squeezed, making every pound of underpaid reimbursement critical.
+
+Passage 249c4fe07316516a describes a general pharmacy management suite without mentioning underpayment detection; passage 7075d930af6d73b1 mentions an NHS portal for reimbursement tasks but does not indicate it automates underpayment detection or claim generation, so neither passage commoditizes or refutes the durability of the specific value.
+
+RWA Pharmacy GB already offers a Claim Pack Module (fb5f41f95f899f7e) that identifies underpayments and generates evidence for appeals, and its effectiveness is demonstrated in a case study (297068a6f949460a) showing substantial recovered revenue.

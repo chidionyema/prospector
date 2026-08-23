@@ -1,0 +1,21 @@
+The Soloist’s Profit Lab.
+
+A weekly video/podcast series and paid community that reverse-engineers the full financials of anonymized top-earning freelancers—down to pricing structure, expenses, and tax strategy—using proprietary panel data to deliver actionable profit models.
+
+Most freelancers guess at pricing and ignore the economics behind high earners. By applying the ‘business school case study’ model (analogical transplant from Harvard Business Review case studies) to solo creative work, the media franchise builds a loyal subscriber base that depends on its unique benchmarking dataset.
+
+Ambitious freelancers in design, writing, and consulting who want to double their take-home pay; they pay a subscription (~£20/mo) for weekly deep-dives, templates, and access to an anonymised earnings benchmark dashboard.
+
+The creator economy has normalised income transparency, yet freelancers still lack granular, cross‑niche financial benchmarks. AI‑powered analytics make it feasible for a solo operator to anonymise, analyse, and narrate complex financial data at scale, creating content that is impossible to replicate without the assembled panel.
+
+The passages show only flat/declining freelance day rates, generic rate reports, and a payment-method benchmark, none of which speak to whether a proprietary panel-based profit-benchmarking dataset holds durable value; none address the underlying data-collection/analysis service the candidate describes.
+
+The passages describe IPSE's confidence index and generic freelancer tool/rate aggregators, but none profile a competitor offering deep, verified P&L benchmarking with anonymised panel data on top-earning freelancers. There is no evidence either way on whether such a specific offering already exists or is dominated by an incumbent.
+
+The passages describe unrelated freelancer platform membership pricing (Freelancer.com-style plans) and mention income surveys without reporting actual figures, so none show that the target audience—design/writing/consulting freelancers—has budget or willingness to pay ~£20/mo for a benchmarking product. The one passage flagging screen-industry freelancers as financially precarious cuts against solvency but is too narrow and undetailed to count as a refutation.
+
+The passages cover freelance newsletter writers on Upwork/hiring channels and general subscription-churn benchmarks, none of which describe a route to reach freelancer buyers for this financial benchmarking subscription product.
+
+The passages describe UK GDPR obligations for processing personal data and HMRC disclosure/confidentiality rules, but none addresses whether anonymising and reselling panel-sourced freelancer financial data for a paid benchmarking product is lawful under those regimes.
+
+The freelancer survey and pricing guides show underpricing and low confidence in setting rates are common, real struggles, with freelancers actively seeking formulas and calculators to fix this pain.

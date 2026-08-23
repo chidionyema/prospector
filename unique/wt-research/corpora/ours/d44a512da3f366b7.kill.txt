@@ -1,0 +1,23 @@
+InkClear Studio: The Tattoo Consent & Aftercare Engine.
+
+A web app that digitizes client intake for tattoo studios, auto-generating legally sound consent forms, medical screening, photo releases, and placement-specific aftercare instructions, backed by a searchable client history log.
+
+first_principles: Tattoo studio owners lose clients, face legal risk, and waste hours on paper consent and inconsistent aftercare advice. A vertical tool that streamlines this into a single digital workflow saves time, reduces liability, and locks in studio history as a switching-cost moat—no existing product combines all three (consent, medical, aftercare) with domain-specific legal language.
+
+Independent tattoo studio owners (1–10 artists) who directly handle client intake and fear lawsuits or negative reviews from poor aftercare advice.
+
+The tattooing industry is under increasing legal scrutiny over informed consent, medical screening for allergies/contraindications, and aftercare responsibility. DIY digital forms (Google Forms) lack the legal precision and custom aftercare logic; the market is too small for vertical SaaS to target it.
+
+Passages show that tattoo digital consent with medical screening is a tangible, growing need ("moving fast toward digital intake", "protect your studio"), and the shift from paper waivers proves the value is real and increasing, not evaporating or commoditised.
+
+No passage mentions the tattoo consent/aftercare software market or any dominant incumbent; all are on unrelated topics.
+
+None of the passages address tattoo studio owners' budget or willingness to pay for a digital consent and aftercare tool; the content discusses death investigators, Barbados fiscal policy, generic form builders, and healthcare practice management—all irrelevant.
+
+None of the passages describe a distribution channel, self-serve mechanism, or existing route to reach tattoo studio owners; they discuss the need for consent forms or general intake forms without addressing how to reach the buyer.
+
+Digital consent and intake forms for tattoo studios are explicitly lawful and liability-protecting per the passages; no evidence suggests the tool breaks any law.
+
+None of the passages mention tattoo studio owners, consent form pain points, liability fears, or payment for a solution; they reference medical clinics, marketing, or unrelated topics.
+
+No evidence in the passages indicates illegality, unsustainable unit economics, or a single company controlling 80%+ of the distribution channel.

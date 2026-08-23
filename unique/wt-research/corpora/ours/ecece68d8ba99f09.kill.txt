@@ -1,0 +1,17 @@
+AB 2013 AI disclosure pack for HR tech vendors.
+
+HR tech vendors selling to California employers get AB 2013 and ADTFEHA-compliant AI disclosure packets, so enterprise deals close without employment counsel bottleneck.
+
+California's AB 2013 requires generative AI vendors to publicly disclose training data sets, and the California Civil Rights Department's ADTFEHA regulations require HR tech vendors using AI for hiring, promotion, or termination to provide specific bias audits and applicant-facing disclosures to California employers and applicants. HR tech vendors (Eightfold, Pymetrics, HireVue, iCIMS competitors) currently pay employment lawyers and AI bias audit firms $5,000-30,000 per California deployment. We pre-build a reusable disclosure packet, bias audit protocol, and applicant-facing notice matched to the Civil Rights Department's current enforcement posture and to AB 2013's training-data disclosure form. We compound proprietary data on ADTFEHA investigation patterns, the CRD's recurring enforcement priorities, and a tested disclosure template for each major AI use case (resume screening, video interview analysis, skills assessment, automated termination). Each new customer file pushes a new use-case variant into the library. The CRD publishes regulations but cannot ship a vendor disclosure generator, and its free guidance stops at regulation text — a copy starting tomorrow has zero compiled enforcement history.
+
+Compliance, product, and GTM leads at HR tech vendors with California enterprise customers — Eightfold, iCIMS, ModernLoop, Pymetrics, HireVue, and companies selling AI resume screening, video interview analysis, or skills assessment into California enterprises.
+
+ADTFEHA enforcement actions by the California Civil Rights Department ramped up through 2025. AB 2013 disclosures became mandatory from January 2025. Multiple class actions hit HR tech vendors in 2024-2025 for missing these disclosures, so legal and procurement teams are now actively budgeted to fix it.
+
+No passage addresses AB 2013, ADTFEHA regulations, HR tech vendor compliance purchasing, or any search/buying behavior for AI disclosure packets; the HR-themed passages are generic overviews and the rest are entirely unrelated (BrightHR UK, Poki, CrazyGames, Freecycle).
+
+The passages are generic HR overviews (BrightHR marketing copy, general hiring and HR leadership content) that do not address whether California HR tech vendors have budget to purchase a £49.99 compliance disclosure pack, their willingness to pay, or their current spending on employment counsel and bias audits.
+
+The passages describe HRLocker and BrightHR (SMB HR software, UK/Ireland based per GDPR references) and general HR/corporate governance topics; none address California HR tech vendors, AB 2013, AI disclosure compliance, or any distribution channel reaching enterprise AI hiring vendors like Eightfold or iCIMS, so no route is evidenced.
+
+The passages cover California's geography, indigenous history, and general government services but contain no information about AB 2013, ADTFEHA regulations, HR tech compliance requirements, or any legal mechanism that would determine whether producing AI disclosure packets is lawful or unlawful.

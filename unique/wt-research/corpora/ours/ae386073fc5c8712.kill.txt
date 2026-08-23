@@ -1,0 +1,23 @@
+BatCheck – The Homeowner's Bat Survey Kit.
+
+A physical kit containing an ultrasonic microphone and an AI‑driven mobile app that identifies bat species and automatically generates an ecologist‑grade report for a fraction of the cost, enabling homeowners to discharge the mandatory bat survey requirement for low‑risk planning applications.
+
+Any householder extension in the UK near trees or roof voids now routinely triggers a bat survey costing £800‑1,500. Using an analogical transfer from consumer medical diagnostics (e.g. home blood‑test kits that replace a doctor visit), a solo operator can package a plug‑and‑play acoustic sensor with a custom ML model that classifies calls to the level required by planning officers, turning a regulatory burden into a consumer pick‑and‑shovel.
+
+A squeezed‑middle homeowner planning a rear extension or loft conversion, who has been quoted over £1,000 by an ecologist and needs evidence that no protected bats are present to satisfy the local planning authority.
+
+Biodiversity‑net‑gain policies and stricter enforcement of Wildlife Acts have caused a boom in demand for bat surveys; smaller firms are fully booked and prices have surged. At the same time, low‑cost ultrasonic sensors and edge‑AI models (trained on publicly available bat recordings) have reached sufficient accuracy to screen for common UK species, making a consumer device feasible for the first time.
+
+The passages merely acknowledge that bioacoustics and bat detection exist; they provide no evidence about whether the value of a consumer kit for regulatory compliance is durable, commoditised, or evaporating.
+
+The provided passages consist of a technical guide on bat detectors, a pop music video, and unrelated academic/conference content; none discuss the presence or absence of dominant incumbents in the bat survey market.
+
+None of the passages mention homeowners, planning requirements, or budgets for bat surveys. They are irrelevant to the payer's solvency.
+
+Passages [4e1f8e896e7bcd89] and [34b0e86881e3924c] discuss bat call identification technology but do not address distribution channels; [6d2a6fa60c66e0dd] and [0f39f653b19e0920] are irrelevant. No evidence exists to assess a low-friction route to the buyer.
+
+No passage addresses the lawfulness of using a consumer bat survey kit for planning applications; the referenced 'Advanced licence bat survey techniques' section hints at licensing requirements but does not state whether the candidate's approach would be illegal or permitted.
+
+None of the provided passages address whether UK homeowners face a mandatory bat survey requirement, suffer from high costs, or are paying to solve this problem; passage 2 mentions citizen science bat monitoring but is entirely unrelated to homeowner planning applications.
+
+No passages contain evidence that the service is illegal, that unit economics are impossible, or that a single company controls 80%+ of the distribution channel. The provided documents are either irrelevant or discuss bat detection technology in general without addressing market structure or legal constraints.

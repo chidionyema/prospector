@@ -1,0 +1,21 @@
+ShootClear, emergency PAT tests that save your booked shoot.
+
+On-call technicians who PAT-test a freelance photographer's gear on-site at the venue within the hour, so a missing certificate never costs the booked shoot.
+
+Most UK wedding barns, historic houses and event venues hand freelance photographers, videographers and lighting techs a supplier pack before the day. It usually says the same thing: bring a valid PAT certificate for any electrical kit (flashguns, continuous lights, laptops, battery packs), dated within the last 12 months, following the IET Code of Practice that HSE points venues toward, plus proof of Public Liability Insurance. Coordinators enforce this at the door because their own insurer requires it, especially after a run of high-profile venue fire and electrical incidents pushed insurers to tighten conditions rather than take it on trust.
+
+The freelancer who forgot to renew, whose tester's certificate lapsed mid-contract, or who bought a new light two weeks before the wedding season starts, is the person this is for. Right now their only options are to argue with the coordinator, drive home for an old cert that may not even cover the new kit, or lose the day's fee. None of that is a software problem — it needs someone physically present with a tester.
+
+This is a small team of mobile PAT technicians, dispatched from regional bases (Cotswolds, Peak District, Scottish Highlands, home counties — the UK's densest wedding-venue clusters), who hold signed on-site agreements with venue groups: a standing authorisation to walk onto the property, test equipment in a side room, and issue a certificate the coordinator already trusts, all within the hour a shoot is due to start. The venue relationship is what turns a routine trade service into an emergency one a freelancer will actually pay a premium for.
+
+The freelance photographer, videographer or lighting operator pays a flat same-day call-out fee (around £75) when they're caught short, or buys an annual 'gear passport' (around £120) before wedding season that bundles PAT testing, a digital certificate wallet, and guaranteed priority same-day dispatch to any partner venue.
+
+Venues have been tightening supplier compliance since insurers started auditing electrical safety paperwork more closely after several event-related fire and electrical claims, and many venue groups have moved from an honesty-system supplier pack to a formally checked approved-supplier list managed through venue CRM tools, so the paperwork is now enforced at the gate rather than assumed.
+
+None of the passages show search demand, existing paid alternatives, or communities discussing emergency on-site PAT testing for freelancers; they are generic descriptions of the HSE regulator, an unrelated school health center, and a general HSE explainer.
+
+Only [94076a56fa54ecdc] speaks to freelance photographer income, noting it can be higher but less stable than salaried pay — it says nothing about whether a £49.99 one-off spend fits within that income or budget. No passage states typical freelance earnings, discretionary spend capacity, or willingness to pay this specific amount.
+
+The passages describe generic wedding-venue directories and unrelated wedding-coordinator services, none of which mention PAT testing, on-site electrical compliance, or any channel/agreement for reaching freelance photographers or videographers.
+
+The passages only confirm that the IET Code of Practice for PAT testing exists and is followed by some practitioners; nothing addresses whether providing mobile on-site PAT testing under a venue access agreement breaches any law, terms of service, or regulatory restriction.

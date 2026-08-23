@@ -1,0 +1,33 @@
+ICO AI evidence pack for UK agencies in regulated tech.
+
+A fixed-fee evidence pack that lets a UK agency pass AI procurement due diligence at a UK regulated software buyer (fintech, healthtech, edtech) on the first try.
+
+UK marketing, design, and dev agencies increasingly pitch AI work to UK software companies in regulated sectors: fintechs (FCA-regulated), healthtechs (CQC plus ICO overlap), edtechs (ICO Children's Code). These software companies have procurement teams that now include AI-specific diligence questions in their standard RFI templates: where does the prompt data live, what model is being used, who owns the model output, how is bias logged, and what happens if the model is withdrawn.
+
+A fixed-fee pre-pitch evidence pack would answer all of those questions in the format the procurement team expects, citing the published ICO AI guidance, the NCSC AI assurance guidance, and the relevant sector-specific regulator (FCA, CQC, ICO Children's Code). £X per pitch, with the deliverable reusable across pitches with light customisation.
+
+This commits to Shape C (SELLS-TO-TECH): the agency owner pays to discharge a chore that named budget-holding roles inside UK regulated software companies (Heads of Procurement, CISOs, Heads of Vendor Risk) face when buying AI work. The durable asset is the proprietary dataset built up across hundreds of regulated pitches: which AI questions the procurement teams actually ask, which answers pass, and which answers get a follow-up. Agencies currently cobble this together pitch by pitch from publicly available guidance. Big Four consultancies charge £20-50k+ for what should be a £2-3k productised deliverable.
+
+UK agency owners (new business leads and principals) pitching AI work to UK regulated software companies, typically fintech, healthtech, and edtech SaaS firms. The agency pays because the evidence pack is the deliverable that wins the pitch.
+
+The ICO published its AI guidance in 2023-2024 and is now actively auditing AI deployments. The FCA and Bank of England published their joint AI feedback statement in 2024. UK regulated software buyers' procurement teams have started adding AI-specific diligence questions to their standard RFI templates.
+
+None of the passages describe UK agencies paying for AI-specific procurement evidence packs, nor show UK regulated software buyers (fintech, healthtech, edtech) adding AI diligence questions to RFI templates in a way that creates acute, paid-for demand; the passages touch on healthtech procurement broadly and on unrelated diligence/compliance tooling, but never address this specific pain or any payment behaviour for it.
+
+The passages do not address whether UK agencies would pay £79.99 for an AI procurement evidence pack; they only describe general budget pressures and squeezed margins across agencies (16e3445d181c504a, 3b554efd6cf91598), which neither confirms nor refutes willingness to pay this specific amount for this specific deliverable.
+
+Passages [f307fe7a22f4a9eb] and [69f115ad68d809c4] show established UK agency owner communities (DBA, BIMA, Wired Sussex, Drum's Recommended Agency Register) where agency founders gather for industry support and client acquisition, providing a commonsense low-friction route to reach the target buyer segment. The evidence is thin on whether these communities specifically accommodate AI/regulated-tech pitch tooling sales, and other passages ([fd498d823d9ea5d8], [71c56ad771a11583], [20a8a40782a370a4], [dda1ee2dbad742e5]) are irrelevant, which limits confidence.
+
+None of the passages address UK AI procurement, ICO guidance, agency evidence packs, or any legal/regulatory question relevant to the candidate's business model; they cover unrelated topics (online calculators, UK geography, a news roundup), so the legality of this margin cannot be assessed from this evidence.
+
+The passages only confirm that ICO AI guidance exists and is publicly available; they do not show whether UK regulated software buyers' procurement teams are actually adding AI-specific diligence questions to RFI templates, whether agencies are paying for evidence packs, or whether such a pack offers value beyond the free published guidance.
+
+Passage [559f8b02ea3b9faa] confirms Big Four AI consulting practices (Accenture, Deloitte, EY, KPMG, PwC) exist but operate at six-figure minimums with multi-month discovery phases aimed at large enterprises — not at agencies preparing individual pitches. No passage describes a productised, fixed-fee, agency-targeted AI procurement evidence pack for UK regulated buyers, so the specific niche at the £2-3k price point appears open, though passages do not affirmatively rule out smaller unfunded rivals.
+
+The passages show the ICO actively concluding AI-related enforcement actions in May 2024 and warning industry about generative AI data protection risks, and a 2025 UK government update replacing its 2024 Voluntary AI Safety Standard with the new AI6 Guidance for AI Adoption — together demonstrating that UK AI regulatory pressure on buyers and vendors is still live and being refreshed, not stale.
+
+None of the passages address AI procurement, ICO/NCSC guidance, FCA AI feedback, or UK agencies pitching AI work to regulated software buyers; they cover only generic hardware RFPs, government procurement platforms, and free procurement templates, so buyer intent for this specific AI evidence pack cannot be assessed from this evidence.
+
+The passages show UK regulators (DRCF including ICO, Bank/PRA/FCA, NCSC) are engaged in AI oversight and have published guidance, but none of them directly confirm the candidate's specific factual claims: the 2023-2024 ICO AI guidance dates, the FCA/Bank of England joint AI feedback statement of 2024, or that UK regulated software procurement teams have added AI-specific diligence questions to RFI templates. The NCSC passage describes general technology assurance rather than AI-specific guidance, and two passages concern unrelated US bodies.
+
+The passages never state that UK law bars third parties from preparing this evidence pack, and they never show that the cost of acquiring a customer would exceed all revenue that customer could generate. They describe several Big Four consultancies, not a single provider controlling most of the relevant channel [559f8b02ea3b9faa, c25187a4a25e092d].

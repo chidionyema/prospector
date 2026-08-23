@@ -1,0 +1,21 @@
+CDI rate filing copilot for California InsurTechs.
+
+An AI copilot that drafts California Department of Insurance prior-approval rate filings for InsurTech founders going to market in California.
+
+California Prop 103 and Insurance Code §1861.02 require "prior approval" rate filings for most P&C and many life lines. InsurTech founders entering California must hire former CDI actuary staff or firms like Pinnacle Actuarial or Oliver Wyman at $200-400/hr for 100-200 hours per filing. The copilot ingests the actuarial data, drafts the rate filing exhibit package, and tracks the 30-day objection cycle with the California Department of Insurance. The proprietary asset is the parsed CDI prior approval database, which insurance.ca.gov publishes under "Rate Filing Search" and which no one has structured across the last decade of objections. The deliverable is a filing package ready for human actuary review and a draft objection response drafted against the historical objection pattern.
+
+This widens from one-shot filing generation to the full California rate cycle, including initial submission, objection response, and market conduct demonstration.
+
+The wedge is technical IP built on a decade of CDI prior approval filings. New copycats would need to ingest and structure the entire CDI filing database from scratch. Trigger: every California market entry and every rate change. Buyer: CEO or Head of Compliance at a seed-stage InsurTech. Public source: insurance.ca.gov rate filing search and the CDI Prior Approval plain-language guide.
+
+The CEO or Head of Compliance at a seed-stage InsurTech (Lemonade, Root, Next Insurance, Slide, Branch) entering the California market. They already pay $200-400/hr to former CDI actuary staff or contract with Pinnacle Actuarial, Oliver Wyman, or Milliman for 100-200 hours per filing.
+
+California is the second-largest insurance market in the US. CDI's 2024-2025 wildfire rule changes require rapid re-filings. New insurtechs raising Series B cannot afford to skip California and still hit growth targets. The CDI published a streamlined Prior Approval plain-language guide in 2024, increasing filing throughput but also tightening objection scrutiny.
+
+The passages discuss California housing prices, electricity utilities, and general state geography and history; none address insurance rate filings, CDI prior approval processes, Prop 103, actuarial service costs, or any InsurTech compliance pain, so they cannot establish whether the underlying problem is real and acute.
+
+No passage addresses California InsurTechs, the California Department of Insurance, prior-approval rate filings, or the budget of seed-stage insurance founders; the provided texts cover Minecraft seeds, probiotic supplements, EU seed legislation, and Chinese-language Wikipedia/WeChat pages, which have zero conceptual overlap with the buyer's solvency, so the check cannot be resolved from the evidence.
+
+No passage addresses California Department of Insurance rate filings, InsurTech founders, B2B sales channels for regulatory compliance tools, or any mechanism by which a CDI filing copilot would reach seed-stage insurance startup buyers; the only tangentially relevant content (Lemonade consumer testimonials) describes consumer purchase experiences, not routes to InsurTech executives.
+
+The passages describe California housing prices, geography, and statehood and contain no information about CDI rate filings, Prop 103, Insurance Code §1861.02, or the legality of AI-assisted insurance rate filings.

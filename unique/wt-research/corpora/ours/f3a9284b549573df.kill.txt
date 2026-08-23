@@ -1,0 +1,23 @@
+DepositVault – The Tenant's Deposit Defence Dossier.
+
+A web service that builds a legally-argued deposit dispute pack for Gen Z renters, citing FOI-mined adjudication outcome patterns to maximize recovery.
+
+Gen Z renters frequently lose deposit disputes because they don't know how adjudicators actually decide cases. By using analogical transfer from school appeal engines, we compile a proprietary database of past TDS/DPS decision logic (extracted via FOI) and generate a custom dossier that mirrors the language and evidence formats statistically proven to win.
+
+UK Gen Z renters (18–27) in the private rented sector whose landlord has proposed a deposit deduction they believe is unfair.
+
+Spiralling rents, increased deposit deductions, and FOI precedents now make obtaining enough adjudication data feasible for a solo to build a proprietary advantage.
+
+The passages describe the deposit dispute process and an existing AI evidence pack builder, but they do not address whether the FOI-mined proprietary adjudication data advantage is durable or already commoditised.
+
+The passages offer generic advice on deposit disputes (mydeposits and Remedy Legal blogs) but do not indicate whether a dominant incumbent already provides a personalised, FOI-data-driven dossier service, leaving the incumbency question unaddressed.
+
+The passages describe free dispute resolution services but provide no information about the budget or willingness of Gen Z renters to pay for a supplemental dossier service.
+
+None of the provided passages mention DepositVault or its distribution channel to Gen Z renters; they cover a generic GitHub tool, dispute process basics, and a letter template, none of which address how the candidate reaches buyers.
+
+The passages describe deposit schemes and tribunal cases but do not address whether FOI-based data mining or dossier generation is lawful or violates any law/terms.
+
+A deposit dispute document pack is actively sold for £18.95 and has been added to carts, showing people pay to solve the problem now. Additionally, renters are using AI to fight deductions, confirming acute, real demand.
+
+The deposit dispute support market is already well-served. DepositDispute.co.uk offers an AI-powered evidence pack builder claiming an 85% win rate (15a7624fb5c439b5), matching the candidate's core value proposition. A paid deposit dispute document pack is actively sold for £18.95 (5572afdfc0a6e461), proving existing paid alternatives capture demand. Tenancy deposit schemes provide free statutory ADR (d17f290d301a1fa3), and open-source tools exist (ab9974739c2d3d74). Gen Z renters already use generic AI like ChatGPT to fight deductions (2fa92fc2d9555d1a), reducing the need for a specialised dossier. The claimed proprietary FOI data advantage is unvalidated and not shown to outperform existing AI-driven approaches, while no distribution channel to Gen Z renters is evident. The combination of established incumbents, free substitutes, and commoditised AI leaves limited room for a new paying product.

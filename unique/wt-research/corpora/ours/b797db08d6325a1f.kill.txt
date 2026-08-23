@@ -1,0 +1,17 @@
+RentProof — the rental pack that gets your UK gig work accepted as income.
+
+For gig workers rejected for UK rentals, we turn your Deliveroo and Uber Eats history into a landlord-accepted income pack in three days.
+
+UK Gen Z gig workers — riders on Deliveroo, Uber Eats, Amazon Flex and Stuart, drivers on Uber and Bolt — are systematically rejected for tenancies because landlords want three months of payslips, an employer reference and a credit file showing regular salary. Their income is real (£1,500 to £3,000 a month is typical for a full-time rider in London) but invisible to the referencing tools landlords now use, including Experian, Canopy, Goodlord and RentProfile.
+
+We are a productised service that pulls twenty-four months of platform data, reconciles it with HMRC records through the Government Gateway, and produces one PDF designed to pass these screening tools. The pack shows monthly net income, year-on-year trend, tax compliance status, a calculated affordability ratio against the rent being asked, and a counter-argument guide for the common objections landlords raise when they reject gig earners.
+
+We charge £149 for the pack and £49 a year for refreshes. Distribution runs through partnerships with the places renters already search — OpenRent, SpareRoom, Zoopla and Rightmove's enquiry flow — plus paid acquisition on TikTok, Instagram and Reddit targeting riders and drivers by city.
+
+The durable advantage is a proprietary dataset that grows with every pack sold: which platform combinations correlate with accepted applications, which landlord groups in which cities reject gig workers most often, which supporting documents (a Deliveroo Partner Confirmation, an Uber Driver Summary, a signed declaration of self-employment) swing borderline cases, and what rejection language AI referencing tools use. This dataset compounds, is not held by the credit-reference agencies or the landlord platforms, and lets us advise workers on the right evidence before they apply.
+
+UK gig workers aged 18 to 27 trying to rent in London, Manchester, Bristol, Brighton, Leeds, Birmingham and Edinburgh — especially full-time Deliveroo, Uber Eats, Amazon Flex and Stuart riders earning £1,500 to £3,000 a month across multiple platforms, who keep failing affordability checks despite earning enough.
+
+Zoopla reported record rental demand in 2024 with void periods at multi-decade lows, so every rejected application costs the worker real weeks of searching. Landlords are now using AI-driven referencing that systematically fails platform earners. HMRC's Making Tax Digital rollout means many gig workers hold formal tax records they can show for the first time. The ONS puts regular gig work at roughly 1.4 million UK workers, with about a third aged 18 to 27 — a large, growing rental demographic with a documented rejection problem.
+
+The passages describe a free, first-party tool (Canopy's RentPassport app) that lets renters prove income directly to landlords via Experian credit checks and Open Banking, and state that Rightmove's required digital income verification process is Open Banking, described as 'the most accurate and efficient way' to confirm income. This is a free, standard solution occupying the exact income-verification space RentProof targets, meeting the 'free first-party tool that removes the margin' threshold. The passages make no mention of gig workers being rejected by these tools or of any gap that a pai

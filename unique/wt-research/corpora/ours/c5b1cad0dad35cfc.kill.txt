@@ -1,0 +1,23 @@
+The Attendance Allowance Claim Builder.
+
+An AI‑guided questionnaire that turns a carer’s observations of their elderly parent’s daily struggles into a maximum‑scoring Attendance Allowance claim, using a proprietary library of high‑award‑value descriptors and a local authority‑specific award probability score.
+
+The squeezed‑middle carer, cash‑poor and time‑starved, cannot afford solicitor‑drafted claims for the non‑means‑tested Attendance Allowance, yet the DWP’s blank form rewards applicants who can translate every minor need into a points‑triggering description. A solo tool that acts as a ‘picks‑and‑shovels’ answer—supplying the right vocabulary and sequencing—turns a cumbersome paperwork exercise into a predictable financial unlock for the household. The durable wedge is a dataset correlating anonymised claim language with ultimate award amounts, permanently out of reach of the form‑issuing body. (lens: first_principles – the core need is a cash injection from the state; the real friction is linguistic, not factual, and no incumbent solves it.).
+
+A 46‑year‑old NHS manager who spends weekends managing her 82‑year‑old mother’s care; she uses her own card to buy the tool because a successful claim will bring in £92.40/week of untaxed income that pays for a cleaner and a gardener.
+
+Local authority care assessment waiting lists are at record lengths, pushing more families into self‑funding mitigation. Attendance Allowance uptake is stubbornly low among those who would qualify because the claim form’s paper‑based structure has not been modernised to reflect how laypeople describe disability. The opportunity is to bridge the semantic gap at scale while advice charities ration their one‑to‑one help.
+
+The passages only confirm the existence of the Attendance Allowance claim form and that help is available; they do not address whether the value of a proprietary AI tool and dataset is real, durable, or commoditised.
+
+The passages show that general guides and assistance exist (Citizens Advice, Independent Age, etc.), but they do not address whether these offerings constitute a dominant incumbent that solves the problem well. No passage speaks to the sufficiency or quality of existing solutions, nor to the presence or absence of a well-performing rival.
+
+The passages describe the benefit's availability and a charity offering help with forms, but they contain no information about the financial capacity or willingness of the described payer (a carer) to pay for a tool.
+
+The passages describe DWP communication options and Citizens Advice help, but none address the existence of a low-friction distribution channel for the candidate's digital tool.
+
+The Citizens Advice page confirms that help is available for filling in the Attendance Allowance form, indicating the activity of providing assistance is permitted and no legal or regulatory barrier is suggested.
+
+The passage confirms the form is difficult ('Filling in the Attendance Allowance form can be difficult'), but provides no evidence that the target user is paying to solve it or that free alternatives are insufficient to address the pain.
+
+The evidence shows that free, trusted help for filling in Attendance Allowance forms is widely available from organisations like Citizens Advice and Age UK (sources 2f0ded9e660d1196 and 4b4ac4fd17585889). These sources explicitly state that help is available and that applicants do not need to complete the form alone, addressing the same pain point the candidate’s tool targets. The target audience is described as cash-poor and time-starved, yet the free alternatives are well-established and authoritative, making it unlikely that many would pay for an unproven tool. No passage supports the existence of a proprietary dataset of claim language that would confer a durable advantage, and the candidate’s claim that advice charities are oversubscribed is unsubstantiated. Without evidence of a unique, defensible value proposition over free incumbents, the venture is not worth building.

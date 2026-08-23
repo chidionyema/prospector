@@ -1,0 +1,13 @@
+Carousel Cart Abandonment Recovery for Instagram Sellers.
+
+A solo-operated vertical SaaS that automatically detects abandoned checkout conversations in Instagram DMs for jewellery and vintage clothing sellers, then sends a personalised, time-sensitive offer via a scheduled story mention to recover the sale.
+
+Analogical transfer: E-commerce email cart abandonment workflows exist for Shopify stores, but Instagram-native sellers lose 70% of sales when a buyer ghosts a DM thread after asking 'how much?'. This SaaS uses Instagram's API (via a solo developer account) to monitor DM threads for stalled price queries, generates a 'last chance' discount code scoped to the buyer, and posts a story mention visible only to that buyer for 24 hours, charging a flat £2.50 per recovered sale. The solo operator builds the bot once and collects recurring fees per transaction from the seller's Stripe-connected account.
+
+Solo Instagram sellers of high-value secondhand or handmade goods (jewellery, vintage clothing, vinyl records) who process 10-50 sales per week and currently lose sales to DM ghosting.
+
+Instagram's API now allows limited DM read access for verified business accounts (2024 update); the platform has begun flagging automated DM outreach as spam, but story mentions remain a low-regulation, high-visibility channel. Sellers are desperate to convert ghosted buyers without violating Instagram's terms by sending follow-up DMs.
+
+The passage states that 'small merchants keep losing them [customers] to link-in-bio friction' after customers initiate contact via DM asking 'How much?'. This directly affirms the existence of lost sales in Instagram DM conversations, validating the value proposition.
+
+The passage describes Inrō, an existing service that provides 'DM Automation' and 'DM campaigns' to 'Turn Instagram engagement into sales.' This indicates an incumbent already addresses the need for automating sales and recovery on Instagram, even if the candidate proposes a different method.

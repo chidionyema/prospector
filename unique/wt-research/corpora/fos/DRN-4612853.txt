@@ -1,0 +1,149 @@
+DRN-4612853 
+ 
+ 
+The complaint 
+ 
+Miss D complains about Nationwide Building Society. 
+She says that Nationwide didn’t do enough to protect her when she became the victim of a 
+scam and would like it to refund her the money she has lost as a result.   
+What happened 
+Miss D had been researching cryptocurrency investments for some time, and in May 2023 
+came across an advert online for a company offering this type of investment. The company 
+was supposedly endorsed by a well-known TV personality. 
+ 
+Miss D says that she checked the reviews online, and found they were positive. She filled in 
+a contact from and received a phone call from an individual who was to be her account 
+manager. 
+ 
+The individual talked her through how things would work, and Miss D began making 
+payments which I have listed below. The payments went Miss D’s account with C, another 
+bank, before being transferred on to a cryptocurrency exchange. 
+ 
+Payment Date Payment type  Amount 
+1 08/05/23 Faster payment £900 – blocked by Nationwide and returned 
+2 17/06/23 Faster payment £200 
+3 14/07/23 Faster payment £1,000 
+4 20/07/23 Faster payment £270 
+5 27/07/23 Faster payment £1,000 
+6 28/07/23 Faster payment £1,000 
+7 03/08/23 Faster payment £3,100 
+8 08/08/23 Faster payment £1,720 
+9 14/08/23 Faster payment £250 
+10 18/08/23 Faster payment £1,600 
+11 24/08/23 Faster payment £1,500 
+12 25/08/23 Faster payment £1,900 
+13 30/08/23 Faster payment £1,500 
+14 06/09/23 Faster payment £3,500 
+15 08/09/23 Faster payment £3,500 
+16 12/09/23 Faster payment £6,500 
+17 15/09/23 Faster payment £3,000 
+  Total loss  £31,540 
+Unfortunately, Miss D had fallen victim to a scam, which she realised when she tried to make 
+a withdrawal from her investment and was unable to do so. 
+ 
+She reported the scam to Nationwide, but it didn’t refund her any of the money she lost. 
+Miss D then brought a complaint to this Service. 
+ 
+
+ 
+ 
+Our Investigator looked into things but didn’t think that Miss D’s complaint should be upheld. 
+Miss D asked for an Ombudsman to make a final decision, so the complaint has been 
+passed to me.  
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+Having done so, I’ve decided not to uphold this complaint. I know this will be disappointing 
+for Miss D, so I’ll explain why.  
+In broad terms, the starting position at law is that banks and other payment service providers 
+(PSP’s) are expected to process payments and withdrawals that a customer authorises it to 
+make, in accordance with the Payment Services Regulations and the terms and conditions 
+of the customer’s account. And I have taken that into account when deciding what’s fair and 
+reasonable in this case. 
+ 
+Miss D authorised the payments in question – so even though she was tricked into doing so 
+and didn’t intend for the money to end up in the hands of a scammer, she is presumed liable 
+in the first instance.  
+ 
+But this isn’t the end of the story. As a matter of good industry practice, Nationwide should 
+also have taken proactive steps to identify and help prevent transactions – particularly 
+unusual or uncharacteristic transactions – that could involve fraud or be the result of a scam. 
+However, there is a balance to be struck: banks had (and have) obligations to be alert to 
+fraud and scams and to act in their customers’ best interests, but they can’t reasonably be 
+involved in every transaction 
+ 
+Taking into account the law, regulator’s rules and guidance, relevant codes of practice and 
+what I consider having been good industry practice at the time, I consider Nationwide should 
+fairly and reasonably: 
+ 
+• Have been monitoring accounts and any payments made or received to counter 
+various risks, including anti-money laundering, countering the financing of terrorism, 
+and preventing fraud and scams. 
+• Have had systems in place to look out for unusual transactions or other signs that 
+might indicate that its customers were at risk of fraud (among other things). This is 
+particularly so given the increase in sophisticated fraud and scams in recent years, 
+which banks are generally more familiar with than the average customer.   
+• In some circumstances, irrespective of the payment channel used, have taken 
+additional steps, or made additional checks, before processing a payment, or in 
+some cases declined to make a payment altogether, to help protect customers from 
+the possibility of financial harm from fraud.  
+• Have been mindful of – among other things – common scam scenarios, how the 
+fraudulent practices are evolving (including for example the common use of multi-
+stage fraud by scammers, including the use of payments to cryptocurrency accounts 
+as a step to defraud consumers) and the different risks these can present to 
+consumers, when deciding whether to intervene. 
+ 
+In this case, I need to decide whether Nationwide acted fairly and reasonably in its dealings 
+with Miss D when she authorised payments from her account or whether it could and should 
+have done more before processing them. 
+ 
+ 
+ 
+Nationwide has shown that it blocked the initial payment of £900 that Miss D made as part of 
+the scam. When it did this, it spoke to her about what was happening, and after listening to 
+what Miss D explained, Nationwide told her that this was a scam, and that she should not 
+continue with the payment. 
+ 
+Miss D agreed with what Nationwide had told her – and said that she wouldn’t make any 
+further payments. Nationwide flagged the account that Miss D was trying to send the money 
+to. However, Miss D kept communicating with the scammer, and subsequently carried on 
+making payments – but this time to a different account in her name.  
+ 
+I wouldn’t have expected payments 2-15 to have triggered any further action. The amounts 
+weren’t significantly unusual or suspicious enough that I think Nationwide needed to make a 
+further intervention in what Miss D was doing. The payments were spread out over three 
+months and didn’t significantly jump in value. The payments also didn’t go to the same 
+account as before and were to an account in Miss D’s own name, which was an established 
+payee – and Miss D had already had a scam warning from Nationwide, which she told it she 
+had listened to. 
+ 
+I do think that payment 16 may have warranted further investigation from Nationwide, as it 
+was much larger than normal – but for me to uphold Miss D’s complaint, I would have to 
+think that a further intervention from Nationwide would have stopped Miss D from continuing 
+with the payment, and I’m afraid that I don’t think that it would, although Miss D has said that 
+this would have stopped her from continuing. 
+ 
+Miss D had already been told by Nationwide she was being scammed but decided to 
+continue anyway. Miss D had also been coached by the scammer into believing that UK 
+banks do not like crypto currency, and Miss D says that she believed that Nationwide’s 
+warning was a general statement, rather than an actual warning. 
+ 
+Had Nationwide intervened again, I can’t say that Miss D would have taken more notice of 
+the warning than she previously did, especially as she had been coached by the scammer 
+into believing that UK banks did not like crypto currency. And while I know that Miss D feels 
+that the warning Nationwide gave was a general statement, I don’t think that it was. It asked 
+her about what she was doing and explained that she was being scammed and not to 
+continue, which is not a general statement.  
+ 
+I am very sorry for the situation Miss D now finds herself in – she has lost a lot of money to 
+cruel scam. But the loss she has suffered is the fault of the scammers, not Nationwide. And I 
+can’t ask it to refund her when it educated her about the risks, and she still chose to 
+continue, and I don’t think that a further intervention would have made a difference.  
+My final decision 
+I don’t uphold this complaint. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Miss D to accept 
+or reject my decision before 2 January 2025. 
+   
+Claire Pugh 
+Ombudsman

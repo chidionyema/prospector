@@ -1,0 +1,13 @@
+Cal/OSHA injury coding audit for warehouse EHS SaaS.
+
+Cold-storage warehouse EHS SaaS vendors get a Title 8 injury-coding validation set and Cal/OSHA-audit-ready evidence, for a fixed fee.
+
+The buyer is the head of ML or compliance lead at an EHS SaaS company serving California cold-storage warehouse operators (think Soterly, KPA, Safetrace). Today, when the Division of Occupational Safety and Health updates the workplace injury reporting rule (Title 8, Section 14300 of the California Code of Regulations), that team pays an occupational-safety consultant like J.J. Keller between $20,000 and $50,000 to rebuild the model's injury-coding logic from scratch. The work is the same every cycle: take the new rule, validate that the model is producing the right Title 8 code on a sample of warehouse injury notes.
+
+A productized service replaces that rebuild cycle with a quarterly validation pack. The deliverable is a fixed-scope, fixed-fee artifact: a California-specific injury-coding validation set built from past DOSH inspection findings, plus a Cal/OSHA-audit-ready evidence document. The EHS SaaS team uploads their model's injury-note predictions and gets back a coding-error report with citation.
+
+Each quarterly cycle compounds a proprietary corpus of validated injury-coding pairs that no competitor can replicate from Title 8 text alone. DOSH publishes the rule but does not publish a validation set tied to cold-storage warehouse operations. Consulting firms like J.J. Keller give legal interpretation but do not produce machine-learning validation data. Big EHS vendors like VelocityEHS and Origami Risk serve general HR use cases and structurally cannot ship California-only modules that undercut their core offering.
+
+Head of ML or compliance lead at EHS SaaS companies serving California cold-storage warehouse operators (think Soterly, KPA, Safetrace). They already spend $20,000-$50,000 per Title 8 update cycle on occupational-safety consultants like J.J. Keller.
+
+The Division of Occupational Safety and Health updated Title 8 Section 14300 in 2023, and California's heat-illness enforcement in warehouse logistics intensified after the 2022-2023 citations against fulfillment operators. EHS SaaS vendors selling into California warehouses now need model validation or face contract loss when their customers get cited.

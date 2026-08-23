@@ -1,0 +1,21 @@
+MixDock — soundproof booths in UK cities where freelance audio producers check a mix translates, wherever they're working from.
+
+Unstaffed, acoustically treated booths freelance music and podcast producers book by the hour to hear their mix properly, with their own listening profile following them to every booth.
+
+Most freelance audio producers, podcast editors and mix engineers work from a bedroom or a shared flat, not a treated studio. The room has bass buildup in the corners, thin walls, and a landlord or neighbour who won't tolerate loud playback. They mix on headphones or cheap monitors, send the track to a client, and get it back with notes like 'the vocal's buried' or 'too much bass' — because what they heard at home wasn't what the track actually sounds like.
+
+MixDock puts small, unmanned, acoustically treated booths (roughly the size of a shower cubicle, built to a fixed spec) in co-working buildings and self-storage sites across a handful of UK cities. A producer books a slot in the app for £8–£15 an hour, badges in, and plays their mix through calibrated monitors to check it translates before sending it to a client. No booking desk, no engineer, no daily rate — just a quiet, accurate room for forty minutes between other jobs.
+
+The part a generic meeting room or a rented studio hour can't copy: each user's own listening calibration — built the first time they use any booth, from a short guided listening test — is stored against their account and auto-applied by the booth's DSP wherever they book next, in any city. Someone who calibrated in Leeds gets the same corrected, personal reference when they check a mix in a Bristol booth six weeks later. That profile only gets more accurate the more sessions they log, and it has no value to anyone outside the network, so there's nothing for a rival to copy without the booths and the usage history behind it.
+
+A small operating team — building relationships with co-working and self-storage landlords for space, running an install and maintenance round, keeping the acoustic treatment and calibration hardware working — can run 15–30 booths across 4–5 cities. Booking, access and calibration are all software; a person only touches a booth for cleaning, repairs, or a new install.
+
+Self-employed music producers, podcast editors, and audio-post freelancers in UK cities — mostly 25–45, working project to project, without a treated room at home and unwilling to pay commercial studio day rates just to sanity-check a mix.
+
+Rents and shared housing have pushed more freelance producers into flats where building acoustic treatment or turning up monitors isn't possible, and noise-complaint enforcement by landlords and local councils has tightened since the pandemic pushed more people into working from home at odd hours — exactly when a freelancer on a deadline needs to check a mix.
+
+Producers already pay for room-correction software like Sonarworks SoundID Reference ($249) specifically to fix the 'your room is lying to you' problem of untrustworthy playback, showing real, current paying demand for solving the same pain MixDock targets, even though the format (software vs. booth) differs.
+
+The passages are generic gig-economy and freelance-marketplace listicles (transcription jobs, freelance websites, app-design cost example) with no mention of audio producers' budgets, willingness to pay for a mix-check booth, or any figure near £49.
+
+The passages show generic hourly coworking/meeting-room booking (Deskpass, coworking listings) as an existing low-friction channel to reach freelancers, but this is a route to book desks/rooms, not booths with calibrated monitors — and the audio-forum passages (Gearspace) show only a gear-discussion community, not a booking or distribution channel for MixDock's physical booths.

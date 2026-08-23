@@ -1,0 +1,11 @@
+The Solo Tenant's Snagging Warrant.
+
+A productized service where a solo surveyor performs a legally-admissible pre-move-out inspection of a rented flat in the UK, identifying all deposit-deductible damages with photographic evidence and a fixed-price repair quote, enabling the tenant to pre-empt the landlord's claim.
+
+By analogizing the 'snagging' process from new-build home purchases (where buyers hire an inspector to find defects before the developer's warranty expires) to the rental deposit dispute process, a solo operator can serve tenants who face opaque, often inflated deposit deductions. Landlords have structural incentives to make claims; tenants lack the expertise to counter them. The service provides a documented, timestamped baseline that arbitration bodies (like TDS) accept, shifting the power balance. The solo operator uses a drone camera and a proprietary checklist to document every room in 30 minutes, generating a report and a pre-negotiated repair service via local handymen.
+
+Private renters in the UK (particularly students and young professionals in London, Manchester, Birmingham) who are about to vacate a property and have a deposit of £500–£3,000 at risk. They pay a fixed fee (£80–£150) per inspection.
+
+The UK rental market saw a record 1.7 million deposit disputes in 2023, with an average deduction of £350. Tenants are increasingly aware of their rights through social media (e.g., TikTok #depositdispute) but lack a tangible, affordable tool. The Tenant Fees Act 2019 banned many landlord fees, making deposit deductions a primary profit lever for landlords, creating a growing adversarial market.
+
+The passage describes 'MoveOutReport,' a service that already exists and provides 'court-ready' inspection reports and 'itemized damage' assessments for landlords, directly addressing the core function proposed in the hypothesis. Because an incumbent service already offers this functionality for deposit disputes, the premise that the space is open and underserved is refuted.

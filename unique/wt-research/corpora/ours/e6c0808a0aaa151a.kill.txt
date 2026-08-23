@@ -1,0 +1,27 @@
+Model spend audits for AI agency owners.
+
+A fixed-fee audit that rebuilds an agency's client-facing AI features on cheaper model routing, then hands over a signed savings report the agency can bill its own clients for.
+
+Small agencies that build chatbots, content tools and support bots for clients now carry a real monthly model bill. They pass it through to the client, or they eat it inside a retainer. Either way it is the line item that gets questioned first at renewal.
+
+This is a productized service, not software. You take one client-facing feature, instrument every call for two weeks, and rebuild the routing: cheap model first, expensive model only where an evaluation shows quality actually drops. You hand back a report showing cost per conversation before and after, plus the evaluation set that proves quality held.
+
+Rebuilt from the raw pain rather than from how vendors sell it: the agency owner does not want a dashboard, they want a number they can put in front of a client. So the deliverable is a document with a signature on it, priced at a fixed £4,000 to £9,000 per feature, and the agency resells it as their own 'AI efficiency review' at a markup.
+
+What holds this is the evaluation sets. After thirty engagements you own graded test cases for recurring job types — legal summarising, e-commerce support, property listing copy — that let you quote a savings range on a sales call before doing any work. Nobody else accumulates that because model vendors have no reason to prove their expensive model is unnecessary, and observability tools show spend without ever taking responsibility for a quality claim.
+
+UK grounding: the payer is a UK limited company agency filing at Companies House, the work counts as software development for HMRC's R&D relief conversations the agency is already having, and contracts sit under UK law with the agency's own client SLAs.
+
+This is the sells-to-tech shape. Buyer role: the agency owner or delivery director. Recurring trigger: the monthly Anthropic, OpenAI or cloud invoice arriving before a client renewal meeting. Deliverable: a signed before-and-after cost report plus the reimplemented routing. Public source that proves it is already paid for: published per-token price lists from Anthropic and OpenAI, and AWS Bedrock's public pricing pages, all of which show order-of-magnitude gaps between model tiers for the same task.
+
+Owners of UK digital agencies of roughly 5 to 40 staff who have shipped AI features into client products and now have a monthly model bill of £2,000 or more. Typically a marketing-technology or product-build shop in London, Manchester or Bristol billing clients on retainer.
+
+Model prices are public and they move several times a year, and cheaper tiers keep arriving. Agencies built their first AI features in 2023 and 2024 on whatever was best then, and have not revisited the choice since. Client renewals now come with a cost question attached, and the agency owner has no evidence to answer it with.
+
+Two passages show firms already selling paid work to cut AI model bills: one advertises fixed-price engagements with agreed cost and performance targets [7b754e0be0604355], and another sells a routing service that sends each call to a cheaper model [a0a1e0c3b6f40e4c], with a whole content library teaching people how to cut their AI API costs [1914c474d4030650]. That is money changing hands and active interest in exactly this problem today, though none of the passages speak to UK agencies specifically.
+
+None of the passages say anything about what UK digital agencies building AI features earn, spend, or are willing to pay — the only agency-related material is a US video about agency profitability habits and a note on estate agency insolvencies, which is a different industry entirely. Nothing here shows whether this buyer could afford a £49.99 one-off purchase or would want it.
+
+One passage shows a UK events network for agency owners (masterclasses, briefings, roundtables across the UK) and another shows an advisory group running agency owner huddles, which indicates places where agency owners gather, but neither says anything about reaching them to sell AI cost work, and the LinkedIn passages only describe the platform generally. Nothing here shows a route that actually puts this audit in front of an agency owner, so the passages do not settle whether an easy path to the buyer exists.
+
+The passages describe HMRC's role as the UK tax and customs authority and its enforcement work against tax fraud and smuggling, and make scattered remarks about OpenAI's packaging and Anthropic's contract terms and data retention — none of which say anything about whether re-engineering a client's AI feature onto cheaper models and selling a signed savings report is permitted or prohibited. One passage mentions that Anthropic's terms favour Anthropic on data retention and legal protections, but it does not state any restriction on switching models, benchmarking them, or reselling such work.

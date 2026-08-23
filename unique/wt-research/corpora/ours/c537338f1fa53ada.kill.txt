@@ -1,0 +1,21 @@
+CareGear Exit Agent.
+
+A solo brokerage that sells a primary carer's used disability equipment, handling everything from listing to shipping, for a flat 20% commission.
+
+Carers are time-starved and cash-strapped, and high-value equipment sits unused; a done-for-you resale service captures value that general marketplaces leave on the table.
+
+The selling carer, via a 20% commission on the final sale price.
+
+Growing second-hand market for medical equipment, AI tools for image recognition and pricing, increasing cost of new equipment, and carers' acute need for liquidity.
+
+The eBay passages only show that a generic marketplace exists where mobility scooters and electronics can be listed for sale; they say nothing about whether a done-for-you brokerage's added value (time saved, pricing, shipping handling) remains real and undercut by a free alternative, or is durable over time. The NHS passages describe healthcare system structure and history, with no connection to second-hand equipment resale or value durability.
+
+The passages show large UK mobility/disability aid retailers exist ([00c4d4fce6f80053], [b88cc6890e32cd97], [1ba5da28b8398acd]), but none address whether any of them (or another player) already offer a done-for-you resale/brokerage service for carers' used equipment — the specific claim in question. Nothing here confirms or denies that this resale niche is served or open.
+
+The passages describe carers' general financial strain (up to 50% cutting back on essentials) and unrelated schemes (Motability vehicles, mobility-scooter grants) but none address whether a carer would or could pay a commission deducted from sale proceeds, nor any £49 fee — the pricing model in this candidate isn't an upfront payment at all, so solvency against a fixed price is unaddressed.
+
+The passages show carer-support networks and a doctor-order/medical-equipment channel for buying mobility aids, but none describes a route for a carer to reach buyers for their own used equipment — no marketplace, listing channel, or forcing mechanism for the sell-side of this brokerage is addressed.
+
+The MHRA passages describe a regulatory shift for those 'placing products on the GB market' and device classification generally, but say nothing about whether a peer-to-peer resale of already-owned, used disability equipment through a broker falls inside or outside that regime. The eBay and Selling.com passages address selling online in general and don't touch legality of medical-equipment resale at all, so no passage confirms or rules out that the commission margin is lawful.
+
+The passages show that the established response to unused disability/mobility equipment is free donation and redistribution — charities and community schemes (Red Cross, equipment reuse programmes, the Sharing Shed) already exist specifically so owners can hand off unused equipment at no cost. That free workaround undercuts the claim that carers face pain acute enough to pay a 20% commission to sell it instead.

@@ -1,0 +1,167 @@
+DRN-4590362
+The complaint
+A, a restaurant business, complains that Hubener Versicherungs AG (Hubener) declined a 
+claim made under its commercial insurance policy.
+Where I’ve referred to Hubener, this also includes any actions or communication by agents 
+acting on their behalf.
+What happened
+A has an insurance policy for its restaurant business, underwritten by Hubener. The policy 
+includes cover for, amongst other things, material damage to property. In January 2023, A’s 
+kitchen floor sunk and collapsed, so A made a claim to Hubener.
+The claim was initially declined by Hubener on the basis that the damage was thought to 
+have been caused gradually over time by the lack of a moisture membrane in the flooring. 
+Hubener said gradual and rot damage is excluded under the terms of A’s policy.
+A arranged for another contractor to carry out an inspection. They discovered a fractured 
+pipe had been leaking underneath the flooring, which they concluded had resulted in the 
+floor collapsing.
+Whilst it was concluded that the cause of the damage was different, Hubener maintained the 
+claim declinature based on the same policy exclusions.
+As A remained unhappy, it approached the Financial Ombudsman Service.
+One of our investigators looked into things and upheld the complaint. She said that she 
+recognised gradual and rot damage are excluded under the policy. But she said the cause of 
+this was a fractured and leaking pipe, A couldn’t have been aware of this prior to the floor 
+collapse and contacted Hubener as soon as it was aware. So, she didn’t think it was fair for 
+Hubener to rely on the exclusions they had to decline the claim.
+The investigator recommended Hubener should reconsider A’s claim in line with the policy 
+terms, pay 8% simple interest on top of any settlement due, and she said Hubener should 
+also pay A £350 compensation.
+Hubener didn’t agree and asked for a final decision from an ombudsman.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so, I’ve reached the same outcome as our investigator.
+A has an ‘all risks’ type insurance policy. The policy terms outline:
+
+“COVER
+In the event of accidental Damage to the property insured described in the
+Schedule which occurs at the Premises during the Period of Insurance by any
+accidental cause not otherwise excluded We will pay You the value of the property
+at the time of Damage or the amount of the Damage or, at Our option, replace or
+reinstate the property.”
+And damage is defined as:
+“Damage
+Loss destruction or damage.”
+This means the policy provides cover for damage (as defined) caused to the premises, 
+unless otherwise specifically excluded. Therefore, A needs to show damage has occurred, 
+and Hubener would then need to deal with the damage claim, unless they could show an 
+exclusion applied.
+The kitchen flooring at A’s restaurant sunk and collapsed, so A has shown damage (as 
+defined) has been caused. A arranged for its own contractor to investigate the collapse of 
+the kitchen floor. The contractor said they thought a lack of a moisture membrane being 
+present in the construction of the floor caused it to deteriorate over a long period of time, 
+ultimately resulting in the collapse.
+So, whilst A had shown damage had been caused and it had a potential claim under the 
+policy, Hubener declined the claim on the basis of the following policy exclusions:
+“We will not pay in respect of:
+3 Damage caused by or consisting of
+(a) wear and tear; frost; wet or dry rot; dampness or dryness; or any other 
+gradually operating cause;
+…
+(e) inherent vice; latent defect; faulty or defective design or materials
+(f) faulty or defective workmanship; operational error or omission on Your part or 
+the part of any of Your employees”
+Following the claim decline, A subsequently arranged for another contractor to investigate 
+what had happened to the floor and caused the collapse. They concluded:
+“Following our initial survey, the wash water drainage pipe was seen to be fractured 
+and seeping water into the sub-floor. In our opinion this is the root cause of the 
+timber floor failing.”
+And the contractor provided videos to support there was a leaking pipe found under the floor. 
+They also later said it was a ‘recent leak’.
+However, whilst the cause of damage was concluded to be different to that originally thought 
+(a lack of membrane), Hubener’s claim decline decision overall remained the same as they 
+said the same exclusions for gradual damage and rot still applied.
+I agree it’s most likely that the damage would have occurred gradually as a result of the 
+leaking pipe. And I think it is likely that it is the escape of water from the pipe that then 
+caused the rot to occur, rather than there just being rot present, without the escape of water. 
+I say this as nothing conclusive has been provided which persuades me the rot has occurred 
+solely for another reason, rather than due to the leaking pipe which has been evidenced. But 
+as Hubener says, there are exclusions in the policy for both gradual damage and damage 
+caused by rot. So contractually under the policy terms, by strict application of the exclusions, 
+the claim would be excluded.
+However, the Financial Ombudsman Service has a longstanding approach to complaints 
+relating to gradual damage (and rot damage) exclusions. Hubener, should already be aware 
+of our approach, but I’ll summarise it here for the benefit of both parties.
+Most insurance policies cover insured ‘perils’. These are specific insured events, such as 
+fire, flood and theft. If this was the type of policy A held (rather than all-risks), the most likely 
+insured ‘peril’ here would be escape of water, given it is water escaping from a fractured pipe 
+which has caused the damage (and subsequent rot). And in perils policies, gradual damage, 
+and damage caused by rot, are frequently excluded too.
+When we consider gradual (and subsequent rot) damage complaints under ‘perils’ policies 
+and an insured peril has occurred, whilst contractually an insurer could decline the claim 
+based on the strict application of this type of exclusion, this service wouldn’t always consider 
+it is fair or reasonable for an insurer to do so.
+Instead, we’d likely say it was fair for an insurer to apply this type of exclusion if the 
+policyholder was (or ought reasonably to have been) aware of the damage happening 
+gradually as a result of an insured peril before later making a claim. This is because they 
+should have known, but then hadn’t acted on it, and if they had done then they could have 
+done more to prevent the damage being caused or made worse, such as subsequent rot 
+setting in. So, in this situation we would likely say it was fair and reasonable to apply an 
+exclusion for gradual damage (and consequential rot damage).
+However, if we think a policyholder wasn’t (or couldn’t reasonably have been) aware of the 
+damage happening gradually (or subsequent rot setting in) as a result of an insured peril, 
+and they made the claim or took reasonable actions as soon as they were aware, then we’d 
+likely say that it isn’t fair or reasonable for an insurer to rely on this type of exclusion to 
+decline the claim. This is because the policyholder wouldn’t have known damage was being 
+caused, so were prevented from noticing the damage, contacting the insurer or doing 
+anything to stop it getting worse. So, as the policyholder couldn’t have done anything more, 
+generally in this situation we wouldn’t think it was fair or reasonable for them to lose out 
+because of this type of exclusion.
+Whilst A has an ‘all-risks’ type of policy, rather than specific insured perils, we wouldn’t 
+expect a policyholder to be in a worse position than if they had a ‘perils’ policy, if they 
+couldn’t have been aware of the damage being caused, contacted the insurer and/or took 
+reasonable actions as soon as they were, and it would have been something which was 
+covered under a ‘perils’ based policy – here, escape of water damage.
+Having considered all the information, it doesn’t appear A was aware, or could have been 
+aware, of any issues or gradual damage (or subsequent rot occurring) to the floor prior to its 
+collapse. The flooring was tiles laid on top of concrete, laid on top of wood. And it wasn’t until 
+it collapsed, and investigations were carried out, that it was discovered there was a fractured 
+leaking pipe under the floor causing damage gradually, which had then resulted in some 
+consequential rot damage too.
+As A reported the damage and issue as soon as it became aware, and nothing has been 
+provided which shows A was, or could reasonably have been, aware before this, I don’t think 
+its fair or reasonable for Hubener to apply the exclusions it has done to decline the claim. I 
+do recognise that it is impossible to say when exactly the pipe started leaking, causing 
+damage and subsequent rot to occur. But the floor collapsed when Hubener was on cover, 
+and it was at that point where the damage and issue became evident. The fact it was still 
+leaking after the collapse and discovered when being investigated, it’s likely that damage 
+was caused when Hubener was on risk for the policy either way, and there is no evidence to 
+support that it would solely have been caused pre Hubener providing cover. 
+Therefore, I’ll be directing Hubener to reconsider A’s claim in line with the remaining policy 
+terms. 8% simple interest should also be added to any cash settlement due, from one month 
+from when the claim was made (to allow Hubener a reasonable amount of time to have 
+considered the claim) to the date of settlement.
+I should also clarify here that when our investigator recommended the same as I’m directing 
+as a settlement to the complaint, Hubener responded disagreeing. They said that gradual 
+damage is an uninsurable peril and as an insurer they aren’t able to price cover for this, and 
+this underlines the general principles of insurance. They also said they didn’t think it was 
+within the Financial Ombudsman Service’s remit or legal ability to force provision of cover 
+which was never intended to be provided.
+However, Hubener should already be aware of the role and remit of the 
+Financial Ombudsman Service. Whilst we do take into account policy terms and conditions, 
+our remit also extends to what we consider fair and reasonable in all the circumstances of a 
+case. This means we can direct a business to do something outside of the strict application 
+of the policy terms, if we consider it is fair and reasonable in all the circumstances of the 
+case to do so. That is what I’m doing here. And I’m following a longstanding approach of this 
+service to this type of case. That is, I accept there are exclusions in the policy, and by strict 
+application Hubener could apply them. But I don’t think it’s fair and reasonable in all the 
+circumstances of the case to do so, for the reasons explained above.
+I think unfairly declining the claim has also caused A additional inconvenience which 
+included arranging works in order to resume trading. And in addition to reconsidering the 
+claim in line with the remaining policy terms (and paying 8% simple interest on any cash 
+settlement due), I also agree with our investigator that Hubener also needs to pay A £350 
+compensation.
+My final decision
+It’s my final decision that I uphold this complaint and direct Hubener Versicherungs AG to:
+Reconsider A’s claim in line with the remaining policy terms
+Add 8% simple interest to any cash settlement due from one month from when the 
+claim was made to the date of settlement
+Pay A £350 compensation
+*If Hubener Versicherungs AG considers that it’s required by HM Revenue & Customs to 
+deduct income tax from that interest, it should tell A how much it’s taken off. It should also 
+give A a tax deduction certificate if it asks for one, so it can reclaim the tax from HM 
+Revenue & Customs if appropriate.
+Under the rules of the Financial Ombudsman Service, I’m required to ask A to accept or 
+reject my decision before 27 February 2024.
+ 
+Callum Milne
+Ombudsman

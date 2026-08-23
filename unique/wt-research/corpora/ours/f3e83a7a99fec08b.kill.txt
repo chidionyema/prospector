@@ -1,0 +1,19 @@
+Call-Up Reply — builds an owner-driver’s defence to a Traffic Commissioner inquiry.
+
+A fixed-price evidence tool for UK HGV owner-drivers facing DVSA findings or a Traffic Commissioner public inquiry.
+
+The driver uploads the Traffic Commissioner’s letter, DVSA reports, maintenance records, tachograph files, repair invoices and correspondence. The tool builds a dated response showing what happened, what was fixed, and which allegations the evidence does not support.
+
+It separates vehicle defects from management failures, identifies missing documents, and drafts a clear witness statement and indexed evidence bundle. It also maps each allegation to the operator-licensing duties under the Goods Vehicles (Licensing of Operators) Act 1995 and the relevant Traffic Commissioner guidance.
+
+This inverts compliance software. Instead of helping the regulator inspect a fleet, it gives a small operator an organised answer when enforcement threatens their livelihood. DVSA can issue findings and the Traffic Commissioner can provide procedural information, but neither can prepare an adversarial defence for the operator.
+
+The tool becomes harder to replace as the operator adds vehicle histories, driver statements, maintenance patterns and earlier correspondence. Its technical asset is a rules engine that links common DVSA findings to the evidence that has persuaded Traffic Commissioners in published decisions. A transport solicitor remains available for serious cases, while the tool serves the many owner-drivers who cannot justify several thousand pounds for an initial response.
+
+The buyer is a self-employed HGV owner-driver or small haulage operator aged 35 to 55, usually with one to five vehicles and a mortgage-dependent household. They pay £249 for a first response pack and £39 for each additional vehicle or hearing update.
+
+DVSA roadside investigations, maintenance inspections and Traffic Commissioner action can put an operator licence and household income at risk. Small operators increasingly need to answer complex evidence requests without carrying a large transport-law firm on retainer.
+
+None of the passages address demand for a Traffic Commissioner/DVSA defence tool: three are Waze/traffic-condition results, one is unrelated operator-licence advertising copy with no search-volume or demand signal, one is about Marx's biography, and one is an unrelated AI photo-editing tool.
+
+The only evidence on payer condition ([b94d402487392990], [beaeea38c01a7228]) shows UK companies facing surging financial distress and insolvency into 2026, with no HGV-driver-specific income or budget data offered; the driver-job listings and hours-rules passages ([da96a87bf7dd0ac0], [c0ed7c098620ac52], [550bff0621efd17f]) say nothing about ability to pay £49. Against a backdrop of rising distress with no offsetting evidence of spare budget, the passages point away from, not toward, willingness/ability to pay.

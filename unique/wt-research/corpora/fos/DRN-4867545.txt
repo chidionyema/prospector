@@ -1,0 +1,132 @@
+DRN-4867545 
+ 
+ 
+The complaint 
+ 
+Mr E complains that Santander UK Plc will not meet his claim for a refund after he fell into 
+dispute with a timeshare relinquishment business.  
+Mr E has been professionally represented in bringing this complaint, so any reference to his 
+arguments and submissions includes those made on his behalf.  
+What happened 
+Mr E had a points-based timeshare membership with a business which I’ll call “D”. He 
+wanted to relinquish his membership, or make a claim that the timeshare product had been 
+mis-sold, or both.  
+On 31 May 2022 Mr E entered into an agreement with F, a company registered in Spain and 
+which offered legal services in connection with the relinquishment of timeshares and bringing 
+claims against timeshare providers. The agreement included: 
+3. FEES 
+Timeshare Termination Case(s) 
+The fee payable to the Service Provider by the Client for the services carried out by the 
+Service Provider shall be £11,189.00 (including TAX) for the client’s termination case. 
+Payment Terms 
+Instruction Fee: £2,797.00 due on 01/06/2022 
+Final Payment: £8,391.00 due on 07/06/2022 
+Clause 3 also provided for a fee based on a percentage of any amount recovered from the 
+timeshare business as a result of a direct claim. That is not relevant to this complaint, 
+however.  
+Clause 5 said: 
+5. CONTRACTUAL GUARANTIES 
+5.1 The Service Provider will provide a full money back guarantee in regard to all monies 
+paid by the client in relation to their Timeshare relinquishment case(s) should the client not 
+receive written legal confirmation of successful legal relinquishment within the contractually 
+agreed timeframe of twelve months from their agreement start date. 
+5.2 The Service Provider will provide a full money back guarantee in regard to all monies 
+paid by the client in relation to their Timeshare relinquishment case(s) should the client's 
+direct claim case(s) not be successful within the contractually agreed timeframe of thirty-six 
+months from their agreement start date. 
+The agreement also provided that Mr E would pay fees due under the agreement to S, a 
+company registered in Singapore. He paid S the instruction fee of £2,797 using his 
+Santander credit card.  
+
+ 
+ 
+In July 2023 Mr E contacted Santander. He said that F had not secured his release from his 
+timeshare contract with D as it had agreed, and that he therefore had a claim against 
+Santander under section 75 of the Consumer Credit Act 1974 (“section 75”).   
+Santander said that, as Mr E’s contract was with F but that the card payment had been 
+made to S, the conditions necessary for section 75 were not met. It declined his claim.  
+Mr E referred the case to this service. Our investigator agreed with Santander that section 
+75 did not apply. He thought however that Santander should have sought to recover funds 
+under the chargeback scheme and that, had it done so, it would have been successful in 
+obtaining a refund of the amount paid for with the credit card. He therefore recommended 
+that Santander pay Mr E that sum, together with interest.  
+Neither party accepted the investigator’s recommendation, so the case has been passed to 
+me for further consideration.  
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+Mr E’s claim was made under section 75. It says: 
+75 Liability of creditor for breaches by supplier. 
+(1) If the debtor under a debtor-creditor-supplier agreement falling within section 12(b) or (c) 
+has, in relation to a transaction financed by the agreement, any claim against the supplier in 
+respect of a misrepresentation or breach of contract, he shall have a like claim against the 
+creditor, who, with the supplier, shall accordingly be jointly and severally liable to the debtor. 
+… 
+Section 12(b), referred to in section 75, says: 
+12 Debtor-creditor supplier agreements. 
+A debtor-creditor-supplier agreement is a regulated consumer credit agreement being — 
+… 
+(b) a restricted-use credit agreement which falls within section 11(1)(b) and is made by the 
+creditor under pre-existing arrangements, or in contemplation of future arrangements, 
+between himself and the supplier, or … 
+And section 11(1)(b) in turn provides: 
+11 Restricted-use credit and unrestricted-use credit. 
+(1) A restricted-use credit agreement is a regulated consumer credit agreement — 
+… 
+(b) to finance a transaction between the debtor and a person (the “supplier”) other than the 
+creditor, … 
+and “restricted-use credit ” shall be construed accordingly. 
+For section 75 to apply, therefore, the debtor (that is, Mr E) must show that he has a claim 
+against the party which took the credit card payment. That party was S. Mr E does not 
+however suggest he has any claim against S; his claim is that F did not secure 
+relinquishment of his timeshare as it had said it would and that, having failed to do so, it did 
+not refund the fees he had paid.  
+ 
+ 
+Mr E says that he paid the fees in accordance with the contract, which specifically refers to 
+S, and that S was acting as agent for F. That may well be the case as far as the payment is 
+concerned, but an agency relationship is not sufficient for section 75 to apply.  
+Section 75 can apply where a credit card payment is made to an “associate” of the party 
+against which the debtor has a claim, but I have not identified any link between F and S 
+which would make them associates within the meaning of section 184 of the Consumer 
+Credit Act.  
+It follows that it was reasonable of Santander to decline Mr E’s claim for a full refund under 
+section 75.  
+Chargeback  
+Where goods or services are paid for with a debit or credit card and a dispute arises, it is 
+often possible to resolve that dispute through the chargeback process. Chargeback is a 
+scheme run by the card schemes (in this case, Mastercard). A card issuer (here, Santander) 
+raises a claim through the scheme against the merchant’s provider of card facilities. That 
+provider will then consider whether the claim meets the relevant criteria for chargeback (if 
+necessary, seeking evidence from the merchant) before responding to the claim. Where 
+necessary, the scheme provides for arbitration between the financial businesses.  
+There is no legal or regulatory obligation on a card issuer to pursue a chargeback claim, but 
+this service takes the view that they should do so where there is a reasonable prospect of 
+success.  
+Santander says that it did not make a chargeback claim in this case because there was 
+evidence from D that a claim had been made on behalf of Mr E. However, as the investigator 
+noted: 
+ That claim had not been made by F, but by a different, UK-based, claims business. 
+ It was made at the end of July 2023. That was two months after the date by which F had 
+agreed to secure relinquishment or to provide a full refund.  
+ D had confirmed that it had not received any contact from F and that Mr E remained a 
+member.   
+If Santander had made a chargeback claim, I think it unlikely in the circumstances that it 
+would have been successfully defended. I have seen no evidence that F did anything to 
+seek relinquishment of Mr E’s timeshare. And it is in my view very clear that he remained a 
+member after 31 May 2023 – the date by which relinquishment had to be confirmed and the 
+date after which a full refund would otherwise be due.     
+I therefore agree with the investigator that Santander should put Mr E in the position he 
+would have been in if it had made a chargeback claim. That is, it should refund the amount 
+paid with the credit card. It should also pay interest on that amount, from the date on which it 
+declined Mr E’s claim. 
+My final decision 
+For these reasons, my final decision is that, to resolve Mr E’s complaint in full, Santander UK 
+Plc should pay him £2,797 together with interest at 8% a year simple on that sum from 24 
+August 2023 to the date of payment.   
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr E to accept or 
+reject my decision before 18 March 2025.   
+ 
+ 
+Mike Ingram 
+Ombudsman

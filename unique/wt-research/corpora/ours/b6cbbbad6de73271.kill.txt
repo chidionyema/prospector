@@ -1,0 +1,23 @@
+PlotProbe – The Allotment Soil & Sun Audit.
+
+A solo agronomist visits urban allotments with a kit of sensors to measure soil health, light exposure, and microclimates, delivering a tailored cultivation report that feeds a unique granular map of urban growing conditions.
+
+Public sector workers with allotments as a hobby lack the precision agriculture tools available to commercial farms. By physically auditing plots and aggregating data across the city, the operator builds a proprietary dataset of urban soil characteristics (contaminants, nutrients, moisture patterns) that can be sold to councils, researchers, or input suppliers, while charging plot holders a fee. Cross-sector transfer from corporate farm trials to individual urban growers.
+
+The allotment holder (public sector worker) pays ~£40-60 for a one-off audit and custom report.
+
+Post-pandemic self-sufficiency trend, concerns about soil contamination in urban areas, high food prices driving interest in growing your own, and availability of cheap but accurate portable sensors (e.g., Bluetooth soil probes, PAR meters).
+
+The passages do not address the durability, commoditization, or reality of the candidate's soil audit service or proprietary data. They concern a library catalogue, a soil benchmark statement fragment, a film, and a dictionary entry, none of which are relevant to the question.
+
+No passage mentions any incumbent, competitor, or the specific service of soil audits for urban allotments. The word 'allotment' appears only in a word list, and 'urban agriculture' is noted only as a popular topic.
+
+None of the passages address the payer (allotment holder / public sector worker) or their ability and willingness to pay for a soil audit. The evidence is completely irrelevant.
+
+None of the passages mention distribution channels, allotment holders, or any mechanism for reaching the buyer; the evidence is entirely irrelevant.
+
+The passages describe an Oxford library catalogue and the plot of a Star Wars film; they contain no information about the legality, licensing, or measurement practices of soil auditing on urban allotments.
+
+None of the passages address urban allotments, soil testing, or any aspect of the candidate's problem domain; they are entirely about library catalogues, Star Wars films, and public space co-creation.
+
+No evidence in the provided passages supports any of the specified risk vectors; all sources are irrelevant to the business model of soil auditing for urban allotments.

@@ -1,0 +1,23 @@
+Probate Property Buyout Broker.
+
+A solo operator brokers a direct cash sale of a deceased person's property to a pre-vetted 'probate buyer' (a cash-rich investor or developer) at a discount to market value, taking a fixed fee from the buyer, solving the executor's urgent need for liquidity without a protracted estate sale.
+
+Invert: When a person dies, their executor (often a grieving family member, not a professional) inherits a property that is illiquid and costly to maintain (council tax, insurance, upkeep). The executor's pain is acute: they want cash quickly to distribute to beneficiaries or pay inheritance tax, but a full estate agent listing takes 6-12 months, costs 1-3% in fees, and requires them to manage viewings and negotiations. A solo operator can act as a transaction broker connecting the executor to a network of cash buyers who will pay 80-85% of market value in 2-4 weeks, taking a 2-3% fee from the buyer (motivated by the discount). The solo operator's moat is a proprietary list of vetted, cash-ready 'probate buyers' and a repeatable process to identify probate registrations (publicly listed weekly) and reach executors before estate agents. Why Now: UK probate registrations exceeded 300k in 2023, with average property value of £280k; many executors are overwhelmed and time-poor. The solo operator can operate entirely by phone and email, with automated probate registration scraping and email outreach, and a simple CRM to match properties to buyers.
+
+The cash buyer (investor or developer) pays a 2-3% finder's fee on completion, covering the solo operator's margin for brokering the off-market deal.
+
+High UK inheritance tax thresholds (£325k nil-rate band) mean many estates face tax bills within 6 months of death, forcing rapid sale. Rising interest rates have slowed the mainstream market, making cash buyers more dominant and desperate for off-market deals. Probate registrations are publicly searchable and update weekly on gov.uk, providing a free, unscreened lead source.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+The passage describes a probate-specific real estate brokerage in California. This does not provide information about the incumbency landscape for the candidate's proposed operation in the UK.
+
+The passage details a service offering 'Cash Close in 7-10 Days' and 'No-Obligation Probate Cash Offer', explicitly identifying 'Trusted Probate & Inherited Property Cash Buyers'. This indicates the existence of cash buyers who are solvent and willing to pay for probate properties, thus supporting their capacity and motive to pay for brokering services.
+
+The passage indicates that in probate real estate, families 'NEED your help immediately', suggesting a clear and executable route for agents to connect with buyers and executors.
+
+The passage mentions an investigation into how some companies 'seek out people in “Ugly Situation.”' While this implies potential legal or ethical concerns for practices similar to those described in the candidate, it does not explicitly state that the proposed margin 'cannot exist without breaking the law' nor does it directly affirm its lawfulness.
+
+The passage indicates that sole-title homes require probate and that services like iBuyer.com offer cash offers, hinting at a market for quick property sales. However, it does not explicitly state that executors experience acute pain, or are currently paying to solve issues like illiquidity, costly maintenance, or protracted estate sales.
+
+The core hypothesis of the 'Probate Property Buyout Broker' relies on the unverified assumption that executors experience 'acute pain' compelling them to accept significantly discounted property sales via a specialized broker. The `pain_reality` check explicitly states it 'does not explicitly state that executors experience acute pain, or are currently paying to solve issues like illiquidity, costly maintenance, or protracted estate sales' (confidence 0.0). While probate can be lengthy and costly, there's no evidence confirming that this translates into a willingness to pay a broker a finder's fee for a quick, discounted sale over pursuing a potentially higher price through traditional channels. Additionally, the `value_durability` of this specialized brokering service is 'unverifiable' (confidence 0.0), indicating that its competitive advantage or long-term viability against existing alternatives is unproven. The model also carries potential legal and ethical risks, as the `legality` check notes concerns about companies that 'seek out people in “Ugly Situation.”' (citation: `e8968a24ad6cd460`), which could apply to proactively targeting grieving executors.

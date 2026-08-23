@@ -1,0 +1,23 @@
+The Relocation Dislocation Top‑Up.
+
+A mutual guarantee that pays civil‑service relocators the shortfall between their employer’s moving allowance and actual hard costs, using a proprietary benchmark of unreimbursed expenses gathered from FOI‑surveyed employees.
+
+When civil servants (or NHS managers) are posted to a new region, the official relocation package often falls far short of real‑world double‑rent, stamp duty, or removal costs. A solo‑run mutual can capture this gap risk by collecting small premiums from relocating workers against a parametric trigger (firm posting order), paying out a predetermined sum scaled to the destination cost‑of‑relocation index the solo calculates. Lens: cross_sector (corporate relocation top‑up insurance) + first_principles rebuilding from the employee’s out‑of‑pocket pain.
+
+Individual civil servants, NHS staff, or local government employees who receive a posting order and join the pool before the move.
+
+Continued public sector recruitment freezes and restructuring push more sideways moves; inflation means houses sell slower, bridging costs rise, and official allowances (often capped and based on outdated schedules) cover less.
+
+The passages only describe general relocation assistance, tax implications, and audit rules for relocation costs; none address whether the proposed mutual guarantee's value—filling the shortfall using proprietary benchmark data—is real and durable.
+
+The passages describe relocation assistance and guaranteed sale price schemes, but none mention or refute the existence of a dominant incumbent providing top-up insurance for the shortfall between employer allowances and actual relocation costs.
+
+None of the passages discuss civil servants' budget or willingness to pay premiums for relocation gap insurance.
+
+Passages describe employer relocation packages and tax implications, but none discuss a distribution route to civil servants for a mutual guarantee product.
+
+The passages provide snippets about relocation cost regulations and tax rules, but do not address whether a mutual guarantee scheme to cover the gap between employer allowances and actual costs would be lawful or require law-breaking/falsification. Hence, legality cannot be determined.
+
+The passages provide official relocation policy guidelines (FAR, HMRC) but contain no evidence about whether civil servants or NHS staff experience acute shortfalls or are currently paying to solve the problem. They do not address pain reality.
+
+The idea lacks evidence of a real, painful shortfall that civil servants would pay to cover. Searches for relocation gaps only returned general policy documents, not data on employee experiences (citations: 9b0126231ac2ab42, 5b8c11234c42254b). No incumbent offering similar top-up insurance was found, suggesting no market exists (citations: 1803254c89cb99b9, f4776ffe835d8502). Distribution to civil servants is unproven, with no evidence of accessible channels (citation: 71987912328017eb). The proposed proprietary benchmark from FOI surveys is unvalidated and likely not a durable moat. Legal feasibility is uncertain (citation: 06fe78b7af8dbc33). The lack of confirming evidence on multiple fronts indicates the idea is not worth pursuing.

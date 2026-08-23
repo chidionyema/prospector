@@ -1,0 +1,23 @@
+GigWage Eye.
+
+AI scans your gig platform earnings for underpayments and generates the exact legal demand letter to recover your cash.
+
+Invert the platform’s data advantage: give gig workers adversarial intelligence that audits every transaction for wage theft, expense gaps, and missing holiday pay, turning a monthly subscription into a profit centre.
+
+UK gig delivery drivers (Uber Eats, Deliveroo, Just Eat) aged 18–27 who feel short‑changed but lack the time and legal know‑how to check.
+
+Post‑Uber BV Supreme Court ruling, gig workers are entitled to holiday pay, minimum wage, and expense reimbursement, yet platforms pay‑out systems remain opaque. Enforcement is left to individuals.
+
+The passages describe existing worker pay audit tools (Paysnap, Mispaid, FairPay) but do not assess whether GigWage Eye's specific value proposition—AI-driven adversarial intelligence with live data integration and legal demand letters—is durable, commoditized, or evaporating.
+
+The passages mention Mispaid and Wage Compliance Guard, but neither establishes whether a dominant incumbent already solves the need well for UK gig delivery drivers; they focus on US payroll or employer-side tools and lack evidence of market dominance.
+
+Passages discuss US-based wage theft tools and workers, not UK gig delivery drivers aged 18-27. No evidence on the target segment's budget or motive.
+
+Passages describe self-serve audit tools for US workers and FedEx contractors, but do not mention the candidate's specific route to UK gig delivery drivers.
+
+No passage addresses the legality of the AI demand letter service under UK law or platform terms; all passages pertain to US-based audits or NYC rights.
+
+The Mispaid product charges users only when it finds missing wages, proving workers will pay to recover wage theft; the problem is acute and monetizable.
+
+GigWage Eye is not worth building because the market is already saturated with free or extremely low-cost alternatives that provide identical core functionality. Mispaid (9b13ba1fe851263b) offers a free scan and charges only $9.99 if missing wages are found, including a formal letter to hand to HR—directly competing with the candidate's paid subscription model. Paysnap (7cd7d7b6aea08fb3) is a completely free, offline tool that detects wage theft and explains rights in 11 languages, removing any cost barrier for users. FairPay (6ee83f8c8dbd245e) generates appeal letters from gig earnings data, again for free. These incumbents demonstrate that the value proposition is already commoditized, eliminating pricing power and making it nearly impossible for a new entrant to acquire customers with a paid subscription—especially among price-sensitive gig workers. The candidate's UK focus finds no validating evidence in the data, and the distribution challenge remains unsolved. The existence of viable, zero-cost workarounds that users can easily adopt makes this idea redundant.

@@ -1,0 +1,31 @@
+Fabric Freeze, spare test gear when your lab HVAC dies.
+
+A rental depot in Austin, Texas that ships pre-configured environmental chambers and thermal test rigs to hardware startups within 24 hours when their own lab climate control fails.
+
+Hardware startups doing product qualification run thermal cycling and humidity soak tests on their own benchtop chambers. When a chamber compressor dies or a building HVAC failure knocks a lab out of spec, every certification test in progress is invalid and must restart. A test that takes three weeks becomes six.
+
+This business keeps a small fleet of calibrated chambers, thermal shock rigs and data loggers in a warehouse near the Austin tech corridor. A hardware engineering manager calls, and a rig arrives on a flatbed the next morning with a current calibration certificate attached. Rental runs weekly with a delivery and setup fee.
+
+This borrows the way film production houses rent camera and lighting packages by the day rather than selling them, and applies it to environmental test equipment that sits idle 80% of the year in any single company.
+
+The compounding asset is the calibration and chain-of-custody record for each specific unit. Certification bodies want traceable calibration history for equipment used in qualification testing. Every rental adds another documented, witnessed use cycle to that unit's file, which makes the fleet progressively more usable for regulated work rather than less.
+
+This is the tech-vertical shape: the ecosystem is US hardware product certification, and the deadline that hurts is the FCC equipment authorization and UL listing schedule that gates a product launch.
+
+Buyer role: the hardware engineering manager or VP of hardware at a 15 to 200 person device company. Trigger: a chamber failure, a calibration lapse, or a test campaign that needs more parallel capacity than the lab owns. Deliverable: a calibrated rig on site within 24 hours plus the paperwork.
+
+Public source that proves the pain is already paid for: the FCC Office of Engineering and Technology publishes equipment authorization requirements at fcc.gov, and the FCC KDB guidance requires testing at specified environmental conditions with calibrated equipment. Texas has one of the densest hardware startup clusters outside California, and the Austin Chamber publishes regional hardware and semiconductor employment counts.
+
+A team of four runs this: one on logistics and delivery, one calibration technician, one on sales into Austin and Dallas hardware companies, one on scheduling and the calibration database.
+
+Hardware engineering managers at Austin and Dallas device companies with 15 to 200 staff — connected fitness, industrial sensor, medical device and consumer electronics firms doing their own pre-compliance testing rather than outsourcing everything to a test lab.
+
+Hardware startup density in central Texas has grown with the semiconductor and device manufacturing buildout, and the CHIPS and Science Act funding has pulled more hardware engineering into Texas. At the same time, benchtop environmental chambers have long lead times, so a failed unit cannot simply be replaced next week.
+
+Multiple passages show companies already selling exactly this: Tenney and Lunaire Environmental rent environmental test chambers [ee858cca8d6e7496], another provider rents chambers on short- and long-term terms to cover set temperature and humidity ranges [c4b73f9a64d34ce1], and TRS-RenTelco rents electronic test equipment with same-day shipping [b512efb72c60b536].
+
+The passages are census and employment survey descriptions, an industry code list for electronic component manufacturing, a dictionary-style definition of computer hardware, and retail shopping pages for Ace Hardware and Home Depot; none of them say anything about what hardware engineering managers or device companies spend on test equipment, rentals, or compliance testing. With no figure or statement about these buyers' budgets or willingness to buy, there is no basis to judge whether they would pay £79.99 for this pack.
+
+The passages only describe Austin's tech community in general terms — an obituary for a local startup figure and promotional descriptions of the Austin Technology Council as an ecosystem organization [13dcc086ca5b627e, 2c29ca06141a7fd6, 015bff08269a6592, 5a810e6347feb2ba] — plus unrelated material about the word 'third', a bank, and a video tool. Nothing says how hardware engineering managers at device companies are reached, whether any list, event, or referral path puts a seller in front of them, or what it takes to close such a sale.
+
+Texas tax law treats renting out tangible personal property as a taxable business activity requiring a sales tax permit and tax collection, which shows equipment rental is a recognised, lawful trade rather than a prohibited one [30061e0fc01354ef][fe8f1a4ae61d6e20][21824d84075119eb]; the calibration side is likewise governed by an ordinary published accreditation standard for testing and calibration labs, with certificates issued to that standard [a3c6451ee49a0d4e][f37cfc8f7a5e21db][44aa9af6625277c7].

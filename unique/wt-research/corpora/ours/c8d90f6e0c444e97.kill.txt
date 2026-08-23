@@ -1,0 +1,25 @@
+ExitPanel, fixed-fee settlement agreements for startups.
+
+A fixed-fee legal panel that drafts and signs off staff settlement agreements fast, so seed-stage founders without HR can end a hire safely.
+
+ExitPanel is a small team that does one job: getting a startup's staff exit handled properly when a founder has to let someone go and there's no HR person to do it right. For a fixed fee, ExitPanel arranges the settlement agreement, gets the departing employee the independent legal advice the law requires before they can sign it, and gets the numbers agreed in days rather than months.
+
+This borrows the way an insurer keeps a panel of solicitors on standby before a claim ever lands, and applies it to the moment a startup needs to fire someone. ExitPanel isn't itself a law firm — like a legal-expenses insurer's panel, it vets and coordinates independent, SRA-regulated employment solicitors who do the actual regulated advice, while ExitPanel owns the case intake, the fund relationships, and the fixed-fee packaging around them.
+
+The legal grounding is specific: a settlement agreement is only binding in the UK if the employee gets independent advice from a qualified adviser before signing, under section 203 of the Employment Rights Act 1996. Founders who skip this, or who just quietly let someone go, are about to get far more exposed. The Employment Rights Bill, introduced in the Commons on 10 October 2024, removes the two-year qualifying period for unfair dismissal, so protection becomes a day-one right once the relevant provisions come into force. A five-person startup letting its third hire go in month four currently carries almost no legal risk; under the new rules, that exact same termination becomes a live tribunal exposure unless it's handled with a proper agreement.
+
+ExitPanel doesn't sell to founders cold. It becomes the named exits partner inside the portfolio-support programmes that VC funds and accelerators already run — the same slot currently filled by legal-template bundles and banking perks at places like Seedcamp, Antler and Techstars London. A referral from a fund's portfolio team, at the exact moment a founder is asking how to fire someone, is worth more than any amount of paid search, and it's a relationship a high-street employment solicitor is never invited into.
+
+The moat isn't the drafting itself; any employment solicitor can write a settlement agreement. It's being the panel a fund has already briefed on its own portfolio's typical notice periods, equity vesting quirks and severance norms, so turnaround is 48 hours instead of three weeks of a panicked founder finding and vetting a solicitor cold. Once a fund puts ExitPanel in its onboarding deck, swapping that referral relationship out costs the fund credibility with its own portfolio.
+
+The startup pays the fixed fee, usually put on the company card by the founder or first ops hire. In some cases the VC fund or accelerator covers the first case as part of its portfolio support, the way some funds already comp legal-template subscriptions for new companies.
+
+The Employment Rights Bill, introduced in the House of Commons on 10 October 2024, removes the two-year qualifying period for unfair dismissal, turning a risk that used to only bite older, larger employers into a day-one exposure for a five-person seed startup letting its first hire go. Most founders don't yet know the rules changed under them.
+
+Multiple existing fixed-fee providers (Fast ILA, e9f4057573dde668) already sell rapid settlement-agreement legal advice with 24-48 hour turnaround and Trustpilot reviews showing real paid volume, proving both willingness to pay and existing search/paid demand for exactly this service. Free alternatives like Acas only conciliate disputes and don't draft or sign off settlement agreements, so they don't cannibalize the paid demand shown.
+
+None of the passages address startup legal spend, settlement-agreement costs, or any startup's willingness or ability to pay a £49.99 fee — they cover hiring-velocity tracking, unrelated funding rounds, a TV show, and Windows startup-app settings.
+
+The passages confirm that accelerators like Techstars, Antler, Seedcamp and Wayra exist and run portfolio programs, and that adjacent legal-service providers (a cap-table/legals platform trusted by 60,000+ startups, and Stripe Atlas with legal templates) already sit in the startup-legal-support space, but none show ExitPanel has, or could easily get, a referral slot inside any fund's onboarding deck.
+
+The passages show that non-solicitor entities lawfully operate panel models, directing clients to independent SRA-regulated solicitors who do the regulated work, and that this structure has been formalised (an ABS) and upheld by the Court of Appeal — the same shape ExitPanel proposes (coordinator plus independent SRA-regulated solicitors for the regulated advice). No passage shows this coordinator structure to be unlawful, only that solicitors themselves are SRA-regulated.

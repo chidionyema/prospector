@@ -1,0 +1,25 @@
+Trust Replay — the evidence kit for UK community-app founders facing an Ofcom complaint.
+
+Trust Replay helps early-stage UK social and community-app founders reconstruct moderation decisions and defend them when users challenge their platform.
+
+Trust Replay records the content, report, rule, human or automated decision, appeal, and user notification behind each difficult moderation case. It turns that record into a clear incident file a founder can use with Ofcom, a journalist, an investor, or an affected user.
+
+The first customers are UK startups running community, marketplace, gaming, dating, or creator platforms. They face duties under the Online Safety Act 2023 but cannot afford a trust-and-safety department. Ofcom can publish rules and investigate platforms, but it cannot prepare an adversarial defence for the platform being investigated.
+
+This borrows the way aviation investigators reconstruct an accident from a flight recorder, and applies it to disputed content decisions. The product captures evidence at the moment of action instead of asking a founder to recreate events months later from scattered logs.
+
+A founding team can install lightweight SDKs and connectors for its existing moderation tools. A free incident replay for the first few cases can lead into paid seats and usage-based evidence storage. Distribution can run through UK startup accelerators, moderation vendors, specialist solicitors, and app-platform consultants.
+
+Over time, anonymised case outcomes, Ofcom publications, and successful response patterns build a proprietary library of UK platform disputes. Every retained customer also embeds the product in its reporting, appeal, and incident workflow, making replacement increasingly painful. The product is not an Ofcom filing tool or a generic compliance dashboard. Its value is reconstructing the platform's own contested decisions and helping it argue its side.
+
+The payer is the founder or operations lead of a UK social, gaming, dating, marketplace, or creator platform with fewer than 100 employees. They buy it when a serious user complaint, press allegation, investor question, or Ofcom contact exposes missing evidence.
+
+The Online Safety Act 2023 has increased pressure on online services to show how they manage user and content risks. Ofcom is expanding its online-safety supervision, while small platforms still lack the incident records and specialist staff that larger networks can build internally.
+
+The passages establish that the Online Safety Act imposes compliance duties on platforms of any size and that Ofcom enforces it, but none states that founders are currently suffering harm or paying for evidence/incident-reconstruction tools to defend contested moderation decisions.
+
+The passages describe UK startup funding trends (a scaleup funding gap, consumer startups stuck between £1m-£5m rounds, well-funded AI/Fintech firms, a YC portfolio list) but say nothing about a founder's willingness or ability to spend a one-off £79 on compliance evidence, nor about Ofcom pressure creating that motive.
+
+The passages describe Ofcom's regulatory role and the notification/fee duties platforms owe to Ofcom under the Online Safety Act, but none of them say anything about how Trust Replay would reach founders — no mention of accelerators, moderation vendors, solicitors, or any self-serve or forcing mechanism to the buyer.
+
+The passages are generic ICO guidance on GDPR lawful bases, plus general references to RIPA, the Online Safety Act, and employment record-keeping; none evaluate whether recording and storing moderation-decision evidence (content, reports, appeals, user identities) can be done under an achievable lawful basis or whether any provision blocks it. No passage confirms a lawful basis exists for this specific processing, nor does any state the model is illegal.

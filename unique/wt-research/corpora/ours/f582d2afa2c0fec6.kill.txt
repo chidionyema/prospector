@@ -1,0 +1,23 @@
+MisClassOut – The Gig Worker's Employment Status Verification & Claim Kit.
+
+A done-for-you service that collects a worker's history, applies the local statutory test, and generates a ready-to-file misclassification claim with the labor board.
+
+Gig workers are frequently misclassified as independent contractors, losing benefits and paying excess self-employment tax, yet they rarely file claims due to complexity. A productized kit with jurisdiction‑specific templates and a paid human review stage can convert this latent demand into a high‑value service.
+
+The gig worker pays a fixed fee per claim (e.g. $99–149), recoverable as part of back wages if successful.
+
+Legislative tailwinds (EU Platform Work Directive, US PRO Act, state ABC tests) are lowering legal barriers to challenge status, but workers need a guided, low‑time‑investment process to act.
+
+The passages are completely irrelevant: a dictionary definition of 'done', a linguistic note on African American English, and an ad for an Irish marketplace. They do not address the gig economy, misclassification claims, legal services, or any aspect of the candidate's value durability.
+
+The passages discuss misclassification risks and rights but do not mention any existing service, platform, or legal aid organization that dominates the filing of claims for gig workers. No evidence addresses incumbency.
+
+Passages define 'done' and reference an Irish classifieds site; none discuss gig worker finances, misclassification claims, or willingness to pay. Irrelevant evidence is no evidence.
+
+Passages discuss dictionary definitions, linguistic usage of 'done', and an Irish marketplace, none of which address how gig workers would discover or purchase a misclassification claim service. No common-sense bridge exists.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No evidence in the passages supports any of the three risk categories; all sources were irrelevant.

@@ -1,0 +1,23 @@
+The Creative IP Watchdog.
+
+A paid weekly intelligence briefing for commercial illustrators and stock photographers that tracks copyright lawsuits, DMCA takedowns, and licensing shifts—translated into actionable per-use fee benchmarks and contract clauses.
+
+Commercial illustrators and photographers lose income to AI-driven infringement and undervalue their licensing because no accessible, non-legal-jargon source links litigation outcomes to specific pricing moves. A solo analyst builds a proprietary, time-compounded dataset of case settlements, judicial trends, and anonymized license-fee survey data, delivering hedge-fund-style signals that let creatives proactively adjust fees and terms.
+
+Freelance illustrators, stock photographers, and visual artists in the US/UK earning $40k+ who license work regularly and feel financial pain from AI scraping and unclear rights enforcement.
+
+The Getty Images and class-action copyright suits against AI generators have created urgent confusion about fair use, while freelance platforms offer no pricing guidance; demand for real-time, actionable IP intelligence is acute and unmet by generalist law blogs.
+
+Passage [a9d086295129ae69] shows a competing free briefing service to the same audience but does not affirm the candidate's value is durable, nor does it prove a total commodity / free first-party tool removing all margin; durability of the paid proprietary-data thesis is not addressed.
+
+The only passage describes a topic briefing on how stock platforms treat AI-generated images; it does not address whether any dominant incumbent or funded rival is already delivering litigation-to-fee-benchmark intelligence to creators, so the openness of the space cannot be confirmed or negated.
+
+The passage only describes a newsletter's coverage of AI-related image-rights stories; it says nothing about whether freelance illustrators or photographers have the budget, income, or willingness to pay for such a briefing.
+
+The passage shows a live self-serve web channel (briefings + toolkit, 'Read latest briefings') delivering image-rights content to the exact buyer set—photographers, illustrators, stock contributors—demonstrating a low-friction, executable route to this audience exists.
+
+The passage only describes copyright enforcement schemes targeting users of 'free' images; it says nothing about whether operating a paid IP-intelligence briefing requires breaking any law or terms.
+
+The passage affirms a real, current problem for visual creators ('AI is changing image rights. Visual creators need clearer terms'; delivered images now become AI input/dataset material), and the existence of a dedicated briefing-and-toolkit offering indicates the pain is acute enough to productize. It does not directly show users paying, so confidence is moderate.
+
+A live, FREE incumbent already occupies this exact niche, gutting the core defensibility thesis. airightsbrief.com [a9d086295129ae69] delivers plain-English AI-image-rights briefings PLUS a practical toolkit (contract language, forms, records, client-communication templates) to the identical buyer set the candidate names: photographers, illustrators, designers, stock contributors. It even runs a free daily digest tracking litigation and licensing stories for these creators [be28ecf5dfda0bfb]. This directly refutes the commodity_premortem's central claim that 'no one aggregates... for indie creators' and that a generalist 'cannot replicate' the wedge. The free layer commoditizes the briefing-plus-contract-clause bulk of the product, leaving only the unproven 'per-use fee benchmark / anonymized survey' data as differentiation. Against that, value_durability is unverifiable (0.44) precisely because a free first-party rival to the same audience exists; payer_solvency is unverifiable (0.40) with zero evidence any creator pays above free; and pain_reality, while supported (0.46), is satisfied for FREE by the incumbent, eliminating willingness-to-pay. A solo paid weekly newsletter charging for what a funded free competitor gives away to the same niche faces a fatal CAC and pricing-power problem.

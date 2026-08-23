@@ -1,0 +1,204 @@
+DRN-5217074 
+ 
+ 
+The complaint 
+ 
+Mr B holds/held an account with Santander UK Plc (“Santander”). 
+ 
+Mr B’s complaint is about Santander’s refusal to reimburse him money he says he lost due 
+to a scam. 
+Mr B is represented by CEL Solicitors in this matter.  However, where appropriate, I will refer 
+to Mr B solely in this decision for ease of reading. 
+What happened 
+The circumstances of this complaint are well known to all parties concerned, so I will not 
+repeat them again here in detail.  However, I will provide an overview of events. 
+Mr B says he has fallen victim to a cryptocurrency related investment scam.  He says 
+fraudsters deceived him into making payments to what he thought was a legitimate 
+investment enterprise.  Below are the fund transfers in question (I have tried to reconcile the 
+differences between CEL Solicitors’ list of disputed payments and Santander’s): 
+Payment 
+Number Date Beneficiary Amount 
+1 12 November 
+2020 CB Payments £2.00 
+2 12 November 
+2020 CB Payments £2,200 
+3 18 November 
+2020 CB Payments £4,500 
+4 19 November 
+2020 CB Payments £3,000 
+5 24 November 
+2020 CB Payments £2,500 
+6 26 November 
+2020 LondonLink OTC £2,500 
+7 14 December 
+2020 LondonLink OTC £9,900 
+
+ 
+ 
+8 17 December 
+2020 LondonLink OTC £2,100 
+9 6 January 2021 TM £2,500 
+10 13 January 2021 TM £18,000 
+11 10 March 2021 TM £20,000.00 
+12 10 March 2021 TM £13,500 
+13 11 March 2021 TM £5,000 
+14 12 March 2021 TM £20,000 
+15 13 March 2021 TM £8,500 
+16 17 March 2021 TM £15,000 
+17 17 March 2021 TM £5,500 
+18 31 March 2021 TM £10,000 
+19 31 March 2021 TM £13,500 
+20 6 April 2021 TM £14,900 
+21 8 April 2021 TM £20,000 
+22 8 April 2021 TM £10,400 
+ 
+ 
+23 28 April 2021 TM £24,700 
+ 
+Mr B disputed the above with Santander.  When Santander refused to reimburse Mr B, he 
+raised a complaint, which he also referred to our service. 
+One of our investigators considered the complaint and did not uphold it.  As Mr B did not 
+accept the investigator’s findings, this matter has been passed to me to make a decision. 
+What I have decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+Having done so, I find that the investigator at first instance was right to reach the conclusion 
+they did.  This is for reasons I set out in this decision. 
+I would like to say at the outset that I have summarised this complaint in far less detail than 
+the parties involved.  I want to stress that no discourtesy is intended by this.  If there is a 
+submission I have not addressed, it is not because I have ignored the point.  It is simply 
+because my findings focus on what I consider to be the central issues in this complaint. 
+Regulatory framework 
+The regulations which apply in this matter are the Payment Services Regulations 2017 (“the 
+PSRs”).   
+Was Mr B scammed? 
+Mr B has provided little by way of evidence to support that he was scammed and suffered a 
+loss as a result.  However, I have decided to proceed on the basis that, on balance, he was 
+scammed and suffered a loss.  I say this because Mr B’s testimony does include some of the 
+typical hallmarks of a scam; and Santander appear to accept that Mr B fell victim to one.  
+Further, taking a pragmatic approach, my view is that it would not be the best use of time if I 
+asked CEL Solicitors to contact Mr B to provide further information – only for me to reach the 
+same outcome. 
+Should Santander have recognised that Mr B was at risk of financial harm from fraud? 
+It is not in dispute that Mr B authorised the payment transactions in this matter.  Generally, 
+consumers are liable for payment transactions they have authorised.  However, that is not 
+the end of the story.  This is because even if a payment is authorised, there are regulatory 
+requirements and good industry practice which suggest firms – such as Santander – should 
+be on the look-out for unusual and out of character transactions to protect their customers 
+from financial harm.  And, if such payment transactions do arise, firms should intervene 
+before processing them.  That said, firms need to strike a balance between intervening in a 
+customer’s payment to protect them from financial harm, against the risk of unnecessarily 
+inconveniencing or delaying a customer’s legitimate transactions.   
+I have borne the above in mind when considering the payment transactions in this matter. 
+From what I can see, Santander intervened in Payments 6, 7 and 10 by not allowing them to 
+be made.  Consequently, Mr B had to telephone Santander to process each of these 
+ 
+ 
+payments. 
+Were Santander’s interventions proportionate? 
+Santander says the telephone call recordings regarding Payments 6, 7 and 10 are no longer 
+available given the passage of time.  However, Santander has been able to provide notes in 
+relation to the calls.  I have considered these to determine whether Santander’s interventions 
+were proportionate. 
+In response to the investigator’s findings, Mr B submits, amongst other things: “It is 
+inequitable to assume that Santander did everything they could without tangible evidence. 
+As an evidence-based service, this approach seems contrary to your usual standards.” 
+I do not accept this submission.  It would be ideal to have the telephone recordings if they 
+were still available.  However, I have not seen anything to make me question the veracity of 
+Santander’s notes.  On this basis, I am permitted to rely on them to assist me with reaching 
+a conclusion on this complaint.   
+Payment 6 
+By way of a telephone call on 26 November 2020, Mr B spoke to one of Santander’s 
+advisers about Payment 6.  The adviser asked Mr B what the payment was for.  Mr B 
+responded by saying that he was investing in cryptocurrency with his cousin.  The adviser 
+then asked Mr B whether he had made payments to LondonLink before.  Mr B responded 
+stating that he has known LondonLink and Coinbase for a while and has dealt with them in 
+the past.  The adviser recommended that Mr B contact the Financial Conduct Authority 
+(“FCA”); and go on the FCA’s website to use the scam smart tool. 
+I have thought about the nature of Payment 6, its value and what Mr B told the Santander 
+adviser during the call – including what was suggested to him by the adviser.  Having done 
+so, I am persuaded that Santander’s intervention in Payment 6 was proportionate to the risk 
+identified – particularly for a transaction which took place in 2020.  To my mind, what Mr B 
+told the adviser was reasonable enough to alleviate any concerns Santander may have had 
+about Payment 6. 
+Payment 7 
+By way of a telephone call on 14 December 2020, Mr B spoke to one of Santander’s 
+advisers about Payment 7.  Mr B confirmed to the adviser that his payment was genuine, no 
+one had asked him to make it and that it was going to a company he trusted. 
+I am satisfied that this intervention was proportionate to the risk identified for the same 
+reasons I have set out above for Payment 6.  Further, Mr B had already provided his 
+reasons for making payments to LondonLink in the call connected to Payment 6 – thereby 
+assuaging Santander’s concerns. 
+Payment 10 
+Although not highlighted by the investigator at first instance, I can see, according to 
+Santander’s notes, that there was a third telephone call which took place with Mr B. 
+By way of telephone call on 13 January 2021, Mr B spoke to one of Santander’s advisers 
+about Payment 10.  During the call, Mr B confirmed that the account he was paying into was 
+a family account that he had been dealing with for a long time.  Mr B stated he was trying to 
+get his trades done by 15:00, so he could ‘make his money’.  Mr B said he was making 
+ 
+ 
+payment to an account in his own name (which was true); and confirmed that no one had 
+asked him to make the payment. 
+I have thought about the nature of Payment 10, its value and what Mr B told Santander 
+about the transaction.  I have also considered that Mr B confirmed to Santander during the 
+calls mentioned above – that he was involved in investing/trading.  Having reflected on these 
+points, I am persuaded that Santander’s intervention in Payment 10 was proportionate to the 
+risk identified – particularly for a transaction which took place in 2021.  Again, to my mind, 
+what Mr B told the adviser was reasonable enough to alleviate any concerns Santander may 
+have had about Payment 10. 
+Other payment transactions 
+I have thought about whether the other payments in this matter should have triggered 
+Santander’s fraud detection systems prompting it to intervene.  Having done so, I think an 
+argument could be made to suggest that some of them should have triggered interventions.  
+However, I do not think they would have likely been successful. 
+I have not seen anything to suggest that if Santander had provided Mr B with written 
+warnings – they would have broken the fraudsters’ spell.  Mr B’s representatives have 
+suggested, amongst other things, that Mr B was very much taken in by the fraudsters at the 
+time of the scam.  For example, they submit, “The scammer was so professional and your 
+customer [Mr B] was completely convinced.”  Mr B also received a credit from the scam on 
+or around 16 December 2020, which no doubt resulted in Mr B falling more under the 
+fraudsters’ spell.  Further, I am persuaded that had there been any additional human 
+interventions from Santander – such interventions would have likely played out the same 
+way as the telephone calls mentioned above. 
+In summary 
+In my judgment, the above factors suggest that had Santander intervened to try to protect Mr 
+B from financial harm: it is likely Mr B would have frustrated such an intervention – thereby 
+alleviating any concerns Santander had. 
+Recovery of funds 
+Mr B appears to have made his last payment to the scam from his Santander account on or 
+around 28 April 2021.  Mr B reported the scam to Santander on or around 20 May 2021.   
+The likelihood that even if prompt action had been taken by Santander on or immediately 
+after Mr B reported the scam, any of the money transferred would have been successfully 
+reclaimed, seems slim.  I say this because of the time that had elapsed between Mr B’s last 
+payment and when he reported the scam.  In these types of scams, fraudsters tend to 
+withdraw/transfer out their ill-gotten gains immediately to prevent recovery. 
+Further or alternatively, as Mr B’s payments were made to purchase cryptocurrency – which 
+would have been forwarded on in this form – there would not have been any funds to 
+recover.  So, I am satisfied that it is unlikely Santander could have done anything to recover 
+the funds. 
+Vulnerabilities 
+Mr B says that he was vulnerable at the time of the scam due to a change in his financial 
+circumstances.  This was, he says, a result of contracting Covid-19, which led him to being 
+unable to work.   
+ 
+ 
+I have not seen anything to suggest that Santander knew or ought to have known about Mr 
+B’s personal issues at the time.  Therefore, I do not find Santander should have dealt with Mr 
+B’s payments any differently in this regard. 
+Compensation for distress and/or inconvenience 
+I have considered whether an award for distress and/or inconvenience is warranted in this 
+matter.  Having done so, I am not persuaded that it is.  I have not found any errors in 
+Santander’s investigation.  Any distress and/or inconvenience Mr B has suffered is a result 
+of the fraudsters’ actions – not Santander’s. 
+Conclusion 
+Taking all the above points together, I do not find that Santander has done anything wrong in 
+the circumstances of this complaint.  Therefore, I will not be directing Santander to do 
+anything further. 
+My final decision 
+For the reasons set out above, my final decision is that I do not uphold this complaint. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr B to accept or 
+reject my decision before 21 April 2025. 
+   
+Tony Massiah 
+Ombudsman

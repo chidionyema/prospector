@@ -1,0 +1,27 @@
+ForestSchoolOps.
+
+End-to-end workflow management for school outdoor education departments, covering asset maintenance, seasonal scheduling, and participation logistics.
+
+Broadening the scope from simple risk assessment filing to a complete operational hub for outdoor education programs creates a stickier, high-value workflow tool that saves lead teachers significant time, leveraging the broadening lens.
+
+Lead teachers and outdoor education coordinators in UK primary and secondary schools who have discretionary departmental budget.
+
+Schools face increasing pressure to provide extracurricular outdoor learning while simultaneously tightening budgets, requiring more efficient departmental management without expensive enterprise software.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+The hypothesis that a niche micro-SaaS for school outdoor education can thrive on discretionary departmental budget is a deliverability failure. UK schools operate under strict procurement and data compliance regulations (e.g., GDPR, DfE standards) that prevent the adoption of 'operational hubs' via discretionary spend. The idea fails to acknowledge that schools cannot adopt new software without enterprise-level procurement, integration, and security clearance. As an info-product, it fails to solve the actual pain point, which is not 'workflow management' but 'regulatory compliance and procurement approval'.

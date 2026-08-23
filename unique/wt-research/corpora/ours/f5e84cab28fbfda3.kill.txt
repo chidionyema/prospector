@@ -1,0 +1,23 @@
+FCDO Relocation Float.
+
+A solo‑operated service that fronts thousands for removals, deposits, and travel for FCDO staff posted abroad, then collects the reimbursable allowance directly from the government, charging a fixed fee.
+
+FCDO officers are posted overseas and must pay huge upfront relocation costs (£5k–£20k) before their transfer allowance is paid, often months later, forcing them into expensive credit; this service bridges the gap by advancing the cash and taking an assignment on the allowance.
+
+FCDO civil servants (30–50) facing an overseas posting who need immediate cash for moves.
+
+Increased diplomatic postings post‑Brexit, tighter government reimbursement timelines, and the rising cost of international moves.
+
+None of the passages discuss the durability of the proposed cash-advance service; they only mention FCDO contracts for physical moves, digital contractor insourcing, and travel advice, which do not speak to whether the value of bridging relocation costs is real or commoditised.
+
+The passages show FCDO procurements and an existing removal company, but none addresses a financial service that advances cash against relocation allowances; no incumbent for that specific need is evident.
+
+The passages discuss FCDO budget cuts and allowance reductions but do not address whether individual FCDO civil servants have the budget or motive to pay for the relocation float service. Payer solvency cannot be determined.
+
+The passages discuss physical removals and a government contract, not the existence of a distribution channel for a cash-advance service targeting FCDO staff. No relevant evidence.
+
+None of the passages address the lawfulness of advancing cash against a government allowance; they cover removals licensing, overseas employee compliance, and an unrelated fraud case.
+
+None of the provided passages mention the upfront relocation costs, delayed allowances, or the need for cash advances among FCDO staff. The passages cover overseas careers, a removal contract, and an NAO report on the overseas estate without addressing the alleged financial pain.
+
+The candidate's hypothesis relies on FCDO staff needing to front large sums for relocation, later reimbursed via allowances. Evidence shows the FCDO already procures a Movement of Personal Effects contract (source 7ed1dca9af3487f2), directly covering physical removals—the largest upfront cost—negating the need for a cash advance. Additionally, the FCDO faces severe budget cuts: 2,000 job losses (source fbf4ffa8c77ac785) reduce the customer pool, and overseas allowances are being reviewed and cut (sources f64c313ee9414bfa, 545f7f44ef6435b4), making future reimbursements uncertain and potentially smaller. Without reliable assignment value, the credit risk of advancing cash is unsustainable. No evidence was found confirming that staff suffer from delayed reimbursements for upfront costs; the alleged pain remains unverified. Together, these points indicate the market is shrinking and the core value proposition is undermined, making the venture not worth building.

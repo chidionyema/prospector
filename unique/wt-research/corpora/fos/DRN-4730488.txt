@@ -1,0 +1,1128 @@
+DRN-4730488
+The complaint
+Mr B has a self-invested personal pension (SIPP) with Options UK Personal Pensions LLP 
+(formerly Carey Pensions UK LLP) (“Options”). Mr B transferred his existing pensions to the 
+SIPP to invest in a property-based investment scheme in Cape Verde. 
+Mr B’s complaint is that Options was negligent in accepting his application from the 
+unregulated introducer to open a SIPP and to make such an investment in his case.
+What happened
+I will first set out my understanding of the various parties involved and their roles in relation 
+to the investment in this complaint. 
+Carey, now Options 
+Options is a SIPP provider and administrator, regulated by the Financial Conduct Authority 
+(FCA). Options is authorised, in relation to SIPPs, to arrange (bring about) deals in 
+investments, deal in investments as principal, establish, operate or wind up a pension 
+scheme and make arrangements with a view to transactions in investments. Carey was not 
+and Options is not authorised to advise on investments. 
+Mr B 
+Mr B is the complainant in this case, and he is represented by a claims management 
+company. 
+Mr B applied for a SIPP with Options in late January 2013. He first complained to Options 
+about it in early January 2019. 
+Cape Verde4 Life
+Cape Verde4 Life was a UK based company. It was involved in overseas property-based 
+investments. It was not regulated by the FCA. It was not therefore authorised to advise on 
+investments covered by the Financial Services and Markets Act 2000 in the UK. One of the 
+directors was a man I will call Mr C.
+Cape Verde4 Life was an introducer of business to Options. It introduced Mr B’s application 
+to open a SIPP to Options. 
+Cape Verde4 Life was at the time of Mr B’s investment described as an authorised 
+representative of Oasis Atlántico. 
+Oasis Atlántico
+Oasis Atlántico Imobiliaria SARL (“Oasis”) is a company incorporated under the laws of 
+Cape Verde. It owned land in Cape Verde on which it was to build a tourism resort named 
+Salinas Sea. The development was split into units (in effect hotel rooms). 
+
+As I understand it there was more than one way to invest in the Salinas Sea project. I have 
+seen a brochure promoting investment via two special purpose vehicles (companies) which 
+were intended to be set up on a basis that could be invested in within a UK SIPP. This form 
+of investment involved buying shares in the companies which in turn invested in units in 
+Salinas Sea. 
+This form of investment had a minimum investment of £10,000. The brochure said it was 
+intended for authorised financial advisers and gave the impression it was an investment for 
+high-net-worth clients and/or sophisticated investors. 
+Alternatively, it was possible for the investor to buy a unit or part of a unit. Mr B invested in 
+this way. 
+Buying a unit also involved entering into a Hotel Agreement under which the buyer/investor 
+appointed the seller (Oasis) to operate the overall development (including the unit) as a 
+hotel. The unit was to be part of the hotel and managed as a whole by the Manager, not by 
+the individual investor. 
+When the unit was completed, Oasis was to let the buyer know it was available for 
+inspection and then the contract was to be completed. 
+During the first three years the investor was to be paid an annual income of at least 5% of 
+the price paid. There was also provision for payment of income at the same level if the hotel 
+was not completed and opened on time. 
+There was a formula for calculating the rental income payable to the investor which involved 
+pooling the rental income of all units rather than based on the occupancy of the investor’s 
+individual unit. Investors would receive income on this basis during the first three years if 
+greater than 5% and calculated on this basis after the first three years. 
+An investor could sell their unit on the open market, subject to the Hotel Agreement and 
+there being an available buyer. 
+Mr B’s investment 
+Mr B paid around £27,000 for 25% of a unit. Mr B’s investment was made in March 2013. 
+Before making the investment, Mr B would have been provided with a Report on the 
+Principal Terms of Documentation prepared by a firm of solicitors in London. He was also 
+provided with a report on Oasis in English prepared by a lawyer in Cape Verde. And Mr B 
+was required by Carey to sign a document headed SIPP Member Instruction and 
+Declaration, Alternative Investment – Salinas Sea. 
+As I understand it, the resort was completed later in 2013 and Options (on behalf of Mr B) 
+was invited to inspect it in November 2013. The formalities for completing the purchase were 
+to take place soon after.
+In the event, Mr B’s purchase wasn’t completed until 2015.
+The relationship between Cape Verde4 Life and Options 
+As I understand it, Options relationship with Cape Verde4 Life began in April 2011. Cape 
+Verde4 Life was an introducer of business to Options and Options has said it received more 
+than 90 introductions between April 2011 and November 2013 when it ended its relationship 
+with Cape Verde4 Life after it decided to stop accepting business from unregulated 
+introducers. 
+Options says it acted properly in accepting introductions from Cape Verde4 Life. It was not 
+prohibited from accepting introductions from unregulated introducers. It says it undertook 
+due diligence checks on Cape Verde4 Life on a number of occasions and had no reason to 
+believe it should not accept introductions from that business at the time of Mr B’s 
+introduction. 
+Due diligence carried out by Options on Cape Verde4 Life 
+Options has provided the Financial Ombudsman Service with information about the due 
+diligence it carried out on Cape Verde4 Life. 
+Options says: 
+Cape Verde4 Life first proposed to become an introducer of SIPP business for 
+Options in April 2011. It was an introducer from late April 2011 until November 2013 
+when Options made a business decision to no longer accept introductions from 
+unregulated introducers. 
+Cape Verde4 Life was working with a FCA regulated adviser, 1Stop Financial 
+Services, who were at the time authorised to advise on pension transfers, “if 
+investors wished to take advice”. 
+Options did not pay any commission to Cape Verde4 Life for introducing business to 
+it. It did not see the details of any payments made to Cape Verde4 Life by the 
+underlying provider, but Cape Verde did disclose on its “Introducer Profile” that it 
+would receive approximately 8%. 
+Options did not request copies of any suitability reports. 
+Options did not consider the Salinas Seas investment to be a non-mainstream 
+pooled investment. It says it was an investment “into bricks and mortar property 
+where they could be rented out with the rental returned to the pension scheme bank 
+account.” 
+In addition to the above I note Cape Verde 4 Life completed a non-regulated introducer 
+profile” with Options. It was sent to Cape Verde4 Life in March 2012 when Options said:
+ 
+“As you, Cape Verde4 Life, introduce business to Carey Pensions then for 
+compliance records and for the sake of good order we need to put in place Non 
+Regulated Introducer Information and Terms of Business between our companies. 
+I attach an Introducer Profile and terms of Business and would be grateful if you 
+could agree and complete these and return to me. 
+I have used a commencement date of 28 April 2011 for the Terms which is the date 
+of your first case with us…” 
+The profile document was signed by Cape Verde4 Life in September 2012. The form 
+recorded a number of points in relation to Cape Verde4 Life including: 
+It had been operating for five years, that its principal address was in the UK and that 
+it had a branch in Cape Verde. 
+It promoted Salinas Seas and intended to distribute future resorts from Oasis.
+The Salinas Sea investment was accepted by a number of other named SIPP 
+operators.  
+Cape Verde4 Life and/or its agents obtain clients from a “UK distribution network” 
+(without further elaboration).  
+The sales process adopted by Cape Verde4 Life and/or its agents was noted as 
+“Mainly pension review/non reg” (without further elaboration).  
+The average client was described as aged 45 plus, employed and self-employed with 
+an income of £20-50K.  
+Typical commission structure was noted as “master agent commission circa 8%”  
+Its objective for the coming 12 months was noted as “sell out Salinas Seas/launch 
+new Oasis resorts”.  
+Training was provided by an IFA and a compliance partner on SIPPs, and FSA and 
+HMRC rules.  
+The business produced by agents is monitored by Mr C reviewing all completed 
+sales before submitting the application to the SIPP provider.  
+Cape Verde4 Life worked with “1SFS IFA” and “TFPP IFA”. I understand those firms 
+to be 1Stop Financial Services and The Financial Planning Partnership.  
+Cape Verde 4 Life used a third-party compliance business to ensure no regulated 
+activities were carried out by it. 
+It had not been subject to any regulatory action or complaints. 
+Options entered into a terms of business agreement with Cape Verde4 Life in September 
+2012. It backdated that agreement to April 2011. 
+In September 2013, Carey conducted a “World Check” search on Mr C. The check did not 
+reveal anything adverse. 
+Due diligence carried out by Options on Salinas Seas 
+As I understand it, Options carried out checks on the Salinas Sea investment in 2010. It 
+concluded it was eligible for investment in a pension scheme. It also decided as a result of 
+that review that all investors in its SIPPs should complete its Alternative Member Declaration 
+and Indemnity. 
+I have seen a review of the Special Purpose Vehicle version of the investment carried out by 
+a third party in April 2012 (ie before Mr B’s application) which was provided to Options. It 
+includes a suggestion that SIPP operators obtain an acknowledgement from scheme 
+members of the high risk, illiquid nature of the investment. And “where the member is not 
+investing through an FSA authorised investor, the SIPP operator may wish to obtain a copy 
+of the high net worth/sophisticated investor certificate.” 
+I will refer to the Declaration again below. It is enough to say here that because of its checks 
+upon the Salinas Sea investment, Options referred to the investment as an unregulated 
+alternative investment considered high risk and speculative. 
+Mr B’s dealings with Carey and Cape Verde4 Life 
+Mr B applied to open a SIPP with Carey in January 2013 having dated his signed application 
+form on 29 January 2013. As part of that application process Mr B applied to switch his three 
+existing defined contribution pensions which had a combined estimated value of around 
+£40,000. 
+The application form included a page for the details of the applicant’s financial adviser. This, 
+and the page detailing the intended investments within the SIPP, was not completed. 
+Mr B had ticked the box confirming that he intended to take benefits from his pension plan 
+once the transfer payments had been received. 
+Mr B says an adviser spoke to him about a mortgage review which then became a 
+discussion about his pension. He says he was contacted by phone and met in person. He 
+told us that he was advised to transfer into a SIPP, withdraw about £10,000 from the plan 
+and invest into an overseas hotel development promising greater returns.
+Options says its records show Mr B used Cape Verde4 Life as his introducer and that he 
+provided a letter of authority to that effect with his application. 
+Neither Mr B nor Options have provided copies of documents recording the advice Mr B 
+says he was given. 
+I have seen a copy of Mr B’s SIPP application form which was accompanied by a letter 
+addressed to Carey signed by Mr B. It says: 
+“I [Mr B] authorise and instruct Carey pensions UK LLP as the Administrator of my 
+Carey Pension Scheme and Carey Pension Trustees UK Ltd as the Trustee to 
+provide Cape Verde4 Life, the authorized representative of Oasis Atlántico, with any 
+information whatsoever they may require in relation to my scheme’s purchase of an 
+investment into the Salinas Sea investment.” 
+Options wrote to Mr B on 4 February 2013 confirming his SIPP had been set up. The first 
+transfer payment from his existing pension plans was received later that month and the other 
+two were received in March 2013.
+After the SIPP was set up, Options sent a document to Mr B to complete headed: 
+“SIPP MEMBER INSTRUCTION AND DECLARATION ALTERNATIVE 
+INVESTMENT – SALINAS SEA” 
+I will refer to this document as the declaration. It recorded the investment type as “Hotel 
+Room – Aparthotel on Sal (Cape Verde Islands)”. 
+The declaration began: 
+“I [Mr B] being a member of the above scheme write to instruct Carey Pensions 
+Trustees UK Ltd to purchase a Hotel Room with borrowing from the developer with 
+Salinas Sea on the island of Sal in the Cape Verde Islands, managed on “hotel room 
+basis”, through Oasis Atlantic, for a consideration of [number given] on my behalf for 
+the above scheme.” 
+The declaration then included a number of points including: 
+Mr B confirmed Options was acting on an execution only basis and had not given 
+advice. 
+Mr B understood that the investment is the purchase of a hotel room that is “an 
+Unregulated “Alternative Investment” and as such is considered High Risk and 
+Speculative.” 
+Mr B acknowledged and confirmed his understanding that the investment may prove 
+difficult to value and/or sell / realise. 
+Mr B confirmed he had reviewed and understood the information provided by Salinas 
+Sea. 
+Mr B confirmed that he had taken his own advice, including but not limited to, 
+financial advice, investment and tax advice regarding the investment and its value, 
+taxes, costs and fees. 
+The declaration also included an agreement by Mr B to indemnify Options against any 
+claims, etc in connection with the investment. 
+Mr B signed the declaration and dated it 17 February 2013. 
+Mr B was not asked to state or otherwise indicate or provide evidence to show that he was a 
+high net worth individual or sophisticated investor in the declaration, or in his SIPP 
+application or otherwise. 
+Also dated February 2013, Mr B was provided with a document from a UK law firm headed 
+Report on Principal Terms of Documentation Salinas Sea Cape Verde. This showed Mr B 
+was paying just over £27,000 for a 25% share in a unit in the Salinas Sea development. 
+Mr B was to pay around £18,000 when the contract was signed and £9,500 on completion of 
+the property. It was expected construction would be completed by the end of March 2013.
+A Hotel Agreement would also have been entered into at the same time relating to the 
+management of the hotel room as part of the overall development. Income from the unit was 
+to be pooled with other units. Income was guaranteed at a certain level for the first three 
+years. 
+The unit could be sold on the open market subject to the Hotel Agreement which had a 25- 
+year term. 
+Options wrote to Mr B on 28 February 2013 informing him that his initial payment had been 
+made that day to Oasis Atlántico and Options would let him know when the final balance 
+was requested.
+Mr B withdrew 25% of his combined transferred pension fund as a tax-free lump sum in 
+March 2013. Based on the information we have been provided with, Mr B has since made at 
+least one income withdrawal from his pension fund. 
+In November 2013 Oasis Atlántico announced the completion of the resort, following which 
+completion of the purchase was to take place. 
+A letter from Options dated 30 September 2015 confirmed that the purchase had been 
+completed following an additional payment of £9,538 being made in July 2015. Options’ 
+letter indicated that Mr B had no mortgage on the property.
+Mr B started to receive rental income into the SIPP in October 2015.
+Mr B’s complaint to Options
+In January 2019 Mr B complained to Options with the help of a claims management 
+company. It said the investment Mr B had made was illiquid and was clearly high risk, 
+speculative and unregulated. Mr B had suffered significant financial losses. The trustees of 
+the Options SIPP should not have accepted the investment because:
+It was not regulated by UK financial authorities so carried no protection in the event 
+the investment failed;
+The investment was made in a specialist, non-mainstream sector
+The legal structure and title to the investment was unclear which created uncertainty 
+about its legal status 
+It ought to have been clear that the value of the investment (initially and 
+subsequently) would be difficult to assess
+There was a liquidity risk with the investment with no readily available market for it
+The financial stability of the investment provider was uncertain given the lack of 
+trading record
+The investment was based overseas and therefore carried additional risks
+The promised return was much higher than available under standard investments for 
+a low or moderate investor
+The investment was an Unregulated Collective Investment Scheme (UCIS). FCA 
+guidance stated that such investments were unlikely to be suitable for the majority of 
+retail customers.
+Any reasonable review of the investment would have concluded that the investment 
+should not have been allowed into retail clients SIPPs. 
+By accepting the application Options had failed to act in Mr B’s best interests
+Options were aware Mr B hadn’t received advice from a regulated adviser. It ought to 
+have been obvious that Mr B was following advice received from Cape Verde4 Life. It 
+was ‘intrinsically unlikely’ that he would have made such a decision without receiving 
+advice. So, Options should not have accepted Cape Verde4 Life’s business. 
+Cape Verde4 Life advised Mr B and arranged for his existing pensions to be 
+transferred and for the investment to be made within his SIPP
+The representative claimed compensation to restore Mr B to the position he would have 
+been in if he had not switched his pensions to Options. 
+Options did not uphold Mr B’s complaint. It made a number of points in its final response 
+letter dated 5 March 2019, including: 
+Options provides execution only SIPP administration services. This was set out in all 
+the documentation provided to Mr B around February 2013.
+Under COBS 11.2.19 Options would have been in breach of COBS if it had not 
+executed Mr B’s specific investment instructions to make the investment. As such 
+Options are not liable to Mr B.
+Options did not and could not provide Mr B with any advice or assess the suitability 
+of the investment he would be making within his pension. It accepted his instructions 
+on an execution only basis.
+Mr B was introduced to Options by Cape Verde 4 Life. Options are permitted to 
+accept introductions from non-regulated firms.
+Options undertook due diligence on Cape Verde4 Life on a number of occasions and 
+had no reason to believe it shouldn’t accept introductions from this source at the time 
+it accepted Mr B’s application
+Options’ documentation recommended he seek independent financial advice
+Mr B signed an alternative member declaration which clearly identified that the 
+investment was high risk
+Options had acted appropriately as the SIPPs administrator and SIPP trustee. The 
+SIPP had been administered in line with Options’ term and conditions. 
+Options is not responsible for the performance, liquidity of or income from Mr B’s 
+investment. 
+It carried out relevant due diligence checks on the investment to ensure it was 
+suitable for holding in a UK pension scheme. 
+The complaint to the Financial Ombudsman Service 
+Mr B then referred his complaint to the Financial Ombudsman Service on 26 June 2019. 
+An investigator set out his findings in which he thought the complaint should be upheld. He 
+made a number of points including: 
+The Principles for Businesses, and in particular Principles 2, 3 and 6 are relevant. He 
+also considered relevant legal judgments,
+The regulator has issued a number of publications which discussed the Principles 
+and gave examples of good industry practice in relation to SIPP operators. 
+Options was not responsible for giving Mr B advice. Nor was it responsible for 
+checking any advice to him was suitable for his individual circumstances and 
+requirements. 
+Options was obliged to safeguard consumers against facilitating SIPPs that are 
+unsuitable or detrimental to them and make enquiries about the nature or quality of 
+proposed investments before deciding whether to accept them into their SIPPs. 
+Options had provided evidence relating to its due diligence carried out on Cape 
+Verde4 Life. But there were key areas of concern about this:
+oIntroductions from Cape Verde4 Life started to be accepted in April 2011 but 
+a background check wasn’t undertaken until April 2013.
+oOptions said Cape Verde4 Life worked with an FCA regulated adviser. No 
+evidence of this had been provided or that Options confirmed their customers 
+were actually receiving advice.
+oOptions’ final response letters have said they believed no regulated financial 
+advice would be provided to Cape Verde4 Life’s clients hence they were 
+classified as ‘direct clients’.
+It seems implausible that business such as in Mr B’s case would have taken place 
+without a regulated activity occurring so Options should have been concerned about 
+accepting such business from an unregulated firm. 
+In all the circumstances it was not fair and reasonable for Options to accept Mr B’s 
+application. 
+He considered whether s27 of the Financial Services and Markets Act (FSMA) 
+applied in this case and concluded that it did. And provided a further basis on which 
+the complaint should be upheld.
+Options had been accepting introductions from Cape Verde4 Life since April 2011 
+but hadn’t obtained terms of business until March 2012 and an Introducer profile until 
+September 2012.
+He also provided information from internal emails sent in March 2013 which referred 
+to the number of applications being received from Cape Verde4 Life, the individual 
+amounts being transferred and the application forms only being partly completed.
+As he’d concluded Options shouldn’t have accepted Mr B’s application from Cape Verde4 
+Life, the investigator thought it was unnecessary to go on to consider the due diligence (if 
+any) carried out by Options on the Salinas Sea investment.
+The investigator then set out how he thought Options should put things right. 
+Options confirmed it had received correspondence from our service and requested additional 
+time to respond. Subsequently Options provided its file for Mr B’s complaint.
+Options didn’t reply to the investigator’s opinion within the time it had requested, so our 
+investigator informed both parties the complaint would be referred to an ombudsman.
+ 
+Options then replied saying that it hadn’t received a copy of the investigator’s findings and 
+that our service hadn’t acknowledged the business file they’d provided. A copy of the 
+investigator’s assessment was provided to Options.
+A second investigator wrote to both parties in 2023 confirming the outcome reached by her 
+colleague and providing a further explanation about why compensation should be paid for 
+the distress and inconvenience caused to Mr B. 
+Neither Options nor Mr B’s representative responded to either investigator’s findings. 
+As a result, Mr B’s complaint was passed to me. I issued a provisional decision to both 
+parties setting out why I intended to uphold Mr B’s complaint. I also set out how I thought 
+Options should settle the complaint.
+Mr B’s representative acknowledged the provisional decision and said they had no further 
+comments to add. Options did not respond. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+As the parties didn’t make any further representations, I don’t consider I need to revise the 
+findings I reached in my provisional decision. I have set these out below and adopt them as 
+my findings in this final decision.
+In my provisional decision I said:
+“Relevant considerations 
+I’m required to determine this complaint by reference to what I consider to be fair and 
+reasonable in all the circumstances of the case. When considering what is fair and 
+reasonable, I am required to take into account: relevant law and regulations; regulators' 
+rules, guidance and standards; codes of practice; and, where appropriate, what I consider to 
+have been good industry practice at the relevant time. 
+The Principles 
+The Principles for Businesses, which are set out in the FCA’s handbook “are a general 
+statement of the fundamental obligations of firms under the regulatory system” (PRIN 
+1.1.2G). I consider that the Principles relevant to this complaint include Principles 2, 3 and 6 
+which say: 
+“Principle 2 – Skill, care and diligence – A firm must conduct its business with due 
+skill, care and diligence. 
+Principle 3 – Management and control – A firm must take reasonable care to 
+organise and control its affairs responsibly and effectively, with adequate risk 
+management systems. 
+Principle 6 – Customers’ interests – A firm must pay due regard to the interests of its 
+customers and treat them fairly.” 
+I have considered the relevant law and what this says about the application of the FCA’s 
+Principles. In R (British Bankers Association) v Financial Services Authority [2011] EWHC 
+999 (Admin) (“BBA”) Ouseley J said at paragraph 162: 
+“The Principles are best understood as the ever present substrata to which the 
+specific rules are added. The Principles always have to be complied with. The 
+Specific rules do not supplant them and cannot be used to contradict them. They are 
+but specific applications of them to the particular requirement they cover. The general 
+notion that the specific rules can exhaust the application of the Principles is 
+inappropriate. It cannot be an error of law for the Principles to augment specific 
+rules.” 
+And at paragraph 77 of BBA Ouseley J said: 
+“Indeed, it is my view that it would be a breach of statutory duty for the Ombudsman 
+to reach a view on a case without taking the Principles into account in deciding what 
+would be fair and reasonable and what redress to afford. Even if no Principles had 
+been produced by the FSA, the FOS would find it hard to fulfil its particular statutory 
+duty without having regard to the sort of high level Principles which find expression in 
+the Principles, whoever formulated them. They are of the essence of what is fair and 
+reasonable, subject to the argument about their relationship to specific rules.” 
+In R (Berkeley Burke SIPP Administration Ltd) v Financial Ombudsman Service [2018] 
+EWHC 2878) (“BBSAL”), Berkeley Burke brought a judicial review claim challenging the 
+decision of an ombudsman who had upheld a consumer’s complaint against it. The 
+ombudsman considered the FCA Principles and good industry practice at the relevant time. 
+He concluded that it was fair and reasonable for Berkeley Burke to have undertaken due 
+diligence in respect of the investment before allowing it into the SIPP wrapper, and that if it 
+had done so, it would have refused to accept the investment. 
+The ombudsman found Berkeley Burke had therefore not complied with its regulatory 
+obligations and had not treated its client fairly. Jacobs J, having set out some paragraphs of 
+BBA including paragraph 162 set out above, said (at paragraph 104 of BBSAL): 
+“These passages explain the overarching nature of the Principles. As the FCA 
+correctly submitted in their written argument, the role of the Principles is not merely to 
+cater for new or unforeseen circumstances. The judgment in BBA shows that they 
+are, and indeed were always intended to be, of general application. The aim of the 
+Principles based regulation described by Ouseley J. was precisely not to attempt to 
+formulate a code covering all possible circumstances, but instead to impose general 
+duties such as those set out in Principles 2 and 6.” 
+The BBSAL judgment also considers section 228 FSMA and the approach an ombudsman is 
+to take when deciding a complaint. The judgment of Jacobs J in BBSAL upheld the 
+lawfulness of the approach taken by the ombudsman in that complaint, which I have 
+described above, and included the Principles and good industry practice at the relevant time 
+as relevant considerations that were required to be taken into account. 
+As outlined above, Ouseley J in the BBA case held that it would be a breach of statutory 
+duty if I were to reach a view on a complaint without taking the Principles into account in 
+deciding what is fair and reasonable in all the circumstances of a case. And, Jacobs J 
+adopted a similar approach to the application of the Principles in BBSAL. So, the Principles 
+are a relevant consideration here and I will consider them in the specific circumstances of 
+this complaint. 
+The Adams court cases and COBS 2.1.1R 
+I confirm I have taken account of the judgment of the High Court in the case of Adams v 
+Options SIPP [2020] EWHC 1229 (Ch) and the Court of Appeal judgment in Adams v 
+Options UK Personal Pensions LLP [2021] EWCA Civ 474. I note the Supreme Court 
+refused Options permission to appeal the Court of Appeal judgment. 
+I’ve considered whether these judgments mean that the Principles should not be taken into 
+account in deciding this case. And I am of the view they do not. In the High Court case, HHJ 
+Dight did not consider the application of the Principles and they did not form part of the 
+pleadings submitted by Mr Adams. One of the main reasons why HHJ Dight found that the 
+judgment of Jacobs J in BBSAL was not of direct relevance to the case before him was 
+because “the specific regulatory provisions which the learned judge in Berkeley Burke was 
+asked to consider are not those which have formed the basis of the claimant’s case before 
+me.” 
+Likewise, the Principles were not considered by the Court of Appeal. So, the Adams 
+judgments say nothing about the application of the FCA’s Principles to the ombudsman’s 
+consideration of a complaint. 
+I acknowledge that COBS 2.1.1R (A firm must act honestly, fairly and professionally in 
+accordance with the best interests of its client) overlaps with certain of the Principles and 
+that this rule was considered by HHJ Dight in the High Court case. Mr Adams pleaded that 
+Options SIPP owed him a duty to comply with COBS 2.1.1R, a breach of which, he argued, 
+was actionable pursuant to section 138(D) of FSMA (“the COBS claim”). HHJ Dight rejected 
+this claim and found that Options SIPP had complied with the best interests rule on the facts 
+of Mr Adams’ case. 
+Although the Court of Appeal ultimately overturned HHJ Dight’s judgment, it rejected that 
+part of Mr Adams appeal that related to HHJ Dight’s dismissal of the COBS claim on the 
+basis that Mr Adams was trying to advance a case that was radically different to that found in 
+his initial pleadings. The Court found that this part of Mr Adams’ appeal did not so much 
+represent a challenge to the grounds on which HHJ Dight had dismissed the COBS claim, 
+but rather was an attempt to put forward an entirely new case. 
+I note that HHJ Dight found that the factual context of a case would inform the extent of the 
+duty imposed by COBS 2.1.1R. HHJ Dight said at para 148: 
+“In my judgment in order to identify the extent of the duty imposed by Rule 2.1.1 one 
+has to identify the relevant factual context, because it is apparent from the 
+submissions of each of the parties that the context has an impact on the 
+ascertainment of the extent of the duty. The key fact, perhaps composite fact, in the 
+context is the agreement into which the parties entered, which defined their roles and 
+functions in the transaction.” 
+The facts in Mr B’s case are different from those in Adams. There are also differences 
+between the breaches of COBS 2.1.1R alleged by Mr Adams and the issues in Mr B’s 
+complaint. The breaches were summarised in paragraph 120 of the Court of Appeal 
+judgment. In particular, HHJ Dight considered the contractual relationship between the 
+parties in the context of Mr Adams’ pleaded breaches of COBS 2.1.1R that happened after 
+the contract was entered into. In Mr B’s complaint, I am considering whether Options ought 
+to have identified that the introductions from Cape Verde 4 Life and/or the investment in 
+Salinas Seas involved a risk of consumer detriment and, if so, whether it ought to have 
+ceased accepting such introductions and/or making such investments prior to entering into a 
+contract with Mr B. 
+As already mentioned, I must determine this complaint by reference to what is, in my 
+opinion, fair and reasonable in all the circumstances of the case. And, in doing that, I am 
+required to take into account relevant considerations which include: law and regulations; 
+regulator’s rules, guidance and standards; codes of practice; and, where appropriate, what I 
+consider to have been good industry practice at the relevant time. This is a clear and 
+relevant point of difference between this complaint and the judgments in both Adams cases. 
+That was a legal claim which was defined by the formal pleadings in Mr Adams’ statement of 
+case. 
+I have proceeded on the understanding Options was not obliged – and not able – to give 
+advice to Mr B on the suitability of its SIPP or the FPI investment for him personally. But I am 
+satisfied Options’ obligations included deciding whether to accept particular investments into 
+its SIPP and/or whether to accept introductions of business from particular businesses. 
+Regulatory publications 
+The FCA (and its predecessor, the FSA) has issued a number of publications which remind 
+SIPP operators of their obligations and set out how they might achieve the outcomes 
+envisaged by the Principles, namely: 
+The 2009 and 2012 thematic review reports. 
+The October 2013 finalised SIPP operator guidance. 
+The July 2014 “Dear CEO” letter. 
+The 2009 report included the following statement: 
+“We are very clear that SIPP operators, regardless of whether they provide advice, 
+are bound by Principle 6 of the Principles for Businesses (‘a firm must pay due 
+regard to the interests of its customers and treat them fairly’) insofar as they are 
+obliged to ensure the fair treatment of their customers. COBS 3.2.3(2) states that a 
+member of a pension scheme is a ‘client’ for COBS purposes, and ‘Customer’ in 
+terms of Principle 6 includes clients. 
+It is the responsibility of SIPP operators to continuously analyse the individual risks to 
+themselves and their clients, with reference to the six TCF consumer outcomes. 
+We agree that firms acting purely as SIPP operators are not responsible for the SIPP 
+advice given by third parties such as IFAs. However, we are also clear that SIPP 
+operators cannot absolve themselves of any responsibility, and we would expect 
+them to have procedures and controls, and to be gathering and analysing 
+management information, enabling them to identify possible instances of financial 
+crime and consumer detriment such as unsuitable SIPPs. Such instances could then 
+be addressed in an appropriate way, for example by contacting the member to 
+confirm the position, or by contacting the firm giving advice and asking for 
+clarification. Moreover, while they are not responsible for the advice, there is a 
+reputational risk to SIPP operators that facilitate the SIPPs that are unsuitable or 
+detrimental to clients. 
+Of particular concern were firms whose systems and controls were weak and 
+inadequate to the extent that they had not identified obvious potential instances of 
+poor advice and/or potential financial crime. Depending on the facts and 
+circumstances of individual cases, we may take enforcement action against SIPP 
+operators who do not safeguard their clients’ interests in this respect, with reference 
+to Principle 3 of the Principles for Business (‘a firm must take reasonable care to 
+organise and control its affairs responsibly and effectively, with adequate risk 
+management systems’). 
+The following are examples of measures that SIPP operators could consider, taken 
+from examples of good practice that we observed and suggestions we have made to 
+firms:
+ 
+Confirming, both initially and on an ongoing basis, that intermediaries that 
+advise clients are authorised and regulated by the FSA, that they have the 
+appropriate permissions to give the advice they are providing to the firm’s 
+clients, and that they do not appear on the FSA website listing warning 
+notices. 
+Having Terms of Business agreements governing relationships, and clarifying 
+respective responsibilities, with intermediaries introducing SIPP business. 
+Routinely recording and reviewing the type (i.e. the nature of the SIPP 
+investment) and size of investments recommended by intermediaries that 
+give advice and introduce clients to the firm, so that potentially unsuitable 
+SIPPs can be identified. 
+Being able to identify anomalous investments, e.g. unusually small or large 
+transactions or more ‘esoteric’ investments such as unquoted shares, 
+together with the intermediary that introduced the business. This would 
+enable the firm to seek appropriate clarification, e.g. from the client or their 
+adviser, if it is concerned about the suitability of what was recommended.
+Requesting copies of the suitability reports provided to clients by the 
+intermediary giving advice. While SIPP operators are not responsible for 
+advice, having this information would enhance the firm’s understanding of its 
+clients, making the facilitation of unsuitable SIPPs less likely. 
+Routinely identifying instances of execution-only clients who have signed 
+disclaimers taking responsibility for their investment decisions, and gathering 
+and analysing data regarding the aggregate volume of such business. 
+Identifying instances of clients waiving their cancellation rights, and the 
+reasons for this.” 
+Although I’ve only referred to one of the above publications in detail, I have considered all of 
+them in their entirety. 
+I acknowledge that the 2009 and 2012 reports and the “Dear CEO” letter are not formal 
+“guidance” (whereas the 2013 finalised guidance is). However, the fact that the reports and 
+“Dear CEO” letter did not constitute formal guidance does not mean their importance should 
+be underestimated. They provide a reminder that the Principles for Businesses apply and 
+are an indication of the kinds of things a SIPP operator might do to ensure it is treating its 
+customers fairly and produce the outcomes envisaged by the Principles. In that respect the 
+publications, which set out the regulators expectations of what SIPP operators should be 
+doing, also goes some way to indicate what I consider amounts to good industry practice 
+and I am, therefore, satisfied it is appropriate to take them into account. 
+It is relevant that when deciding what amounted to have been good industry practice in the 
+BBSAL case, the ombudsman found that “the regulator’s reports, guidance and letter go a 
+long way to clarify what should be regarded as good practice and what should not.” And the 
+judge in BBSAL endorsed the lawfulness of the approach taken by the Ombudsman. 
+Like the Ombudsman in the BBSAL case, I do not think the fact the publications, (other than 
+the 2009 and 2012 Thematic Review Reports), post-date the events that took place in 
+relation to Mr B’s complaint, mean that the examples of good practice they provide were not 
+good practice at the time of the relevant events. Although the later publications were 
+published after the events subject to this complaint, the Principles that underpin them existed 
+throughout, as did the obligation to act in accordance with the Principles. 
+It is also clear from the text of the 2009 and 2012 reports (and the “Dear CEO” letter in 2014) 
+that the regulator expected SIPP operators to have incorporated the recommended good 
+practices into the conduct of their business already. So, whilst the regulators’ comments 
+suggest some industry participants’ understanding of how the good practice standards 
+shaped what was expected of SIPP operators changed over time, it is clear the standards 
+themselves had not changed. 
+I note that HHJ Dight in the Adams case did not consider the 2012 thematic review, 2013 
+SIPP operator guidance and 2014 “Dear CEO” letter to be of relevance to his consideration 
+of Mr Adams’ claim. But it does not follow that those publications are irrelevant to my 
+consideration of what is fair and reasonable in the circumstances of this complaint. I am 
+required to take into account good industry practice at the relevant time. And, as mentioned, 
+the publications indicate what I consider amounts to good industry practice at the relevant 
+time. 
+That doesn’t mean that, in considering what is fair and reasonable, I will only consider 
+Options’ actions with these documents in mind. The reports, Dear CEO letter and guidance 
+gave non-exhaustive examples of good industry practice. They did not say the suggestions 
+given were the limit of what a SIPP operator should do. As the annex to the “Dear CEO” 
+letter notes, what should be done to meet regulatory obligations will depend on the 
+circumstances. 
+To be clear, I do not say the Principles or the publications obliged Options to ensure the 
+pension was suitable for Mr B. It is accepted Options was not required to give advice to Mr 
+B, and could not give advice. And I accept the publications do not alter the meaning of, or 
+the scope of, the Principles. But they are evidence of what I consider to have been good 
+industry practice at the relevant time, which would bring about the outcomes envisaged by 
+the Principles. 
+What did Options’ obligations mean in practice? 
+In this case, the business Options was conducting was its operation of SIPPs. I am satisfied 
+that meeting its regulatory obligations when conducting this business would include deciding 
+whether to accept or reject particular investments and/or referrals of business. The 
+regulatory publications provided some examples of good industry practice observed by the 
+FSA and FCA during their work with SIPP operators including being satisfied that a particular 
+introducer is appropriate to deal with. 
+It is clear from Options’ non-regulated introducer profile in this case, that by early 2012 if not 
+before, it understood and accepted that as a non-advisory SIPP operator its obligations 
+meant it had a responsibility to carry out due diligence on Cape Verde4 Life and that it could 
+and should decide not to do business with an introducer if it thought that was appropriate. 
+I am satisfied that, in order to meet the appropriate standards of good industry practice and 
+the obligations set by the regulator’s rules and regulations, Options should have carried out 
+due diligence on Cape Verde4 Life. And in my opinion, Options should have used the 
+knowledge it gained from its due diligence to decide whether to accept or reject a referral of 
+business. 
+The due diligence carried out by Options on the investment 
+Because of what I say below about the introducer I do not need to refer to the due diligence 
+carried out by Options of the Salinas Sea investment in detail. 
+Options has recently told us that the investment was not considered a nonmainstream 
+pooled investment. It says it was a bricks and mortar property to be rented out with the rental 
+income paid to the SIPP. 
+In my view this is an oversimplification. Mr B was not making a straightforward purchase of, 
+say, a holiday apartment or villa that he could occupy or rent out as he saw fit and freely sell 
+on the open property market. He was buying a part share in a hotel room in a development 
+that was not yet complete, where the property would form part of hotel. Mr B is in principle 
+free to sell the investment if he wants to, but he must sell subject to the hotel agreement so 
+the ability to sell, in practice, depends on there being a market for part shares in hotel room 
+investments. 
+These points were or were largely understood by Options at the time of Mr B’s investment 
+when it categorised the investment as an unregulated alternative investment that was high 
+risk and speculative which might be difficult to sell/realise. And this understanding of the 
+investment formed part of the context in which, or was a relevant factor in, the checks made 
+by Options on Cape Verde4 Life since it planned to introduce clients for the purpose of 
+investing in Salinas Sea. 
+The due diligence carried out by Options on the introducer 
+Options was permitted to accept business from unregulated introducers. It was not therefore 
+at fault simply because it accepted business introduced from Cape Verde4 Life. 
+I note that Options’ non-regulated introducer profile form which it completed with Cape 
+Verde4 Life began with the following words: 
+“As an FSA regulated pensions company, we are required to carry out due diligence 
+as best practice on unregulated introducer firms looking to introduce clients to us, to 
+gain some insight into the business they carry on.” 
+So there is no dispute that Options took steps to make checks on Cape Verde4 Life and 
+understand its business model. It seems to have sent the form to Cape Verde4 Life to 
+complete in March 2012. The completed form was signed in September 2012. Both dates 
+are before Mr B’s application to Options. 
+Although Options asked Cape Verde4 Life to complete the non-regulated introducer profile in 
+2012, in my view it should have completed a due diligence assessment on Cape Verde 
+before it first agreed to accept any business from Cape Verde4 Life in 2011. 
+I also consider that good industry practice was to carry out further checks on introducers 
+from time to time and not just on a one-off basis. So even if a reasonable initial assessment 
+had been made to accept business in 2011, that decision could be reversed if Options 
+thought it appropriate to do so. And in this case I note that Options decided to reverse its 
+decision to accept business from Cape Verde4 Life (and all other unregulated introducers) in 
+November 2013. 
+In this case Options gathered information to carry out a due diligence assessment in 2012 
+using the unregulated introducer profile form referred to above. The due diligence 
+assessment used a form headed UK introducer assessment proforma. The version of this 
+form I have seen is not dated but I note the regulator is referred to on the form as FCA rather 
+than FSA. The FSA was replaced by the FCA in April 2013 so the form, and therefore the 
+due diligence assessment, would seem to have been completed after April 2013. 
+The due diligence assessment proforma form seems to have been completed by Options 
+using the information from the unregulated introducer profile which was signed in September 
+2012. As mentioned above all that information had been provided before Mr B’s application 
+and could and should have been analysed by Options by the time of his application in 
+January 2013.
+It is also my view that essentially this same analysis should have been carried out in 2011 
+before agreeing to accept business from Cape Verde4 Life. 
+The 2013 introducer assessment proforma 
+Options has said it chose to stop accepting business from Cape Verde4 Life as a result of a 
+business decision to stop accepting introductions from unregulated introducers. It must 
+follow that the decision was not made as a result of the assessment that had been based on 
+the proforma. I conclude from this that Options either decided to continue to accept business 
+based on that assessment or it failed to complete its due diligence assessment and so just 
+continued to accept business from Cape Verde4 Life by default until it made its business 
+decision relating to all unregulated introducers. 
+Whatever the reason I have considered the contents of the proforma and whether it was 
+reasonable to continue to accept business from Cape Verde4 Life in the light of the 
+assessment it should reasonably have made based on that proforma. 
+The introducer assessment proforma form uses a red, amber, green system for grading the 
+information provided by a potential (or in the case of Cape Verde4 Life, an actual) introducer. 
+Green equates to what Options called low risk, amber to medium risk and red to high risk. 
+The form has three sections: 
+company personnel and advice 
+client profile 
+investment 
+And at the end of the form it says: 
+“Accept: Low risk 
+All green 
+Queries to raise: Medium Risk 
+Mixture of Green and Amber 
+Raise with TRC before proceeding 
+Decline: High Risk 
+All Red 
+Or 
+Mixture of red and Amber 
+Issue standard letter/email and decline.” 
+So to pause there for a moment, by the time Options was using this form it was satisfied that 
+in its role as a non-advisory SIPP operator it could make checks on an introducer and 
+choose not to accept business from the introducer if it thought that was the appropriate thing 
+to do. 
+The form has around 20 cells that can be completed in a column headed “Results from 
+Introducer Enquiry”. On the completed form I have seen one is rated red. One shows in 
+amber and two more have amber written in them by hand. Three are green. The rest have 
+not been completed. Some have information written in them with no colour code applied. 
+Most are left blank. 
+In the client profile section three cells have not been graded. The cells related to the 
+following: 
+Detail whether clients are UK or non-UK residents. The following alternative answers 
+were given: 
+Green/Low Risk: 
+Non-UK Residents 
+UK Residents and Company has relevant permissions 
+Amber/medium risk: 
+UK residents through another entity (Need to carry out DD on this other 
+entity) 
+Red/High Risk 
+UK Residents but there is no evidence of any entity having relevant 
+permissions. 
+Detail average value of typical clients [sic] pension: the following alternative answers 
+were given: 
+Green/low risk: £25K & above to regulated investments  
+Amber/medium risk: £25K & above to mix of regulated and non-regulated 
+investments 
+£25K & above to non-regulated investments Less than £25K to full SIPP/ non-
+regulated investment SIPP  
+Detail client profile as described by company. The following alternative answers were 
+given: 
+Green/low risk 
+Fully advised 
+Amber/medium risk 
+Execution only-high net worth/sophisticated 
+Red/high risk 
+Execution only client
+ 
+Not high net worth [or] 
+Sophisticated investor 
+The answer to the first question should have been amber since Cape Verde4 Life was 
+dealing with UK clients but apparently involving a UK IFA. According to the proforma this 
+meant Options should also have carried out “DD” – due diligence – on the IFA(s). I note that 
+reference has been made to working with 1 Stop Financial Services and The Financial 
+Planning Partnership. 
+I do not know if Options carried out due diligence on these firms. 
+I note that in 2014 two partners in 1 Stop Financial Services were subject to disciplinary 
+sanction by the FCA. The regulator had taken action in relation to that firm’s business model 
+between October 2010 and November 2012. The two partners were fined and banned from 
+performing any significant influence function in relation to any regulated activity. According to 
+the FCA 1 Stop Financial Services had advised customers to switch their pensions to SIPPs 
+which enabled them to invest in unregulated and often high-risk products regardless of 
+whether those products were suitable for the customers. 
+1 Stop Financial Services’ business model involved receiving introductions from unregulated 
+introducers who typically promoted investments such as overseas property investments. 1 
+Stop Financial Services would then give advice on the suitability of switching an existing 
+pension to a SIPP to make that investment. It did not give advice on the suitability of the 
+investment. 
+I do not say that Options ought to have been aware of action taken by the regulator against 
+the 1 Stop Financial Services partners before its decision was published. But I do consider 
+that Options could and should have found out about 1 Stop Financial Services’ business 
+model. 
+In relation to that business model, on 18 January 2013, the FSA issued an alert which 
+included the following: 
+“Advising on pension transfers with a view to investing pension monies into 
+unregulated products through a SIPP 
+It has been brought to the FSA’s attention that some financial advisers are giving 
+advice to customers on pension transfers or pension switches without assessing the 
+advantages and disadvantages of investments proposed to be held within the new 
+pension. In particular, we have seen financial advisers moving customers’ retirement 
+savings to self-invested personal pensions (SIPPs) that invest wholly or primarily in 
+high risk often highly illiquid unregulated investments (some of which may be 
+Unregulated Collective Investment Schemes). Examples of the unregulated 
+investments are diamonds, overseas property developments, storepods, forestry and 
+film schemes, among other non-mainstream propositions. 
+The cases we have seen tend to operate under a similar advice model. An introducer 
+will pass customer details to an unregulated firm, which markets an unregulated 
+investment (eg an overseas property development). When the customer expresses 
+an interest in the unregulated investment, the customer is introduced to a regulated 
+financial adviser to provide advice on the unregulated investment. The financial 
+adviser does not give advice on the unregulated investments and says it is only 
+providing advice on a SIPP capable of holding the unregulated investment… 
+The FSA is investigating a number of firms and has secured a variation of their Part 
+IV permission so that they are unable to continue operating in that way. The FSA is 
+also considering taking enforcement action against these firms. 
+We have seen cases where, as a result of these advisory strategies involving 
+unauthorised firms, customers have transferred out of more traditional pension 
+schemes and invested their retirement savings wholly in unregulated assets via 
+SIPPs, taking very high and often entirely unsuitable levels of risk despite receiving 
+advice on the pension transfer from regulated firms. 
+…Financial advisers using this advice model are under the mistaken impression that 
+this process means they do not have to consider the unregulated investment as part 
+of their advice to invest in the SIPP and that they only need to consider the suitability 
+of the SIPP in the abstract. This is incorrect. 
+The FSA’s view is that the provision of suitable advice generally requires 
+consideration of the investment held by the customer or, when advice is given on a 
+product which is a vehicle for investment in other products (such as a SIPP and other 
+wrappers), consideration of the suitability of the overall proposition, that is the 
+wrapper and the expected underlying investments in unregulated schemes…. 
+For example, where a financial adviser recommends a SIPP knowing that the 
+customer will transfer out of a current pension arrangement to release funds to invest 
+in an overseas property investment under a SIPP, then the suitability of the overseas 
+property investment must form part of the advice about whether the customer should 
+transfer into the SIPP… “
+Mr B’s SIPP application was dated 29 January 2013. It seems to have been received by 
+Options on 31 January 2013. This was after the above alert had been issued and Options 
+ought to have been aware of that alert by the time of Mr B’s application. But even if it was 
+not, it should as I have said been aware of 1 Stop Financial Services’ business model and 
+the implications it had for its SIPP members. It meant their members were apparently 
+choosing to invest in unregulated high risk speculative investments with the very 
+considerable risk of suffering significant detriment, without the benefit of regulated financial 
+advice in relation to the investment. 
+Clearly Options could not have known before Mr B’s application that the owners of 1 Stop 
+Financial Services would, in 2014, be fined and banned for their work in relation to SIPPs. 
+But what it could and should have known was that the IFA Cape Verde4 Life said it was 
+involved with was giving no advice on the suitability of the unregulated investment for Cape 
+Verde 4 Life’s clients. This meant that the involvement of a regulated IFA should not have 
+provided the comfort to Options that it might otherwise have done. It meant that Options 
+potential new clients from Cape Verde4 Life were not getting advice from an authorised and 
+regulated financial adviser on the suitability of their investing potentially all of their pension in 
+an unregulated investment that Options considered to be high risk and speculative. So it 
+knew or should have known that the business model Cape Verde4 Life was involved in 
+lacked the safeguard of effective independent regulated advice. So, the involvement of the 
+IFA with its business model ought to have been a red flag item that should have given 
+Options concerns. 
+I also note that 1 Stop Financial Services voluntarily varied its permissions with the regulator 
+so that with effect from 10 November 2012 it was no longer permitted to carry on any 
+regulated activities. Accordingly this information was not available (since it had not yet taken 
+place) when Options first agreed to accept business from Cape Verde4 Life or if had carried 
+out an assessment in September 2012 when the introducer profile was signed. But it was 
+available by the time of Mr B’s application in January 2013. (And in any event 1 Stop 
+Financial Services had been operating its business model since before Cape Verde4 Life 
+first became an introducer and that business model had therefore been discoverable if 
+Options had carried out checks on that firm in 2011.) 
+The other IFA firm Cape Verde said it worked with was The Financial Planning Partnership. 
+As I understand it, the Financial Planning Partnership was a trading name also used by 
+[another business] from 2010 to 21 December 2012. According to the FCA register [that 
+other business] was not using the trading name ‘The Financial Planning Partnership’ after 
+2009. 
+And as I understand it, The Financial Planning Partnership/[the other business] also 
+operated a business model with an unregulated introducer … of the type highlighted by the 
+FSA in its alert. So again if Options had made checks on that firm before it stopped trading it 
+is likely it would also have given cause for concern, rather than comfort. 
+The above points relating to the two IFA firms Cape Verde said it worked with also mean that 
+the following question in the company personnel and advice section of the proforma that was 
+rated amber should have been reconsidered:
+ 
+Does the company hold FCA or Equivalent permissions for investment advice? 
+No but this is provided by FCA regulated professional. Need to complete further DD 
+in respect of this adviser 
+Returning to the proforma assessment, Cape Verde4 Life was only introducing clients to 
+invest in unregulated investments and their clients were not high net worth or sophisticated 
+investors, so the next two questions should have been rated as red. 
+In the investment section of the proforma there is an amber and a green cell. The rest are 
+not completed. The answers to the questions which have not been completed should have 
+been graded as red:
+ 
+Are investments generally used regulated or unregulated – all unregulated (red 
+answer) 
+Which countries are investments generally based in Other overseas [ie not UK or 
+EEA] (red answer) 
+Does company promote unregulated investments, state which investments are 
+promoted. Answer yes, Salinas Sea. (red answer) 
+Detail investment type most often used – red answer was “Non EEA Commercial 
+Property, Non-Regulated Investments, Unquoted Shares, Loans.” (red answer) 
+Having considered the proforma, it is my view that in 2012/2013, Options carried out an 
+incomplete assessment. Had it completed its assessment, based on its own process, it 
+would have come out with an assessment showing considerably more red than the 
+incomplete assessment it carried out. 
+In my view, based on its own processes, Options should have concluded that, as the form 
+showed, or should have shown, mostly red and amber assessments, it should have declined 
+to do further business with Cape Verde4 Life. 
+What Options ought to have decided 
+In my view, Options gathered information on which it could and should reasonably have 
+made an assessment in 2012 and should have come to the conclusion not to accept 
+introductions from Cape Verde 4 Life before it received Mr B’s application in January 2013. 
+In my view, Options should have carried out its proforma based assessment, or an 
+essentially similar assessment, before it first agreed to accept introductions from Cape 
+Verde4 Life. If it had done so, it would have rejected Cape Verde4 Life’s request to act as an 
+introducer. Alternatively if it carried out such an exercise within a short time of allowing 
+introductions, without first carrying out the assessment in full, it should have decided not to 
+continue to accept business from Cape Verde4 Life. 
+In either event it is my view that if Options had acted reasonably, in a way that was 
+consistent with its role as a non-advisory SIPP operator, and in a way that was consistent 
+with its obligations in that role under the Principles and with good industry practice, it would 
+not have accepted business from Cape Verde4 Life by the time of Mr B’s application. And it 
+would not have accepted his application. 
+By the time of Mr B’s application Options had carried out due diligence checks in relation to 
+Cape Verde4 Life and the Salinas Sea investment, which meant it knew Cape Verde4 Life: 
+was involved in promoting the Salinas Sea investment. 
+became an introducer to Options in order to introduce clients to invest in Salinas Sea 
+within their pensions while Options considered Salinas Sea an unregulated high risk 
+and speculative alternative investment.  
+was not authorised to give regulated investment advice. 
+apparently worked with regulated IFAs in some circumstances but not in all cases 
+and that it would make direct introductions to Options on the basis that the client was 
+acting on an execution only basis. 
+had mostly clients that could not reasonably be classified as high net worth or as 
+sophisticated investors. 
+was receiving commission of around 8%. 
+In addition to these points, Options knew or should reasonably have known the investment 
+was likely to be highly illiquid. It knew, or should have known, the investment was likely to be 
+difficult to value and that it might well be difficult to sell when the member wanted to take 
+benefits from their pension. 
+Options knew or should have known that it is unlikely that an ordinary retail investor client 
+would choose to transfer their personal pension to a SIPP without advice. And Options knew 
+or should have known that it did not have a good understanding of the way Cape Verde4 Life 
+operated and in particular how it found its clients. For example on the introducer profile Cape 
+Verde4 Life said it obtained its clients from a “UK Distributions Network” without any 
+recorded explanation of what that meant in practice. And the sales process was described 
+as “mainly pension review/non reg” again without any recorded explanation of what that 
+meant. 
+Options also knew that investing in an unregulated alternative investment that is high risk 
+and speculative is unsuitable for most retail investors and that it is only likely to be suitable 
+for high net worth or sophisticated investors on the basis that such an investment makes up 
+only a small proportion of their portfolio. 
+When Options agreed to accept business from Cape Verde4 Life it did not impose conditions 
+on it such as for example only accepting such business where regulated advice had been 
+given and/or only business involving high net worth or sophisticated investors, and/or only 
+allowing a limited proportion of the SIPP fund to be invested in Salinas Sea. 
+Taking all these points into account, Options knew or should have known when agreeing to 
+accept introductions from Cape Verde4 Life there was a real risk of customer detriment. 
+Options response to this was to require potential clients to sign the declaration I referred to 
+above. In my view that was not a fair and reasonable approach bearing in mind the 
+Principles for Businesses and good industry practice. In my view the fair and reasonable 
+approach would have been to decline to accept business from Cape Verde4 Life as Options’ 
+own process on its own proforma assessment form provided for, or as any reasonable 
+essentially similar process would have required. 
+Was it fair and reasonable to proceed with Mr B’s instructions? 
+In my view, for the reasons given, Options should have refused to accept Mr B’s application. 
+So, things should not have got beyond that. 
+Mr B was asked to sign the declaration. The declaration gives warnings about the high-risk 
+speculative nature of the Salinas Sea investment. And it included a declaration that Mr B 
+wouldn’t hold Options responsible for any losses resulting from the investment. However, I 
+do not think this document demonstrates Options acted fairly and reasonably in proceeding 
+with Mr B’s instructions. 
+Asking Mr B to sign the declaration and indemnity absolving Options of all its responsibilities 
+when it ought to have known that Mr B’s dealings with Cape Verde4 Life were putting him at 
+significant risk of detriment was not the fair and reasonable thing to do. And it was not an 
+effective way for Options to meet its regulatory obligations in the circumstances. It was not 
+fair and reasonable to proceed on that basis. 
+Further I do not consider it fair and reasonable for Options to avoid responsibility now on the 
+basis of the indemnity Mr B signed. Had Options acted appropriately in the circumstances Mr 
+B should not have been able to proceed with his application. And, as mentioned, he should 
+not have got to the stage of signing the declaration. 
+Is it fair to require Options to compensate Mr B? 
+Options may say that it did not cause Mr B’s loss because it is very likely he was keen to 
+proceed with the investment and would have found a way to invest even if Options had not 
+been dealing with Cape Verde4 Life. I don’t agree. 
+I have seen no evidence to show Mr B would have proceeded even if Options had rejected 
+his application. Mr B was contacted by Cape Verde4 Life, he was not looking for such 
+investments. There is nothing to indicate Mr B was highly motivated to make the investment 
+or that he was being paid any kind of incentive payment to do so. I have not seen anything 
+that makes me think Mr B would have sought out another SIPP provider to make this specific 
+investment if Options had declined the application, or terminated the application, and 
+explained why. In any event, I think any SIPP provider acting fairly and reasonably should 
+have reached the conclusion it should not deal with Cape Verde4 Life. I do not think it would 
+be fair to say Mr B should not be compensated based on speculation that another SIPP 
+operator might have made the same mistakes as Options did. 
+I think it’s fair and reasonable instead to assume that another SIPP provider would have 
+complied with its regulatory obligations and good industry practice, and therefore wouldn’t 
+have accepted the application, or would have terminated the transaction before completion.” 
+Fair compensation 
+I consider that Options failed to comply with its regulatory obligations and good industry 
+practice and did not reject, as it should have done, Mr B’s application to open a SIPP in 
+order to invest in Salinas Sea. My aim in awarding fair compensation is to put Mr B back into 
+the position he would likely have been in had it not been for Options’ failings. 
+In this case Mr B elected to withdraw his tax-free entitlement from his Options SIPP in 2013 
+and has since made a further withdrawal in 2016. I do not know if he has made any 
+subsequent withdrawals. Like the investigator, I think it would be fair to take into account the 
+withdrawals Mr B has made since the SIPP was started.
+Mr B’s representatives have mentioned that Mr B’s existing pensions were held in with- 
+profits funds. They have not provided evidence that these policies would have permitted Mr 
+B to use income drawdown and allow him to remain in the same funds. I think that’s unlikely. 
+In the absence of compelling argument otherwise, I’ve found that in this case it’s more likely 
+than not that Mr B would have started to use income drawdown, rather than remain in his 
+existing pension policies. It isn’t possible to say for certain what investment decisions would 
+have been made for Mr B at the time, or since. What I’ve set out below, is therefore based 
+on what I think is a fair and reasonable basis on which to calculate Mr B’s losses (if any).
+In summary, Options should: 
+Obtain the actual transfer value of Mr B’s SIPP, including any outstanding charges as 
+of the date of the acceptance of my final decision.
+Pay a commercial value to buy any illiquid investments (or treat them as having a 
+zero value) and take on any liabilities linked to the SIPP. 
+Undertake a loss calculation and pay any redress owing in line with the steps set out 
+below. This payment should take account of any available tax relief and the effect of 
+charges. Options should add interest to this payment if it is not made within 28 days 
+of the acceptance of my final decision.  
+If the Options’ SIPP needs to be kept open only because of illiquid investment/s and 
+is used only or substantially to hold that asset, then any future SIPP fees should be 
+waived until the SIPP can be closed. 
+If Mr B has paid any fees or charges from funds outside of his pension arrangements, 
+Options should also refund these to Mr B. Interest at a rate of 8% simple per year 
+from the date of payment to the date of refund should be added to this. 
+Pay to Mr B £500 to compensate him for the distress and inconvenience he’s been 
+caused by Options’ failings. 
+I’ve set out how Options should go about calculating compensation in more detail below. 
+Treatment of the illiquid assets held within the SIPP (Salinas Sea)
+As provided at the outset of this section of my decision and outlined in the investigator’s 
+assessment of this complaint, our aim in putting things rights is to put Mr B into the position 
+he would likely have been in had it not been for Options’ failings. The outcome of this should 
+be that, in so far as is possible, finality is brought to the matter about which Mr B complains 
+for both parties to the complaint. Had Options acted appropriately, I think it’s more likely than 
+not that Mr B would not have invested in Salinas Seas and would not have entered into any 
+loan arrangement that might have been needed to finance part of the purchase of the 
+investment.
+My understanding is that Oasis (Oasis Atlántico Imobiliaria S.A.R.L) offered financing for up 
+to 35% of the purchase price (under the terms of the investment the interest on the lending is 
+set at Euribor 6 (six) month rate plus 5.8%), which would be repaid by way of the rental 
+payments from the investment. If Mr B utilised this financing and has an outstanding balance 
+then Options must settle this with Oasis. How it goes about doing this is a matter for Options 
+and Oasis but the outcome of this must be that this isn’t an ongoing concern for Mr B and 
+that there is no risk of him having to pay anything in connection with this. To be clear, this 
+should be the resulting position whether or not the asset is removed from the SIPP (as per 
+the below).
+I think any illiquid assets held should be removed from the SIPP. Mr B would then be able to 
+close the SIPP, if he wishes. That would then allow him to stop paying the fees for the SIPP. 
+The valuation of the illiquid investment/s may prove difficult, as there is no market for them. 
+For calculating compensation, Options should establish an amount it’s willing to accept for 
+the investment/s as a commercial value. Given that both the investment provider and the 
+underlying investment are ongoing concerns, I expect this to be achievable. It should then 
+pay the sum agreed plus any costs and take ownership of the investment/s and ensure that 
+in doing so it takes on or otherwise removes all liability Mr B may have for any financing 
+taken out to part fund the purchase of the investment/s.
+If Options is able to purchase the illiquid investment/s, then the price paid to purchase the 
+holding/s will be allowed for in the current transfer value (because it will have been paid into 
+the SIPP to secure the holding/s).
+If Options is unable, or if there are any difficulties in buying Mr B’s illiquid investment/s, it 
+should give the holding/s a nil value for the purposes of calculating compensation. In this 
+instance Options must still take on or otherwise remove all liability Mr B may have for any 
+financing taken out to part fund the purchase of the investment/s. If the total calculated 
+redress in this complaint is less than £160,000, Options may ask Mr B to provide an 
+undertaking to account to it for the net amount of any payment the SIPP may receive from 
+the relevant holding/s. That undertaking should allow for the effect of any tax and charges on 
+the amount Mr B may receive from the investment/s and any eventual sums he would be 
+able to access from the SIPP. Options will have to meet the cost of drawing up any such 
+undertaking and Mr B’s reasonable costs for taking advice in relation to it. 
+If the total calculated redress in this complaint is greater than £160,000 and Options doesn’t 
+pay the recommended amount (set out below), Mr B should retain the rights to any future 
+return from the investment(s) until such time as any future benefit that he receives from the 
+investments(s) together with the compensation paid to Mr B by Options (excluding any 
+interest) equates to the total calculated redress amount in this complaint. Options may ask 
+Mr B to provide an undertaking to account to it for the net amount of any further payment the 
+SIPP may receive from these investments thereafter. That undertaking should allow for the 
+effect of any tax and charges on the amount Mr B may receive from the investments from 
+that point, and any eventual sums he would be able to access from the SIPP. As above, 
+Options will need to meet any costs in drawing up the undertaking and the reasonable costs 
+for Mr B to take advice on it.
+If the total calculated redress in this complaint is greater than £160,000, Options must in the 
+first instance take on or otherwise remove all liability Mr B may have for any financing taken 
+out to part fund the purchase of the investment/s so as to ensure that Mr B is left 
+unencumbered by this.
+Calculate the loss Mr B has suffered as a result of making the transfer in relation to monies 
+originating from defined contribution schemes 
+Options should arrive at a notional valuation by assuming his original pensions would have 
+enjoyed a return in line with the FTSE UK Private Investors Income Total Return Index (prior 
+to 1 March 2017, this was called the FTSE WMA Stock Market Income Total Return Index) 
+to the date of calculation. That is a reasonable proxy for the type of return that could have 
+been achieved over the period in question. 
+Any payments into the SIPP or withdrawals Mr B has made will need to be taken into 
+account. 
+Any withdrawal out of the SIPP should be deducted at the point it was actually paid so it 
+ceases to accrue any return in the calculation from that point on. The same applies for any 
+payments made, these should be added to the notional calculation from the date they were 
+actually paid, so any growth they would have enjoyed is allowed for. 
+Mr B’s loss, if any, is the notional value of the previous plans’ combined transfer values 
+(established in line with the index set out above) less the current value of his SIPP (also as 
+at the date of calculation).
+Compensation should be paid as calculated above promptly. If Options does not pay the 
+compensation within 28 days of being notified of Mr B’s acceptance of my final decision, 
+Options is to pay 8% simple interest per year on the compensation from the date of the final 
+decision until the date of payment. 
+I will also add here that income tax may be payable on any interest paid pursuant to this 
+award. If Options deducts income tax from the interest, it should tell Mr B how much has 
+been taken off. Options should give Mr B a tax deduction certificate for any interest if Mr B 
+asks for one, so he can reclaim the tax from HM Revenue & Customs if appropriate.
+Pay an amount into Mr B’s SIPP so that the transfer value is increased by the loss calculated 
+above in relation to monies originating from defined contribution schemes 
+If the redress calculation demonstrates a loss, the compensation should if possible be paid 
+into Mr B’s pension plan. The payment should allow for the effect of charges and any 
+available tax relief. The compensation shouldn’t be paid into the pension plan if it would 
+conflict with any existing protection or allowance. 
+If a payment into the pension isn’t possible or has protection or allowance implications, it 
+should be paid directly to Mr B as a lump sum after making a notional deduction to allow for 
+income tax that would otherwise have been paid. It’s reasonable to assume that Mr B is 
+likely to be a basic rate taxpayer at his selected retirement age, so the reduction would equal 
+20%. I understand Mr B has already taken a tax-free lump sum from his existing pension. 
+However, if Mr B would have been able to take a further tax-free lump sum, the reduction 
+should only be applied to that portion of the compensation that couldn’t have been taken as 
+a tax-free lump sum. For example, if Mr B would have been able to take a tax-free lump sum 
+of 25%, the reduction should be applied to 75% of the compensation, resulting in an overall 
+reduction of 15%.
+Options should also provide details of all of its calculations to Mr B in a form that should be 
+understandable to him. 
+SIPP fees 
+If the illiquid investment(s) can’t be removed from the SIPP or if Options does not take 
+ownership of the investment(s), and they continue to be held in Mr B’s SIPP, there will be 
+ongoing fees in relation to the administration of that SIPP. Mr B would not be responsible for 
+those fees if Options had not accepted the transfer of his pensions into the SIPP. So, I think 
+it is fair and reasonable for Options to waive any SIPP fees until such a time as Mr B can 
+dispose of the investment(s) and close the SIPP. 
+Fees and charges paid outside the SIPP  
+If Mr B has paid any fees or charges from funds outside of his pension arrangements, 
+Options should also refund these to Mr B. Interest at a rate of 8% simple per year from the 
+date of payment to the date of refund should be added to this. 
+Pay Mr B £500 for the distress and inconvenience caused by Options’ failure to act fairly and 
+reasonably 
+Mr B transferred his existing pensions to a SIPP and has suffered the loss of use of the 
+majority of those funds since. 
+I think it’s fair to say this would have caused Mr B some distress and inconvenience. He will 
+clearly have been worried that his retirement provision will have been reduced at the point it 
+is likely he would have wanted to use them. So, I consider that a payment of £500 is 
+appropriate to compensate for that upset. 
+Where I uphold a complaint, I can award fair compensation to be paid by a financial 
+business of up to £160,000, plus any interest and/or costs/interest on costs that I think are 
+appropriate. If I think that fair compensation is more than £160,000, I may recommend that 
+the business pays the balance. 
+I do not know what award the above calculation might produce. So, whilst I acknowledge 
+that the value of Mr B’s original investment was within our award limit, for completeness I 
+have included information below about what ought to happen if fair compensation amounted 
+to more than our award limit. 
+Determination and award: I uphold this complaint. I think that fair compensation should be 
+calculated as shown above. My final decision is that Options UK Personal Pensions LLP 
+should pay Mr B the amount produced by that calculation – up to a maximum of £160,000 
+(including the £500 to compensate for the distress and inconvenience Options’ actions 
+caused) plus any interest and costs. 
+Recommendation: If the amount produced by the calculation of fair compensation is more 
+than £160,000, I recommend that Options pays Mr B the balance. 
+This recommendation is not part of my determination or award. Options UK Personal 
+Pensions LLP doesn’t have to do what I recommend. It’s unlikely that Mr B can accept my 
+final decision and go to court to ask for the balance. Mr B may want to consider getting 
+independent legal advice before deciding whether to accept this final decision. 
+My final decision
+My final decision is that I uphold this complaint. I require that Options UK Personal Pensions 
+LLP must calculate and pay the award, and take the actions, set out above.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr B to accept or 
+reject my decision before 16 May 2024.
+ 
+Claire Poyntz
+Ombudsman

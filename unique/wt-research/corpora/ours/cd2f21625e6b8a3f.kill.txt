@@ -1,0 +1,27 @@
+The Solo Prepper's Bulk-Food Rotation Organiser.
+
+A solo operator provides a recurring, home-visit service to inventory, date-stamp, and rotate the long-term food storage (buckets, Mylar bags, cans) of suburban preppers and survivalists, ensuring nothing expires and the stockpile is actually usable, for a monthly or quarterly fee.
+
+Analogical: Transfer the 'cellar/crawlspace inspection and maintenance' service model (a recurring low-touch physical check) to the niche of prepper food storage. Suburban preppers accumulate large amounts of freeze-dried food, grains, and canned goods, but many have no system to prevent spoilage or manage rotation. The pain is acute: wasted investment and a false sense of security. A solo operator can visit, log inventory via a simple app, rotate oldest to front, and provide a printed or digital report, for a fee per quarter.
+
+Suburban preppers (individuals or couples, typically aged 35-65, with a disposable income for hobbyist preparedness) in the US or UK who have invested £500-£5,000 in long-term food storage but lack the time or discipline to manage it.
+
+The prepper/survivalist market is booming post-pandemic and with ongoing supply-chain fears, but the 'maintenance' side is neglected. Many preppers buy bulk food but rarely check it until they need it, leading to massive spoilage. No one offers a dedicated food rotation service; it's a manual chore the prepper despises.
+
+The passage confirms that people are actively frustrated by the task of tracking expiration dates and replacing food, and it demonstrates that commercial services already exist to solve this by managing and rotating emergency food storage.
+
+The provided passage describes a CRM tool for specific home service niches like lawn, snow, window, and pressure washing, and does not mention or address the currency of a prepper food rotation service.
+
+The provided passage describes a B2B grocery stocking service for offices and businesses, and does not contain information regarding routes to market for the consumer-facing prepper food rotation service described in the candidate.
+
+The provided passage covers laws regarding home-based food production, which does not address the legality of a service that inventory, date-stamps, and rotates pre-purchased, long-term food storage.
+
+The candidate's claim that 'No one offers a dedicated food rotation service' is directly refuted by the passage, which advertises an existing commercial service that specifically offers to 'Rotate it' and 'maintain it'. While the passage confirms that the pain and demand for such a service exist, the incumbency claim is negated.
+
+The passage advertises a commercial service that handles storage, rotation, and maintenance of emergency food, confirming that consumers are willing to pay to solve the specific pain points of tracking and spoilage identified in the hypothesis.
+
+The provided passage discusses the viability of a personal grocery shopper business in the context of delivery services like Instacart; it contains no information regarding the distribution or feasibility of a niche 'food storage rotation' service for preppers.
+
+The passage confirms the importance of food inventory management and the risks of failure, but provides no evidence that individuals are currently paying to solve this problem via a service.
+
+The hypothesis is built on the false premise that 'no one offers a dedicated food rotation service' (b94f6135b2f6fc5d). Professional commercial solutions already exist that provide storage, rotation, and maintenance services (b94f6135b2f6fc5d), capturing the segment willing to pay for this outcome. Furthermore, existing educational resources successfully frame food rotation as a low-cost, minimal-effort DIY task, effectively providing a free, readily adopted alternative that undermines demand for a recurring, high-touch home-visit service (87f7fdf993d53d8f).

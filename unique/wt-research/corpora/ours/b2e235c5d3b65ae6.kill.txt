@@ -1,0 +1,29 @@
+InkReg – The Solo Tattooist’s Consent & Compliance Engine.
+
+A mobile-first digital consent workflow that turns paper forms into a timestamped, insurer-recognised evidence log, protecting solo tattooists from hygiene inspection failure and liability claim denial.
+
+By integrating with the insurer's claims process and offering a free tier that locks in client records, InkReg becomes the default consent record for a tight-knit community of UK solo tattooists, growing via mandatory insurer endorsements and word-of-mouth in Instagram/TikTok tattoo circles.
+
+Self-employed UK tattoo artists (renting chairs or owning micro-studios) who face council spot-checks and require public liability insurance; they pay £8/month to avoid a single closure fine or uninsurable claim.
+
+UK local councils now require digital evidence trails for hygiene inspections, and major liability insurers (e.g., Balens, Tattoo Shield) are beginning to mandate timestamped, photo-ID-linked consent forms for any claim—creating a forcing function for adoption.
+
+The only passage concerns CURE Auto Insurance digitising policy applications with OneSpan Sign; it says nothing about solo UK tattooists, council hygiene inspections, or whether they suffer or pay to solve a consent-compliance problem. The pain claim is not addressed.
+
+The only passage concerns CURE Auto Insurance digitising policy applications with OneSpan Sign; it says nothing about whether self-employed UK tattoo artists have the budget or willingness to pay £8/month.
+
+The only passage is a generic insurance-onboarding best-practices guide; it says nothing about a route to reach solo UK tattooists (self-serve, insurer forcing mechanism, or Instagram/TikTok channels).
+
+The only passage concerns India's IRDAI CIS acknowledgement rules for insurers and OTP-based consent; it says nothing about the legality of a UK tattoo-consent digital record service or its margin.
+
+The only passage concerns CURE Auto Insurance digitising policy applications with OneSpan Sign; it says nothing about tattoo consent compliance, solo tattooists, or whether this value is durable versus commoditised. No passage addresses the candidate's value durability.
+
+The passage describes CURE Auto Insurance digitising policy applications with OneSpan Sign and Guidewire InsuranceNow; it says nothing about tattoo-artist consent/compliance tooling or whether any incumbent serves that niche. It therefore neither confirms the space is open nor that a rival owns it.
+
+The passage is a NUVOWallet marketing page about insurer consent/claims document workflows (India/DPDP/BFSI context) and says nothing about UK tattooists, council hygiene inspections, or whether that specific compliance need is an active current trend right now.
+
+The only passage describes e-signature adoption by a life-insurance carrier for application processing; it says nothing about UK solo tattooists searching for, or paying for, a consent/compliance tool, so it does not address buyer intent for this candidate.
+
+The single passage [df8efd9dd7dcccf1] is a vendor marketing page about certified digital evidence for insurance claims generally; it does not address any of the candidate's specific factual claims (UK councils requiring digital hygiene evidence trails, named insurers Balens/Tattoo Shield mandating timestamped photo-ID consent, the £8/month price point, or tattooist adoption). It neither confirms nor contradicts the core claims.
+
+No grounded kill exists. Every one of the nine checks returned 'unverifiable' at confidence 0–0.42 because retrieval never fetched a single passage about UK solo tattooists, council hygiene inspections, or the named insurer forcing-functions (Balens/Tattoo Shield). All sources retrieved are off-target adjacencies: CURE Auto Insurance e-signatures (e16980ceff40128b), a OneSpan insurance-onboarding whitepaper (c4b04e238bd04d2b), India IRDAI CIS rules (c20997d99b3a49c0), NUVOWallet BFSI consent (30b2f8a8c5629fe6), a top-50 carrier e-sign case study (10d44b59072c65b2), and TrueScreen claims certification (df8efd9dd7dcccf1). The candidate's load-bearing growth claims — that UK councils now mandate digital hygiene evidence trails and that insurers are mandating timestamped, photo-ID-linked consent (the 'forcing function' that makes the acquisition channel repeatable) — are entirely uncorroborated; not one passage confirms the mandate exists. Likewise the retention thesis (insurer endorsement + free-tier record lock-in) and payer willingness (£8/mo from chair-renting soloists) are unsupported by any fetched evidence. So per source-or-die the why_now and the scalable-channel mechanism are unverifiable. HOWEVER, this is absence of evidence from a failed/off-target retrieval, not grounded evidence that the acute pain is unreal, that no repeatable channel can exist, or that retention collapses. The growth-stage bar requires grounded proof that growth cannot compound; no fetched passage provides it. The case is therefore NOT decisive on the evidence — it warrants DEFER/re-vet with on-target queries (UK tattoo licensing/EHO hygiene rules, Balens/Tattoo Shield consent requirements), not a confident kill.

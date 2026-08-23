@@ -1,0 +1,31 @@
+RigSafe, certified power kits for home AI rigs.
+
+RigSafe sells UK-wiring-regs-certified power distribution kits that let developers run multi-GPU AI rigs at home without tripping breakers or voiding insurance.
+
+A developer buys a second or third RTX 4090 or 5090 to run local LLM inference or fine-tuning at home, plugs it into a normal UK ring circuit, and the consumer unit's RCD trips the moment the rig, the kettle and the EV charger overlap. Fixing this properly means an electrician-certified rewire, a call to the landlord, or a three-phase supply upgrade — and National Grid ESO's own connection queues for anything beyond a standard domestic supply now stretch years in many areas, so that route is closed to almost everyone renting or on a normal 100A single-phase supply.
+
+RigSafe sells a physical kit: a load-balancing power distribution unit engineered to BS 7671 18th Edition Amendment 2 rules, built with UK ring-final-circuit-aware phase splitting, per-circuit current monitoring, and a companion app that warns before a breaker trips rather than after. Every kit ships with a compliance pack — circuit diagrams, load calculations and a signed declaration — written in the format UK home insurers and landlords actually ask for when they query "electrical alterations," something a generic extension lead can never produce.
+
+The wedge is the engineering and paperwork together, not the hardware alone: designing a device that safely spreads a 3–5kW GPU load across existing domestic circuits without an electrician, and pairing it with documentation an insurer will accept, is a specific piece of technical work RigSafe owns. A contract electronics manufacturer builds the units and a 3PL ships them, so a team of four or five — one electrical engineer, one firmware/app developer, one who handles certification liaison and support — can run this as a real ecommerce brand rather than a services business.
+
+UK software developers and indie hackers self-hosting LLM inference or training rigs at home — especially renters and leaseholders who cannot get a landlord or freeholder to sign off on an electrician-led rewire, and who need to show their insurer the setup is safe.
+
+Home GPU purchases for local AI work have risen sharply through 2025 as developers move inference off expensive cloud GPUs; National Grid ESO's connection queue for anything above standard domestic supply routinely runs into multi-year waits, closing off the easy fix; and UK home insurers have tightened questions about DIY electrical alterations following a string of high-profile fire-safety reviews, so an undocumented power setup can now void a claim.
+
+Passages [73ccb3fd64a4b6d5], [5388e42e011ff913], [11f6541b1c5f52e3], [66181409ad89af6f] show demand for multi-GPU homelab AI setups, and [d1c51dab85f6c321] shows a ring circuit struggling under load, but none show anyone searching for or paying for a certified load-balancing power kit, compliance paperwork, or any product like RigSafe.
+
+UK junior developer salary data (~$38,664/year) shows the target buyer earns roughly £30k+ annually, making a one-time £49.99 purchase a trivial fraction of income and clearly affordable; layoffs data shows employment risk but does not negate that employed developers can pay this amount.
+
+The passages show r/LocalLLaMA is a large, active community of over 266,500 members built specifically around local LLM setups, which is exactly RigSafe's target audience of home AI-rig builders; a concentrated public community like this is a low-friction existing channel to reach and engage that buyer.
+
+The passages establish that consumer-unit replacement and new circuits are notifiable, Part P-registered work, but say nothing about a load-balancing power distribution unit or add-on device plugged into an existing ring circuit, so they don't show whether RigSafe's product falls under this notifiable-work regime or is exempt as a plug-in appliance.
+
+The passages explain generic RCD-trip causes (moisture, faulty appliances, damaged insulation) and general troubleshooting steps, but none describe overload trips from combined high-draw devices like GPU rigs, kettles and EV chargers, and none show anyone paying to fix this.
+
+The passages cover National Car Rental locations, a dictionary definition of 'national', and cloud GPU rental pricing trends — none address home electrical wiring, UK RCD/breaker issues, insurance rules on DIY alterations, or National Grid connection queues, which is what the currency claim rests on.
+
+The passages confirm Amazon/Amazon UK exist as a selling channel and that UKCA/CE marking rules apply to UK product sales, but none say whether RigSafe's power distribution kit is legally sellable there or address any other route to reach developer buyers (ads, marketplaces, communities); the home-gym and laser-marking passages are conceptually unrelated to reaching this buyer.
+
+The passages describe National Grid ESO's transmission-grid connection queue reforms for clean-energy projects, not domestic supply upgrades or three-phase connections for home electricity users, so they cannot confirm or contradict the claim that ESO's queues block ordinary residential upgrades.
+
+The passages confirm that new consumer units and new circuits are notifiable work needing a registered electrician, but none describe a plug-in load-balancing power kit like this one, so there's no evidence the product itself is legally barred. No passage gives a customer-acquisition cost or a price for this product or any comparable, so a customer-value-versus-acquisition-cost comparison can't be made, and no source shows a single company holding most of the channel developers would use to find or buy it.

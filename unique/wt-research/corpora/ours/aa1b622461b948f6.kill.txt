@@ -1,0 +1,23 @@
+DutyDrawBack – The SME Import Brokerage Fee Reclaimer.
+
+A done-with-you service for small product businesses that audits their courier/delivery import duty invoices, identifies hidden broker fees and overcharges, and semi-automates the reclaim process by generating structured dispute letters that cite carrier tariff regulations.
+
+Analogous to the chargeback defense engines, but for cross-border trade: small businesses importing goods are often charged inflated 'disbursement fees' by express carriers under the guise of customs handling, which are actually regulated and challengeable. A solo can build a rule-engine that flags excessive fees based on carrier published tariffs and helps reclaim them.
+
+Small product brands and makers (smb_owner) who import components or finished goods and use DDP shipping, receiving opaque invoices from FedEx/DHL/UPS with service fees.
+
+The explosion of direct-to-consumer international brands using 3PLs and air freight, combined with post-Brexit UK-EU customs friction, has multiplied the volume of small import transactions and the complexity of fee structures, creating a widespread pain point.
+
+The passages provide no direct evidence that courier fees are overcharged or recoverable; the closest is a description of a confusing UPS brokerage invoice, but that does not affirm that systematic overcharges exist or that a reclaim service creates durable value.
+
+None of the passages discuss whether there is a dominant incumbent or funded rival offering a service to audit courier import duty invoices and reclaim overcharged fees; they cover IEEPA refunds and customs broker auditing.
+
+No passage directly addresses the financial capacity or willingness of small product brands to pay for a carrier fee reclamation service. The Duty Discovery passage mentions a similar model but targets CBP duty refunds, not the candidate's specific payer segment's budget or motive.
+
+The passages discuss import duty recovery services, audit preparation, and import scaling, but none describe a distribution channel or route to the buyer for the candidate's service.
+
+No passage addresses whether auditing carrier fees and generating dispute letters is lawful; the passages discuss customs enforcement, broker licensing, and courier regulations, not the legality of fee reclamation services.
+
+The passages discuss new U.S. import compliance burdens and audits, but none mention courier fee overcharges, hidden broker fees, or that SMEs are already paying for fee audit/reclaim services. No evidence addresses the specific pain point.
+
+No evidence supports the core premise. The only relevant invoice example (67fd216eb7a017de) shows confusing fees but does not prove systematic overcharges or that they are challengeable. No evidence of small businesses willing to pay for courier-fee recovery (payer_solvency found only CBP-duty recovery services, e.g., 1cee3e77d828e40e). Distribution channels are entirely unverified, and the pain point lacks validation—existing alternatives like calling carriers or using brokers are not disproven. Without any data backing value, demand, or reach, the build case is unjustified.

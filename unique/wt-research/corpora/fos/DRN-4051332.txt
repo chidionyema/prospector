@@ -1,0 +1,475 @@
+DRN-4051332
+The complaint
+Mr D complains that Citibank UK Limited (“Citi”) invested him in an unsuitable investment.
+What happened
+In March 2017 Mr D met with his relationship manager (RM) and a ‘portfolio counsellor’ for 
+Citi to discuss investing around £300,000. As a result of the discussions that took place at 
+the meeting Mr D invested £200,000 in a mutual fund and later a further £80,000 in a 
+structured note that was linked to BT and Vodafone. 
+The structured note had a maturity date of 15 June 2020 and at maturity its value was 
+significantly below the amount Mr D had invested. He complained to Citi about having been 
+misled by the RM and being invested in a product that wasn’t suitable for his moderate risk 
+profile.
+Citi didn’t uphold the complaint. In its final response letter (FRL) it said that it was satisfied 
+that the suitability and risk rating of the structured note was in line with its risk policy and 
+procedure. It said it was also satisfied that Mr D was made aware of how the product 
+worked. 
+Mr D then referred his complaint to our service and it was considered by one of our 
+investigators who thought it should be upheld. In short, she said that Citi had a responsibility 
+to ensure that any recommendation it made was suitable for Mr D and that the significant 
+risks of the structured note he invested in were out of alignment with the level of risk he was 
+willing to take. 
+Citi didn’t agree with the investigator and the matter was referred to me for review. I issued a 
+provisional decision upholding the complaint, the findings from which are set out below.
+“I think it is important to set out what Citi’s obligations were when it came to Mr D’s 
+investment in the structured note. It was providing an advisory service and as such the 
+structured note had to be a suitable investment for Mr D. The rules that Citi had to comply 
+with are set out in the Conduct of Business Sourcebook (COBS) in the Handbook of the 
+regulator, the FCA. 
+The relevant rules in March 2017 included COBS 9.2.1R, which requires that firms obtain the 
+necessary information about a client’s; knowledge and experience in the investment field 
+relevant to the specific type of designated investment or service; their financial situation; 
+their financial objectives.  
+COBS 9.2.2R then states that firms must obtain from the client such information as is 
+necessary for the firm to understand the essential facts about the client and have a 
+reasonable basis for believing that; the transaction to be entered into meets the client’s 
+investment objectives; he can financially bear the risks; is such that he has the necessary 
+knowledge and experience to understand the risks.
+And COBS 9.2.6R states that if a firm doesn’t obtain the necessary information, it must not 
+
+make a personal recommendation to the client or make a decision to trade.
+I have considered what happened with the above rules in mind. The first communication I 
+have seen between the parties is an email from the RM to Mr D dated 8 March 2017. I have 
+not seen what prompted the email but have assumed that Mr D had indicated to the RM that 
+he wanted to invest as the RM identifies three types of investment products. 
+He refers first to bonds and shares but says that they lack diversification and can be risky 
+and that he would avoid shares. He then refers to tracker and mutual funds and says they 
+are ‘okay’ although warns of potential tax consequences. Lastly, he refers  to structured 
+notes which he says are the products he likes most at that time.
+I note that Citi referred to this email in its FRL as being factually accurate but has not 
+otherwise addressed the content of the email. I am mindful that this was sent to Mr D before 
+Citi met with him to obtain relevant details from him about his financial position and 
+investment knowledge and experience. Despite this the email uses persuasive language that 
+directs Mr D towards structured notes and which more likely than not influenced him as to 
+what he should invest in.
+In other words, I think what the RM said in the email set the stage for the subsequent 
+meeting that took place on 23 March 2017 and as such it is no surprise that the system 
+notes that Citi has provided of the meeting record:
+“Profiling meeting 23/3/2017 – met the client with (name of colleague) explained our 
+proposition. Client wants to invest, not interested in protection as he has sufficient cash and 
+no dependents. Is interested in SN and Mutual Fund portfolios and has some knowledge of 
+investments and markets.”
+The reference to Mr D’s interest in ‘SN’ is obviously a reference to structured notes. 
+Mr D has said that he didn’t know what structured notes were prior to investing through Citi 
+and I accept what he has said. His ‘interest’ in structured notes I think must be considered in 
+context – that being the RM referring to them as his favourite product in his email of 8 March 
+2017. Put another way, I think Mr D’s interest in structured notes was the result of the RM’s 
+email of 8 March 2017 and wasn’t something that he had already decided he wanted to 
+invest in. 
+The profiling report that was completed at the meeting was sent to Mr D by the RM on 3 April 
+2017. In the letter the RM said that the report details Mr D’s appetite for risks and the 
+investment products he was ‘familiar’ with.
+The profiling report shows Mr D has an income of £60,000 and cash/short term savings of 
+£800,000 with real estate of £2.8 million. In terms of questions about risk appetite it shows 
+Mr D wanted income and growth and was a moderate risk investor, described as:
+“I hope to experience no more than moderate portfolio losses over a rolling one year period 
+in attempting to enhance longer-term performance and I am generally willing to buy 
+investments that are priced frequently and have a high certainty of being able to sell quickly 
+(less than a week) in stable markets although I may at times buy individual investments that 
+entail greater risk and are less liquid.”
+The profiling report then identifies Mr D’s knowledge and experience which is described as:
+“Limited – I have basic knowledge of investment products outside of traditional bank savings 
+accounts or time deposits.” 
+There are then two lists of investment products, the first being identified as ‘Tier 1’ products, 
+described as:
+“A financial instrument which can be understood by a person with basic knowledge of 
+financial and investing principles, without requiring specialist product training or experience.”
+For each of the products then listed it was indicated that Mr D had no experience but did 
+have knowledge - with the source in each case being stated to be ‘self-education’. 
+The second list of investments are referred to as ‘Tier 2’ investments which are described 
+as:
+“Any financial instrument that does not conform to the definition of a Tier 1 product is 
+classified as a Tier 2 product.”
+Put another way, it is products that cannot be understood by a person with basic knowledge 
+of financial and investing principles and for which specialist product training or experience is 
+necessary – as I think other documents that Citi provided , which I refer to below, also make 
+clear. 
+The profiling report shows only one product under Tier 2 that Mr D supposedly had 
+knowledge of – namely structured notes. As with all the Tier 1 products this knowledge was 
+stated to be by way of ‘self-education’ and not by way of experience.
+In short, the profiling report shows that Mr D was a novice investor whose only knowledge of 
+investments had come from ‘self-education’. I have seen nothing to suggest that Citi made 
+any attempt to seek further information so it could understand the extent Mr D’s knowledge 
+obtained through his ‘self-education’. 
+I am mindful that COBS 9.2.3R states that the information a firm should obtain includes 
+information on the nature, volume, frequency of the client’s transactions in designated 
+investments. In other words, the expectation where a client does indicate they have 
+experience in a product is that detailed information is obtained so the firm can assess the 
+extent of the client’s knowledge and experience.
+I think the need to obtain detailed information where a client has no experience is arguably 
+even greater. The only information Citi had about Mr D’s knowledge was that he had 
+obtained this through ‘self-education’. This statement of itself told Citi nothing about Mr D’s 
+knowledge and I think it is obvious it needed further information from him to assess suitability 
+of the structured note. 
+However, I have seen no evidence that Citi made further enquiries of Mr D as to what his 
+self-education amounted it had no way to know if the structured note was suitable for him. 
+Despite this the profiling report goes on to state that based on his knowledge and experience 
+Mr D is eligible to invest in the products listed – which list simply mirrors the Tier 1 and Tier 2 
+products that have already been ticked.
+I note that Citi has referred to Mr D stating that he informed the RM at some point that he 
+invested in equities and did better than Citi. I am not sure what the relevance of this is given 
+the issue I am considering is the recommendation to invest in the structured note, not 
+equities.
+However, there is nothing to show Mr D invested in equities before his investment through 
+Citi in any event. The information in the profile report shows otherwise and there is no 
+reason to think Mr D wouldn’t have referred to having such experience at the time this was 
+completed if he had previously invested in equities. And, if he invested in equities at some 
+later point this provides no evidence that supports Citi recommending the structured note in 
+May 2017. 
+Having considered the information available to Citi I am not satisfied that it had a reasonable 
+basis for believing Mr D had the knowledge and experience to understand the risks of the 
+structured note. As such it shouldn’t have proceeded with recommending that he invest in 
+this.
+I have considered what might have happened if Citi had sought further information from Mr D 
+and whether this could have reasonably led it to conclude the structured note was suitable 
+for him. Having done so, I am not satisfied it could. The structured note subscription 
+agreement dated 15 May 2017 includes the following statement:
+“The note is not suitable for everyone and is designed for clients who are knowledgeable 
+and experienced in the financial services market and in notes of this nature.”
+Mr D wasn’t knowledgeable or experienced in the financial services market or in structured 
+notes so by the above definition the structured note wasn’t suitable.
+Furthermore, in the document titled “Structured Note Ideas” produced by Citi specifically in 
+relation to the structured note linked to BT and Vodafone, the following statement is made:
+“Investing in structured products is intended only for experienced and sophisticated investors 
+who are willing and able to bear the high economic risks of such an investment.”
+Citi was fully aware that Mr D was not experienced and was the opposite of a sophisticated 
+investor. Even if it had obtained further information from him about his knowledge through 
+‘self -education’ this wouldn’t have changed this in my view. Based on its own documents it 
+should have been obvious to Citi that the structured note wasn’t suitable for Mr D regardless 
+of what he had learnt through self-education. 
+I am also not satisfied Citi provided information to Mr D that was clear, fair, and not 
+misleading as it was required to under Principle 7 of the FCA’s Principles and COBS 4.2.1R.  
+Firstly, I am not satisfied that the information in the email of 8 March 2017 was clear, fair, 
+and not misleading. Citi has referred to it being factually accurate, but the RM specifically 
+stated that shares lacked diversification and that they can be risky whilst talking positively 
+about structured notes without making any reference to risk. I think the wording of the email 
+was such that it wrongly gave the impression that structured notes weren’t ‘risky’ like share 
+could be.
+Secondly, I have some concerns over the use of the word ‘moderate’ to describe both the 
+product risk and Mr D’s risk appetite. I accept these are two different things that are 
+separately defined. I have already set out the definition for a moderate risk investor as set 
+out in the profiling report. A moderate product risk is described in the ‘Structured Note Ideas’ 
+document I have referred to above as:
+“Risk of moderate to significant loss associated with fairly volatile markets, mitigated by a 
+reasonably high certainty of being able to obtain a price at short notice which means the 
+product can be sold quickly under normal market conditions.”
+I have noted the reference to a risk of significant loss, but I think with a novice investor such 
+as Mr D there was real potential for misunderstanding about what ‘moderate’ meant when it 
+came to the product risk – given the description already provided to him for what moderate 
+risk meant in terms of his risk profile.
+It also seems to me that Mr D did in fact misunderstand what ‘moderate’ meant when it came 
+to the product risk for the structured note, as in his complaint to Citi he refers to wanting a 
+moderate risk investment because this was his profile and attitude and how Citi had 
+classified him.
+Mr D made several points about Citi not advising him to come out of the structured note 
+before maturity on the basis that it was dropping in value for some time. I don’t think there is 
+any need for me to make any detailed findings on this given my findings above. However, if I 
+had found that the structured note was suitable for Mr D I don’t think advising him to remain 
+in it to maturity would have necessarily been unsuitable advice, given the terms of the 
+structured note.”
+I awarded appropriate redress and gave both parties the opportunity of responding to my 
+provisional decision and providing any further information they wanted me to consider before 
+making my final decision.
+Mr D responded providing his calculations for the amount payable based on the redress 
+methodology set out in my provisional decision. Citi didn’t agree with my provisional decision 
+and in summary, made the following points:
+The email of 8 March 2017 (from the RM) was reply to a request on the type of 
+investments available on its platform and contained no specific product details.
+Following the email numerous telephone calls, meetings and emails were exchanged 
+about the specific products where the exact terms and the risks involved were 
+explained to the client and with him acknowledging he understood.
+It would be unfair to ignore all subsequent conversations and instead suggest that 
+the email of 8 March 2017 persuaded Mr D to falsely acknowledge he had knowledge 
+of structured notes and two months later invest in the product.
+In any event the suggestion he didn’t have knowledge isn’t correct given he 
+subsequently acknowledged he had knowledge of equities and bonds.
+Mr D selected a range of products whilst not selecting others which demonstrates he 
+thought independently and his answers reflected his true understanding of various 
+products.
+It subsequently transpired that Mr D at a minimum had experience of managing his 
+own equity investment portfolio during the same period as he invested with Citi as 
+confirmed for example in his email of 12 February 2020.
+Whilst this information wasn’t disclosed to Citi prior to investment in the structured 
+note it does show Mr D wasn’t a novice investor as suggested by the ombudsman. 
+This confirms the accuracy of the notes left by the RM on its system after the profiling 
+meeting during which he ascertained Mr D had a general knowledge of investments 
+and markets despite not disclosing comprehensive information about his experience.
+At the meeting two of its regulated employees formed a reasonable basis for 
+believing Mr D had sufficient knowledge in structured notes.
+Being self-educated is a valid answer to the question about knowledge and 
+experience which was then substantiated by wider conversations about financial 
+markets, an example being the notes of the meeting that took place on 19 May 2017.
+During the profiling meeting additional information about Mr D’s circumstances, 
+investment objective and an assessment of his ability and willingness to take risk was 
+collated.
+In this case Mr D was very interested to invest in structured notes and repeatedly 
+asked the RM to send him monthly ideas which is contrary to how he described the 
+interactions.
+Mr D asked to invest £80K in two structured notes in an email dated 30 March 2017 
+but then opted to invest £30K in a structured note that was linked to Credit Suisse 
+and UBS as he believed it could be quite risky. He couldn’t invest at the time but this 
+demonstrates his understanding of different types of equity and his willingness to 
+take risk.
+The note of the meeting in May 2017 when the structured note was discussed shows 
+it was Mr D who opted to invest £80k when the RM suggested only £50K be 
+invested.
+Mr D signed the risk profiling form and his risk profile and knowledge and experience 
+was later confirmed to him when he invested in the mutual fund in April 2017 and 
+again in May 2017 when he invested in the structured notes.
+Citi also provided some further documents and notes not previously provided. I asked Citi to 
+clarify some of the statements it had made in its response about Mr D investing in equities. It 
+responded and said that Mr D’s email to it of 12 February 2020 corroborates its submission 
+that that Mr D was an active investor in equities at the same time as he invested in the 
+structured note. 
+Citi also referred to what it called the ‘tipsheet’ (brochure) for the structured note, which was 
+sent to Mr D on 17 May 2017 along with the subscription agreement and Citi’s ‘Structured 
+Notes Ideas’. 
+Citi said the brochure provided a summary of the product features and highlighted prominent 
+risks as well as the objective and risk rating and that Mr D, following receipt of the 
+documents sent on 17 May 2017, confirmed, before subscription, that he understood the 
+risks. It also said that he invested in the mutual fund investment over the same time, with the 
+structured note forming a smaller portion of the investments on his investment account.
+I asked Mr D to confirm any other investments he had up to 2020 and he confirmed he 
+invested in Berkshire Hathaway in 2018 and this is what he referenced in his email of 12 
+February 2020. He also referred to having an insurance policy which he paid 2,000 EUR into 
+each year as from 2010 and what he referred to as a pension retirement policy he has paid 
+2,500 EUR into each year from 2008, with the underlying assets being gilts and bonds. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having considered everything that Citi and Mr D have said in response to my provisional 
+findings and the additional documentation that Citi has provided, I have seen no persuasive 
+evidence that makes me think the findings set out in my provisional decision were wrong. As 
+such I stand by those findings, which form part of the findings in this final decision. 
+Citi has referred to important communications between it and Mr D which it says have not 
+previously been provided which it says help to provide an understanding of its procedures for 
+assessing the suitability of investments for each client. However, having considered all the 
+information Citi (and Mr D) have provided in this complaint, I am not satisfied Citi did 
+properly assess suitability as it should have done and I am not satisfied the structured note 
+was suitable for Mr D. 
+Citi has provided no reasonable explanation as to why it considered the structured note was 
+a suitable investment for Mr D given that in the document it drafted and sent to Mr D on 17 
+May 2017 headed ‘Structured Note Ideas’ it explicitly stated that investment in structured 
+products is intended only for experienced and sophisticated investors. On the evidence 
+provided Mr D quite obviously was neither experienced nor sophisticated at the time and Citi 
+has not suggested that he was. Given that Citi’s own document makes clear the structured 
+note wasn’t suitable for an investor such as Mr D arguably I don’t need to address the points 
+made by Citi, but I will briefly comment on these.
+Citi has said that the response from the RM of 8 March 2017 to Mr D’s query about the 
+investments available on Citi’s platform contained no specific investment product details. 
+This is not the key issue in this complaint, as regardless of that email I don’t think the 
+structured note was suitable for Mr D and he shouldn’t have been invested in it. 
+In any event, whilst the email may not have contained specific product details in relation to 
+structured notes, it also didn’t simply provide information Mr D had asked for about the 
+products available. In my view the wording was such as to suggest that structured notes 
+were a better option to other products. I think what the RM said was likely to be persuasive 
+and more likely than not did influence Mr D when it came to him investing in the structured 
+note.
+At the time of the email Citi hadn’t obtained any information about Mr D that could 
+reasonably have led it to conclude structured note were a suitable type of investment for 
+him, such that it was reasonable for it to direct Mr D towards that type of investment – as I 
+think the RM did by what he said in his email. 
+ I don’t think the email of the 8 March 2017 was the only thing that led to Mr D investing in 
+the structured note, although I think it dictated to some extent the discussion that took place 
+at the subsequent meeting with the RM. I have been provided with a limited record of that 
+discussion but given the RM had already made clear his enthusiasm for structured notes in 
+the email it seems likely he would have spoken positively about them. I think this helps 
+explain the record of the meeting shows Mr D was interested in these.
+Citi has referred to ‘numerous’ telephone calls, meetings and emails being subsequently 
+exchanged about specific products after the email of 8 March 2017 where it says the exact 
+terms and the risk involved were explained to Mr D with him acknowledging that he 
+understood. 
+It has said it would be unfair to ignore these subsequent communications and to suggest that 
+it was specifically the email of 8 March 2017 that persuaded Mr D to falsely acknowledge he 
+had knowledge of structured notes and invest in the product two months later. Firstly, I would 
+point out I have not said Mr D falsely claimed knowledge in structured notes, rather I think 
+any knowledge he had through ‘self-education’ was likely to be limited and something he 
+only looked into after the email of 8 March 2017.
+Secondly, I have not ignored any information that has been provided to me. The 
+communications that took place between 8 March 2017 and Mr D investing in the structure 
+note amounted to a few emails and telephone calls as well as the meetings in March and 
+May 2017. I considered this evidence before making my provisional decision and took them 
+into account when making my findings. They do not provide any persuasive evidence as to 
+the suitability of the structured note.
+Citi has said that being self-educated is a valid answer to the question about knowledge and 
+understanding of investments. However, as I said in my provisional decision, a client stating 
+they are self-educated is in my view almost meaningless, without further information. 
+Where a client has indicated they have no previous experience and the only knowledge they 
+have is through self-education I think it is important for a firm to make enquiries to 
+understand what is meant by this – what this amounted to. I can’t see how Citi could have 
+properly assessed Mr D’s understanding without knowing what he had done to self-educate 
+himself. 
+I don’t think that discussing the risks with Mr D and providing documents where the risks 
+were set out and get him to acknowledge he understood the risks, made up for this. I am not 
+satisfied that this provides any persuasive evidence of Mr D’s actual understanding or 
+supports Citi’s case that the structured note was suitable.
+In the circumstances I am not satisfied that Mr D stating he had knowledge of certain 
+products through self-education or the subsequent discussions provided the information 
+necessary for Citi to have a reasonable basis for believing he had the necessary experience 
+and knowledge to understand the risks of the structured note.
+I note Citi’s suggestion that because Mr D invested in equities the same time as he was 
+invested in the structured note he wasn’t a novice investor, as I said he was. It is referring to 
+what Mr D said in his email of 12 February 2020 about investing in Berkshire Hathaway and 
+getting a return of 28%.
+As I have set out in the background above, Mr D has said he invested in Berkshire 
+Hathaway in 2018. This subsequent investment by him obviously isn’t evidence he wasn’t a 
+novice investor at the time the RM met with him in March 2017, or when he invested in the 
+structured note in May 2017. 
+Mr D has referred to paying relatively small annual sums into an insurance policy and 
+pension policy invested in gilts and bonds. These are unlikely to have involved him making 
+any decisions so far as investments were concerned. So, I still think it is appropriate to 
+consider him a novice investor - or if not a novice then someone with minimal experience. 
+These policies certainly didn’t give him any knowledge or experience relevant to the 
+structured note in my view.  
+I have considered the notes that Citi has provided of subsequent discussions between it and 
+Mr D when the structured note investment dropped significantly in value. I am not satisfied 
+that these provide persuasive evidence that he had a real understanding of the risks of the 
+structured note. 
+Having considered everything the parties have said and the information provided I remain of 
+the view that the structured note wasn’t suitable for Mr D and he shouldn’t have been 
+invested in it.
+Mr D has provided some detailed calculations for redress which I have noted but have not 
+referred to. It is for Citi to carry out the necessary calculations and pay the redress based on 
+the methodology I have set out.
+What should Citi do?
+To compensate Mr D fairly, Citi must:
+Compare the performance of Mr D's investment with that of the benchmark shown 
+below and pay the difference between the fair value and the actual value of the 
+investment. If the actual value is greater than the fair value, no compensation is 
+payable.
+Citi should also add any interest set out below to the compensation payable.
+Income tax may be payable on any interest awarded.
+Investment 
+name Status Benchmark From (“start 
+date”) To (“end date”)Additional 
+interest
+Structured 
+Note 
+No longer 
+exists
+FTSE UK 
+Private 
+Investors 
+Income Total 
+Return Index
+Date of 
+investment
+Sale of the BT 
+shares 
+8% simple per 
+year on any loss 
+from the end 
+date to the date 
+of settlement
+Actual value
+This means the actual amount Mr D received at the end date from sale of the BT shares he 
+received on maturity of the structured note.
+Fair value
+This is what the investment would have been worth at the end date had it produced a return 
+using the benchmark.
+Any withdrawal, income or other distributions paid out of the investments should be 
+deducted from the fair value calculation at the point it was actually paid so it ceases to 
+accrue any return in the calculation from that point on. 
+If there is a large number of regular payments, to keep calculations simpler, I’ll accept if Citi 
+totals all those payments and deducts that figure at the end to determine the fair value 
+instead of deducting periodically. 
+If any distributions or income were automatically paid out into a portfolio and left uninvested, 
+they must be deducted at the end to determine the fair value, and not periodically.
+Why is this remedy suitable?
+I have chosen this method of compensation because:
+Mr D wanted Income with some growth and was willing to accept some investment 
+risk.
+The FTSE UK Private Investors Income Total Return index (prior to 1 March 2017, 
+the FTSE WMA Stock Market Income total return index) is a mix of diversified indices 
+representing different asset classes, mainly UK equities and government bonds. It 
+would be a fair measure for someone who was prepared to take some risk to get a 
+higher return.
+Although it is called income index, the mix and diversification provided within the 
+index is close enough to allow me to use it as a reasonable measure of comparison 
+given Mr D's circumstances and risk attitude.
+The additional interest is for being deprived of the use of any compensation money 
+since the end date.
+I have not required Citi to repay the advice fee which was part of the redress awarded by the 
+investigator. This is because the redress I have set out above is based on Mr D investing in 
+any event. As such it is more likely than not an advice fee would have been incurred if Citi 
+had advised him differently.
+Putting things right
+To compensate Mr D fairly, Citi must:
+Compare the performance of Mr D's investment with that of the benchmark shown 
+below and pay the difference between the fair value and the actual value of the 
+investment. If the actual value is greater than the fair value, no compensation is 
+payable.
+Citi should also add any interest set out below to the compensation payable.
+Income tax may be payable on any interest awarded.
+Investment 
+name Status Benchmark From (“start 
+date”) To (“end date”)Additional 
+interest
+Structured 
+Note 
+No longer 
+exists
+FTSE UK 
+Private 
+Investors 
+Income Total 
+Return Index
+Date of 
+investment
+Sale of the BT 
+shares 
+8% simple per 
+year on any loss 
+from the end 
+date to the date 
+of settlement
+Actual value
+This means the actual amount Mr D received at the end date from sale of the BT shares he 
+received on maturity of the structured note.
+Fair value
+This is what the investment would have been worth at the end date had it produced a return 
+using the benchmark.
+Any withdrawal, income or other distributions paid out of the investments should be 
+deducted from the fair value calculation at the point it was actually paid so it ceases to 
+accrue any return in the calculation from that point on. 
+If there is a large number of regular payments, to keep calculations simpler, I’ll accept if Citi 
+totals all those payments and deducts that figure at the end to determine the fair value 
+instead of deducting periodically. 
+If any distributions or income were automatically paid out into a portfolio and left uninvested, 
+they must be deducted at the end to determine the fair value, and not periodically.
+Why is this remedy suitable?
+I have chosen this method of compensation because:
+Mr D wanted Income with some growth and was willing to accept some investment 
+risk.
+The FTSE UK Private Investors Income Total Return index (prior to 1 March 2017, 
+the FTSE WMA Stock Market Income total return index) is a mix of diversified indices 
+representing different asset classes, mainly UK equities and government bonds. It 
+would be a fair measure for someone who was prepared to take some risk to get a 
+higher return.
+Although it is called income index, the mix and diversification provided within the 
+index is close enough to allow me to use it as a reasonable measure of comparison 
+given Mr D's circumstances and risk attitude.
+The additional interest is for being deprived of the use of any compensation money 
+since the end date.
+I have not required Citi to repay the advice fee which was part of the redress awarded by the 
+investigator. This is because the redress I have set out above is based on Mr D investing in 
+any event. As such it is more likely than not an advice fee would have been incurred if Citi 
+had advised him differently.
+My final decision
+I uphold the complaint for the reasons I have explained. Citibank UK Limited should pay Mr 
+D the amount calculated as set out above.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr D to accept or 
+reject my decision before 24 May 2023.
+ 
+Philip Gibbons
+Ombudsman

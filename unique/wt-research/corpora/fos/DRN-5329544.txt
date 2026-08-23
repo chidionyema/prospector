@@ -1,0 +1,123 @@
+DRN-5329544 
+ 
+ 
+The complaint 
+ 
+Mr S complains that NewDay Ltd trading as John Lewis Credit Card (NewDay) didn’t agree 
+to refund him after he made a claim through Section 75 of the Consumer Credit Act 1974 
+(Section 75).  
+What happened 
+On 21 September 2021 Mr S and his wife entered a contract with a company I’ll call IH for 
+the supply and fitting of a conservatory. The overall cost of the work was £38,563 to be paid 
+to the supplier and various tradespeople. A payment of £25,135 was due to be paid to IH 
+and a further £13,428 to be paid directly to other parties. In September 2022 Mr S paid 
+£9,567.50 towards the cost of the contract using his credit card with NewDay.   
+Work was undertaken to get planning permission, and some building services were provided 
+but by December 2023 IH had become insolvent and let Mr S know they wouldn’t be able to 
+fulfil the contract.   
+Following the instructions of his legal adviser Mr S raised a Section 75 claim with NewDay to 
+try and recover the £9,567.50 he had paid for the works using his credit card.  
+NewDay considered Mr S’s claim under Section 75. It considered the information Mr S 
+provided but explained that the claim fell outside the financial limits of Section 75 and so it 
+couldn’t help.  
+Unhappy with NewDay’s response, Mr S referred the case to this service. One of our 
+investigators considered the case and didn’t think NewDay had acted unfairly.   
+Mr S didn’t agree with our investigator’s view, so his complaint has been passed to me for 
+review and decision.   
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+I think it would be helpful for me to be clear here that I am only considering the actions of 
+NewDay in this case, and I can’t consider the actions of IH.   
+ As Mr S made payment using his credit card, NewDay could have considered the claim 
+through the chargeback process or under Section 75. So, I’ve considered both here.  
+Chargeback claims  
+Neither party has mentioned that the claim was (or should have been) considered under the 
+chargeback scheme. However, it has a relatively broad application and there are no financial 
+limits, so I thought it worth considering.    
+That said, whilst chargeback provides an avenue for a bank to raise a dispute with a 
+
+ 
+ 
+merchant where something has gone wrong, it doesn’t cover all eventualities, and it isn’t a 
+legal right and isn’t guaranteed to get a customer a refund. But I’d consider it good practice 
+for a credit provider to attempt a chargeback where the circumstances are appropriate and 
+there is a reasonable prospect of success. Strict rules and timeframes apply to chargebacks, 
+and these are set out by the card scheme operator.   
+I can see that NewDay didn’t attempt a chargeback in this case, and I don’t think this was 
+unreasonable. I say this because the claim would likely have been outside the given time 
+frame for the relevant chargeback rule. The relevant rule for the chargeback gives 120 days 
+for the customer to raise a claim from the date of the transaction. Where a performance date 
+wasn’t specified, an extra 30 days is given. So, Mr S needed to have raised a claim by 30 
+January 2023 at the latest. As Mr S didn’t raise a claim until February 2024, the claim was 
+made outside the timeframe for a chargeback to succeed. I appreciate Mr S didn’t know 
+about the insolvency until much later, but the chargeback rules are clear on the timeframes, 
+and I can’t change these.     
+Given this, I don’t think it was unreasonable for NewDay to consider the claim under Section 
+75, and I’ve gone on to consider this further.  
+Section 75 Claims   
+Section 75 makes the provider of credit (NewDay in this case) equally liable where there is a 
+case of misrepresentation or breach of contract by the supplier of goods or services financed 
+by the credit. However, it will only apply when the criteria for a Section 75 claim are met. 
+Section 75 won’t apply to any single item where the supplier has attached a cash price 
+of £100 or less, or more than £30,000. In addition to this there needs to be a direct 
+relationship between the debtor, creditor, and supplier otherwise known as a DCS 
+agreement.  
+I can see that the contract was in the name of Mrs S (Mr S’ wife). Given this, I’ve considered 
+more closely whether the DCS agreement was intact. Having done so I’m persuaded that Mr 
+S was party to the contract. I say this because it’s clear that he paid (in part) for the supply 
+and fitting of the conservatory for the property he lived in full time with Mrs S. Given this, I 
+agree that the case meets this part of the criteria for a valid claim.  
+However, I must also consider the cash price and whether this meets the criteria for a 
+Section 75 claim. Having considered the contract carefully, I can see the cash price quoted 
+is £38,563. So, I don’t think it falls within the limits set for a successful Section 75 claim. I 
+appreciate that Mr S was assured by a third party the payment would be within the limits of 
+Section 75, but I don’t agree that it is, and I’ll explain why.   
+I think the main issue here is what can be considered as a single item under Section 75. Mr 
+S says that as the contract is broken into subsections and some payments needed to be 
+made directly to tradespeople, these should be considered as separate items. This would 
+mean that the value of the contract reduced and fell within the limits set out for a valid 
+Section 75 claim.   
+I understand Mr S’ point of view here, but I don’t think that the different sections he’s referred 
+to should be considered as separate contracts. I say this because it’s clear that all sections 
+were integral to the supply and installation of the conservatory, which is what Mr S and Mrs 
+S had contracted with IH for. So, I think it’s fair to conclude it’s the conservatory that 
+constitutes the single item here.   
+In addition to this, whilst IH asked Mr S to pay the tradespeople directly, it was IH who 
+appointed them as subcontractors and provided a price for the works. I can’t see that 
+ 
+ 
+separate contracts existed, independently of IH, between Mr S and the subcontractors. So, I 
+don’t think it would be reasonable to conclude that because of the payment arrangements 
+and the format of the contract that this amounted to separate contracts.    
+Given this, I’m satisfied the single item here is the supply and installation of the 
+conservatory. This means it’s the total price of the contract that’s relevant here when 
+considering the parameters of Section 75 and I’m satisfied the price given to the supply and 
+installation of the conservatory exceeds the limit of £30,000 set out in Section 75.  
+Although neither party has mentioned alternatives to Section 75, to ensure fairness, I have 
+gone on to consider whether either Section 75A or Section 56 of the CCA would help Mr S in 
+this case.   
+Whilst Section 75A allows for claims where the cash price of the goods or service exceeds 
+£30,000. These goods or services must have been provided under a linked credit agreement 
+– so a credit provided for a specific purpose and where the funds cannot be used for any 
+other purpose. Mr S paid using his credit card and this wouldn’t be classed as a linked credit 
+agreement. So, I’m satisfied the criteria for a valid claim under Section 75A haven’t been 
+met.   
+Section 56 of CCA doesn’t set out any financial limits but it is only concerned with claims of 
+misrepresentation and doesn’t apply where there has been a breach of contract. I’ve seen 
+nothing here to say that IH made any misrepresentations that induced Mr S into entering a 
+contract with them. The reason the claim has arisen is that IH have ceased trading and are 
+no longer able to supply or install the conservatory. As this amounts to a breach of contract 
+I’m satisfied Section 56 doesn’t apply here.   
+I understand what a disappointment this must be to Mr S and I’m sorry that he has found 
+himself out of pocket and without the conservatory he contracted for. However, I must decide 
+whether I think NewDay has acted unfairly in its consideration of Mr S’ claim. And on the 
+evidence available I’m not persuaded NewDay has acted unfairly in this case.   
+My final decision 
+My final decision is that I don’t uphold Mr S’s complaint about NewDay Ltd trading as John 
+Lewis Credit Card. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr S to accept or 
+reject my decision before 24 July 2025. 
+   
+Charlotte Roberts 
+Ombudsman

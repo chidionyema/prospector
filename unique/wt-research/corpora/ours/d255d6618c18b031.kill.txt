@@ -1,0 +1,17 @@
+RCFE BillSweep — audit your parent's assisted living bill and claw back every charge the state says is illegal.
+
+A fixed-fee service that reviews your parent’s California assisted living bill, spots illegal charges, and sends citation-backed dispute letters that get your money back.
+
+Adult children caring for parents in residential care facilities for the elderly (RCFEs) are often billed for things they never agreed to or that California law prohibits — like fees for staff training, charges for activities the resident can't attend, or medication management markups that conflict with the admission contract. A solo operator equipped with a growing database of common billing violations and AI that parses facility invoices against Title 22 regulations can quickly flag every improper line item. The operator then generates a formal dispute letter citing the exact regulatory section, demanding a refund. Facilities usually settle quickly because a complaint to the California Department of Social Services can trigger an inspection, and they would rather refund a few hundred dollars than risk a citation. The service costs a flat $149 per audit — far less than the $500+ in typical overcharges it recovers. The operator’s win rates compound because every resolved case adds new violation patterns to the proprietary dataset, making future audits faster and more precise.
+
+The adult child who is the primary care decision-maker and handles the parent's finances. They pay the audit fee directly, typically after seeing a second bill that just doesn’t add up.
+
+Assisted living costs in California now average over $5,000 a month, and families are stretched. At the same time, the Department of Social Services has stepped up enforcement of billing transparency rules. Online caregiver forums are full of stories about surprise charges, but no one has turned that pain into a fast, do-it-for-me service. The window is open for a specialist who speaks both caregiver and regulation.
+
+The passages describe California caregivers, resident rights, free ombudsman help for abuse or neglect, and general aging programs, but none show people searching for, asking about, or paying to audit or claw back assisted-living bill charges. They never address demand for a paid bill-dispute or overcharge-recovery service.
+
+The passages list older RCFE complaint posters (dated 2015–2019), a CDSS site label, licensing notes, undated meeting dates, and unrelated California code cites. None of them say families are facing live billing overcharges now, that enforcement of billing rules is active this year, or that demand for invoice audits is current rather than leftover.
+
+The passages name California senior-care placement firms, the Long-Term Care Ombudsman, SHIP counseling, and assorted care providers, including a fragment that mentions billing disputes. None of them describe an open ad channel, marketplace, referral path, or other beginner-executable way for a paid RCFE bill-audit service to reach adult children who would buy it.
+
+The passages establish that in California only licensed attorneys may practice law or give legal advice, and that unauthorized practice of law is a crime, but they never say whether auditing assisted-living invoices against regulations or drafting citation-backed dispute letters for families counts as practicing law or giving legal advice. Without that link, the passages neither show this fee is lawful nor show it can only be earned by breaking the law.

@@ -1,0 +1,23 @@
+FreshPlot – The Nurse's Suburban Micro-Farm.
+
+A solo operator converts an NHS worker's backyard into a hands-free, AI-optimised kitchen garden that delivers a weekly harvest box, all for a flat monthly subscription, starting with a tight 20-home cluster in a single city.
+
+UK food price inflation (19.2% YoY in 2023) and NHS shift patterns have created a specific pain: nurses value fresh organic produce but cannot sustain a garden. By combining computer vision pest detection, soil sensor networks, and a hyperlocal labour model, a solo operator can serve 20–30 nearby households, amortizing travel costs. The proprietary dataset on each plot’s microclimate and yield becomes a switching‑cost moat—a new entrant would need a full growing season just to achieve parity.
+
+NHS nurses (age 30–50) with a garden in a dense suburban area, household income £30k–£50k, paying £80–£120/month for weekly harvest boxes.
+
+The 2022–23 UK vegetable shortage and supermarket price gouging have made homegrown food a rational economic choice. At the same time, cheap IoT sensors and smartphone‑based image recognition make precision gardening automatable by one person. The ‘nurse wellbeing’ push post‑Covid (e.g., NHS ‘Green Spaces’ initiatives) provides a cultural tailwind for a service that turns an unused asset into a wellness perk.
+
+The only passage describes a tiny (1-star) free open-source AI gardening knowledge platform, which neither affirms that the proposed physical-labour harvest-box subscription value is durable nor removes all margin from it (free knowledge software is not a substitute for a hands-free physical tending-and-delivery service). It does not address the durability of this candidate's value.
+
+The passage describes one individual broccoli farmer in Japan using generative AI to build tools for his own farm; it says nothing about whether any incumbent or funded rival serves the candidate's actual market (UK backyard micro-farm subscription harvest boxes for NHS nurses). It does not address the incumbency question for this space.
+
+The passage describes a tech company (Home Harvest) launching a smart indoor farm appliance for home leafy-green growing; it says nothing about NHS nurses' household budget, willingness, or motive to pay £80–120/month for a harvest-box subscription.
+
+The only passage describes Home Harvest's smart indoor home-farming units and the bagged-greens category; it says nothing about a distribution route, channel, or forcing mechanism for reaching NHS-nurse households with a solo micro-farm subscription.
+
+The FSA passage establishes that running a food business from home is a lawful, recognised activity governed by official guidance, so the harvest-box subscription margin can exist without breaking the law (subject to ordinary registration/compliance). Nothing in the passage indicates the activity requires illegality or falsified data.
+
+The only passage is an inspirational profile of one Chinese entrepreneur's automated hydroponic farm; it says nothing about UK nurses, suburban households, or anyone paying to solve the inability to maintain a garden for fresh produce. No passage addresses the claimed pain.
+
+The idea cannot clear the filter and is dead on a publication decision (source-or-die). The thesis is entirely load-bearing on two claims — that NHS nurses feel acute pain from being unable to maintain a garden, and that they will pay £80–120/month for a harvest-box subscription — and BOTH returned `unverifiable` at confidence 0.0 with zero supporting passages. Verdict-from-retrieval-only means no grounded demand exists: pain_reality's only hit (Li Xia's hydroponic story) and payer_solvency's only hit (Home Harvest) say nothing about UK nurses' budget, willingness, or motive to pay. With no evidence the payer exists or will pay, the economics (single operator, 20–30 homes, £80–120/mo each) are unfounded. Worse, the one commodity passage actively undercuts the model: Home Harvest is a funded tech company selling a self-contained automated home-growing unit for a one-off ~£339 plus seed mats (source 0c9fea5e2b6d3688) — a cheaper, scalable, no-labour substitute for a £960–1,440/year hands-on subscription. The proprietary-microclimate-data 'switching-cost moat' is asserted but unverifiable (source 1272d59dbe17b558 shows AI gardening knowledge is already free/open-source), and gardening AI is broadly commoditised. The only `supported` verdict is legality (source 5ee9b5ba032d6909) — i.e. it's merely legal to run, which is not a reason to build. No gate clears affirmatively except legality; the demand foundation is ungrounded and the value is exposed to a cheaper commodity device.

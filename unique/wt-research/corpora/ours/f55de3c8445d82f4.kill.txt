@@ -1,0 +1,11 @@
+CellCheck – The Used EV Battery Health Tester for Shrewd Buyers.
+
+A pocket OBD-II scanner and AI-driven app that gives used EV buyers an instant, model-specific battery-health score, turning an opaque gamble into a data-backed decision.
+
+Transplanting the at-home self-test model into the used EV market: non-expert buyers fear battery failure but lack affordable diagnostics. By focusing initially on the top 5 most-traded EV models, we build a proprietary degradation dataset that improves with every car tested, creating a defensive moat no generic scanner can replicate. Distribution is direct via EV forums and content, and every report sold funds the data engine.
+
+The squeezed-middle person (35–55, mortgaged, cash-poor but car-dependent) hunting for a used EV—they are terrified of hidden battery bills and will pay a one-time fee to guarantee their limited cash isn't wiped out.
+
+Euro 7 regulations coming into force mandate battery durability disclosure only for new EVs, leaving the exploding used EV parc completely unprotected. A wave of inexperienced buyers is entering without any trusted, independent health-check tool, exactly when model-specific degradation data can be aggregated at scale from the first wave of second-hand sales.
+
+A free, public calculator already turns Geotab's aggregated real-world dataset (22,700+ vehicles) into model-specific degradation estimates by make/model/age/charging habits — the exact 'proprietary, model-specific' output CellCheck claims as its moat. Manufacturer warranties (VW and industry-standard) already cover battery repair/replacement to 70% capacity for 8 years/100k miles, further eroding the acute fear the paid report is meant to resolve.

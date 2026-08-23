@@ -1,0 +1,25 @@
+BudgetPilot – the primary carer's personal budget negotiation broker.
+
+Negotiates a higher personal budget from your council, and you only pay a cut of the extra money you receive.
+
+When a primary carer goes through a Care Act 2014 assessment, their local authority sets a personal budget – a cash sum to pay for the care and support they need. Councils routinely lowball this figure, leaning on rigid formulas or rushing the assessment. Most carers accept that first offer because they have no idea how to push back, and the council has no incentive to volunteer more.
+
+BudgetPilot steps in as a contingency-fee broker. It takes the carer's existing assessment and the written reasons behind the personal budget figure, then builds an evidence pack using a proprietary database of thousands of anonymised personal budget outcomes and local-authority-specific FOI data. That pack shows what a fair budget looks like for a carer in that postcode, with similar needs, and where the council has previously conceded. The broker then formally re‑opens negotiations with the council’s finance team, arguing for an uplift. If the carer gets a higher personal budget, BudgetPilot takes 18% of the increase for the first year – so the carer never pays out of pocket and only shares money they would never have seen otherwise.
+
+The model works because it is adversarial to the cost-cutting impulse inside councils, something no council internal service can replicate, and because it compiles data that gets more powerful with each new case, locking in a compounding proprietary dataset that a rival cannot catch.
+
+The primary carer, but only after a successful uplift – BudgetPilot takes a cut of the extra money the council releases. Effectively, the council pays the bulk of the cost by funding a higher budget.
+
+Half a decade of austerity and the current cost-of-living crisis have pushed council budgets to breaking point, making assessments more defensive and personal budget offers more miserly. The Care Quality Commission has repeatedly flagged that carers are missing out on what the Care Act entitles them to. Meanwhile, the rise of FOI-sourced transparency and lightweight AI tools means a solo operator can now build a negotiation‑grade dataset at zero marginal cost.
+
+The passages only cover local-authority revenue spreadsheets, tax allowances, free Excel budget templates, and unrelated datasets. None say whether carer Care Act personal-budget negotiation still has lasting paid value or has been erased by a free or bundled alternative.
+
+The passages describe general carer advice and support, local universal services, and what personal budgets are, but none say whether any provider already dominates—or leaves open—hands-on personal-budget uplift negotiation for carers. Gap apparel text is unrelated and does not speak to market control in this niche.
+
+The passages only describe council adult-social-care spending, grants, and cost pressures—not whether primary carers can or will pay a broker from any budget uplift. Nothing in them states carers’ ability or willingness to share that extra money with BudgetPilot.
+
+Carers already gather on the MS Society UK forum to discuss carers’ personal budget assessments and on Carers UK’s free helpline and online forum. Those existing meeting places are an executable way to reach primary carers who face personal budget decisions.
+
+The passages describe direct-payment spending rules, advocacy signposting, and FCA claims-management/personal-injury fee limits, but none say whether a contingency cut of a council personal-budget uplift is allowed or banned. They therefore never settle whether BudgetPilot’s margin can exist without breaking law or terms.
+
+The passages show carer assessments and personal budgets exist as council routes to support, and one truncated survey line says carers were “not getting” something, but they never say budgets are underpaid, that carers struggle to challenge offers, or that anyone pays to fix that now.

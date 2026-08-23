@@ -1,0 +1,21 @@
+ReturnShelf – The Independent Bookstore’s Dead Stock Recovery Engine.
+
+A mobile/web app that scans ISBNs, checks real‑time return eligibility against publisher agreements, generates optimized return batches with appropriate labels and cover‑stripping instructions, and tracks credits to claw back cash from unsold inventory.
+
+Independent bookstores lose thousands in expired return rights because managing deadlines across hundreds of publishers is manual and complex; a specialized tool that encodes the industry’s arcane return policies can automate the process, turning dead stock into cash flow. The tool’s policy database deepens with each publisher update and user‑submitted correction, creating a self‑reinforcing moat.
+
+Independent bookstore owners (smb_owner persona, typically 1–5 employees, handling buying and operations themselves) who carry inventory from multiple publishers and distributors.
+
+In 2023, major publishers quietly cut standard return windows from 12 to 6 months in response to supply chain volatility, while the post‑pandemic indie revival drove inventory levels to a five‑year high. Store owners are stretched thinner than ever, making the manual tracking of return deadlines impossible. This acute cash‑flow squeeze creates a hard, immediate willingness to pay for a tool that pays for itself on first use.
+
+The passages describe Bookshop.org's marketplace/mission and Hachette's revenue, plus unrelated prop-trading ads — none address whether publisher return-window policies, dead-stock losses, or the market for return-management tools are real or durable.
+
+The passages describe Nielsen BookData (book listing/sales data), a generic EPOS loyalty system, and parcel tracking — none address publisher return-policy management or dead-stock credit recovery for indie bookstores, so they say nothing about whether an incumbent already serves this need.
+
+The passages report bookshop counts (openings, closures, membership trends) but say nothing about an owner's cash position or willingness to spend £49 on a returns tool. None address budget or motive for this purchase.
+
+The passages describe trade associations, book-token/payment schemes, and generic bookshop marketing, none of which mention any channel for reaching bookstore owners with a returns/inventory-recovery software product. Nothing here supports or refutes a distribution route for ReturnShelf.
+
+The passages describe cover-stripping as a normal, established part of the bookselling return process — booksellers routinely strip covers from mass-market paperbacks and return them to publishers for credit, with no suggestion this breaches any law or agreement. That indicates the return-and-credit workflow ReturnShelf automates is a legitimate, publisher-sanctioned practice rather than one requiring illegality.
+
+None of the passages discuss return-window policies, dead stock, or bookstore cash flow; they're about The Independent newspaper, dictionary definitions, bestseller lists, Bookseller Magazine subscriptions, and BookTok community engagement.

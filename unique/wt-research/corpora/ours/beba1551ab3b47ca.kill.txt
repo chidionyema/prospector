@@ -1,0 +1,25 @@
+ExitLease — a fixed-fee check that shrinks the bill when you leave your salary-sacrifice electric car scheme early.
+
+A fixed-fee review for NHS, council, school and civil service staff that checks a salary-sacrifice electric car lease before they sign, and cuts the exit bill if they have to leave the job early.
+
+This borrows the trick used by the people who get you out of an expensive mobile phone or gym contract for a fee, and points it at a much bigger bill: the early-exit charge on a salary-sacrifice electric car.
+
+Thousands of NHS, council, school and civil service staff have signed up to schemes like NHS Fleet Solutions, Tusker, Zenith or Fleet Alliance, where an electric car lease is paid for out of pre-tax salary. The catch sits in the small print: if you leave the job, go on long-term sick leave, or are made redundant before the lease ends, the leasing company can send a final bill for the whole remaining value of the car, run to their own numbers, with no independent check on how it was worked out.
+
+The worker feels this pain twice. First, when they sign, because nobody explains what 'early termination' actually costs in plain terms. Second, when they leave, because the bill lands at the exact moment their income has just dropped. Right now the only advice on offer is the leasing company's own contract and call centre, and the employer's HR team usually just points back to the same provider.
+
+The service does two things for a fixed fee. Before signing, it reads the actual lease document and produces a plain-English worst-case exit number, checking it against the disclosure the provider owes under HMRC's rules on Optional Remuneration Arrangements and against the Consumer Credit Act 1974's unfair-relationship protections. After someone has already left and been billed, it builds a challenge pack using the same rules plus the Financial Conduct Authority's early-settlement requirements for regulated hire agreements, and sends it to the provider on the worker's behalf.
+
+What makes this hold over time is the record it builds. Every contract read and every real exit bill negotiated down adds to a private library of how each leasing provider actually behaves in redundancy, ill-health and resignation cases, something no single leasing company publishes and no comparison site tracks, because it lives inside individual settlement letters, not price lists. The next customer facing Tusker or Zenith gets the benefit of every case that came before them, which a leasing company has no reason to build for its own customers since it is the one collecting the fee.
+
+The why-now is concrete: county-to-unitary council mergers under the government's devolution plans are running through 2025 and 2026, several NHS trusts are restructuring, and the 2025 spending review commits to shrinking civil service running costs, all of which mean redundancy notices landing on people mid-lease.
+
+An NHS, council, school or civil service employee on a salary-sacrifice electric car scheme, paying roughly £30-£50 for the pre-signing check, or a fixed fee plus a share of the amount cut from an exit bill once they've already been charged.
+
+Local government reorganisation into unitary councils, NHS trust restructuring, and the 2025 spending review's cut to civil service running costs are all producing redundancy waves in 2025 and 2026, hitting people mid-way through multi-year car leases they can no longer afford to keep.
+
+The passages confirm early-termination fees exist and are complex, but none describe how large exit bills typically are, whether they're negotiable, or whether the practice of contesting them has already been commoditised by free guides — the durability of a paid-review margin on top of these free explainer guides is not addressed.
+
+The passages name Octopus EV, Tusker and Zenith as established providers but only note they differ in vehicle choice, exit terms and bundling — no passage shows any of them, or anyone else, offering an independent pre-sign exit-cost check or a post-exit settlement challenge service. One passage even states salary sacrifice cars are treated as having 'nothing to do with consumer rights,' which is not evidence of a dominant player solving this specific need, just an absence of relevant coverage.
+
+The passages show the £149 price point sits against a scheme explicitly marketed as reaching 'employees on more modest incomes' via 'lower monthly salary sacrifice costs', and against NHS/council pay settlements around 2.8% with active job-cut and pay-freeze pressure, none of which establishes discretionary budget for a one-off £149 fee — if anything the emphasis on affordability-driven scheme uptake and constrained pay/budget settlements cuts against willingness or ability to pay extra.

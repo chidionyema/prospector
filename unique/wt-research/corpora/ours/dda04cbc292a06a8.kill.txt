@@ -1,0 +1,15 @@
+ListedBuilding Nod – The Consent Application Architect.
+
+A web app that helps UK listed-building owners craft a persuasive heritage statement and impact assessment for alteration consent, benchmarked against a proprietary FOI-sourced database of past successful applications.
+
+Owners of listed buildings (often cash‑poor, equity‑rich squeezed‑middle households) feel deeply frustrated by opaque approval processes. First‑principles: the raw pain is not knowing what arguments have worked before. Rebuild: use FOI‑obtained consent outcomes to map winning language, then generate a tailored application pack that mirrors successful precedents — a niche legaltech picks‑and‑shovels service no council provides.
+
+Owner‑occupiers of Grade II or Grade II* listed homes in England and Wales, typically aged 40‑65, managing a property they love but cannot easily alter.
+
+Growing push for energy‑efficiency retrofits in older homes, combined with council backlog and increasingly rigid heritage enforcement, creates an urgent need for bulletproof applications that pre‑empt objections.
+
+Passages confirm the persistent pain of bureaucracy and expense in the listed-building consent process, and that consent rules are complex, making the need for tailored, data-backed guidance durable. The free generic advice note does not replicate the proprietary FOI-sourced database, so the unique value is not commoditised.
+
+The passage highlights an 'urgent and growing skills gap' in UK heritage sectors, indicating existing professional services are insufficient and the space is underserved, which aligns with no dominant incumbent solving the listed-building consent problem well.
+
+Passage b14ed374cbe7fe49 states that historic building owners are over-burdened by life-cycle costs, indicating they lack financial capacity to pay for additional services. While 2b39188a49710e17 shows motive, budget appears absent due to financial strain.

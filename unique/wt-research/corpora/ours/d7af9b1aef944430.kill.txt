@@ -1,0 +1,31 @@
+GearRelay — same-day loan cameras and lighting for freelance photographers and videographers when their kit breaks or gets stolen.
+
+A monthly membership that gets a freelance photographer or videographer a same-day loan camera, lens or lighting kit from a nearby partner store the moment their own gear fails or is stolen, so a booked shoot never gets cancelled.
+
+A freelance photographer or videographer earns nothing on the days they can't shoot. If a camera body dies, a lens gets dropped, or a kit bag is stolen from a van the night before a paid job, the work still has to happen tomorrow. Right now the only backstop is a specialist camera insurer like Photoguard or Aaduki, and even their loan-while-repaired benefit works by posting a replacement out from a central warehouse, which typically takes one to three working days by courier. For a freelancer with a shoot at 9am, that gap is the whole problem.
+
+GearRelay is a membership, not an insurance policy. Each member keeps a simple kit list on file — camera bodies, lenses, flashes, tripods, gimbals — and pays a flat monthly fee. When something breaks or goes missing, they open the app, mark the item down, and get matched to the nearest partner camera or hire shop in a small network across cities such as London, Manchester, Bristol and Leeds, where a loaner from that shop's own rental stock is waiting for same-day collection. The partner shop earns a fee per loan plus footfall from photographers who often end up buying accessories while they're there; GearRelay takes the membership revenue and a cut of every loan.
+
+The reason a national insurer can't simply add this: their loan-kit benefit is built around a repair claim workflow and a small number of centralised warehouses, because insurance economics reward minimising held stock, not maximising local physical density. Turning that into a same-day, in-person, multi-city depot network means becoming a logistics and retail-partnership operator, which sits outside how an insurer prices and staffs itself. A small team can instead go city by city, signing exclusive loan-stock agreements with the two or three busiest independent camera and hire shops in each creative hub — once a shop is locked in as GearRelay's local partner, a rival needs its own separate depot relationships in the same handful of shops, and most towns don't have room for two.
+
+Freelance photographers, videographers and content creators who earn day rates or project fees and cannot afford a missed shoot day — paying roughly £15 to £30 a month depending on how much kit is on their list, plus a small collection fee per loan used.
+
+The UK freelance creative sector has kept growing since the pandemic, and camera-owning creators increasingly work solo without a studio's spare kit cupboard to fall back on. Peer-to-peer camera rental platforms like LensesForHire and the second-hand market MPB have already proven UK photographers will pay for flexible access to gear rather than owning everything outright — GearRelay applies that same appetite to emergency continuity instead of planned rental.
+
+The passages show photographers already paying for equipment continuity solutions: a working lens-hire business (419e87285ae7a912) and established camera insurers Photoguard and Aaduki (04dac8fa3c44c79f, eea39e29e262ac85) whose loan-while-repaired benefit is the exact need GearRelay targets, with a forum thread (972d292f44fac81c) confirming real users actively compare and use these insurers. This is commoditised demand — existing paid alternatives — which counts as buyer intent.
+
+The passages show UK freelance photographers charge £25–£205/hr and set day rates, indicating meaningful income that comfortably covers a modest monthly or one-off fee. None of the passages address willingness to pay for equipment-continuity services specifically, so the inference rests on income capacity alone.
+
+The passages describe generic photographer membership bodies, freelance job boards, and marketing channels, none of which mention same-day loaner gear, emergency kit replacement, or a route to reach freelancers needing urgent equipment continuity.
+
+The passages cover camera-rental workflow software and competing rental companies, plus FCA rules about insurance mediation and financial promotions — none address whether a same-day loan-kit membership service itself constitutes a regulated activity or breaches any law or terms.
+
+Multiple independent theft accounts show freelance photographers losing all their working equipment overnight and having to crowdfund or file claims to keep working, confirming this is an acute, real problem people actively try to solve rather than a nice-to-have.
+
+The passages show only general UK freelance-sector size/growth statistics, with no mention of freelance photographers/videographers, equipment loss, insurer loan-kit turnaround, or any timing signal for this specific niche; two passages (undress app, AI upscaler) are entirely unrelated.
+
+The passages describe existing UK camera-rental shops and a generic business-directory review, plus generic partnership-agreement templates with no connection to photography or membership marketing; none of them describe a channel, platform, or existing audience GearRelay could use to reach freelance photographers as paying members.
+
+Passages confirm Photoguard and Aaduki both operate as real UK camera insurers offering equipment coverage, matching the hypothesis's claim about the incumbent baseline. Neither passage describes same-day local loan distribution, so they support the existence of the insurance alternative without contradicting the claim that its warehouse-based model differs from GearRelay's.
+
+The passages show FCA rules on insurance mediation and financial promotions but never say a same-day loan-kit membership itself needs a license or breaks any rule, so no explicit legal bar is shown. Freelance photographers charge £25–£205/hr, and the passages describe Photoguard and Aaduki only as insurers with a slower courier-based loan benefit, not as a single company holding most of the local same-day distribution channel, so neither a runaway acquisition-cost problem nor a channel monopoly is evidenced.

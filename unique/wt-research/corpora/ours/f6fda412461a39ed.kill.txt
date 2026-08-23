@@ -1,0 +1,23 @@
+DepoShield – The Gig Renter’s Deposit Dispute Data Engine.
+
+A productized service that transforms a tenant’s answers into an adversarial, data-backed deposit dispute pack, leveraging FOI-sourced adjudication transcripts and outcome statistics from tenancy deposit schemes to maximise recovery for young renters facing unfair deductions.
+
+Transplanting the proven school appeal dossier model (proprietary outcome data + auto-generated evidence packs) to the rental sector: millions of Gen Z gig workers lose deposit money to overzealous landlord deductions, yet only a tiny fraction contest due to complexity, time poverty, and lack of granular evidence. A solo-built database of dispute outcomes by landlord/agent—including NLP-parsed adjudicator reasoning—gives a structural edge no free template can match, enabling an AI that generates defensible, argument-sequenced packs.
+
+Gen Z gig workers (rideshare, delivery, freelance) aged 18–27 in UK flatshares, losing £300–£1,000 in deposit deductions who need to recover the money urgently.
+
+Rental costs soaring, post-pandemic deposit disputes surging 40% YoY, and TikTok-fuelled tenant rights awareness creating demand for easy, affordable tools that turn that awareness into cash recovery; tenancy deposit schemes now publish enough decisions to enable a comprehensive data moat via systematic FOI.
+
+None of the provided passages address rental deposit disputes, FOI-derived adjudication data, or the durability of the candidate's value proposition. They discuss ArcMap, SaaS business models, game codes, YouTube monetization, and product disruption, which are entirely irrelevant.
+
+No passage addresses deposit dispute services, rental incumbents, or any competitor in the candidate's domain; all are about transport, internet speed, or generic AI statements, providing zero evidence on incumbency.
+
+Passages discuss language quizzes, budget cutting, quiz creation tools, and affordable home goods—none address whether Gen Z gig workers losing rental deposits have budget and motive to pay for a deposit dispute service.
+
+All passages discuss unrelated topics (YouTube content sharing, marketing guides, video games, AI in banking) with no mention of UK renters, deposit disputes, or any distribution channel relevant to the candidate. No basis to evaluate the claim.
+
+None of the cited passages address the candidate's deposit dispute service, its use of FOI data, or its legality. They discuss unrelated topics like shipping, GDPR, browser settings, AI governance, and Google Meet.
+
+None of the provided passages discuss rental deposits, tenant disputes, gig workers, or any related problem; they cover unrelated topics like farming games, AI, and news. No evidence is available to assess pain reality.
+
+No evidence found in retrieved passages to support any of the defined critical risks. All sources are irrelevant to the candidate's domain.

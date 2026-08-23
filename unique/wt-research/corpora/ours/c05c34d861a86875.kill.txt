@@ -1,0 +1,21 @@
+PCN Precedent Desk — turns your clean-air-zone fine into an appeal built from cases that already won.
+
+A fixed-fee service that drafts your ULEZ or Clean Air Zone penalty appeal using a private archive of tribunal rulings that got the same kind of fine cancelled.
+
+You drove into London's ULEZ or Birmingham's Clean Air Zone in a car or van the camera flagged as non-compliant, and a Penalty Charge Notice landed on your mat. You think it's wrong — maybe you'd sold the car, maybe the exemption you registered didn't apply that day, maybe the sign at the zone boundary was confusing — but you don't know which of those reasons actually wins, and TfL and the councils that run these cameras have no reason to tell you.
+
+This is a solo operator who reads every published decision from the adjudicators who hear these appeals (London Tribunals and the Traffic Penalty Tribunal publish their written rulings) and builds a private, growing database tagging each one by the exact ground argued and whether it won. When you send in your PCN and the story behind it, the operator matches your case against the pattern of arguments that have actually succeeded on that specific ground, and drafts your formal representation for a fixed fee — cheaper than the fine itself, no solicitor needed, submitted before the discount period on the £180 fine (cut to £90 if paid early) runs out.
+
+This inverts the usual compliance-tool shape: the body issuing the fine can never be the one who tells you how to beat it, because ULEZ and CAZ penalty income is committed by law to funding the transport and air-quality schemes that impose the charge in the first place. TfL's own 'how to challenge' page stays deliberately generic — it cannot publish 'here is the exact wording that got this exact situation overturned' without undermining its own revenue. The archive only gets better as enforcement gets more aggressive: more cameras, more PCNs, more published adjudications to mine, more winning templates for the operator to reuse.
+
+A mortgaged professional in outer London, Birmingham, Bristol or another CAZ city who drives an older diesel car or van into the zone for work or the school run, gets hit with a camera fine they believe is wrong, and would rather pay a fixed £35–£45 than lose an evening working out tribunal procedure or simply pay the £90–£180 fine to make it go away.
+
+ULEZ expanded to cover all of Greater London in August 2023, Birmingham's Clean Air Zone has been actively enforced since 2021 and is issuing rising volumes of PCNs as camera coverage and automatic number-plate recognition matching improve, and more UK cities are rolling out their own zones — meaning both the fine volume and the pool of published adjudication decisions to learn from keep growing together.
+
+The passages show people already search for and use free/generic PCN and CAZ appeal help (template letters, TfL's own dispute guide, general appeal guides) — evidence of demand for appealing fines — but none show anyone searching for or paying for a precedent-matched, tribunal-case-based drafting service specifically, so paid intent for this particular offering is not established.
+
+None of the passages address ULEZ/Clean Air Zone enforcement volumes, PCN issuance trends, or tribunal adjudication activity in 2026; they are Wikipedia-style facts about Birmingham (UK and US), a canal history note, and unrelated gaming-script/Russian air-fryer content.
+
+None of the passages describe an ad channel, marketplace, or existing audience a novice could use to reach paying buyers; they are only a forum snippet about someone appealing a PCN and unrelated Google search/I-O boilerplate.
+
+None of the passages address ULEZ/CAZ PCN appeals, TfL's or councils' publication practices, or any legal restriction on a private archive of tribunal rulings; they cover car finance claims, UAE regulatory appeals, Pensions Regulator penalty notices, and FCA-regulated claims management firm counts, which have no conceptual overlap with the candidate's activity.

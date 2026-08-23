@@ -1,0 +1,23 @@
+ShiftSync – The Gig Worker’s Yield Optimizer.
+
+A weekly planning service that analyzes live demand signals, bonus zones, and historical payouts across your delivery and rideshare apps to craft a personalized shift schedule that maximizes your hourly earnings—so you stop guessing when to work.
+
+Analogous to airline yield management, gig platforms dynamically price trips but workers lack tools to optimize their own time allocation across apps; a productized advisory service that translates data into a simple schedule commands a monthly fee from earnings-conscious drivers.
+
+Gen Z multi-app gig drivers (Uber, Lyft, DoorDash, Instacart) in urban areas who want to increase their effective hourly rate by 10-20% but can’t parse complex data.
+
+Gig workers are increasingly multihoming, platform pay structures are becoming more opaque and dynamic, and public data streams plus personal earning APIs enable a solo operator to build predictive models and deliver actionable schedules via SMS or email.
+
+The passages do not address whether the value of a multi-platform shift optimization service is real, durable, or at risk of commoditisation; one mentions drivers interpreting demand signals themselves (954f45c716119946) but this does not confirm or refute the durability or uniqueness of the candidate's value.
+
+None of the passages address the existence or absence of a dominant incumbent or funded rival providing multi-platform gig worker schedule optimization. They discuss unrelated topics like real-time payments, EV efficiency, and Uber's rider price aggregator restrictions.
+
+The passages define 'weekly' and discuss AI research tools — none address gig worker income, willingness to pay, or budget for a scheduling optimization service.
+
+None of the provided passages address any aspect of distribution, buyer reach, or channel to the gig worker audience. They merely define 'weekly' and discuss predictive analytics unrelated to a service's route to market.
+
+No passage addresses the legality of aggregating gig platform data or delivering schedules; the closest mention (b1d91ed3c0c0214e) only notes 'potential legal risks' without stating the margin requires illegal activity.
+
+Passages define 'weekly,' mention background checks for rideshare, and describe a study of food delivery couriers; none indicate that gig workers suffer acute pain from inefficient scheduling or currently pay to solve it.
+
+No evidence in the provided passages supports any of the three critical risk vectors.

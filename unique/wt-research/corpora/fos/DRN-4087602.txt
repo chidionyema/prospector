@@ -1,0 +1,430 @@
+DRN-4087602
+The complaint
+Mr B complains that Lloyds Bank Plc treated him unfairly when it didn’t get his money back 
+for an engagement ring he bought.
+What happened
+In November 2019 Mr B paid £751 for an engagement ring using his Lloyds credit card, from 
+a shop I will call ‘Firm A’ at their premises. In January 2020 Mr B took the ring back to the 
+same premises to be resized and discovered that Firm B had taken over the shop as Firm A 
+had ceased trading. Firm B then resized the ring for Mr B. In January 2021 Mr B noticed one 
+of the prongs / claws that held the stones (diamond and sapphire) had snapped off on both 
+sides of the three stone engagement ring. So he took it to the shop premises and Firm B 
+said the issues with the claws were nothing to do with them and he should speak to Firm A. 
+Mr B says he researched Firm A and found it had gone into liquidation. So he took this issue 
+to Lloyds.
+Lloyds considered the matter and noted that Mr B raised the issue to it over 120 days after 
+receiving the ring. So it didn’t think a Chargeback had a reasonable prospect of success. It 
+also considered a claim under Section 75 of the Consumer Credit Act 1974. It decided that 
+the necessary relationship set out in the Act was not in place for S75 to apply. So it said it 
+couldn’t be liable for any claim. And hence it didn’t consider any further whether the ring was 
+of satisfactory quality. Mr B felt that this was unfair, so he brought his complaint to this 
+service. Our Investigator looked into the matter and agreed with Lloyds that the necessary 
+relationship wasn’t in place for Lloyds to be liable under the legislation I’ve described.
+Mr B didn’t agree and pointed to case law and decisions by this service. So this complaint 
+came to me to decide. I issued a provisional decision on the matter dated 03 April 2023 
+which upheld Mr B’s complaint. Both parties have responded to it.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Both parties accepted my findings. Lloyds confirmed it would redress the matter as I’d set 
+out in my provisional decision. Mr B confirmed he accepted the provisional decision and 
+redress methodology I’d set out. Accordingly I see no reason to deviate from that position as 
+set out in my provisional decision and so Mr B’s complaint is successful. I shall now set out 
+my rationale from my provisional decision here which is given between the headings of 
+“authorisation” through to the heading of “summary”.
+authorisation
+Mr B accepts he made the transaction for the engagement ring. He doesn’t dispute the 
+amount charged or the date it was charged. And it hasn’t been argued that it was double 
+charged or applied to the wrong account. Considering what has happened here and what the 
+
+parties have said, I’m satisfied on balance that Mr B did properly authorise the transaction at 
+the time. And accordingly it was correctly allocated to his account by Lloyds.
+could Lloyds challenge the transaction through a chargeback? 
+In certain circumstances, when a cardholder has a dispute about a transaction, as Mr B does 
+here, Lloyds (as the card issuer) can attempt to go through a chargeback process. I don’t 
+think Lloyds could’ve challenged the payment on the basis Mr B didn’t properly authorise the 
+transaction, given the conclusions on this issue that I’ve already set out.
+Lloyds has said that it couldn’t raise a chargeback request due to the time constraints within 
+the network rules and due to the time between when Mr B paid for the ring and when he took 
+his dispute to Lloyds. I’ve looked into what happened here and considered the network rules 
+around chargeback and agree it was out of time. Accordingly I don’t think Mr B has lost out 
+here by Lloyds not raising a chargeback.
+Section 75
+Here I must consider what Lloyds should do. To do this, I have to decide what I think is fair 
+and reasonable, having regard to, amongst other things, any relevant law including both 
+legislation and case law. In this case, the relevant starting point is S75 of the Consumer 
+Credit Act 1974 (the “Act”) which says that, in certain circumstances, if Mr B paid for goods 
+or services on his credit card and there was a breach of contract or misrepresentation by the 
+Supplier, Lloyds can be held responsible.
+For clarity’s sake I shall explain the underpinning legislation concerning the DCS concept 
+before explaining my thinking on this case. S75(1) states:
+“If the debtor under a debtor-creditor-supplier agreement falling within section 12(b) or (c)
+has, in relation to a transaction financed by the agreement, any claim against the supplier in
+respect of a misrepresentation or breach of contract, he shall have a like claim against the
+creditor, who, with the supplier, shall accordingly be jointly and severally liable to the debtor.”
+So s.75 only applies if:
+i) There is a debtor-creditor-supplier agreement (or “DCS” agreement, for short) of the 
+type that falls within s.12(b) or (c);
+ii) That agreement finances the transaction between the debtor (Mr B) and the supplier 
+(Firm A); and,
+iii)  If, relating to that transaction, the debtor (Mr B) has a claim against the supplier 
+(Firm A) in respect of a misrepresentation or breach of contract. If so, then the 
+creditor (Lloyds) is jointly and severally liable to the debtor. 
+S.12(b) applies to:  
+“a restricted use credit agreement which falls within section 11(1)(b) and is made by the 
+creditor under pre-existing arrangements, or in contemplation of future arrangements, 
+between himself and the supplier”
+S.11(1)(b) defines a restricted-use credit agreement as a regulated consumer credit 
+agreement:
+“to finance a transaction between the debtor and a person (the “supplier”) other than the 
+creditor”
+Subsections 11(3) & (4) provide:
+"(3) An agreement does not fall within subsection (1) if the credit is in fact provided in such a 
+way as to leave the debtor free to use it as he chooses, even though certain uses would 
+contravene that or any other agreement.
+(4) An agreement may fall within subsection (1)(b) although the identity of the supplier is 
+unknown at the time the agreement is made."
+Section 187 provides:
+"(1) A consumer credit agreement shall be treated as entered into under pre-existing 
+arrangements between a creditor and a supplier if it is entered into in accordance with, or in 
+furtherance of, arrangements previously made between persons mentioned in subsection 
+(4)(a), (b) or (c).
+(2) A consumer credit agreement shall be treated as entered into in contemplation of future 
+arrangements between a creditor and a supplier if it is entered into in the expectation that 
+arrangements will subsequently be made between persons mentioned in subsection (4)(a), 
+(b) or (c) for the supply of cash, goods and services (or any of them) to be financed by the 
+consumer credit agreement.
+(3) Arrangements shall be disregarded for the purposes of subsection (1) or (2) if—
+(a) they are arrangements for the making, in specified circumstances, of payments to the 
+supplier by the creditor, and
+(b) the creditor holds himself out as willing to make, in such circumstances, payments of the 
+kind to suppliers generally.
+(4) The persons referred to in subsections (1) and (2) are—
+(a) the creditor and the supplier;
+And s.189 says “finance” means to wholly or partly finance, and that “financed” shall be 
+construed accordingly.
+Historically credit cards worked within a commonplace three-party structure. Specifically that 
+there was:
+an agreement between the card issuer (the Creditor) and the cardholder (the Debtor) 
+to extend credit by paying for goods or services purchased by the cardholder from 
+suppliers who had agreed to honour the card; 
+an agreement between the card issuer and the Supplier under which the Supplier 
+agreed to accept the card in payment and the card issuer agreed to pay the Supplier 
+promptly;
+an agreement between the cardholder and the Supplier for the purchase of goods or 
+services.
+As time went by a new type of party entered the market and specifically these types of 
+transactions, known as the ‘Merchant Acquirer’. This led to the creation of four party 
+relationships where instead of the agreement being between the card issuer and the 
+supplier, there were two agreements:
+an agreement between the merchant acquirer and the supplier, under which the 
+supplier undertook to honour the card and the merchant acquirer undertook to pay 
+the supplier; and 
+an agreement between the merchant acquirer and the card issuer, under which the 
+merchant acquirer agreed to pay the supplier and the card issuer undertook to 
+reimburse the merchant acquirer.
+The impact of this development on the application of S75 was considered by the Court of
+Appeal in the case of Office of Fair Trading v Lloyds & others [2006] (“the OFT case”). The 
+Court of Appeal first considered whether the introduction of the four-party structure
+meant that the system had evolved significantly beyond the state of affairs to which S75 had
+been directed. They concluded that it had not, stating at paragraph 55 of their judgment:
+“From the customer's point of view … it is difficult to see any justification for drawing a
+distinction between the different [three-party and four-party] situations. Indeed, in the case of
+those card issuers such as Lloyds TSB, who operate under both three-party and four-party
+structures, the customer has no means of knowing whether any given transaction is
+conducted under one or other arrangement. Similarly, from the point of view of the card
+issuer and the supplier the commercial nature of the relationship is essentially the same:
+each benefits from the involvement of the other in a way that makes it possible to regard
+them as involved in something akin to a joint venture, just as much as in the case of the
+three-party structure.”
+ They went on to say;
+“It is clear that, whether the transaction is entered into under a three-party or four-party 
+structure, the purpose of the credit agreement is to provide the customer with the means to 
+pay for goods or services. It follows that in both cases the card issuer finances the 
+transaction between the customer and the supplier by making credit available at the point of 
+purchase in accordance with the credit agreement. The fact that it does so through the 
+medium of an agreement with the merchant acquirer does not detract from that because it is 
+the card issuer's agreement to provide credit to the customer that provides the financial 
+basis for the transaction with the supplier.”
+In the House of Lords in the same case Lord Mance said, in relation to the recruitment of 
+overseas suppliers to the network:
+30.  That, in today's market, arrangements between card issuers and overseas suppliers 
+under schemes such as VISA and MasterCard are indirect (rather than pursuant to a direct 
+contract as is still the case with American Express and Diners Club) is a consequence of the 
+way in which the VISA and MasterCard networks have developed and operate. Likewise, the 
+fact that the rules of these networks give card issuers no direct choice as to the suppliers in 
+relation to whom their cards will be used. The choice of suppliers is, in effect, delegated to 
+the merchant acquirers in each country in which these networks operate, and provision is 
+made, as one would expect, to ensure and monitor the reliability of such suppliers in the 
+interests of all network members. That network rules may not provide all the protections that 
+they might, e.g. by way of indemnity and/or jurisdiction agreements, is neither here nor there. 
+They could in theory do so, and it is apparent that there are some differences in this respect 
+between different networks. The Crowther Report and 1974 Act proceed on the basis of a 
+relatively simple model which contemplated that card issuers would have direct control of 
+such matters. A more sophisticated worldwide network, like VISA or MasterCard, offers both 
+card issuers and card holders considerable countervailing benefits. Card issuers make a 
+choice, commercially inevitable though it may have become, to join one of these networks, 
+for better or worse.
+Lord Mance was talking about the conditions that existed almost twenty years ago, because 
+the case from which he was hearing an appeal went to trial in 2004. But, I think it is clear that 
+even by then the commercial practices by which card networks recruited suppliers had 
+evolved by developing a system that left supplier recruitment to intermediaries, and card 
+issuers were faced with an essentially commercial decision as to whether to participate in 
+network that included suppliers who had been recruited that way.  Since 2004, new 
+technology and the growth of internet commerce have opened up additional channels for 
+recruiting suppliers and routing payment to them (for example, “payment facilitators”, which 
+are now an established part of the payments industry) and, again, card networks have 
+changed their rules and practices in response. 
+Having provided some important context to the circumstances in Mr B’s case, I need to now 
+establish the exact nature of what happened as best I can and the relation between the 
+parties involved. 
+The DCS issue
+I have considered the particular facts of Mr B’s case. In order for S75 to apply there has to 
+have been ‘arrangements’ between Lloyds and the Firm A (Supplier) to finance transactions 
+between Lloyds’s cardholders and Firm A. It’s clear that there was no direct arrangement 
+between them, but this isn’t a requirement for the application of S75.
+I say this because the Judge who heard the OFT case at first instance ([2005] 1 All ER 843) 
+had also considered the meaning of the word “arrangements”, as used in section 12, and 
+whether there existed relevant arrangements between creditors and suppliers (the Firm A 
+here) in the four-party situation. He said that the use of the word showed a deliberate 
+intention on the part of the draftsman to use broad, loose language, which was to be 
+contrasted with the word “agreement”. In the Court of Appeal, the creditors argued that 
+arrangements should be given a narrower meaning that took the four-party structure outside 
+the definition. But the Court of Appeal agreed with the Judge that “arrangements” had been 
+used to embrace a wide range of commercial structures having substantially the same effect. 
+They held that it was not required for arrangements to be made directly by or between the 
+creditor and supplier, merely that arrangements should exist between them, and it was 
+difficult to resist the conclusion that such arrangements existed between credit card issuers 
+and suppliers who agreed to accept their cards, and stated:
+“Moreover, we find it difficult to accept that Parliament would have been willing to allow some
+consumers to be disadvantaged by the existence of indirect arrangements when other
+consumers were protected because the relevant arrangements were direct.”
+I’ve also considered the recent High Court case of Steiner v National Westminster Bank 
+(2022) EWHC 2519 (‘the Steiner case’). This case involved payments to a trust for the 
+provision of a timeshare supplied by a timeshare provider.  The High Court dismissed the 
+claim under s.75 on the basis that the timeshare purchase was not made under a debtor-
+creditor-supplier agreement. This was because payment had been made in the first instance 
+to the trust company, whereas the claim related to agreement to purchase a timeshare from 
+the timeshare provider. Mr Steiner’s credit card was issued under the MasterCard scheme 
+and the trust company was a member of the MasterCard network, but the timeshare provider 
+was not. 
+The Judge (Lavender J) held that central question was not whether "arrangements" existed 
+between the bank and the timeshare provider at the time when Mr and Mrs Steiner had 
+entered into their agreement with the timeshare provider and Mr Steiner had used his card to 
+pay the trust company. Rather, the question posed by s.12(b) CCA was whether Mr Steiner’s 
+credit card agreement with the bank was made by the creditor (i.e. the bank) “under pre-
+existing arrangements, or in contemplation of future arrangements”, between the creditor 
+(i.e. the bank) and the timeshare provider. 
+When a bank made an agreement with one of its customers in relation to a card issued by 
+the bank to the customer, then the agreement was made under the card network, which 
+constituted "arrangements" between the bank and the other members of the network.  So, if 
+a supplier was already a member of the card network, the agreement was made "under pre-
+existing arrangements ... between the bank and the supplier".  The bank was also aware that 
+other merchants were likely to join the card network in the future, so in that respect the 
+agreement was made "in contemplation of future arrangements”, between the bank and 
+merchant who subsequently joins the card network.
+However, in the absence of specific factual evidence as to the bank's state of mind, the 
+Judge said it was difficult to envisage that a bank which issued a card to its customer and 
+made a credit card agreement in relation to that card made that agreement under, or in 
+contemplation of, any arrangements other than the card network. And, as the timeshare 
+provider was outside the card network, it didn’t supply the timeshare under a debtor-creditor-
+supplier agreement. 
+Is there a DCS agreement? 
+The question of whether Mr B’s transaction took place under a DCS agreement seems to me 
+to turn in this case on two matters: first, whether there existed arrangements between Lloyds 
+and Firm A for the financing of transactions with Firm A’s customers; and second, if such 
+arrangements existed, whether that was the case when Lloyds entered a credit agreement 
+with Mr B or, if the arrangements came into existence after that, whether Lloyds 
+contemplated that they would do so. I’ll examine those questions in turn.
+Arrangements 
+Our Investigator looked into the transaction primarily based on the information Lloyds had 
+given this service about the presence of a fourth party in the transaction namely PayPal. Our 
+investigator contacted PayPal and asked it what its role was in the transaction. PayPal 
+responded and has been forthcoming in its role within this transaction and more broadly 
+about the services it provides.
+PayPal is a well-known provider of a variety of financial transactional services. This includes 
+both payment processing and E-Money provision amongst other services. In this particular 
+transaction PayPal has provided evidence around this specific transaction including saying:
+“I can confirm the purchase was made on the merchant’s website via the customer’s PayPal 
+account as shown below”. It then shows two transactions for exactly the same amount of 
+money at exactly the same date and time (to the second). One transaction is the amount 
+(the cost of the ring) being charged to Mr B’s Lloyds credit card to fund Mr B’s account with 
+PayPal. The second transaction is from Mr B’s PayPal account to Firm A’s account with 
+PayPal. PayPal goes on to say:
+“This means the payment went from the customer’s PayPal account to the Merchant’s 
+PayPal account and was funded with the card ending (details of Mr B’s Lloyds account).
+As we are only the payment processor, I am unable to see the terms of the customer’s 
+agreement with the merchant (Firm A).”
+The transactional record PayPal has provided shows that Mr B’s account with it was of a 
+zero balance immediately before the transaction and returned to zero immediately after the 
+transaction. It also shows the status of both transactions being “completed” and apparently 
+instantaneous. It refers to the transaction paid to Firm A as being “express checkout 
+payment”. Such dual transactions are sometimes referred to as ‘back to back’ transactions.
+PayPal explained that Firm A also had an account with it. In essence it appears that Firm A 
+had outsourced its payments processes to PayPal in this instance. PayPal has terms and 
+conditions including that all applicable network rules must be complied with. And within those 
+terms and conditions some networks are named including Mastercard, the network relevant 
+here. And I’ve also considered the network rules applicable here and this need to comply 
+with the network rules is mirrored within those. So Firm A has an agreement with PayPal 
+which includes the obligation of adhering to the card network rules here. PayPal is obliged to 
+follow the same network rules also. And Lloyds, by using the card scheme here, is bound to 
+follow the same card scheme rules as well. And Mr B’s card use is governed by his 
+obligations to Lloyds through his contract with it. In essence all parties here all have different 
+roles but are all obliged to work within the rules of the network to complete the same 
+transaction. 
+PayPal has said it acted as a Payment Processor in this transaction. It is clear that this 
+transaction from Mr B’s credit card to Firm A’s account with PayPal is in essence 
+instantaneous. The amount debited from Mr B’s account is the same amount in Great British 
+Pounds that is credited to Firm A’s account. It also seems likely here that there is a 
+conversion to E-Money in the transaction from Mr B’s card to his account with PayPal but I 
+don’t think it makes a difference here and doesn’t prevent there from being a DCS 
+agreement for reasons I shall give in this decision later.
+I should add at this juncture that Lloyds has provided minimal representations to support its 
+argument here on DCS. It hasn’t provided detail about the exact journey of this transaction 
+nor explained why it believes that there is no longer a relevant DCS relationship in regard to 
+this transaction other than pointing to the presence of another party. It has not explained why 
+the arrangement in this case should be distinguished from the established legal authorities. 
+Nor has it chosen to provide supporting evidence about the agreements in place between 
+the various parties. It has only pointed to PayPal and in essence said the mere presence of 
+PayPal is proof that there is no relevant DCS relationship.  
+It may be that in this case there was a Merchant Acquirer as well. But whether there was a 
+four-party arrangement here or indeed a five-party arrangement present in Mr B’s case, 
+either way I’m still satisfied that there are sufficient arrangements between Lloyds, as card 
+issuer, and Firm A, as supplier, for the purposes of establishing a DCS relationship, I shall 
+now explain why.
+In Mr B’s case, I think there are indications of relevant arrangements even before looking at 
+the contractual obligations undertaken by the parties, given that PayPal was specifically, and 
+publicly in the business of processing or facilitating financial transactions such as the 
+transaction in this case. It should also be noted that PayPal is a very large company 
+generating vast numbers of transactions which go through all the card networks every day. 
+So clearly the network here (and other networks) have decided to allow such payments to go 
+through their networks. And it would seem that considering the commercial benefits of such 
+volumes of transactions this is entirely understandable.
+Here PayPal is specifically and publicly in the business of providing financial transactional 
+services to suppliers, such as Firm A. Lloyds would be able to know the parties within the 
+arrangement here included PayPal and that PayPal’s business involved processing 
+payments under the network for its customers, such as Firm A. And Firm A was obliged 
+through its agreement with PayPal to also be bound to follow the rules in the card network in 
+this case. Fundamentally, it follows that Lloyds financed the transaction between Mr B and 
+Firm A by making credit available at the point of purchase in accordance with the credit 
+agreement between them. The fact that it does so through the medium of PayPal does not 
+detract from that: it is Lloyd's agreement to provide credit to Mr B that provides the financial 
+basis for the transaction with Firm A. And all of this done with all parties being required to 
+comply with the card network rules.
+I would also note that both Lloyds and Firm A undoubtedly benefit commercially
+from the involvement of the other, through the intermediations of PayPal (and any Merchant 
+Acquirer present), in a way that makes it possible to allow the transaction to happen. By 
+financing purchases from the Firm A, Lloyds are able to lend money to their customer (Mr B) 
+and make interest and/or other charges for that service, whilst the Firm A is able to obtain 
+payments from Lloyds’s credit card holders and so benefit from the credit Lloyds extended 
+(albeit indirectly).
+Contemplation
+It is possible that Lloyds may argue that such arrangements as those present in Mr B’s case 
+were outside of its contemplation at the time when it agreed with Mr B to open his credit card 
+account, and thus there is no DCS agreement for it to be liable under. 
+Given that payments systems and card networks have continuously changed and evolved 
+over the past half century, I think it likely that Lloyds always understood that the Mastercard 
+scheme would be operated in accordance with evolving rules and commercial practices, and 
+that this evolution was likely to bring in new groups of network participants. Lloyds must 
+have known Mastercard would try to adapt its network to accommodate major changes in 
+the payments industry; and it would certainly not have expected that each customer to whom 
+it issued a credit card would only make purchases from the suppliers recruited under the 
+rules and practices applicable at the date when the credit agreement was first entered into.  
+Rather, it would have contemplated that all its credit card holders would (irrespective of 
+when their credit agreement started) have access to the same suppliers, i.e. those suppliers 
+allowed under the Mastercard network. So, I think Lloyds must have contemplated, when 
+agreeing to give Mr B a credit card, that his card would be used to finance purchases from 
+whatever suppliers the network’s changing rules and practices accommodated at the time of 
+the purchase. 
+In this case, the credit card payment went to Firm A via PayPal which are/were recognised 
+participants in the same card scheme as Lloyds, and this transactional process between 
+debtors and suppliers is commonplace within the rules of the scheme.  It is a method of 
+payment to a type of supplier that the network’s rules and practices accommodate and, as 
+such, I consider that it was within Lloyd’s contemplation when the credit card agreement was 
+entered into. 
+Conversion
+Lloyds may point to the conversion from Sterling to E-money as a reason for why there might 
+no longer be a DCS agreement. But I’m not persuaded by this either, because had there 
+been a conversion of foreign currency in the transaction as is the case in huge numbers of 
+credit card transactions used during holidays abroad the accepted position is DCS isn’t 
+broken. And usually in such foreign transactions there is a fee charged for providing the 
+added service of the currency exchange. It is important to remember here that the entire 
+sum here was funded by the Lloyds credit card. This transaction wasn’t funded by the 
+balance already held in the account with PayPal. This was a near instantaneous transaction 
+from Mr B’s Lloyds credit card to Firm A through the intermediation of the financial 
+transactional service as provided by PayPal. And I cannot see a fee being directly charged 
+for the exchange to E-money here. And even if there was such a fee whether directly applied 
+to the transaction or as part of the overall service that PayPal provided, I don’t think it would 
+make this transaction distinguishable from the other types of currency exchanges I’ve 
+described. 
+I should also note that PayPal in its evidence to this service previously has stated that its 
+‘Guest Checkout’ service converts to E-Money but doesn’t disrupt the DCS relationship. So 
+I’m not persuaded the conversion in itself should prevent there from being a DCS agreement 
+here as, to my mind, this conversion does not negate the arrangements in place between the 
+parties as I’ve described.
+Accounts
+It may be that Lloyds points to the fact that the transaction journey is from Mr B’s card into 
+Mr B’s account with PayPal and then onto Firm A’s account with PayPal as a reason why to 
+consider their might not be a DCS agreement. But I’m not persuaded by this. There are still 
+the necessary arrangements to my mind. Merchant Acquirers, Payment Processors and 
+those parties providing currency conversion services have accounts in which transactions 
+pass through on their journey from debtor to supplier. I’ve not seen any persuasive reason to 
+distinguish what happened here from the authorities mentioned before. 
+The network stance
+Mastercard’s public stance on this matter generally is unclear from my research. I do note 
+however that one of the other major networks (Visa) has made clear on its website that it 
+does, at least imply, that DCS isn’t disrupted. It has said:
+“If your Visa card purchase was made using a digital wallet where the payment was made 
+with a linked card, chargeback and Section 75 claims work in the same way as if you paid 
+directly with your card.”
+So all in all I’ve not seen any persuasive evidence at this stage that the additional services 
+provided by PayPal interrupts the DCS relationship. I’m also satisfied this transaction fits 
+within the financial limits set out in relation to S75 claims as described in the Act. Accordingly 
+I’m satisfied at this time that there is the necessary DCS agreement and a S75 claim can be 
+successful if the other requirements are made out. However I have used this provisional 
+decision to drive out arguments from all sides here in order to come to a fair final decision.
+liability
+As I’ve explained, for Lloyds to be liable under S75 a breach of contract or a material 
+misrepresentation needs to be made out. Mr B has submitted in support of his claim a report 
+from a jeweller’s who have inspected the ring. The report says:
+“Having inspected the above item under magnification I have observed damage to two of the 
+claws due to the metal being poorly cast resulting in porosity and subsequent brittleness, 
+causing metal fracture when the claws are caught. Pitting is evident on both fractured 
+surfaces, with at least one other claw demonstrating incomplete fracture. There is clear 
+evidence of the ring having been resized, however this wouldn’t affect the integrity or stability 
+of the claws.”
+I also note in Firm A’s product details supplied to Mr B when he bought the ring it describes 
+the following as being included with the product:
+“3-year warranty protection on all our products which includes manufacturing defects such 
+as metal fracturing and porosity, it does not include wear and tear and certificate for any 
+diamonds”.
+All goods should be of satisfactory quality. It is evident here that this ring wasn’t of 
+satisfactory quality when purchased as it is clearly insufficiently durable due to the casting 
+and evident porosity. So based on the independent evidence here I’m satisfied that the ring 
+wasn’t of satisfactory quality at the point of sale. I’m not persuaded these failings were due 
+to fair wear and tear. I think they became evident through the normal day to day usage of the 
+ring. Furthermore I’m satisfied on balance these issues with the ring came to light within the 
+warranty period which specifically covers the failings identified in the ring here. So I think it 
+would also be covered under the warranty. 
+Summary
+Considering my rationale set out above (and in my provisional decision) and considering the 
+subsequent responses of Lloyds and Mr B, I am satisfied that under S75 that there is a 
+breach of contract here and Lloyds is liable for the reasons given.
+Putting things right
+Mr B has requested a full refund for the ring. I think such a ring should be expected to last 
+many years, so I don’t think a reduction for usage here is fair. Taking into account all of the 
+circumstances I think this is a fair remedy, so I direct Lloyds to make a full refund for this 
+transaction to purchase the ring. Lloyds can take possession of the ring if it so wishes before 
+making the refund. If this is the case it should inform Mr B within 28 days of the date of this 
+decision. Lloyds must also pay 8% interest on this amount from when it rejected Mr B’s claim 
+to it until it settles this matter.
+My final decision
+It is my decision that this complaint is successful. It is my decision that there is the required 
+DCS agreement under s.75, and on balance, that there is a breach of contract. So I’m 
+satisfied that Lloyds Bank Plc should compensate Mr B for the loss suffered here as I have 
+described above.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr B to accept or 
+reject my decision before 17 May 2023.
+ 
+Rod Glyn-Thomas
+Ombudsman

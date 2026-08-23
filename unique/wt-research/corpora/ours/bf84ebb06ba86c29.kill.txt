@@ -1,0 +1,17 @@
+AccountKey CA — we unlock your parent's digital accounts after death or incapacity, for a flat fee.
+
+For a flat fee per account, we send the legal requests and follow up until you get into your parent's online accounts.
+
+When a parent dies or becomes incapacitated, the primary carer needs to access email, cloud storage, social media, and financial accounts to handle affairs. Each platform (Google, Apple, Facebook, banks) has its own opaque, shifting process for fiduciaries under California's RUFADAA (Probate Code §§ 870‑884). Doing it yourself means guessing which forms and evidence each company actually accepts, often getting rejected, and burning weeks of time a carer does not have.
+
+This service acts as a transaction broker: the carer authorizes us as their agent with a power of attorney, and for a flat fee per account we prepare and submit the specific documentation that platform currently requires, handle follow‑up, and push until access is granted. It borrows the model of a public‑records requester, but applied to private digital assets, where the real “records” are the internal decision rules of each platform.
+
+Because the platforms’ interests are to minimize data release, the rules change often and are not published. We build a proprietary database of what actually works — exact forms, notarized statements, and escalation paths — compounding with every request. That data moat makes the service stronger over time and structurally un‑copyable by someone starting fresh.
+
+The primary carer, typically an adult child handling a parent’s estate or incapacity, paying $99–$149 per account successfully unlocked.
+
+More older adults have digital lives worth accessing after death; California’s RUFADAA (2016) gives legal standing but not practical pathways. The pandemic normalized remote estate management, and families expect to handle these tasks without a costly attorney. Meanwhile, platforms have tightened access to protect user privacy, raising the friction.
+
+The passages show that Google, Apple and Facebook each offer a free built-in way to hand an account to a named person, and that Microsoft and Yahoo instead use an after-the-fact request process [bb820c131b79a0b1, aa38badccf41bf30, c344c0684732d0c7, 8f149b3f8d697b4a]; that free coverage weakens the case but does not settle it, because every one of these tools only works if the account holder named someone before dying, which is not the situation this service is sold into. No passage says how hard, slow or uncertain the after-death request route is when nobody was named in advance, or whether fa
+
+The passages show a crowded field of funded companies already handling a deceased person's online accounts for families — Empathy raised a Series B led by Index Ventures and automates closing digital accounts [8dd853d361732875], while Sunset, GoodTrust, Trustworthy, Everplans and Trust & Will are compared side by side on inheritance support, with one option listed at $0 cost [b5fd0bbdc7944d28][af81dc39933ec50d][517519745eef2a27][cdcb53a3e61aea4d]. That is a well-funded rival plus a free alternative already serving bereaved families on the same post-death account task, so the space does not rea

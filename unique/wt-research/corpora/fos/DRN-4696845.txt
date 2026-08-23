@@ -1,0 +1,112 @@
+DRN-4696845
+The complaint
+Mr C complains that Starling Bank Limited (“Starling”) declined a direct debit (“DD”) 
+indemnity claim he submitted going against the direct debit guarantee. 
+What happened
+Mr C signed a lease purchase agreement and direct debit instruction with a merchant (the 
+“originator”) in March 2016. Nine DD payments were taken by the merchant between March 
+2016 and November 2019.
+Mr C submitted an indemnity claim to Starling regarding this DD authority for this period as 
+he believed there had been an error as the merchant failed to give advance notice of the due 
+date before payments were debited from his account. Mr C provided Starling with the lease 
+purchase agreement and direct debit instruction as supporting evidence of this.
+There wasn’t a section on the direct debit instruction to include dates or amounts, but the 
+merchant advised:
+"If there are any changes to the amount, date or frequency of your Direct Debit...will notify 
+you ten working days in advance of your account being debited or as otherwise agreed. If 
+you request ... to collect a payment, confirmation of the amount and date will be given to you 
+at the time of the request.
+If an error is made in the payment of your Direct Debit, by ... or your bank or building society, 
+you are entitled to a full and immediate refund of the amount paid from your bank or building 
+society." 
+On reviewing Mr C’s evidence Starling declined the claim as it was unable to see that an 
+error had occurred with his DD payment.  
+Mr C complained to Starling about this. Starling says as it couldn’t determine an error had 
+occurred it was within its rights to decline Mr C’s claim. Starling explained that it required 
+evidence from the merchant which confirms an error with the DD payment and although 
+advance notice isn’t provided in the lease purchase agreement, advance notice was given 
+via the documentation attached to his welcome guide including the date the first DD payment 
+will be taken. If Mr C can provide some evidence from the merchant stating that the payment 
+was taken in error it can review its decision.  
+Mr C was dissatisfied with this and brought his complaint to this service. He says the direct 
+debit guarantee states clearly that the date of the direct debit must be listed on the 
+agreement, under the advance notice procedure and as he was never provided a date the 
+merchant broke the terms of usage and so Starling should raise the direct debit indemnity 
+claim. 
+
+One of our investigator’s looked into his concerns but didn’t think Starling had treated him 
+unfairly by asking for further evidence before processing Mr C’s DD Indemnity. They agreed 
+that the direct debit guarantee advanced notice procedure says you’ll get advance notice of 
+the amount and date of a direct debit from the company you’re paying, but it doesn’t say it 
+has to be specifically mentioned as part of an agreement and can come in multiple forms 
+and as such Starling had no reasonable choice than to request additional evidence that the 
+merchant had provided him with incorrect information relating to Mr C’s direct debit dates. 
+Furthermore, they thought there could be adverse consequences for both the customer and 
+Starling if it raised DD Indemnity’s without sufficient supporting evidence. In particular, Mr C 
+could face legal action against him from the merchant to recover its payments as the DD 
+guarantee doesn’t affect the contract he had with the merchant and Starling could face 
+repercussions from its regulator. Our investigator suggested Mr C contact the merchant 
+directly with the issues he had.
+Mr C disagreed and has asked for an ombudsman’s decision.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I hope that Mr C won’t take it as a discourtesy that I’ve condensed his complaint in the way 
+that I have. Ours is an informal dispute resolution service, and I’ve concentrated on what I 
+consider to be the crux of the complaint. Our rules allow me to do that. And having 
+considered everything provided, I’m in agreement with our investigator and don’t think there 
+is anything much more of use I can add. 
+My role is to look at the problems Mr C has experienced and see if Starling has done 
+anything wrong or treated him unfairly. If it has, I would seek – if possible - to put Mr C back 
+in the position he would’ve been in if the mistakes hadn’t happened. And I may award 
+compensation that I think is fair and reasonable.
+As outlined above Mr C is unhappy that Starling refused to process a refund of all DD 
+payments made between March 2016 and November 2019 under the direct debit guarantee. 
+He says the merchant made an error as it failed to provide advance notice of the date the 
+DD payment would be taken on the DD instruction or lease purchase agreement.
+It might be helpful here to explain that the direct debit guarantee entitles account holders to 
+receive an immediate refund from their bank in certain circumstances such as when the 
+payment taken is on the incorrect date or the wrong amount is collected. And it cannot be 
+used to address contractual disputes between the customer and the billing merchant and nor 
+does it affect the contact the customer has with the merchant. So whatever refund a 
+customer may receive under the guarantee doesn’t mean they won’t still be liable for that 
+money to the merchant. 
+The purpose of this guarantee is to protect customers who’ve allowed third-party permission 
+to take payments directly from their account. If a payment error is made – either by the bank 
+or by the business collecting the payment – then they should be able to get an immediate 
+refund from the bank. And the bank will get repaid by the business under the direct debit 
+indemnity.
+So the question I have to ask is whether Starling has done anything wrong or treated Mr C 
+unfairly by not submitting a direct debit indemnity claim when Mr C asked it to.
+And I don’t think Starling did treat Mr C unfairly - as it wasn’t able to establish from the 
+information it had whether there had been a payment error. Indeed, Mr C had signed a lease 
+purchase agreement with the merchant agreeing to pay by DD and had paid for this nine 
+times over a period of three years. So I don’t think it was unreasonable or unfair of Starling 
+to seek further information to ensure the scheme was being used for its intended purpose or 
+for declining to process the DD indemnity on the basis that lack of a date on the instruction 
+wasn’t enough to show that there had been an error. 
+Mr C says the direct debit guarantee states clearly that the date of the direct debit must be 
+listed on the agreement, under the advance notice procedure and as he was never provided 
+a date the merchant broke the terms of usage and as such Starling should process the DD 
+Indemnity.
+But while the DD Guarantee does state:
+"You’ll get advance notice of the amount and date of a Direct Debit from the company you’re
+Paying...”.
+It doesn’t say how this notice should be given but rather:
+“...This is usually in the form of a bill but could be a simple letter, text or email note if, for 
+example, you’ve signed up to pay for something in instalments; it is the biller’s responsibility 
+to send the communication via the channel you have agreed with them. To note, missing the 
+communication is not grounds for a refund. "
+So I can’t say that on the information Starling had it had enough to come to the conclusion 
+that the merchant had made an error in that it hadn’t provided advance notice of the DD 
+amount or date and that it should’ve raised the DD Indemnity without requesting further 
+evidence or that it made a mistake in doing so.
+And so it follows that I do not uphold this complaint.
+My final decision
+For the reasons I’ve explained I’ve decided not to uphold Mr C’s complaint against Starling 
+Bank Limited.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr C to accept or 
+reject my decision before 5 August 2024.
+ 
+Caroline Davies
+Ombudsman

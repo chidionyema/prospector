@@ -1,0 +1,21 @@
+Controller-processor briefs for UK marketing agencies.
+
+Signed Article 28 packs and audit trails for UK marketing agencies wiring in a third-party MarTech platform, ready for an ICO inspection.
+
+Under UK GDPR Article 28, when a UK marketing agency plugs a third-party MarTech platform into its client work (Klaviyo, Segment, Hubspot, Mixpanel, Customer.io, Mailchimp and similar), the platform processes personal data on the agency's instruction. The agency needs a signed controller-processor contract meeting eight minimum clauses, with the platform's data-protection appendix attached — and each new integration needs its own signed pack with an audit trail.
+
+A productised service generates the brief per integration: pulls the platform's published DPA terms, layers in the agency-specific instruction set, identifies the eight clauses and where the platform's published terms fall short, and produces the signed controller-processor pack with audit trail. Public source proving the pain is the ICO's 2023-24 Action Plan on Adtech and Consent Receipts, plus named enforcement notices on platform controllers who could not produce signed Article 28 packs (published on the ICO enforcement register, ico.org.uk).
+
+The wedge is a running database of how each major MarTech platform phrases the eight Article 28 clauses, plus a per-agency integration log of signed controllers and known gaps. A new entrant today starts without the database; an incumbent with 18 months of client-platform pairings has 80 to 200 vetted pairings it can re-use across new briefs.
+
+The owner of a small UK marketing or CRM agency (3-12 people) running client integrations on Klaviyo, Segment, Hubspot, Mixpanel and similar, who signs controller-processor terms on every new client onboarding.
+
+ICO's Action Plan on Adtech has stepped up 2023-25 audits on consent receipts and platform data flows; named enforcements have hit controllers who could not produce signed Article 28 packs and the burden now lands on the agency that connected the platform.
+
+No passage shows search demand, existing paid alternatives, or communities actively asking for controller-processor brief services for UK marketing agencies; [77db41c27e00375e] establishes the Article 28 DPA pain point but not that buyers are paying for this productized solution RIGHT NOW, and the remaining passages ([562cdca443c91f5d], [1af2b0e0901998a3], [82e1b37e09897969], [6f35db2c2c70932f], [5134981af32fbdb3]) address UK geography or MarTech tool comparisons and do not evidence buyer intent.
+
+No passage addresses whether a small UK marketing agency owner (3-12 people) has the budget or motive to pay £49.99 for a controller-processor brief pack; the passages only show marketing agencies can earn revenue (cedb0ec05158be85) and that UK freelancers/contractors broadly face tighter finances (e8fde1455db091af), without tying either to willingness-to-pay for this specific compliance product.
+
+The passages show that marketers and agency-adjacent professionals gather in Slack communities such as Fintech Marketing Hub and Salesforce-focused groups [50e7431477fdf2bd, 69db9d7b47b81725, bdaa1eb55f2ab773], giving the seller an existing channel to reach small agency owners. Separately, the passages describe cold email and LinkedIn outreach to agency and local business owners as executable routes with documented response rates of 5–15% (email) and 15–30% (LinkedIn acceptance) [f9d33274b45c5e86, b9e59aa7842fffd1, 8ee837431fe6de59], establishing that a low-friction self-serve acquisition…
+
+The passages address the Solicitors Act 1974, the Legal Services Act 2007 and the Solicitors Regulation Authority in the context of reserved legal activities such as probate; none of them address UK GDPR Article 28, data protection work, or whether producing controller-processor briefs for marketing agencies constitutes a reserved legal activity or otherwise requires a qualified lawyer.

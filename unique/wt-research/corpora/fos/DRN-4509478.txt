@@ -1,0 +1,107 @@
+DRN-4509478 
+ 
+ 
+Complaint 
+ 
+Ms C is unhappy that Lloyds Bank PLC didn't reimburse her after she told it she'd fallen 
+victim to a scam. 
+Background 
+In 2021, Ms C was offered an opportunity to invest her money with an individual I'll refer to 
+as Mr V. Mr V was presented as a highly skilled forex trader who could generate exceptional 
+returns for investors. He told investors that he intended to set up a hedge fund in an offshore 
+jurisdiction where all funds would eventually be managed. Another individual, referred to as 
+Mr K, appeared to work alongside Mr V to recruit new investors. Unfortunately, it 
+subsequently transpired that Mr V wasn't a legitimate investment professional, but a 
+fraudster. 
+  
+As I understand it, Ms C invested based on the recommendation of her daughter. However, 
+she also says she knew several other people who had invested with Mr V and who vouched 
+for his legitimacy. She invested by transferring £20,000 in May 2021. After doing so, she was 
+sent regular investment updates from Mr V and Mr K, typically via email which included 
+screenshots of the investment platform Mr V claimed to use for managing client funds. Mr V 
+also provided monthly statements reflecting the performance of Ms C’s investment. 
+However, as I understand it, there was no platform accessible to investors directly—all 
+updates were communicated by email. 
+ 
+Once she realised that she'd fallen victim to a scam, she notified Lloyds. It didn't agree to 
+reimburse her. Its position was that Ms C wasn’t the victim of a scam, but instead had a 
+private civil dispute with Mr V. Ms C wasn't happy with its response and so she referred her 
+complaint to this service. It was looked at by an Investigator who upheld it in part. The 
+Investigator didn't think, however, that Ms C should be refunded in full because he wasn't 
+persuaded she had a reasonable basis to believe that the investment opportunity was a 
+genuine one. 
+  
+Ms C disagreed with the Investigator's view and so the complaint has been passed to me to 
+consider and come to a final decision. 
+ 
+Findings 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+In broad terms, the starting position at law is that a firm is expected to process payments 
+and withdrawals that a customer authorises it to make, in accordance with the Payment 
+Services Regulations (in this case the 2017 regulations) and the terms and conditions of the 
+customer’s account. However, that isn’t the end of the story. Lloyds is a signatory to the 
+Lending Standards Board’s Contingent Reimbursement Model Code (“CRM Code”). That 
+Code requires signatories to pay refunds to victims of authorised push payment (“APP”) 
+scams in all but a limited set of circumstances. 
+ 
+
+ 
+ 
+The CRM Code doesn’t apply to all payments. Ms C’s payment is only covered if it meets the 
+relevant parts of its definition of an APP scam. For it to do so, Ms C must have "transferred 
+funds to another person for what [she] believed were legitimate purposes but which were in 
+fact fraudulent."  Lloyds has said that it’s an open question whether Ms C is the victim of a 
+scam. It says it’s just as likely that she has a private civil dispute with Mr V regarding an 
+investment opportunity that went awry.  
+I’m not convinced by that. Ms C isn’t the only customer to have raised concerns about Mr V. 
+In several other cases that have been brought to this service, I have seen evidence showing 
+that Mr V was not using client funds as intended. Instead, it appears he may have been 
+using funds from new investors to pay returns to earlier investors or misappropriating the 
+money for his personal use. For those reasons, I’m satisfied that what happened to Ms C 
+constitutes an APP scam and so is covered by the CRM Code. 
+Lloyds is expected to be on the lookout for payments that display indicators of fraud risk. On 
+spotting such a risk, it should take reasonable steps to provide the customer with an 
+Effective Warning. I think it needed to do so here. This was a large payment and significantly 
+out of keeping with the typical payments made from the account. It was also being made to a 
+new payee. I don’t think Lloyds should’ve allowed the payment to be made without providing 
+Ms C with an Effective Warning. The evidence I’ve seen suggests it didn’t do so here and so 
+I’m satisfied it hasn’t met the standards for firms outline in the CRM Code. 
+It's expected to reimburse customers in full, unless an exception to reimbursement applies. 
+The Investigator concluded that an exception did apply – specifically, that Ms C made this 
+payment without a reasonable basis to believe that this was a legitimate investment. I agree 
+with that conclusion. I accept Ms C did sincerely believe this was a genuine investment 
+opportunity, but I’m not persuaded that belief was a reasonable one.  
+The promised returns here were extraordinary and significantly out of line with those 
+available to a typical retail investor at the time. Ms C's representatives have pointed out that, 
+when investing in foreign exchange, the risk is higher and that means that the potential 
+returns are also very high. I accept that to be the case, but Ms C appears to have been told 
+that her capital wasn't at risk and there was no possibility suggested that monthly returns 
+could fluctuate depending on market conditions or trading performance. Indeed, Mr V 
+appears to have told investors that he would underwrite investment loss risks. I don’t think 
+this was at all realistic and Ms C should’ve proceeded with far greater caution. 
+I’ve taken into account that Ms C didn’t have any direct experience of investments. I’ve also 
+considered the fact that people she knew vouched for Mr V’s legitimacy. Her representatives 
+told me that she’d spoken with specific other investors who had received returns and 
+provided the names of personal contacts who had verbally confirmed receiving returns from 
+Mr V. Unfortunately, other evidence that I’ve seen indicates either that those individuals 
+didn’t receive returns or hadn’t done so at the point she made her investment and so that 
+reassurance can’t have influenced her thinking about whether the opportunity was legitimate 
+or not.  
+I don’t say any of this to downplay the fact that she’s fallen victim to a cynical investment 
+fraud here. She put her money under the control of Mr V in good faith and he appears to 
+have deceived her. I have a great deal of sympathy for Ms C and the position she’s found 
+herself in as a consequence. However, I’m satisfied that this outcome is fair and reasonable 
+in all the circumstances. 
+Final decision 
+For the reasons I’ve explained above, I uphold this complaint in part. If Ms C accepts my 
+ 
+ 
+final decision, Lloyds Bank PLC needs to refund 50% of the payment she made in 
+connection with the scam. It also needs to add 8% simple interest per annum calculated to 
+run from the date it declined her claim under the CRM until the date any settlement is paid. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Ms C to accept or 
+reject my decision before 9 April 2025. 
+   
+James Kimmitt 
+Ombudsman

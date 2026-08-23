@@ -1,0 +1,23 @@
+DenialProof – The Dental Insurance Claim Predictor.
+
+A tool that analyses a dental procedure and patient's insurance plan to predict pre-authorization success, generate a bullet-proof supporting letter, and recommend alternative codes to avoid denials.
+
+First-principles: the acute pain is lost revenue and administrative burnout from denied claims. Ignoring full practice management systems, we deliver a razor-focused predictor that learns from aggregated anonymized outcomes to outsmart insurer algorithms.
+
+Solo dentist or small practice owner (1–3 dentists) tired of writing appeals and chasing pre-auths.
+
+Insurers are tightening medical necessity reviews, and independent dentists lack big data to push back. AI pattern-matching on claims data is now cheap enough for a solo builder, and practice APIs (Open Dental) are standard.
+
+The passages cover grammar and dental care topics but none address insurance claims prediction, commoditization, or durability of the proposed tool. They provide no evidence on value durability.
+
+None of the passages discuss the existence or absence of a tool that predicts dental insurance claim outcomes or a dominant incumbent in that niche; they cover grammar, market analysis frameworks, and general dental insurance market trends without addressing this specific need.
+
+Passages discuss patient affordability, overall spending, grammar, and WTP for dental services from patients, not the budget or motive of dentist-payers for a claim prediction tool.
+
+The passages mention marketing channels for dentists generally but do not describe a specific low-friction route for the claims prediction tool to reach its buyer. No passage confirms that such a route exists or is executable.
+
+None of the provided passages address the lawfulness of a dental insurance claim prediction tool; they discuss standards, regulations, and grammar, with no mention of legality or ToS.
+
+None of the passages address the dental claim denial problem or whether dentists are paying for a solution; they cover general insurance coverage, treatment acceptance, and unrelated topics.
+
+The evidence does not contain any information about legality, unit economics, or an incumbent monopoly. All risk vectors are false.

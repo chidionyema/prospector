@@ -1,0 +1,13 @@
+TankShield – The Independent Driver's Diesel Price Floor.
+
+A solo-run service that offers small-scale truck and van drivers a fuel price ceiling: pay a monthly fee, and if the average diesel price in your region exceeds a pre-set cap, you get the difference paid.
+
+Taking inspiration from airline fuel hedging (cross-sector: aviation finance), this product atomizes fuel price risk for the 1-5 vehicle operator using a pooled risk model and AI-driven price volatility forecasting.
+
+Owner-operator truck drivers, courier van fleets with fewer than 5 vehicles, and tradespeople who drive extensively (e.g., plumbers, electricians).
+
+Extreme fuel price spikes due to geopolitical instability, carbon taxes, and supply uncertainty; drivers are price-takers and cannot raise customer rates quickly enough.
+
+None of the provided passages discuss fuel price hedging services or whether such value is durable; they only cover fuel costs, discounts, and general owner-operator economics. Thus, the durability of TankShield's value cannot be determined from these snippets.
+
+RightPay offers a weekly fixed rate, directly providing a fuel price ceiling for small operators, indicating a funded rival already solving the need.

@@ -1,0 +1,21 @@
+CloseWatch, know a UK startup is closing before it's news.
+
+A subscription briefing that flags UK startups quietly running out of money, weeks before it's public, so founders can hire the team or buy the assets first.
+
+This borrows the way deal-intelligence services like Mergermarket break unannounced M&A deals early, using a network of small, scattered signals nobody else bothers to stitch together, and points that same mechanism at UK startup deaths instead of UK startup deals.
+
+A solo operator runs a paid weekly briefing, plus a searchable archive, that tracks which UK startups are quietly failing before it ever becomes a headline. The raw ingredients are all public but scattered: Companies House filing changes (dormant status, director resignations, charges registered against assets), London Gazette winding-up and strike-off notices, domain and hosting expiry, sudden hiring-freeze patterns on job boards, and clusters of 'Open to Work' badges appearing on a company's LinkedIn staff list. None of these alone means much. Correlated and scored over time, with a track record of which combinations actually preceded a real closure, they become a genuinely early warning.
+
+The reason this is worth money to a startup founder-operator is not curiosity, it's opportunity. A founder who hears three weeks early that a nearby seed-stage company is dying can message its best engineer before the layoff is public, approach its customers before a receiver does, or buy its unused SaaS credits and hardware cheap. That's a real, recurring reason to pay that has nothing to do with schadenfreude.
+
+Why it holds: The London Gazette and Companies House only publish once a company has formally filed for dissolution or insolvency, which is weeks to months behind the real moment a team stops paying rent and starts job-hunting, and neither register has any mandate to interpret or predict, only to record. Trade press like Sifted, TechCrunch or UKTN only has a commercial reason to cover the twenty or so highest-profile shutdowns a year, not the hundreds of quieter seed-stage closures that matter for hiring and asset-buying. What compounds here is the operator's own scored history of which signal combinations were right, built up briefing after briefing, plus direct human verification calls before anything is published, which a scraped or generic register can never claim.
+
+UK startup founder-operators at pre-seed to Series A companies, typically running teams of 5 to 40 people, who pay a monthly subscription (around £49 to £99) because they are doing their own hiring and business development without a dedicated recruiter or corp-dev person.
+
+UK startup closures have been running at multi-year highs through 2024 and 2025 as venture funding tightened and the runway from COVID-era SEIS and EIS-backed 2020-2021 rounds finally ran out. At the same time, Companies House's new identity verification rules under the Economic Crime and Corporate Transparency Act 2023 are pushing a steady wave of struck-off and non-compliant companies through the public register, giving a live, machine-readable trickle of distress signals to correlate against.
+
+None of the passages show anyone searching for, paying for, or discussing a service that flags struggling UK startups early; they cover an unrelated biography, Amazon's layoffs, and the fact that Companies House offers free company status data.
+
+None of the passages address UK startup closure rates, venture funding conditions in 2024–2025, or Companies House identity-verification rules — the only closure-rate data point is about India, and the rest are unrelated UK/global funding raises or a bike-brand liquidation anecdote.
+
+The only concrete distribution channels in the passages are Substack, which takes a 10% cut but is otherwise a generic newsletter tool with no mention of an audience or beginner path specific to reaching startup founders, and LinkedIn, where the passages describe restricted-account risk and policy warnings against inauthentic activity rather than a usable acquisition channel. Neither passage shows a beginner-executable route to paying startup-founder buyers; the LinkedIn evidence instead points to a route that risks account bans.

@@ -1,0 +1,25 @@
+TermGuard, pays your legal bills if a term sheet collapses.
+
+TermGuard pays UK startup founders a fixed sum if their signed VC term sheet doesn't close, covering the legal and advisory fees they already spent.
+
+TermGuard is a fixed-payout bond for the moment a signed venture term sheet doesn't turn into money in the bank. A pre-seed or seed founder who has just signed a term sheet buys a policy for a small percentage of the round size. If the deal has not closed by the agreed long-stop date, TermGuard pays out a fixed sum, say £15,000 to £40,000 depending on round size, straight into the company's account, no argument and no loss adjuster.
+
+This borrows the mechanism used in UK residential property, where home buyer protection insurance reimburses your survey and legal costs if a house purchase collapses before completion, settling on one binary fact: did the Land Registry title transfer, yes or no. TermGuard uses the same binary logic, but the public record it watches is Companies House. A term sheet is treated as failed if no SH01 confirmation of allotment, or matching rise in issued share capital, appears against the company within the agreed window. That single machine-checkable fact removes any need for a dispute process or claims team, so the product runs on API calls, not adjusters.
+
+The moat is the pricing data, not the payout mechanic. Every UK priced round leaves two public footprints months apart: a term sheet or raise-announced signal, from Beauhurst, Crunchbase or the founder's own update, and, if it completes, an SH01 filing at Companies House. Matching these two records across thousands of deals builds a live base rate of fall-through risk, cut by lead investor, sector, round size and quarter. No general insurer holds that table today, because assembling it means reconciling two messy public sources over years, not something you can buy off the shelf. That compounding table is what lets TermGuard price a term sheet accurately enough to carry the risk itself, and it gets sharper with every quarter of UK deal flow that passes through it.
+
+Pre-seed and seed-stage founders in England and Wales who have just signed a term sheet and are about to spend money on lawyers, accountants and a data room before the round is legally certain.
+
+UK seed and Series A rounds are taking longer to move from signed term sheet to money in the bank, as investors run longer due diligence and sometimes re-price mid-process, and startup law firms that used to defer fees until completion are pulling that back as their own cash flow tightens, pushing legal and advisory costs onto the founder upfront regardless of outcome. Companies House's move to faster, fully digital SH01 filings under the Economic Crime and Corporate Transparency Act 2023 also puts the completion signal TermGuard needs closer to real time than it was a few years ago.
+
+The passages only define what a VC term sheet is and promote a law-firm survey guide to term sheet norms; none discuss fall-through rates, deal collapse frequency, insurance-style payouts, or whether this pricing data is proprietary or commoditised.
+
+None of the passages discuss deal-completion insurance, term-sheet fall-through risk, or any competitor pricing that risk for UK startups; they cover abortion clinic fees, Ukraine war-risk insurance, an insurance-broker kickback lawsuit, and generic UK fintech/insurtech funding hype with no mention of a dominant or funded rival in this specific niche.
+
+The passages cover UK constitutional structure and generic pre-seed/seed funding-range definitions, but none state what a founder's cash budget or willingness to spend £149.99 on a term-sheet-failure product actually is.
+
+The passages only show that founders use lawyers and SeedLegals for term-sheet advice; none describes a channel — such as law firms, SeedLegals, or Companies House data — through which TermGuard itself could reach or sign up founders. The remaining passages (US currency, Founders careers page, Founders Classical Academy) are unrelated matches on the word 'Founders' and add nothing.
+
+The passages only offer generic FCA insurance-authorisation pointers (PERG 6, IDD, a sideline-activity exemption) and two entirely unrelated 'FCA' organisations, none of which state whether a parametric term-sheet payout counts as a regulated insurance contract or whether TermGuard could operate without authorisation.
+
+One passage confirms VC deals do collapse late ("10-Month Rejection... deals collapse at the 11th hour") and that founders need to recover from these fundraising failures, which by common-sense deduction means real time and money were sunk before the collapse. A second passage confirms a signed term sheet is not the same as a closed deal, reinforcing that this failure mode is real and recurring.

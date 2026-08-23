@@ -1,0 +1,23 @@
+MouldWatch – Tenant's Damp Evidence Subscription.
+
+A physical sensor kit shipped to renters that continuously monitors humidity, temperature, and mould spore count, generating AI‑powered legal‑grade reports to force landlord repairs—backed by a compounding dataset on building damp patterns.
+
+cross_sector: transplant predictive maintenance from industrial HVAC systems to residential tenancy. Tenants suffer from damp and mould but lack continual, calibrated evidence that meets regulatory thresholds. By deploying low‑cost IoT sensors and interpreting the data with AI, a solo operator can produce an evidence pack that turns the tables on negligent landlords—value that grows as more homes join the dataset, improving early‑warning models.
+
+Public‑sector workers (nurses, teachers, council staff) living in rented accommodation who need a definitive tool to hold landlords or housing associations to account.
+
+Rising awareness of housing‑related health conditions (e.g., Awaab’s Law in UK social housing), tighter environmental health inspection backlogs, and cheap IoT sensor modules make continuous monitoring affordable for a single operator.
+
+Passages show landlord-targeted monitoring services, not tenant advocacy tools; no information on whether MouldWatch's legal-grade evidence value is durable or commoditised.
+
+The passages detail mould monitoring solutions (Mould Sense, Envora, Resi‑IQ, AIRaware) aimed at landlords, but none address a tenant‑side evidence service or indicate whether a dominant incumbent exists that already empowers tenants with legal‑grade reports.
+
+All passages describe monitoring solutions targeting landlords, property managers, and housing providers; none discuss public-sector tenants' budget or willingness to pay for such a service.
+
+All passages describe products targeting landlords, property managers, or housing associations; none address a channel to reach individual tenants, the stated buyers.
+
+None of the provided passages discuss whether a tenant can lawfully deploy IoT sensors to collect damp/mould evidence, nor do they mention any laws or terms that would make such activity illegal. The passages focus on landlord-side monitoring and Awaab's Law obligations. The question of legality is simply not addressed.
+
+Multiple commercial services (Mould Sense, Envora, AIRaware) are actively selling mould-monitoring solutions to landlords and councils, with AIRaware listing a price (£110/property/year), demonstrating that the problem of damp and mould in rental housing is real and acute enough that organizations are paying to address it.
+
+MouldWatch targets the wrong customer: the paying market for damp/mould monitoring is landlords and housing providers, not tenants. Commercial solutions (Envora, Mould Sense, Resi-IQ, AIRaware) all sell to landlords who face regulatory penalties under Awaab’s Law and can recoup costs through reduced litigation and repairs. Tenants lack both the financial means to subscribe and a clear ROI, making willingness to pay low. Reaching individual tenants is expensive and unscalable compared to B2B landlord sales. A free alternative (consumer hygrometer + template letter) further undermines the value of paid legal‑grade reports. The business would fail because the economic incentive lies with the party that controls the property budget—the landlord—not the tenant.

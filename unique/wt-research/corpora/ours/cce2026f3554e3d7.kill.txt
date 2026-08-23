@@ -1,0 +1,27 @@
+SpecVouch — the independent optician's NHS spectacle voucher and top-up calculator.
+
+A web tool that gives the exact NHS voucher amount and patient top-up for every sight test and lens combination, so your practice stops leaving money on the table.
+
+Small optometry practices lose revenue every day because the NHS voucher scheme is a patchwork of local Integrated Care Board (ICB) policies layered on top of national rules. A high‑street optician might dispense complex spectacles—tints, prisms, small frames, reglazes—and then find they undercharged the patient because they didn't know the local top‑up the ICB would have paid. The official NHSBSA calculator only covers standard single‑vision or bifocal vouchers and ignores local variations. 
+
+SpecVouch is built from first principles: it starts from the raw pain of a practice owner who has just realised they've lost £30 on a pair of glasses and asks what a perfect tool would have told them before they ordered the lenses. It ingests every published local policy, every ICB supplement, and every historic change into a single database. The user enters the patient's age, eligibility route, prescription, and lens/frame choices; the tool instantly returns the exact voucher value the practice can claim from the NHS, the mandatory patient top‑up, and a flag if the combination triggers a local rule the national calculator would miss. 
+
+The underlying dataset is proprietary: compiling all those local documents takes months of manual trawling through ICB websites, FOI requests, and trade‑body circulars. Once a practice builds its workflow around the tool, the switching cost is high because no other product delivers this level of local accuracy. A solo operator can maintain the data with a weekly update routine, and the tool itself runs almost entirely automated—the code is a set of business‑rule engines and a simple web front end.
+
+The owner of an independent optometry practice (typically 1–3 consulting rooms, 2–10 staff). They pay a monthly subscription because under‑claiming even two vouchers a month can cost more than the fee—and over‑claiming triggers NHS audit clawback.
+
+Integrated Care Systems (from July 2022) replaced Clinical Commissioning Groups and many have issued new local policies for ophthalmic services. Optometrists now face 42 different ICB rule sets where there used to be a smaller number of CCG policies. At the same time, NHS England is pushing for greater financial accountability, so practices are being audited more frequently. A tool that keeps up with this fragmentation earns its keep immediately.
+
+The passages show optical voucher claims are audited and that national voucher bands plus free “vouchers at a glance” downloads and official PCSE/NHSBSA guidance already exist, but they never say whether local ICB top-up rules create lasting paid accuracy beyond those free national materials. So they neither establish durable proprietary value nor prove that free official tools have taken all margin.
+
+UK optometry practice systems are advertised that generate NHS GOS vouchers and handle BSA submissions, and other PMS listings exist for independents, but nothing states who leads—or whether anyone already covers—local ICB voucher and patient top-up calculation for that niche. Unrelated top-up apps and an Australia/New Zealand PMS do not speak to UK dominance or an open gap either.
+
+Independent optical practices already pay £150–£400 a month for practice management software, which shows they have budget for recurring software. NHS fees lagging inflation and tighter margins give them a clear reason to pay for a tool that stops under-claiming voucher revenue.
+
+Passages name Optician magazine as a leading trade title for the profession and show industry bodies such as the AOP and ABDO already addressing UK optical practices. That is an existing, executable path to reach independent practice owners without inventing a new channel.
+
+The passages only describe ordinary NHS GOS contracting, GOS 4 voucher pre-authorisation, and accurate-claims guidance for sight tests and glasses. They never say whether a paid third-party tool that calculates voucher amounts and local top-ups is allowed, banned, or requires falsifying claims.
+
+The passages only confirm that NHS optical vouchers exist, have published values, and help patients pay for glasses or sight tests. They never show practices under-claiming, facing local ICB calculation errors, or paying anything now to fix voucher/top-up mistakes.
+
+The passages describe ordinary NHS GOS contracting and accurate-claims guidance, and never say a third-party voucher or top-up calculator is banned. They also never show that winning one practice would cost more than that practice could ever pay in subscription fees, or that a single named firm controls most of the path to independent opticians.

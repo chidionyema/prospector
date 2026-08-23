@@ -1,0 +1,21 @@
+FundedHours Gen — the childminder's termly funding claim pack, pre-filled for your council.
+
+Turn your attendance data into a ready-to-submit council funding claim for the Early Years Entitlement, in minutes.
+
+Registered childminders must claim early education funding (15/30 hours) from their local authority each term. Each of the 150+ English councils has its own form, portal, and evidence requirements—a fragmented mess that costs childminders hours of unpaid admin. This tool asks for your postcode and the children's details, pulls the right template and rules from a proprietary dataset of council-specific requirements, and pre-fills the claim form with calculations that meet the local authority's exact audit expectations. It produces a pack that the childminder uploads or posts, with a checklist of any supporting documents needed. The moat is the council-by-council intelligence, built from FOI requests, council policy documents, and user-contributed feedback on what each authority actually accepts. This borrows the way tax-preparation software tailors itself to different state forms in the US, brought to a UK market where no such thing exists for early years funding.
+
+Individual childminders (sole traders and small partnerships) who deliver the Early Years Entitlement. They pay a fixed fee per claim pack generated (e.g., £25 per term, or an annual subscription of £60 for three terms).
+
+Councils are tightening audit checks after high-profile fraud cases, demanding more detailed evidence. At the same time, the early years workforce is under acute financial pressure and cannot afford to spend weekends on paperwork. No existing provider offers an automated, council-tailored claim engine; the market is dominated by generic paperwork or manual processing by local authority portals.
+
+The passages confirm early years funding guidance for 2025–26 and that providers claim child-level funding via an Online Provider Portal, plus that childminders in England are being surveyed about local-authority support. They never say whether a paid, council-tailored pre-filled claim pack still has lasting paid value, or whether free portals have already taken that margin away.
+
+None of the passages name any product, company, or market leader that prepares or submits early-years entitlement claims for childminders to UK councils, nor do they say that gap is empty. They only cover unrelated topics (site menus, an Indian bank exam, Japanese school holidays, parent childcare accounts, a US subsidy, and Nottinghamshire place creation), so whether this claim-pack niche is already dominated cannot be judged from them.
+
+None of the passages state whether childminders can or will pay for a claim-pack tool or similar admin software. One notes inadequate funding rates and another lists start-up costs such as registration and insurance, but neither shows budget, willingness, or inability to pay for this service.
+
+Passages show childminders already gather in large, reachable communities: an Independent Childminders Facebook group used by over 30,000 childminders, plus Childminding UK membership and conference channels. That is an executable route to the same buyers this product targets.
+
+None of the passages say whether preparing or selling a pre-filled Early Years Entitlement claim pack for childminders is lawful, prohibited, or requires falsifying data. They cover childcare directories, childminder capacity limits, a Scottish council funding proposal, and unrelated unclaimed-property links, so legality of this margin is not addressed.
+
+The passages show that childminders claim local-authority funding and face rule friction (cross-authority claims, clawback if holiday hours are not remade) and general concern about the scheme, but none say claim forms, portals, or evidence packs are a costly unpaid-admin burden, nor that anyone pays for help preparing them. They never establish that this specific paperwork pain is acute or already being paid to fix.

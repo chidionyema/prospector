@@ -1,0 +1,57 @@
+DRN-4630198
+The complaint
+Mr Y complains that Wise Payments Limited won’t refund all the money he lost to an 
+investment recovery scam. 
+The details of this complaint are well known to both parties, so I won’t repeat everything 
+again here. Instead, I’ll focus on giving the reasons for my decision. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so, I agree with the conclusions reached by the investigator for the following 
+reasons:
+It isn’t in dispute that Mr Y authorised two payments totalling £2,730 on 9 May 2023 
+from his Wise account towards what he believed was a company trying to recover 
+money from a previous investment he’d made. The payments were sent to an 
+individual Mr Y legitimately purchased crypto from on a peer-to-peer basis. The 
+payments were requested by him using his legitimate security credentials, and the 
+starting point is that payment service providers (‘PSPs’) ought to follow the 
+instructions given by their customers in order for legitimate payments to be made as 
+instructed. 
+However, I’ve considered whether Wise should have done more to identify that Mr Y 
+could be falling victim to a scam, as there are some situations in which PSPs should 
+reasonably have had a closer look at the circumstances surrounding a particular 
+transaction. For example, if it was particularly unusual and out of character. 
+Mr Y’s Wise account was a relatively new account having been opened in March 
+2023. Therefore, there was very little activity for Wise to compare the disputed 
+payments to. In my judgement, the disputed payments were not sufficiently unusual 
+or suspicious in appearance for Wise to suspect that Mr Y could be falling victim to a 
+scam. Wise says that Mr Y was asked to provide a reason for the payments and he 
+stated he was sending money to himself and it showed him warnings relevant to this 
+risk. The warning wasn’t crypto or investment specific, but I do think it was 
+proportionate to the risk Wise may have reasonably identified based on Mr Y’s 
+answer. There weren’t any obvious identifiable features of the payments that ought to 
+have suggested that Mr Y could be falling victim to a scam. As he sent the funds to 
+another person to purchase crypto, Wise wouldn’t have known that he was 
+purchasing crypto unless Mr Y disclosed it. I don’t see that he did, and I don’t find 
+that Wise missed an opportunity to intervene or provide a warning to him about the 
+potential risks his payments posed. 
+Wise attempted to recover Mr Y’s payments but there were no funds remaining. I 
+expect this to be the case as Mr Y purchased crypto from another person and sent 
+
+this crypto onto the scammers. There would have been no prospect of Wise 
+recovering his payments as he didn’t pay the scammers directly. 
+I’m not persuaded Wise acted unreasonably by declining to refund Mr Y and I don’t 
+consider there to be any fair or reasonable basis in which it can be held responsible 
+for his loss.
+I appreciate my outcome will come as a disappointment to Mr Y and I’m very sorry to see 
+he’s lost his money to cruel scammers. But for the reasons I’ve explained, I don’t require 
+Wise to do anything differently.
+ 
+My final decision
+My final decision is, despite my natural sympathies for Mr Y’s loss, I don’t uphold this 
+complaint. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr Y to accept or 
+reject my decision before 16 April 2024.
+ 
+Dolores Njemanze
+Ombudsman

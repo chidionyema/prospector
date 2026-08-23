@@ -1,0 +1,13 @@
+PermitSure – The Permit Timeline Guarantee.
+
+A solo-operated service that files and guarantees building permit approvals for solo tradespeople, paying them a daily penalty if the permit is delayed beyond an agreed date.
+
+A solo builder's largest admin risk is permit delay costing them job start dates. By using a proprietary database of past permit outcomes, an AI-leveraged operator can price the risk accurately, offer a binding timeline guarantee, and absorb the few small payouts from the high volume of fees. This borrows from the 'on-time delivery warranty' model used by logistics aggregators, applied to building regs.
+
+Solo general contractors and home improvement builders in rapidly growing US sun-belt suburbs facing extreme permit backlogs.
+
+Post-pandemic construction booms have overwhelmed municipal permit offices, turning 3-week waits into 3-month waits; a missed start date can cascade into losing subcontractors and clients, making certainty a premium service.
+
+The passages describe a free-to-try AI permit filing service (Permitio) that saves time, but they do not address the candidate's core value proposition of a binding timeline guarantee backed by a proprietary data moat and penalty payouts. No evidence is provided on whether this guarantee value is durable or already commoditized.
+
+Multiple companies (Permitio, PermitSync, PermitFlow) offer AI-powered permit handling, with PermitFlow claiming 2.5X faster approvals and 5X ROI, demonstrating funded incumbents already address the space.

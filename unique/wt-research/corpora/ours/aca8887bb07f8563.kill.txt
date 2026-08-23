@@ -1,0 +1,23 @@
+HireFight – The Plant Hire Damage Dispute Negotiator.
+
+A fixed-fee-plus-success service for small builders that takes on unjust plant-hire damage charges, builds an evidence-backed challenge dossier using industry precedent and contract flaws, and negotiates the charge down or kills it entirely.
+
+Plant hire companies often levy post-hire damage costs that a busy small builder accepts rather than fights — a classic 'squeaky wheel' dynamic where the counter-party isn't prepared. Transplanting the specialist parking-appeal or medical-bill-negotiation model into construction creates a high-value productised service: the operator's growing library of successful rebuttals, photographic evidence standards, and hire-contract loopholes turns each case into a compounding asset.
+
+Solo tradesperson or micro-construction firm (1-5 employees) hit with a damage charge on hired excavators, scaffolding, or power tools.
+
+Hire firms under margin pressure are aggressively pursuing borderline damage claims; a builder already working on thin cash flow cannot afford either the charge or the time to fight — a fast, affordable specialist fills a vacuum no one else occupies.
+
+The passages discuss plant-hire insurance and contract terms but do not address whether a dispute negotiation service provides real, non-commoditised, durable value.
+
+The passages describe specific construction plant legal disputes and valuation challenges, but do not mention any incumbent or rival service that helps small builders contest damage charges. No evidence about the competitive landscape is provided.
+
+The passages discuss plant hire overcharges and construction back charges but do not address whether solo tradespeople or micro-construction firms have the budget or motive to pay for a dispute negotiation service.
+
+None of the provided passages discuss how a dispute negotiator service would reach small builders, nor any self-serve, forcing mechanism, or existing channels. They only cover invoice processing details and unrelated court case procedures.
+
+The passages discuss builder licensing and payment claims, none address the legality of negotiating plant hire damage charges. No law or term that would make the service illegal is mentioned.
+
+The passages are court case citations or procedural listings with no mention of small builders suffering or paying to dispute plant-hire damage charges, so the pain_reality claim is not addressed.
+
+The evidence shows that small builders can avoid or mitigate plant-hire damage charges through existing means: dedicated hired-in-plant insurance products cover losses from damage (sources c856658136613174, 3895359753401dd3), and operational best practices like centralized order management and diligent off-hire condition documentation prevent overcharges altogether (source c7588e98ddd82d78). Industry-standard CPA terms heavily protect hirers (source e0e14ae331ad486b), leaving little room for negotiation success. Thus, a specialist dispute negotiator adds marginal value over free preventive measures and insurance, making the business case weak.

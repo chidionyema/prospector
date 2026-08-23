@@ -1,0 +1,27 @@
+WattForge — GPU racks for developers, powered by wind farms paid to switch off.
+
+A small UK rack room wired straight into a curtailed wind farm, renting cut-price GPU space to solo AI developers who need cheap power to train and run their own models.
+
+WattForge builds a small rack room next to a wind farm in Scotland that the electricity system operator regularly tells to switch off, because the cables carrying power south are too full. Instead of that electricity going to waste, WattForge draws it straight from the turbine through a private wire, before it ever reaches the public grid. It fills the room with GPU servers and rents rack space and whole machines to solo AI developers and small teams who want to train or run their own models without paying cloud prices.
+
+This only works because of a very British problem. Great Britain connects wind farms faster than it builds the cables to move their power south, so the system operator pays wind farms not to generate on windy days — a cost that has been running into the hundreds of millions of pounds a year and is forecast to keep climbing through the 2030s as more wind connects ahead of new transmission lines. That gap between what a wind farm can generate and what the cables can carry is a stranded, site-specific surplus of power. A rack room parked right next to the turbine can buy that power directly, at a price no data centre paying normal grid rates can match.
+
+The lasting edge here is the wire, not the software. A GPU colocation business can be copied in a weekend. A private-wire connection into one specific curtailed wind farm, with the land lease, the network operator's sign-off and the turbine owner's agreement, cannot — each site is a one-off deal that takes months to arrange, and there are only so many curtailed wind farms with spare land next to a substation. Once a developer points their training jobs at WattForge's scheduling API — which reads the grid operator's own public curtailment and balancing data to predict the cheapest windows and bursts jobs into them — moving that workflow to a normal cloud means giving up a price curve nobody else can offer.
+
+Solo AI and machine-learning developers, indie hackers and small startups who currently rent GPU instances from AWS, RunPod or Lambda Labs to fine-tune or run open-weight language models, and who want meaningfully cheaper compute for long training runs that don't need to sit next to their users.
+
+Britain's wind curtailment bill has become a regular story since 2023, with the grid operator paying wind farms not to generate on windy days because the cables south are full, and both the grid operator and the regulator have flagged the cost rising through this decade as more wind connects ahead of new transmission lines. At the same time, a growing wave of developers want to fine-tune and self-host their own models and are actively shopping around for cheaper GPU hours.
+
+The passages show large, growing transmission constraint/balancing costs in Great Britain (£1.34-1.9bn in 2024/25, forecast to rise to £8bn by 2030), which are the payments generators receive to curtail output — this confirms a persistent, widening surplus of curtailed power rather than a one-off or shrinking phenomenon. No passage shows this value being commoditised away or captured by an existing free/cheap alternative.
+
+The UK-definition passages have no conceptual overlap with GPU colocation or wind-curtailment incumbents, and the Azure/AWS snippets only describe generic cloud GPU quota limits and free-tier offers, not whether any incumbent runs a private-wire curtailed-wind GPU hosting business.
+
+None of the passages say anything about what solo AI developers currently spend on GPU compute or their willingness to pay a given price; they only describe generic cloud-GPU provider comparisons, US market size forecasts, benchmark rankings, and unrelated funding news for Indian AI startups and a property-management chatbot company.
+
+The Vast.ai passage shows an existing marketplace channel where any GPU owner can list hardware and immediately reach 120,000+ AI developers, with billing and support handled by the platform — exactly the kind of low-friction, existing route WattForge could tap to reach solo developers without building its own funnel.
+
+One passage names 'License Exempt Supply (P442)', the real UK mechanism that lets a private-wire site sell electricity without a full supply licence, but it is only a table-of-contents fragment with no detail on what it permits, so it cannot confirm the wind-farm-to-GPU-rack resale model fits inside it. The other passages are generic Ofgem/National Grid/British Gas background with no connection to private-wire supply or curtailed power resale.
+
+On-demand GPU capacity is described as sold out with rental rates rising even for older chips, showing real scarcity and cost pressure right now, and the fact that startups actively chase free GPU credit programs to fund training/inference confirms GPU compute cost is a budget pain people are actively working to solve.
+
+The only passage on private-wire electricity supply is a bare table-of-contents fragment naming a licence-exemption route, with no detail on whether this resale model actually qualifies, so there's no evidence the business is illegal. Nothing in the evidence shows what it costs to win a customer or what a customer would ever pay back, and the one distribution passage found is an open marketplace (Vast.ai) that any host can list on, not a single company locking up the channel.

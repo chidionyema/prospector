@@ -1,0 +1,23 @@
+CareCredit Recoup.
+
+Recovers unused prepaid care package fees from local authorities when a care arrangement ends, taking a commission only on successful refunds.
+
+When a care home resident dies or moves, councils often retain weeks of pre-commissioned care fees that are refundable but buried under bureaucratic inertia. A solo-operated broker can use FOI data to map council refund-handling patterns and automate the claim-back process, monetizing an asymmetry that volunteer-sector helpers cannot match with a contingent model.
+
+The carer or executor of the estate pays 20% of the recovered amount as a success fee.
+
+Austerity-hit local authorities deliberately slow-track refunds to protect cash flow; meanwhile, rising care costs push families to recoup every penny. The combination of tight household budgets and council intransigence creates a window for a niche, data-driven recovery agent.
+
+None of the passages mention care home fee refunds, local authority refund-handling, or anything related to the candidate's value proposition; they discuss Roblox, flight bookings, and NHS technology. They do not address whether the value is real or durable.
+
+None of the provided passages mention care home fee refunds, local authorities, or any incumbent service in this domain. They discuss unrelated topics like tennis, payment cards, and AMD software errors.
+
+All passages are about unrelated topics (fiction, insolvency service disclaimers, manga, Windows support, government charging changes) and contain no information about carers, executors, care fees, or their ability and willingness to pay.
+
+The passages are about customer acquisition strategy on Quora, pizza restaurants, TV show The Big Bang Theory, and federal acquisition cost accounting — none address how carers or executors would be reached by a care fee refund recovery service.
+
+All passages discuss unrelated subjects such as Wikipedia, retail memberships, and open government licensing; none address the lawfulness of recovering care package fees or any relevant legal constraints.
+
+None of the passages address the candidate's problem space—unused care package fees, council refunds, or any related payer activity. They discuss unrelated topics like video playback, Direct Payments scalability, social media targeting, and software companies.
+
+No relevant evidence found; all risk vectors are unverifiable.

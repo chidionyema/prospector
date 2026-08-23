@@ -1,0 +1,15 @@
+Ofcom OSA risk assessments for UK platform safety leads.
+
+A fixed-fee Ofcom Online Safety Act risk assessment draft and statement of policies for a small UK content platform's annual filing.
+
+The Head of Trust & Safety at a small UK user-generated content platform (under 50 employees) needs an annual risk assessment and statement of policies under the Ofcom Online Safety Act. The deliverable must cover illegal harms, children's access, and content reporting, and it must be filed annually. Today the head hires a regulatory lawyer at £400-700 per hour for 30-50 hours, or copies a template from a competitor and hopes.
+
+The productized version widens to the whole filing chain. For a fixed fee of £4,000-7,500 the buyer gets an Ofcom-format risk assessment, a statement of policies mapped to the three Ofcom codes (illegal harms, children's access, content reporting), a complaints-handling procedure, and a one-page memo on how Ofcom will read the file.
+
+The defensible asset is proprietary: the team has compiled every Ofcom published guidance note and every working group minute touching risk assessment methodology, indexed against platform size and risk tier. Ofcom publishes the codes and the templates, but as the regulator it cannot draft a fixed-fee risk assessment for any single platform. That would be taking a commercial side. Recurring trigger: annual risk assessment refresh plus every platform feature change.
+
+Why now: Ofcom's Illegal Harms Code came into force for in-scope platforms in 2025, with first enforcement actions filed early in 2025. Platforms under 50 employees that were not previously in scope now have to file.
+
+Head of Trust & Safety (or compliance lead) at a UK user-generated content platform with under 50 employees, currently paying a regulatory law firm £12-35k annually for Online Safety Act risk assessment work.
+
+Ofcom's Illegal Harms Code came into force for in-scope platforms in 2025, with first enforcement actions filed in early 2025. Platforms under 50 employees that were not previously in scope now have to file.

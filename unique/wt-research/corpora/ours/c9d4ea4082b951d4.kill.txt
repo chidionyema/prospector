@@ -1,0 +1,23 @@
+Care Home FeeSurge Watch.
+
+A solo-operated intelligence service that predicts which UK care homes are most likely to impose steep fee hikes, sold as a one-off risk report to retirees and families navigating later-life care.
+
+As local authorities tighten care funding and private providers face margin pressure, care homes increasingly disguise fee inflation in complex contracts. A retiree selecting a home today lacks visibility into future costs. By inverting the enforcement role of the Care Quality Commission (CQC)—which inspects quality but never projects financial risk—a solo operator can build a proprietary model from Companies House filings, CQC inspection gaps, inflation correlates, and resident-submitted fee histories to forecast which homes pose the highest lifetime cost risk. This is an adversarial data asset that grows more valuable as cost pressures intensify.
+
+Retirees aged 65+ and their adult children who have budget authority over care home selection, typically with a pension pot and housing equity, facing the fear of unknown future care fees.
+
+Post-pandemic care home inflation is accelerating (staffing shortages, energy costs), while CQC’s new inspection framework focuses on quality, not financial transparency. This gap leaves retirees vulnerable, and recent media attention on 'hidden care costs' creates a ready market for a predictive, one-sided intelligence tool.
+
+The passage confirms an active care home fee crisis with prices 'likely to soar by £20,000 a year,' indicating the problem is real and persistent, which supports the durability of a predictive service addressing it.
+
+No passage addresses existing incumbents or competitors in care home fee prediction; all evidence is either irrelevant or discusses general market conditions without mentioning any dominant player.
+
+The passages discuss care home financial distress and rising costs, but provide no information about the financial status, budget, or payment willingness of retirees or their families.
+
+The passages do not describe any distribution channel—self-serve platform, existing marketplace, or forcing mechanism—that would allow the candidate to reach its target buyers. The care-home letter demonstrates the problem exists but does not show how the intelligence service would be delivered to retirees/families.
+
+The passages contain no information about the legality of selling predictive reports based on public and user-submitted data, nor any mention of relevant laws or terms. Therefore, the claim cannot be assessed.
+
+Passages confirm that hidden charges, unexpected fee increases, and confusing top-up payments are a real issue (4f834aefbe3b190f), and that people are actively seeking (and paying for) ways to avoid care home fees (1e526b61e19ad64c), demonstrating an acute problem with financial pain.
+
+No evidence supports any of the specified risk vectors: legality, unit economics, and monopoly are unaddressed in the provided sources, making all three risks false.

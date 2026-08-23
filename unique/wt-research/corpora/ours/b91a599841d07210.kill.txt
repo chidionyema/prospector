@@ -1,0 +1,37 @@
+FirstGrant, your parent's Power of Attorney, guaranteed.
+
+A platform that files a parent's Lasting Power of Attorney and only takes payment once the Office of the Public Guardian accepts it first time.
+
+FirstGrant matches a family arranging a Lasting Power of Attorney for an ageing parent with a vetted solicitor or certificate provider from its panel, and only takes its fee once the Office of the Public Guardian (OPG) accepts the application. If OPG rejects it because of a mistake on the provider's side, the family pays nothing extra and FirstGrant refiles it free.
+
+Getting an LPA wrong is common and the cost is time, not just money. A missing signature, the wrong witness, or a date out of order sends the whole £82 application back to the queue, and OPG's own published turnaround has stretched past four months. For a family watching a parent's memory decline, that delay can be the difference between registering in time and losing the window entirely, because once someone loses mental capacity, the only route left is the far slower and more expensive Court of Protection.
+
+The Powers of Attorney Act 2023 gives OPG the power to move LPA registration online, and that rollout is running in phases through 2025 to 2027. For now, paper and digital rules sit side by side, with new identity-check steps that are still tripping people up. That overlap is exactly when rejection rates spike and families most need a service that carries the risk of a mistake instead of them.
+
+Every rejected application that passes through FirstGrant gets logged against its exact reason for failing, building a dataset that no solicitor directory and no OPG guidance page holds in one place. That data trains a pre-submission check that keeps getting sharper at catching the specific errors that trigger a rejection right now, under the current rules, which is what turns a list of solicitors into a service that can credibly promise an outcome.
+
+OPG is also the body deciding whether to accept the form, so it cannot ethically sell a guarantee against its own decision, or refund a family for its own delay, without putting itself on both sides of the transaction. It also has no reason to collect or publish granular rejection-cause data, because that isn't part of its job. That gap doesn't close whichever way OPG's process tightens next.
+
+The adult child, usually between 35 and 55, who is organising a parent's affairs pays a fixed fee on top of OPG's own £82 registration fee. The decision is often made jointly with a partner or sibling, and it gets easy to justify once they've seen how much a rejected form costs in lost months, not just lost pounds.
+
+The Powers of Attorney Act 2023 lets OPG move LPA registration online, with the rollout phased through 2025 to 2027, so applicants are working through overlapping paper and digital rules and new identity-verification steps that create fresh ways to get rejected. At the same time, more families each year are dealing with a parent's declining mental capacity, which turns the registration window itself into the thing that's running out.
+
+[de744d376c06bcff] states OPG rejects a significant number of LPA applications each year due to avoidable errors, and [103359835ef52a7f] confirms rejection is an active risk even for correctly-versioned forms, showing families face a real, current problem worth paying to avoid.
+
+The passages show this audience already pays for adjacent legal services at levels well above £79.99 — wills cost £0–£1,500+, solicitor fees for family and other legal matters run further still, and families already accept an £82 OPG registration fee as a baseline cost of getting an LPA done. That existing spend pattern makes a further ~£80 fixed fee for a guarantee service a plausible, affordable add-on rather than a stretch.
+
+The passages show free solicitor-directory services exist (Law Society's Find A Solicitor, Solicitors Near Me) as a general route to LPA help, but none address FirstGrant's specific distribution mechanism — how it reaches parents/adult-children as buyers of a guarantee-backed, pay-on-acceptance service. Most passages are unrelated dictionary definitions of 'lasting' or an unrelated marriage-counseling app.
+
+None of the passages address LPA registration, OPG's fee/refund conflict-of-interest rules, or any legal restriction on a third party charging fees contingent on OPG accepting an application; they cover FCA-regulated fees, AI governance, and general solicitor regulation/CFA agreements, which have no conceptual overlap with the candidate's outcome-guarantee mechanism.
+
+The passage [a088e9afaccf32e2] confirms over 50,000 LPA applications were rejected in 2023-2024 for common, identifiable errors like initials-vs-full-names and witness eligibility — but that fact is a historical/known problem, not evidence that FirstGrant's proprietary rejection-cause dataset is uniquely durable, since the cited common causes are already publicly documented rules-of-thumb rather than a proprietary edge. No passage shows this data or checking capability is unavailable elsewhere or resistant to commoditisation.
+
+The evidence shows a fragmented landscape — OPG's own free online filing tool, a charity's free form-filling assistance, and an unranked list of will-writing services — none of which offers an outcome-guaranteed, pay-on-acceptance LPA filing product, so no single dominant incumbent is shown to already own this need.
+
+GOV.UK confirms the Powers of Attorney Act 2023 is actively modernising the LPA process and that an online LPA service already exists, showing the regulatory shift behind this opportunity is a live, ongoing change rather than a past event.
+
+The passages are German MediaMarkt retail ads, an Ontario Power Generation history note, an OPG disambiguation page, and a classic car parts catalog — none address demand or paid alternatives for UK Lasting Power of Attorney filing services.
+
+The passages show fee structure changes (LPA Form 1 becoming free from April 2026, others reduced from May 2026) and general OPG guidance/turnaround discussion, but none confirm the claim's core factual assertions — that OPG turnaround 'has stretched past four months' or that a specific 'Powers of Attorney Act 2023' phased online rollout through 2025-2027 exists as described; the one turnaround data point given ([54ed21cc00bcd136]) is anecdotal 2022 forum chatter citing ~3 months, not the claimed four-plus months, and the fee passage actively contradicts the £82-fee framing the candidate…
+
+No passage shows this outcome-guarantee filing model is illegal or barred by rule — the closest evidence is general FCA/SRA/no-win-no-fee material that never addresses a third party charging fees contingent on OPG accepting a form. On distribution, the evidence shows a fragmented field (OPG's own free tool, a charity's free help, an unranked list of will-writers) with no single provider holding a dominant share, and no source states what it costs to acquire a customer or what one is worth over time.

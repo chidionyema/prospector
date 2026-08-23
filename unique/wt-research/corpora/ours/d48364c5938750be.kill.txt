@@ -1,0 +1,29 @@
+The Gig Income Credentialist.
+
+A productized service that transforms fragmented gig-worker earnings into landlord-trusting income packages, boosting rental approval odds for Gen Z earners in competitive markets.
+
+Landlords and property management algorithms in top-5 US rental markets auto-reject applicants with non-traditional incomes, despite sufficient cash flow. A solo operator manually curates gig transaction data into bank-grade income statements and landlord-facing narratives that anticipate and overcome skepticism, mimicking a W-2's trust signals, paid per lease application secured.
+
+23-year-old Uber/DoorDash driver in NYC/SF/LA who has been rejected due to 'unstable income' and will pay $250 flat fee per application to secure a lease.
+
+Rent inflation has hit 30% in these cities since 2020, and automated screening platforms (Yardi, AppFolio) now reject 40%+ of gig applicants instantly. The gig workforce is surging, yet no tenant service bridges the verification gap with human advocacy that landlords actually trust.
+
+The passage describes 'Cleared,' a service that converts fragmented income into verified signals for institutions, and explicitly states it is 'Used by property managers, lenders, and platforms to approve the 70M+ Americans earning from multiple sources.' This indicates an existing market and demonstrable buyer intent for solutions addressing income verification for non-traditional earners.
+
+The passage describes a service used by property managers, lenders, and platforms for income verification, not whether an individual gig worker payer has the budget and motive to pay $250 as described in the candidate's 'who_pays' section.
+
+The passage describes a service that operates with 'no friction' and is 'used by property managers, lenders, and platforms,' indicating existing, low-friction channels for distribution. The 'Book a demo' option also suggests a direct route to engage potential buyers.
+
+The provided passage is merely a blog post title and some links. It does not contain any content that addresses the legality of the proposed service.
+
+The passage describes 'Cleared' as a service 'Used by property managers, lenders, and platforms to approve the 70M+ Americans earning from multiple sources', indicating a real and acute problem that people are paying to solve.
+
+The candidate's 'why now' asserts that 'no tenant service bridges the verification gap with human advocacy that landlords actually trust.' However, the passage describes 'Cleared,' a service that 'converts fragmented income into verified signals institutions understand' and is 'Used by property managers,' directly contradicting the claim of an unmet verification gap for this opportunity.
+
+The passage describes 'Cleared,' an existing service used by property managers, lenders, and platforms that converts fragmented income into verified signals with 'no documents, no friction and no manual review.' This indicates that the core problem the candidate aims to solve (income verification for gig workers to landlords) is already addressed by an automated, widely adopted solution, thereby blocking the route to market for a manual, human advocacy-based service.
+
+The passage confirms the problem of fragmented income for 'institutions' like property managers and states that a service exists to convert this into 'verified signals' for approving individuals with multiple income sources, directly supporting the candidate's core claims.
+
+The core premise of 'The Gig Income Credentialist' is fatally undermined by the existence of an established, automated competitor, 'Cleared' (source_id: cc538f22d80a3903). The candidate's 'why now' asserts that 'no tenant service bridges the verification gap with human advocacy that landlords actually trust.' However, 'Cleared' directly refutes this by providing an existing solution that 'converts fragmented income into verified signals institutions understand' and is explicitly 'Used by property managers, lenders, and platforms' to approve non-traditional earners (currency: refuted, source_id: cc538f22d80a3903). 
+
+This existing automated solution for landlords creates an insurmountable barrier for the proposed manual, human-advocacy service. 'Cleared' operates with 'no friction and no manual review,' indicating a preference for efficiency and automation within the target market of property managers. Consequently, the 'route to market' for a manual service is effectively closed, as landlords already have a preferred, integrated, and frictionless method for income verification (route_to_market: refuted, source_id: cc538f22d80a3903). Without a viable route to reach and convert customers due to a directly competing, superior solution already embedded in the market, the business cannot secure a reachable paying customer base necessary to generate any owner income.

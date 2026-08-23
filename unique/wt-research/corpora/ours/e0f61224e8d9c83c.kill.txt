@@ -1,0 +1,23 @@
+The Care Home Overcharge Revealer.
+
+A personalized data report that arms self-funding retirees with FOI-sourced evidence of the ‘self-funder subsidy’ gap for their specific care home, enabling hard negotiation of fairer fees.
+
+By inverting the typical reliance on care homes’ pricing, a solo operator compiles a proprietary dataset of local authority vs. self-funder rates per home, delivering a report that the retiree uses as leverage—value grows as care home margins tighten and the dataset deepens.
+
+A retiree in South East England about to enter residential care or currently self-funding, managing their own budget and facing fees of £800+ per week.
+
+Care homes increasingly cross-subsidise low council fees by overcharging self-funders; recent FOI rulings make it possible to systemically extract pricing data from hundreds of councils. High inflation makes fee negotiation urgent, and a solo can build a database that no single charity or regulator will assemble due to the adversarial workload.
+
+The only passage concerns Australian superannuation tax concessions versus the aged pension; it says nothing about UK care home fees, the self-funder subsidy gap, or the durability of FOI-sourced pricing data. No passage addresses whether this value is real or evaporating.
+
+The only passage concerns Medicare Part D EGWP vs RDS drug plans under the US Inflation Reduction Act; it says nothing about UK care home self-funder pricing data, FOI fee reports, or any incumbent serving that need.
+
+The only passage concerns the insolvency of the US Social Security retirement program and says nothing about UK self-funding retirees paying £800+/week for residential care, so it does not address whether this payer has budget or motive.
+
+The sole passage concerns self-funded Employer Group Waiver Plans and PBM/CMS contracting for US employer plan sponsors; it says nothing about a distribution route to self-funding UK retirees for a care-home pricing report.
+
+The only passage is 2009 US Medicare Retiree Drug Subsidy guidance on PBM rebate reporting; it says nothing about the legality of compiling FOI-sourced UK care-home pricing data or fee-negotiation reports. No passage addresses the candidate's margin or its lawfulness.
+
+The sole passage concerns US IRA/401(k) withdrawals and ACA Marketplace subsidies; it says nothing about UK care home fees, self-funder cross-subsidy, or retirees paying to negotiate care costs.
+
+No evidence-based kill exists. All six checks returned `unverifiable` at confidence 0.0 because retrieval surfaced zero on-topic passages: every source is about an unrelated jurisdiction or product. value_durability cites Australian superannuation tax concessions (30a53f3bbbe5e4a7); incumbency cites US Medicare Part D EGWP vs RDS (2946819d2849de5f); payer_solvency cites US Social Security insolvency (96bf74b8bf26b22a); distribution cites US self-funded Employer Group Waiver Plans (0f36a7219de93298); legality cites 2009 CMS Retiree Drug Subsidy rebate guidance (edc744145a0287f1); pain_reality cites US IRA/401(k) ACA-subsidy interactions (5a4d52061e4eceab). Not one passage mentions UK care homes, the self-funder cross-subsidy gap, FOI-sourced pricing data, £800+/week residential fees, or fee negotiation. Under verdict-from-retrieval-only and publish-only-on-PASS, an idea with no grounded support on any of the six gates CANNOT clear the bar and is blocked from publication. But that is a kill on the grounding/publication bar (absence of evidence), NOT a demonstrated failure mode. No passage refutes pain_reality, names an incumbent that captures this value, shows the payer lacks budget, closes the distribution channel, or makes the FOI data unlawful. The honest verdict is DEFER pending real retrieval, not a decisive evidence-based kill. To actually kill or pass this, re-run the moat with queries that hit UK sources (e.g. CMA care-homes market study on self-funder fee differentials, LaingBuisson rate data, Which?/Age UK fee guidance) so each check rules on passages that are actually about the thesis.

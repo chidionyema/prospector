@@ -1,0 +1,29 @@
+ExtensionRot, shows which browser add-ons died.
+
+A weekly data feed for operations managers that names the Chrome and Edge browser add-ons their staff rely on that have just been pulled, abandoned or quietly sold.
+
+An operations manager in a 40-person firm discovers on a Monday that the PDF-signing add-on half the team uses has vanished from the Chrome Web Store. Nobody warned them. The work stops, and they spend a day finding a replacement and re-training people.
+
+This is a paid weekly intelligence sheet, not a tool. You submit the list of add-ons your staff use once. Each week you get a short report: which ones were removed from the store, which stopped getting updates, which changed owner, which added new permissions, and what the safe swap is.
+
+The data comes from something you build and nobody else keeps: a daily snapshot of every listing you track. Google publishes today's state of the store, never yesterday's. Once an add-on is pulled, its page is simply gone. So a record of what was there, when it disappeared, and what its permissions were the week before is only obtainable by watching every day from now on. Miss a day, and that day is unrecoverable forever. That is the asset, and it compounds from the day you start.
+
+This takes the shape of a business that grows stronger the harder the rule-maker pushes. Google's Manifest V3 changeover forces add-ons to be rebuilt or dropped, and Google itself cannot publish a running list of what died, because that list is a public accounting of its own store's breakage. It also cannot tell a customer which specific add-ons to distrust — that is a commercial opinion a platform owner will not put in writing. You can.
+
+The UK grounding is the buyer's duty, not a British store. An operations manager here answers to the Information Commissioner's Office under UK GDPR for what happens to personal data. A browser add-on with read-access to every page staff visit is a data processor sitting inside the business. When an add-on changes hands quietly, the firm has a new processor it never approved. The report names that event, dated, so the manager has something to put in the record the ICO expects.
+
+A solo operator runs this with a scraper on a schedule and an AI pass to write each week's summary. Distribution is free: post the monthly public list of dead add-ons, and the people who lost one come looking.
+
+This is the tech-vertical shape. The ecosystem is the Chrome and Edge add-on stores. The buyer is the operations manager. The trigger is the weekly report. The public source that proves the pain is already paid for is Google's own Manifest V3 timeline and its published removal policy, which force firms to fund replacements on a deadline.
+
+Operations managers in UK firms of roughly 20 to 250 staff who own the IT tooling nobody else owns, typically in law firms, recruitment agencies, accountancy practices and logistics offices. They pay around £39 a month per company for the weekly sheet.
+
+Google's Manifest V3 changeover is retiring older add-ons in waves, so removals and forced rewrites are happening constantly rather than rarely. At the same time UK firms are being held to account by the Information Commissioner's Office for knowing who processes their staff and customer data, and a browser add-on that reads every page is exactly that.
+
+The passages only describe what Chrome is, when it was built, Google's search share, and a set of 2020 Google service outages; none of them mention browser add-ons being removed, abandoned or sold, and none show anyone searching for or paying for a service that tracks this. The evidence says nothing about what UK operations managers currently do or spend when an add-on they rely on disappears.
+
+The passages show the Chrome extension platform change that drives this business is happening right now and continues into the future: older-style (Manifest V2) extensions stop working for anyone on Chrome 139 or later, one Chrome extension is being retired on 31 August 2026 as V2 support ends, and Microsoft is still telling developers that now is the time to move their Edge extensions to the new format. That is an ongoing, forward-dated wave of extensions breaking or being pulled, not a finished event from an earlier year.
+
+The passages describe what system administrators do and how help desk platforms serve them [9562cc992f9c1225, 0b3f30440a783074, 3b6df9a3636b121c], and separately discuss web scraping etiquette and blocking [0dbe219478434840, ea6eb9b6fbef64ea, 9ef2a77ee08836a3], but none of them say anything about how a seller would reach UK operations managers — no advertising channel, marketplace, publication, community or existing audience is named.
+
+The passages describe scraping Google Search results and Google Maps, noting Google's terms forbid data extraction while U.S. courts have found scraping public information lawful [0c2c040c7516e87d, 813788f762ad5aab], and separately warn that automated access to logged-in areas can breach site terms [2db284e5f1666463] — none of this addresses the Chrome Web Store's own terms, UK law, or whether daily snapshots of public add-on listings are permitted.

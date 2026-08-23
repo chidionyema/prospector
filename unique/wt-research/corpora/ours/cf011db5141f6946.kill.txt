@@ -1,0 +1,27 @@
+The Hospital Discharge Logistics Optimiser.
+
+A solo-operated micro-SaaS that predicts NHS hospital discharge bottlenecks and routes patient transport (non-emergency) using real-time ambulance, taxi, and volunteer-driver availability, charging per successful discharge routed.
+
+Combine_signals: NHS discharge delays (signal A) + gig-economy driver availability (signal B) + real-time traffic API (signal C). The friction is that discharge coordinators spend hours phoning around for transport, causing bed-blocking. A solo can build a lightweight API-integrated router that aggregates multiple transport sources and auto-assigns, taking a cut per routed discharge.
+
+NHS hospital discharge coordinators (Banding 5-7) who have a small discretionary budget for 'patient flow improvement tools' (often via the hospital's transformation fund).
+
+NHS England is under extreme pressure to reduce delayed transfers of care; the 2024/25 planning guidance mandates trusts to use technology to cut discharge times. No single product currently aggregates all available transport options into one decision-support tool for coordinators.
+
+The passage confirms that NHS Trusts are already paying for and utilizing intelligent scheduling platforms to replace fragmented transport systems, demonstrating clear buyer intent for solutions to this problem.
+
+The passage confirms an ongoing, high-impact need within the NHS, citing 13,000 daily delayed discharges and £2 billion in annual costs, which demonstrates the issue is current and active.
+
+The passage discusses the importance of patient flow and transport efficiency in healthcare but does not provide information regarding channels, markets, or actionable routes to reach potential NHS buyers.
+
+The passage describes an existing platform that utilizes an owned EV fleet to manage NHS transport, but it does not address the legality or regulatory compliance of the candidate's proposed approach of routing patients using external gig-economy drivers and volunteers.
+
+The passage identifies 'Flock', an existing platform that manages and aggregates NHS transport, directly refuting the candidate's claim that no single product currently provides total visibility or aggregates these transport options.
+
+The passage discusses the operational challenges and importance of digitizing patient transport procurement, but it provides no evidence regarding the financial capability, budgetary authority, or willingness of NHS discharge coordinators to pay for such software.
+
+The provided passage discusses the general importance of patient flow and transport optimization but does not address the distribution channels or the sales process required for a new micro-SaaS to reach NHS discharge coordinators.
+
+The provided passage describes a technical repository for predicting ambulance handover delays, but it does not contain evidence regarding the current pain, urgency, or payment for hospital discharge transport logistics solutions.
+
+The core hypothesis that 'no single product currently aggregates all available transport options' is refuted by existing incumbents like Flock. Flock already provides an integrated scheduling platform for the NHS that manages fragmented transport—including taxis, rentals, and shuttles—on a single, centralized system. Because the proposed value proposition rests on a claim of non-existence that is factually incorrect, the viability of entering this space as a solo operator to disrupt established, enterprise-integrated competitors is severely compromised.

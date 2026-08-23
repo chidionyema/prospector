@@ -1,0 +1,23 @@
+DarkHours — The Shift-Worker Sleep-Cave Retrofit.
+
+A mobile install service that engineers a measured blackout-and-silence bedroom for night-shift NHS and emergency staff, guaranteeing a lux, decibel and temperature spec rather than selling products.
+
+combine_signals lens: fuse the shift-work circadian-harm signal (relentless 24/7 NHS/emergency rostering plus growing occupational-health recognition of shift-sleep disorder) with the price collapse of smart lux/decibel/temperature sensors. A solo operator surveys, installs and re-measures each bedroom, compounding a proprietary before/after dataset of housing archetype × shift pattern × achieved sleep metrics that lets them guarantee and price an outcome no product retailer can.
+
+Home-owning or long-let night-shift nurses, paramedics, and prison/police staff aged 30-55 with household budget authority who are chronically sleep-wrecked by day-sleeping.
+
+Expansion of round-the-clock public services, a sharpening occupational-health focus on staff fatigue, and the cheapening of environmental sensors that make an outcome guarantee measurable for the first time.
+
+Passages [4394dda4e082111c] and [b7c63f27448e3465] show shift workers have higher prevalence of insomnia and mental disorders, and that the harm from working/sleeping misaligned with natural light is 'consistent and powerful' — a real, durable basis for a sleep-outcome service. The blackout-blind and earplug listings [208f300c2153f67f, b218c5097fb2017e] are undifferentiated products, not a measured sleep outcome, so they do not commoditise the value away.
+
+The passages describe commodity blackout products (curtains, window covers) sold to night-shift workers, but none address whether any incumbent offers a measured, guaranteed lux/decibel/temperature retrofit service — the specific space this candidate occupies. Product listings are not a dominant incumbent solving the outcome-guarantee need, so the incumbency question is not addressed.
+
+Passage [4c7b038005d07c6a] confirms UK paramedics are salaried employees earning £17.40/hour on active NHS-adjacent contracts, and [6dd94c98b919a165] shows a 10.1% pay rise this month boosting two million workers, so the target payer is employed and has income; this affirms the payer can pay, matching the commonsense-deduction standard of Precedent 1.
+
+Passage 54791b763e8f9395 shows executable digital channels to reach paramedics — association media plus paid search that 'can capture high-intent queries' — and 49fc25966ea3086b confirms full-stack marketing channels exist to reach night nurses, so a route to the target night-shift EMS/nursing buyer exists.
+
+The passages describe a lawful trade context — tradesman public liability insurance is available for property-damage/injury exposure [8a7121bc8d5a5d9a][5b82d1ae484ffa97], and building regulations apply only to controlled works like plumbing/electrical/heating [99450fdca670afc5], none of which are core to blackout/silence fitting; nothing indicates the margin requires illegality or falsifying measurements. Fitting blinds and measuring lux/decibel/temperature is ordinary lawful tradesman work with standard insurable/regulatory paths.
+
+Passages [c249bc60744a1ab6] and [79edfe067470f374] confirm night-shift nurses suffer significantly poorer sleep quality and struggle to sleep during the day, and [12478e01909d629e] shows workers actively adopt blackout curtains/masks as 'saving graces' — evidence the pain is real, acute, and people take action to solve it. The problem the candidate targets is directly affirmed.
+
+No objective risk vectors are present: the legality check confirms this is ordinary lawful tradesman work with standard insurance/regulatory paths, and the distribution channel is fragmented across commodity blackout-product sellers (247blinds, Amazon listings, BlackoutEZ) with no single company controlling 80%+. No evidence in the passages addresses customer acquisition cost versus lifetime value.

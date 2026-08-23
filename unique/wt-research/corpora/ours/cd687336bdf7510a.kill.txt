@@ -1,0 +1,21 @@
+California employee-monitoring notice for HR software.
+
+For HR software vendors, a fixed-price service that delivers a California Labor Code § 435 employee-monitoring notice, acknowledgment, and posting per customer.
+
+California Labor Code § 435 requires every California employer to give employees advance written notice of any electronic monitoring of their activities, with a signed acknowledgment and a posted workplace notice. The notice must describe 'the types of electronic monitoring the employer conducts'. Violations are misdemeanors (§ 435(d)) and have supported private claims since 2020; the California Labor Commissioner has pursued class claims on behalf of employees who never received the required notice.
+
+HR software vendors selling AI monitoring tools (productivity trackers, sentiment analysis, keystroke loggers, badge access AI, video surveillance AI) in California need a § 435 notice for each new customer rollout, because each customer monitors different activities. Employment attorneys charge $300-600 per hour to draft a single notice, and the notice has to be updated each time the monitoring tool adds a feature.
+
+This is a fixed-scope productized service. For one HR software vendor at a time, you produce a turnkey § 435 pack - model notice, acknowledgment form, posting language, and FAQ - all customized to the specific data the monitoring tool collects. What compounds after each engagement is a library of acceptable notice patterns per monitoring category (keystroke, video, badge, audio, AI productivity), plus a record of which phrasings survive employee and Labor Commissioner review - assets a copycat would have to acquire through costly legal fees.
+
+Heads of People Operations and Heads of Legal at HR software vendors selling AI monitoring tools (productivity tracking, sentiment analysis, keystroke logging, badge access AI, video surveillance). They pay employment attorneys $300-600 per hour to draft a single § 435 notice, and need one notice per customer rollout because each customer monitors different activities.
+
+Labor Code § 435 has been enforced by the California Labor Commissioner since 2020, but the rise of AI workplace monitoring tools since 2022 has dramatically increased the volume of monitoring activities that require notices. The Labor Commissioner has pursued class claims on behalf of employees who never received the required notice, and HR software vendors that deploy monitoring tools without § 435-compliant customer templates expose both themselves and their customers to enforcement.
+
+The passages are general job-search pages (UK-focused) and encyclopedia entries about California as a state; none address California Labor Code § 435, employee-monitoring notice compliance, HR software vendor purchasing behavior, search demand for such services, or any existing paid alternatives. Because no passage shows people actively searching for or paying to solve this specific need, buyer intent cannot be assessed from this evidence.
+
+The passages contain only generic geographic and demographic facts about California (statehood, population, borders, terrain) and say nothing about California Labor Code § 435, employee-monitoring requirements, HR software, or any current regulatory or market trend.
+
+None of the passages describe a channel, marketplace, ad platform, or audience a novice could use to reach HR software vendors selling AI monitoring tools in California; the sources only reference a general UK HR software product (HRLocker), a generic perks/marketplace tool, and general HR career guidance.
+
+The passages cover only general geography, history, and government services of California and contain zero discussion of California Labor Code § 435, employee monitoring statutes, or any legal/compliance mechanism — they do not address whether the proposed notice-drafting service is lawful.

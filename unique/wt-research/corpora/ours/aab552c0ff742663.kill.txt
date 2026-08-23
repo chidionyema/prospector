@@ -1,0 +1,23 @@
+The State Pension Gap Finder.
+
+A personalised data intelligence report that analyses an individual's work history against the known categories of DWP underpayments, delivering an instant probability score and appeal blueprint.
+
+The DWP has admitted underpaying billions to married women, widows, and the over-80s. While they run correction exercises, many retirees remain unpaid and unaware. The DWP's own tools are incomplete and slow. By reverse-engineering the underpayment categories from DWP's own statistics and public data, a solo can build a proprietary algorithm that, fed a few key life events, produces a personalised likelihood assessment and step-by-step claim guide, sold directly to worried retirees.
+
+A retiree who suspects they or a deceased spouse were underpaid; pay £19.99 for the report and claim pack.
+
+The DWP's LEAP exercise deadline pressures and recent parliamentary scrutiny (e.g., 2024 committee reports) have heightened awareness, but 100,000s still haven't been contacted. Fear of missing out drives demand.
+
+None of the passages address State Pension underpayments, DWP correction exercises, or whether a personalised underpayment-likelihood report retains durable value; they concern a DWP jobs/careers service, an AI CV analyser, and a general AI-reform paper. There is no passage affirming or negating the durability of this specific value.
+
+All three passages concern career/job-matching intelligence tools (Market Fit Report, Datasumi job matching, Jobography), none of which address the DWP state-pension underpayment space the candidate targets, so they neither establish nor rule out an incumbent.
+
+None of the passages address whether the payer (a retiree suspecting pension underpayment) has the budget or motive to pay £19.99; they concern insolvency practitioner tooling, firms identifying vulnerable customers, and consumer affordability data for lenders. No passage speaks to this cohort's ability or willingness to pay.
+
+The passages concern DWP's jobs and careers service, AI in jobcentres, and data-science 'interventions' for out-of-work benefit claimants; none address any route, channel, or forcing mechanism for reaching retirees who suspect state-pension underpayment.
+
+None of the passages address the legality of analysing public DWP underpayment data and selling a personalised probability report and claim guide to retirees; they concern background checks, an AI compliance advisor, and the Baseline Personnel Security Standard. With no passage on point, legality cannot be affirmed or refuted.
+
+All three passages concern DWP jobs/careers services and AI trials in job centres; none address state pension underpayments to retirees, widows, or the over-80s, so they say nothing about whether that specific pain is real or whether people pay to resolve it.
+
+No KILL can be grounded on the evidence: all six checks returned `unverifiable` at confidence 0.0 with zero on-point citations. Every query retrieved off-target material — DWP's jobs/careers and Jobcentre AI services (c044930993c35e0e, 0453d2b9eef0f741, 0ff892f6fd7e7c67, d1cac92760f2ef43), a DWP AI-reform think-piece (dc3951cb4b049675), and unrelated career/insolvency/vetting tools (5b5353508f8c3ba7, ac06cae2ae5f0a5d, e84cafccac75a350, 1fcbf5ed7532dc88, b8a24c0a3d4ef86b, e552506f67c76496, 0549d067172eff77, 2745603caf927c25, 1a0d03703a35ab1c, 5e5031ec7f6aa17d). Not one passage touches State Pension underpayment, the LEAP correction exercise, married-women/widow/over-80 arrears, or willingness of retirees to pay £19.99 for a claim pack. The only adjacent signal — that 'personalised data intelligence reports' are a commoditised form often given away free (resufy free AI CV analyser 5b5353508f8c3ba7; Market Fit Report ac06cae2ae5f0a5d; jobography 1fcbf5ed7532dc88) — is in a different domain and cannot carry an incumbency or value-durability kill. Per verdict-from-retrieval-only and publish-only-on-PASS, this candidate cannot PASS: pain_reality, payer_solvency, value_durability, incumbency, distribution and legality all lack any supporting passage, so it is blocked from publication. But that block is a RETRIEVAL FAILURE, not a demonstrated hard fail — no passage refutes the thesis. The honest verdict is DEFER/re-vet with on-target queries (DWP LEAP underpayment statistics, FCA claims-management-company regulation of paid benefit-claim assistance, Age UK/Citizens Advice free coverage), not a decisive KILL.

@@ -1,0 +1,27 @@
+ERCOT interface tests for Texas energy software agencies.
+
+Test each client connection against new ERCOT market rules, then return a reviewed patch, failure report and rollback plan.
+
+ERCOT interface tests are a productized service for the owner of a small Texas energy software agency with live grid integrations. It commits to the technology-vertical model, option B. A new protocol requirement, market message, validation schedule, effective date, or affected client connection starts a replay. The team builds a minimal public-interface test set, runs the agency's private connection, and returns a reviewed patch, failure report, and rollback plan. The output is a signed engineering decision, not a general monitoring tool.
+
+Texas Utilities Code Section 39.151, ERCOT's Nodal Protocols and public revision process, and Texas Workforce Commission occupation data are the public sources. The buyer already pays electrical engineers, software developers, and systems integrators to interpret market changes and repair private connections.
+
+The accumulating advantage is a library of versioned test files, timestamp and error signatures, and approved repairs. A new provider starts without the client's past failures and accepted repairs. After each relevant public revision, the team sends a free impact note to integration firms and agencies in public ERCOT participant channels. The first fixed-fee replay can become a standing per-version agreement. A founding team automates test generation while grid engineers review exceptions.
+
+It fails on abstract rule changes that have no executable behavior and on one-off integrations with no release cadence.
+
+The owner of a small Texas energy software agency with live ERCOT integrations pays a fixed fee in U.S. dollars per affected protocol revision or client connection. That owner already funds grid engineers, software developers, and release work to interpret and repair those interfaces.
+
+ERCOT's Nodal Protocols and public revision process change the messages, schedules, and validation rules used by market participants. The Texas Public Utility Commission oversees ERCOT, while Texas Workforce Commission data shows electrical engineers and software developers are established paid roles. Vendors need an adapter-level decision, not a copy of the release notice.
+
+The passages confirm ERCOT operates as an independent system operator managing grid reliability and a competitive wholesale market, but they do not address whether ERCOT's Nodal Protocols change frequently enough to sustain demand for private interface testing, whether agencies pay for such services, or whether the value is durable or already commoditised.
+
+The passages describe ERCOT's role as the independent system operator, its responsibilities, and its public dashboards, but none identify or characterise any commercial provider of ERCOT interface testing services for software agencies. The competitive landscape of this specific niche is not addressed.
+
+The passages confirm Texas leads in energy, computers and electronics, and has a strong overall economy with 52 Fortune 500 companies, while Houston is described as a global energy center—establishing that small energy software agencies operate in a financially healthy sector with reason to pay for specialized interface testing. However, no passage directly addresses the specific budget or motive of small Texas energy software agency owners to purchase ERCOT interface test services, so confidence is limited.
+
+The passages describe ERCOT's responsibilities, public dashboards, and governance, but none of them identify or confirm a reachable channel to small Texas energy software agencies with live grid integrations, nor do they mention public ERCOT participant channels or integration firms as accessible distribution routes.
+
+The passages describe ERCOT's role as an independent system operator managing grid reliability and wholesale markets but say nothing about whether third-party testing of private participant connections is permitted, restricted, or prohibited under any law or ERCOT terms of service.
+
+The passages describe ERCOT's organizational role, responsibilities, and basic corporate facts, but never mention protocol revisions, software agencies with live grid integrations, or any evidence that such agencies currently pay third parties to test private connections against ERCOT changes.

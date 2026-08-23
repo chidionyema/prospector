@@ -1,0 +1,6 @@
+DRY-RUN: 10 listed pack(s) from https://prospector-store-api.fly.dev/catalog
+
+  [   would-convert] a884727a1b90447c  252519B -> 240020B (-12499B, reordered reader, manifest refreshed)
+  [   would-convert] 8d5a441749448b69  212067B -> 204662B (-7405B, reordered reader, manifest refreshed)
+  [   would-convert] 1723d378cff66ebc  245491B -> 231412B (-14079B, reordered reader, manifest refreshed)
+  [   would-convert] 6778067cc84ea422  260135B -> 248215B (-11920B, reordered reader, manifest refreshed)

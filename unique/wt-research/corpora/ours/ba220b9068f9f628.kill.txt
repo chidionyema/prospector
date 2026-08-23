@@ -1,0 +1,23 @@
+CrashProof Kit — test a used child car seat for hidden structural damage before you buy.
+
+A home-use load test kit that helps parents check a second-hand car seat's crash-worthiness, so they can buy used without the worry.
+
+Parents keen to save on childcare essentials buy second-hand car seats on Facebook Marketplace and Gumtree but have no way to tell if a seat’s crash‑absorbing structure is intact after an unseen impact. The CrashProof Kit fills that gap. It includes a calibrated load cell that clips onto the seat’s harness, a smartphone app that guides the user through a standard pull test, and a database of new‑seat resistance benchmarks built from manufacturer‑published specifications and anonymised test results. The app compares the live reading with the expected range and gives a clear pass or investigate‑further result. It works with the two UK car seat regulations parents meet every day: the older UN ECE Reg 44.04 and the newer R129 (i‑Size). Because every test feeds back into the dataset, the analysis sharpens with each use, making it harder for a copycat to offer the same accuracy without an equivalent crowd‑sourced history. The kit is sold directly online, and a solo operator can run everything — from order fulfilment to app updates and customer queries — with ordinary e‑commerce tools and an AI assistant that interprets the sensor data and automates support.
+
+Budget‑conscious parents who work in public‑sector jobs — nurses, teachers, council staff — and need to keep childcare costs down without gambling on safety. They buy the kit as a one‑time purchase to use whenever a second‑hand seat catches their eye.
+
+The cost‑of‑living squeeze has sent more families to second‑hand markets, at the same time as media reports of counterfeit and damaged car seats appearing online have made parents nervous. Fusing the circular‑economy instinct with a physical safety check gives parents a way to buy used with confidence — something neither the manufacturer nor a regulator’s static advice sheet can provide.
+
+Passages state that crash impact can leave hidden structural damage that makes a car seat fail in a later accident, and that insurers destroy seats so unsafe ones are not reused unknowingly. They also say parents still turn to second-hand seats as living costs rise, and nothing in the passages shows a free or bundled alternative that already removes the need for that safety check.
+
+The passages only describe industrial and laboratory seat testing for manufacturers and development centres (ZwickRoell, Calspan, general automotive seating labs) plus Consumer Reports’ vehicle rear-seat fit evaluations. They never say whether any company already sells parents a dominant home kit, or equivalent product, to check second-hand child seats for hidden crash damage.
+
+The only on-topic snippets say many parents find summer childcare costly and that 29% borrow or go into debt for it, plus that some low-income families miss support schemes—none of that shows these parents can or will buy a one-off car-seat test kit. The remaining passages are about outdoor space, NHS navigation, New Zealand nursing jobs, and booking an appointment, so they never speak to this buyer’s budget or willingness to pay.
+
+Amazon.co.uk shows live listings for personal safety and personal protection devices, so a UK online retail channel already sells comparable consumer safety hardware. That is an executable, low-friction route for a home-use safety kit sold online.
+
+None of the passages say whether selling a home load-test kit for used child car seats is allowed or banned in the UK, or whether the business needs illegal conduct or false readings to make money. They only mention where to seek product-regulation advice, foreign certification or consumer bodies, counterfeit-seat warnings, and that used seats can be expired or crash-damaged.
+
+Passages show some parents buy used car seats and that crash impact can leave unseen internal damage that weakens protection, but none show anyone paying for, or actively seeking a paid way to check, a second-hand seat’s structure before purchase. They never establish that this worry is acute enough that people are spending money on a fix today.
+
+The passages never say UK law bans a home load-test kit for used child car seats, never state what it costs to win one buyer versus what that buyer could ever pay for the kit, and never name any single firm that controls most of the sales channel. Amazon.co.uk instead shows live listings for personal safety hardware, which points to an open online path rather than a locked channel.

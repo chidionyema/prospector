@@ -1,0 +1,21 @@
+GigPay Reclaim – the gig worker’s fixed-fee service that gets your unpaid holiday pay and minimum wage.
+
+A fixed-fee service for UK delivery and rideshare gig workers to claim back wages and holiday pay owed after worker-status rulings.
+
+Gig platforms like Uber, Deliveroo, and Just Eat often treat their couriers and drivers as self-employed contractors. But UK courts and tribunals have repeatedly ruled that many of these people are actually workers with a legal right to holiday pay and the national minimum wage. (The trade calls this worker status.)
+
+Most couriers don’t claim what they’re owed because the process is complex and they’re busy working. This service changes that. For a fixed fee — or a percentage of what you get back, whichever you prefer — we calculate the exact amount your platform should have paid you, write the legal claim, and handle the back-and-forth until you’re paid.
+
+It works because we’ve mapped the winning legal arguments from cases like Uber v Aslam and put them into a repeatable, platform-specific process. A small team of paralegals can run it for hundreds of workers at once. The law is on your side; we just get you the money.
+
+A gig worker who has been treated as self-employed and missed out on holiday pay or minimum wage. They pay either an upfront fixed fee from £99 or a 25% success fee from the recovered amount – whichever the worker chooses.
+
+The Supreme Court’s Uber ruling in 2021 made worker status for private-hire drivers clear, and more claims are succeeding against delivery platforms. At the same time, the cost-of-living crisis means every missed pound hurts. But no simple, fixed-fee service exists to help couriers actually claim – so they leave the money on the table.
+
+One passage is a live price list from a firm selling exactly this kind of help to employment-claim claimants — fixed-fee claimant work, tribunal matters, a £150 paid advice appointment, and a 25% cut of any extra money won — which is the same money-back-from-employer service, sold on the same fee terms the candidate proposes [bdb71973e9365e38]. Other passages show a steady flow of people taking employer disputes through the free ACAS conciliation route before tribunal, with roughly 35% of cases settling, so claimants are actively pursuing these claims now [600664191d06d703, 6c25230c2ed94c86, 6
+
+The passages only describe how much London Uber drivers earn in general terms, note that 4.4 million people in England and Wales used gig platforms weekly in 2021, and say that 24% of ethnic minority gig workers rely on it as their main income — none of them state what gig workers earn net, whether they have spare cash, or whether they pay anyone to pursue wage claims [e6d568cf522b49e4][da5131401dd06040][9a5a2fd239579967][2a7c59f3a02f4943][5c453d07aafcd04f]. Nothing here shows these workers would part with £99 upfront or a quarter of a payout, so the question of whether they can and will pay i
+
+The passages show large online communities of UK Deliveroo riders (a 48,016-member group) and Uber's account-deactivation appeal process, but they only discuss account activation, account renting, and deactivation reviews — nothing about how a wage-claim service would reach these workers, whether such groups permit or carry commercial offers, or any existing route through which couriers are sold help recovering pay. A crowd existing somewhere online is not shown here to be an executable channel for this offer.
+
+The passages describe a licensing route rather than a ban: firms that pursue claims on someone else's behalf must be authorised by the Financial Conduct Authority, pay its fees, and follow its conduct rules, which expressly contemplate charging clients within capped fees plus pre-contract disclosure and client-money handling [6a620dfddb5e7baa][b190205053b45937][f5c5512aa6b4f5fb]. Nothing in the passages prohibits paid help with employment tribunal claims, so the money can be earned lawfully provided the firm gets authorised and stays inside the fee caps [fdfeee0ee25dcd25][d50781d5f2f06026].

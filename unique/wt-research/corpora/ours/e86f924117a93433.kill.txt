@@ -1,0 +1,21 @@
+TX-RAMP mapping for Texas state cloud vendors.
+
+AI maps a vendor's existing FedRAMP or StateRAMP package to Texas DIR's TX-RAMP control catalog and produces a Texas DIR-ready System Security Plan in days, not consultant weeks.
+
+Texas state agencies buy cloud through DIR Cooperative Contracts, and DIR will not let an agency buy from a cloud vendor without a TX-RAMP-certified System Security Plan. TX-RAMP is Texas's own cloud security program, anchored in 1 TAC Chapter 211 and Texas Government Code Section 2054.002, and has Texas-specific controls such as the 60-day breach clock under the Texas Identity Theft Enforcement and Protection Act at Tex. Bus. & Com. Code Section 521.
+
+The tool ingests a vendor's existing FedRAMP or StateRAMP package, identifies the TX-RAMP deltas, generates the missing narratives, and submits through DIR's TX-RAMP portal. Texas state cloud spend runs three billion dollars-plus annually through DIR, and the DIR review backlog runs six to twelve months. Vendors currently pay Texas-state-procurement consultants $25,000 to $100,000 per TX-RAMP engagement.
+
+The vendor's TX-RAMP submission history and DIR review feedback accumulate as proprietary data that a new entrant cannot recreate. Each annual DIR Security Control Standards Catalog update forces re-validation, and switching cost grows as the tool becomes embedded in the vendor's annual DIR Cooperative Contract cycle, with each submission compounding the private dataset.
+
+Founder or Director of Public Sector Compliance at a Texas-focused cloud SaaS vendor who needs TX-RAMP certification to win DIR Cooperative Contracts without hiring a Texas-state-procurement consultant.
+
+Texas DIR Cooperative Contracts awarded over three billion dollars in cloud spend in the last fiscal year, and the TX-RAMP review backlog runs six to twelve months; cloud SaaS founders who automate TX-RAMP submission now lock in state contracts before the queue clears.
+
+The passages (a FiveM server management tool, a Texas state encyclopedia entry, Texas.gov's general portal, and a TX abbreviation definition) never address TX-RAMP, DIR Cooperative Contracts, cloud security certification, FedRAMP/StateRAMP, procurement consultancy fees, or any cloud vendor compliance pain point.
+
+The passages contain no information about Texas DIR Cooperative Contracts, TX-RAMP certification, cloud vendor compliance budgets, or any evidence that the targeted payer has the budget or motive to pay for this tool.
+
+The passages cover Texas geography, the Texas.gov portal, a Gmail description, and a dictionary abbreviation; none address TX-RAMP, DIR Cooperative Contracts, cloud-vendor procurement channels, or how a compliance-mapping tool reaches its buyer, so no distribution route can be confirmed or denied from this evidence.
+
+No passage addresses TX-RAMP, DIR, FedRAMP, cloud security compliance, or any topic related to the legality of automating Texas state cloud vendor security certifications; the provided passages cover Texas history, the Texas.gov website, the abbreviation TX, and patient management software, none of which speak to whether the proposed margin is lawful.

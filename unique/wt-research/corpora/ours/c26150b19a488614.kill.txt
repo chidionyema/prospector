@@ -1,0 +1,23 @@
+Pub Cellar Yield Optimizer.
+
+A vertical tool for UK pub landlords that automates the monthly cask ale wastage audit and supplier rebate claiming process, charging a fixed fee per successfully recovered pound.
+
+The creative lens is first_principles: the pain is not 'compliance' or 'inventory management' but simply that every UK pub landlord loses £200-500/month in unsold cask ale that suppliers have contractual obligations to refund, but the paperwork is manual and time-consuming. The signal is the rise of 'craft beer' margins squeezing traditional pub profitability and the 2023 UK hospitality sector's 12% insolvency rate. The tool ingests EPOS data, photographs of ullage (wasted beer), and supplier price lists; auto-generates the rebate claim forms; and tracks the payment. The durable wedge is switching_cost: once the landlord's historical purchase and waste data is in the system, switching to a manual process or a generic accounting tool would lose the auto-claimed rebate history and supplier-specific claim templates, which are non-transferable.
+
+UK pub landlords (freehold or tied) managing 1-5 pubs, paying a 25% contingency fee on recovered rebates plus a £50/month base subscription.
+
+UK pub margins are at a 20-year low; cask ale waste averages 8-12% and is rising with declining footfall; supplier rebate terms are standard but enforcement is manual; no incumbent tool claims this specific £200-500/month leak.
+
+The passage discusses general pub profitability and a different tool addressing labour, cash, and VAT, but does not provide information regarding the specific value of a cask ale wastage audit or supplier rebate claiming process.
+
+The provided passage describes a tool managing labour percentages, cash position, and VAT liability, but it does not address whether solutions exist for cask ale wastage audits or supplier rebate claiming.
+
+The passage confirms a single landlord's willingness to pay a one-off £97 fee for a different tool, but it does not provide evidence regarding the target segment's ability or willingness to pay the candidate's proposed recurring £50/month subscription plus a 25% contingency fee.
+
+The provided passage describes a different product, 'Pub Command Centre', and contains no information regarding the distribution or accessibility of the 'Pub Cellar Yield Optimizer'.
+
+The provided passage outlines guidance for accounting for draught product waste that is unsaleable within the context of rent proposals under the Pubs Code, confirming that such accounting is a recognized, legitimate process.
+
+While the passage confirms that accounting for draught product waste is a regulatory requirement for rent proposals, it provides no evidence that pub landlords find the current claim process painful enough to currently pay for an automated solution.
+
+The candidate's business model relies on a contingency fee for managing a 'wastage audit' and 'supplier rebate' process that is largely unsupported by evidence as a significant, high-frequency pain point for UK pub landlords. Market alternatives like 'Pub Command Centre' already provide comprehensive, low-cost (one-off £97 fee) tools for managing cellar checks, wet GP, and wastage accounting [f9a430af62ae2447, 1b967e9979995742]. The industry trend is moving toward consolidated, one-time payment systems rather than recurring SaaS subscriptions with additional contingency fees for specific tasks. There is no evidence that landlords are currently losing £200-500/month specifically due to unrecovered rebates that would justify the proposed pricing model, suggesting the 'wedge' is either nonexistent or already commoditized by existing low-cost management tools.

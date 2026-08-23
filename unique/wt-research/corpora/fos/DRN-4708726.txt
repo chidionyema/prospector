@@ -1,0 +1,193 @@
+DRN-4708726
+The complaint
+Mr H has complained that Trading 212 UK Limited (‘Trading 212’) sold a shareholding held 
+within his ISA without his consent. He says he should not have been allowed to buy the 
+shares if they weren’t compliant with HMRC ISA eligibility requirements. The notice period 
+he was given that the position had to be closed was too short and didn’t allow him to make a 
+proper decision. He would like to be reimbursed for his losses.
+What happened
+Mr H had made three purchases of Polestar Automotive Holding UK Plc (‘Polestar’) in 
+August 2022. He bought a total of 3,100 shares costing £25,742.61 and which were held 
+within his ISA. 
+On 19 June 2023 he was notified by Trading 212 that the shares no longer eligible to be held 
+within an ISA under HMRC rules and he would have to close his position. He was on holiday 
+at the time and didn’t see the notices and discovered the shareholding had been sold by 
+Trading 212 on 5 July incurring a loss of £16,248.00 
+Mr H raised a complaint with Trading 212 who replied to him on 18 September 2023. It didn’t 
+uphold his complaint. It said;
+Trading 212 has an obligation to ensure that stocks held within its ISA service remain 
+ISA eligible. It performs checks to determine if new stock should be added or 
+previous ones removed if they are no longer deemed ISA-eligible.
+This was found to be the case with Mr H’s Polestar holding on 19 June 2023. It sent 
+messages to all its affected shareholders allowing them until 5 July to remove the 
+shares. It had acted within its terms and conditions.
+Mr H brought his complaint to this service. He said that the final response was poor, 
+inadequate and didn’t answer the points he had raised. 
+Our investigator who considered the complaint didn’t think it should be upheld. He said;
+He hadn’t seen any evidence to show that Polestar shares were ineligible when Mr H 
+purchased the holding. That status changed in June 2023, long after Mr H had 
+bought them in August 2022.
+He’d not seen any regulatory failing by Trading 212 in communicating with Mr H. It 
+wasn’t Trading 212’s responsibility for how a customer’s email platform functions or 
+that they were on holiday and without internet access. It didn’t have an obligation to 
+send a letter.
+The service provided was execution only and it was for Mr H to manage his account.
+He thought the two-week notification was fair and reasonable. Trading 212 notified its 
+customers of the change in status as soon as it became aware.
+Trading 212 wasn’t obliged to provide customers with HMRC notification – Mr H 
+could ask HMRC for that if he wanted to. And it would be for Mr H to carry out his 
+
+own research before investing.
+If Mr H had wanted to transfer the holding into his Invest Account, it was for him to 
+do. And he could have reinvested the sale proceeds into that account if he had 
+wanted to.
+Trading 212 had acted in accordance with the regulator’s guidelines and its own 
+terms and conditions.
+Mr H didn’t agree with the outcome. Trading 212’s terms and conditions didn’t allow it to 
+close investments unilaterally. A preferable course of action would have been to transfer the 
+holding to his Invest Account. He referred to the Polestar’s merger in September 2021 and 
+that the businesses that converted into Polestar documented the circumstances that would 
+render the new entity ineligible for inclusion within an ISA. And the two weeks notification he 
+had been given was insufficient bearing in mind this information had been available for ten 
+months. 
+As the complaint remains unresolved, it has been passed to me for a decision.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+After doing so I’ve reached the same outcome as the investigator and broadly for the same 
+reasons. I’ll explain why. 
+Eligibility of Polestar
+In his response to the investigator’s view Mr H has said that Gores Guggenheim which 
+converted into Polestar Automotive Holding UK PLC upon its merger with Polestar 
+Automotive Holding UK Limited was initially eligible for HMRC’s ISA criteria but the merged 
+company – Polestar Automotive Holdings UK PLC was not. That merger announcement was 
+in late September 2021 and filings by Gores Guggenheim to the SEC clearly documented 
+the circumstances that would render the new entity ineligible for ISA inclusion ie that 
+Polestar Automotive Holding UK Limited had a parent company that wasn’t listed on a 
+HMRC recognised stock exchange. The merger didn’t complete until June 2022, two months 
+prior Mr H’s investment. 
+It's clear that Mr H is unhappy that a non-eligible instrument was offered as part of his ISA in 
+the first instance. After contacting Trading 212 about this my understanding is that eligibility 
+status isn’t always clear cut and it’s likely the case that Trading 212 believed the shares 
+were compliant at the time. There isn’t a specific procedure to approve separately with 
+HMRC each trade instrument offered. 
+I asked Trading 212 how the asset was permitted to be held within an ISA after the merger. 
+It told us that until June 2023 in respect of the ISA eligible stocks information was received 
+and checks carried out on a monthly basis. After that, reviews were carried out daily. And 
+any complex cases – which I assume would include Polestar – were referred to a third-party 
+financial services industry resource for additional oversight. It said it is not always a 
+straightforward process and in the circumstances of the Polestar holding it wasn’t entirely 
+clear at the time.
+I note that in Trading 212’s response to Mr H’s complaint that it said as Polestar was a 
+depository receipt instrument with a parent complaint not listed on a recognised HMRC 
+exchange then it was no longer compliant. And because of this its terms and conditions 
+allow for it to take action;
+‘6.10. If a company goes bankrupt or is delisted from the respective stock exchange, 
+we may attempt to obtain prices for the instrument on the over-the-counter (OTC) 
+market. If this is not possible, you shall be informed that your positions in shares of 
+this company shall be closed, and you agree to the closing prices.’
+Mr H has said he wasn’t advised that Polestar was a depositary receipt with an unlisted 
+parent company at the point of purchase. I understand from Trading 212 that at the point of 
+purchase Polestar was listed as a Special Purpose Acquisition Company (‘SPAC’) in 2022. 
+But similar with other depositary receipts, they can become ineligible for HMRC ISA 
+purposes over time. I asked for evidence of HMRC’s change in status for the shareholding 
+from ISA eligible to ISA ineligible. 
+Trading 212 explained that there isn’t a formal list of financial instruments which HMRC 
+produces to enable a firm to cross-check for ISA eligibility. Instead HMRC provides a list of 
+criteria for which types of stocks, shares and other financial instruments that can be 
+purchased or held within an ISA. It is for the firm to assess whether any instrument is or 
+remains eligible for ISA inclusion, hence its reference to a third party for additional oversight 
+in complex cases. It provided a link to HMRC’s website – 
+https://www.gov.uk/guidance/stocks-and-shares-investments-for-isa-managers
+Trading 212 further said there is a significant amount of information which has to be 
+considered and it is guidance only so it would not be uncommon for the information to be 
+interpreted differently by different brokers. As such an event which might subsequently 
+render a financial instrument ineligible for ISA inclusion might not be interpreted as such at 
+that point and exactly when it is deemed ineligible may vary. Trading 212 has an obligation 
+to notify its clients of such events as soon as possible as soon the ineligible status is 
+understood or known, and this is what it did in the case of Polestar.
+Mr H bought the shares at a point when Trading 212 was of the opinion were ISA eligible so 
+there was nothing to prevent Mr H from holding the shares within his ISA account. We know 
+that status changed after the merger – which I accept Mr H considers Trading 212 should 
+have known – but it didn’t. However, I’ve also borne in mind that the account was an 
+execution only account and so it was Mr H’s responsibility to make sure that he only made 
+investments that were eligible for his ISA as it was his responsibility to ensure that status. 
+I appreciate Mr H will be unhappy with my findings here but Trading 212 monitored the ISA 
+eligibility for its trading supported instruments through its internal audit. And when it identified 
+the shareholding might not be eligible it consulted with a third party. So, while I accept the 
+point Mr H is making here but Trading 212 acted in line with how I would expect as it 
+monitored the situation, sought advice, and went onto ensure the non-eligible investment 
+was removed by selling the asset.  
+I’ll now go on to consider the sale.
+The sale
+Trading 212 sent a notification on its app to all affected shareholder on 19 June and also 
+sent Mr H an email on the same date. Mr H says the notification was badly worded and the 
+email went into his spam folder. He was only given three weeks to take action and was on 
+holiday during this time and didn’t check his account and was without internet access. He 
+should have been given clear consultation period of at least two months by letter sent to his 
+home address. 
+I’ve reviewed the notifications that were sent to Mr H on 19 June headed Polestar 
+Automotive Holding UK PLC – ISA Status;
+‘We have identified Polestar Automotive Holding UK PLC as an instrument that does 
+not satisfy HMRC eligibility criteria. Subsequently, investors who have purchased the 
+stock through an USA account would have to term their positions. You will be able to 
+sell your share(s) at your own discretion until Wednesday 05/07/2023 14:00 GMT. At 
+this point, if your position is still open it will be closed on your behalf.’
+I agree with what the investigator has said about this point. It wasn’t Trading 212’s 
+responsibility to know the whereabouts of Mr H, that he may not have checked his account 
+or was without internet access. It was an execution only account and Trading 212 fulfilled its 
+obligation in providing the necessary information to Mr H. 
+I’m satisfied that the wording in the notifications is clear and explained what needed to be 
+done. Trading 212 had a duty to let customers know of the ineligible status and remove the 
+holding from its customers ISA accounts as soon as possible. So, I think Mr H’s suggestion 
+that he should have been given a two-month consultation period via a letter isn’t reasonable. 
+Mr H was given 16 days to take what action he wanted to if he didn’t want the shares sold 
+which I don’t think was unfair under the circumstances.
+Mr H says that Trading 212 could have moved his holding into his Invest Account which 
+would have allowed him the opportunity to recoup some of his losses – Polestar had risen in 
+value since the sale. However, Trading 212 couldn’t do this on Mr H’s behalf. I say this 
+because taking such action would have required Trading 212 to make a unilateral decision 
+about what instruction it thought a customer would want to give in the absence of a response 
+further to sending notification that a decision was required. 
+Trading 212 provided an execution only service so wasn’t in the business of making 
+decisions on customers’ accounts such as transferring an asset from a more tax 
+advantageous environment to a taxable account. It could equally have been the case the   
+Mr H was happy for Trading 212 to sell the shares and was relying on it to carry out that 
+transaction without him having to give instruction. 
+And Trading 212 told us that a transfer between account wasn’t a service that it offered as it 
+could not facilitate in-specie transfers at the time either internally or externally in any event. It 
+pointed out that it did suggest an alternative to Mr H which he could have acted upon if he 
+still wanted to hold Polestar shares. It said;
+‘However, the company shares are still accessible via the Invest Account. We do not 
+intend to force you to buy it there – that is entirely up to you. It is simply our 
+suggestion if you wish to use the proceeds from your closed position to reopen it in 
+the Invest Account. Yet, at the current market price ($4.24), you will be able to 
+purchase 2,850 Polestar units by using the proceeds from your closed ISA position 
+(£9 441.27).’
+Mr H rejected this suggestion but the loss he suffered as a result of the sale was because of 
+the performance of the investment itself. But the proposal Trading 212 made to Mr H, if he 
+had wanted to repurchase into his Invest Account for which it would have re-opened an 
+identical position. 
+Trading 212 does have an obligation to ensure the holdings within the ISA are compliant. It 
+sought to notify Mr H of this and as the holding was still in Mr H’s account by the time 
+specified, I’m not persuaded Trading 212 did anything wrong when it sold the holding. 
+Ultimately, the holding wasn’t compliant and needed to be removed.
+Nevertheless, I would expect it to have handled this fairly and I appreciate Mr H feels 
+strongly about the holding being sold without his instruction. But I’m satisfied that Trading 
+212 acted fairly and reasonably when it informed Mr H of the ineligibility of the shares and 
+the action that it would take – by selling the shares – if it didn’t receive instruction from him. 
+Overall, I am satisfied that Trading 212 acted as it should have done and complied with its 
+regulatory obligations by informing Mr H of the share’s loss of ISA eligibility status and giving 
+him the option of selling or transferring the holding. It wasn’t aware of the shareholding’s 
+ineligibility prior to June 2023. And ultimately the ISA was an ISA only account and it was   
+Mr H’s responsibility to monitor and manage that account. 
+No doubt Mr H will be disappointed in the outcome of his complaint, its clear he feels 
+strongly about it but I hope I have been able to explain how I reached the decision that I 
+have. 
+My final decision
+For the reasons given, I don’t uphold Mr H’s complaint about Trading 212 UK Limited.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr H to accept or 
+reject my decision before 23 April 2024.
+ 
+Catherine Langley
+Ombudsman

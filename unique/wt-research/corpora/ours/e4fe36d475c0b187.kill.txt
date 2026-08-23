@@ -1,0 +1,13 @@
+FlipWise – The Solo House Flipper’s Maximum Offer Engine.
+
+A browser-based calculator that pulls local sold comps and renovation-cost data to instantly tell a part-time property flipper the highest price they can pay for a distressed property and still make a 15% net margin.
+
+First-principles rebuild of the house-flipper’s spreadsheet: the core pain is not finding deals but confidently computing the maximum allowable offer (MAO) when renovation costs are guesswork. Stripped of broker hype, a flipper needs a defensible number that accounts for hard money costs, holding period, and ARV. By building a proprietary database of trade-specific, localized reno costs—sourced from public building-permit data, material price feeds, and user-submitted actuals—this tool out-calculates free calculators and embeds itself into the flipper’s pre-offer workflow.
+
+The squeezed-middle professional who flips 1–2 houses a year as a side hustle, paying a $29/month subscription or $49 per deal analysis because a single mispriced offer could lose them $20k.
+
+Home-improvement spending remains elevated post-pandemic, building-material prices are volatile, and the influx of amateur flippers means the majority lack reliable cost models; meanwhile, court rulings in some states are demanding more rigorous due diligence from house flippers to avoid 'negligent valuation' claims.
+
+The passages show existing deal‑underwriting and ARV tools but do not address whether the candidate's proprietary renovation‑cost data is durable or whether the value is already commoditised. They merely demonstrate competitor presence without confirming or negating durability.
+
+Multiple incumbents (Bricked, Flipsmrt, ARV Analyzer) already provide AI-powered deal underwriting with comps, repair estimates, MAO, and risk analysis, proving the space is not underserved.

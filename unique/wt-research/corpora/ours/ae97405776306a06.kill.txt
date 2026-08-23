@@ -1,0 +1,25 @@
+TicketCut – the delivery rider’s PCN appeal service that uses your shift data to prove you were working.
+
+A fixed-fee service that challenges parking tickets for delivery riders by gathering platform evidence to claim the loading exemption.
+
+This borrows the way specialist parking appeal firms work, but applies it exclusively to food delivery riders by integrating real‑time shift data from apps like Deliveroo and Uber Eats. When a rider gets a Penalty Charge Notice for stopping on a yellow line or restricted street, the service pulls the delivery timestamp and location from the platform’s digital record – proving the stop was for loading or unloading. A custom appeal is then generated citing the statutory exemption under the Traffic Signs Regulations and General Directions 2016, and submitted to the council.
+
+Why it works: most riders pay the £65–£130 penalty because they lack the time or know‑how to fight; councils count on this. The service turns their own phone data into irrefutable evidence, offering a streamlined, repeatable process for a flat fee of £18 per ticket – less than a quarter of the penalty.
+
+Why it holds: free online templates exist (Pepipoo, MoneySavingExpert), but they don’t automatically harvest personalised shift logs or tailor arguments to a specific local authority’s adjudication patterns. The solo operator compounds a proprietary dataset of which argument phrasing succeeds at which tribunal, encoded into generation prompts that improve with every case – a data moat no forum or free tool can match.
+
+The delivery rider themselves, typically spending £18 per appeal out of a potential £65+ saving. They have budget authority over their own fines and are acutely time‑pressed, preferring a low‑cost, done‑for‑you fix.
+
+London boroughs and Transport for London are expanding camera enforcement on red routes and clearways, issuing a rising volume of PCNs to delivery riders who briefly stop. At the same time, the gig platforms’ shift logs now capture precise stop locations and timestamps, creating a new evidence trail that was previously unavailable to riders – a combination that makes a data‑driven appeal service both newly possible and urgently needed.
+
+The passages only describe general PCN appeal routes, DIY evidence tips, and that tribunals can cancel tickets when evidence persuades them. They never say whether a paid delivery-rider service that pulls shift logs for loading exemptions still has lasting paid demand, or whether free templates and self-filing have already erased that margin.
+
+Two passages mention PCN appeal providers (GroupNexus lists PCN & Appeals; another offers online ticket/PCN appeal submission), but neither states market share, dominance, funding, or that anyone already serves delivery riders with platform shift-data appeals. The remaining passages are maps, elections, courier logistics, and tribunal process text, so none show whether this niche is open or already captured.
+
+One passage shows a delivery rider facing a parking fine and asking whether an appeal might succeed, which signals motive to contest the charge, but says nothing about ability or willingness to pay a third party for help. The remaining passages describe appeal procedures, POPLA, free AI appeal drafting, and early-payment discount rules, and never address what riders can or will spend on a paid appeal service.
+
+A UK firm already markets expert PCN appeal help to motorists facing penalty charges, which shows an executable commercial path to people who receive tickets. Delivery platforms openly recruit riders, so the same buyer class—riders who get PCNs—is reachable through known public touchpoints.
+
+Official guidance describes how to appeal parking and penalty charge notices in England and Wales, and separately advises using proof of delivery time and location with an explanation of why the stop was necessary, noting many such appeals succeed. That shows a paid service that prepares genuine delivery-based appeals rests on an accepted lawful process, not on breaking the law or inventing evidence.
+
+Passages show delivery drivers receive PCNs and can appeal them, and that loading exemptions often require kept documentary proof such as delivery notes. That establishes a real, present fine-and-evidence problem for riders when they stop to deliver, not a hypothetical or nice-to-have worry.

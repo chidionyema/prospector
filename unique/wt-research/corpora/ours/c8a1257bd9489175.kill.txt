@@ -1,0 +1,23 @@
+COLA Pre-Flight – The Craft Beverage Label Approval Predictor.
+
+A web tool that simulates TTB label review using a proprietary dataset of past approvals and rejections, giving small wineries and breweries a detailed pre-submission risk report and fix guide before they file.
+
+First-principles: The raw pain is the costly, iterative TTB COLA process that can delay product launches. By rebuilding the approval process into a predictive engine using scraped public data, the tool saves time and money, monetizing the asymmetry of regulatory opacity.
+
+Small craft winery or brewery owner (smb_owner) who handles compliance in-house and needs to avoid label rejections that stall product releases.
+
+TTB application volumes are rising, staff shortages are causing longer review times, and the craft beverage boom means many first-time small producers are entering a confusing process without expert help.
+
+Passages mention TTB label processes and a free label generator, but none address the existence or sustainability of a predictive rejection risk tool; the free tool is not shown to commoditize the value, so durability is unaddressed.
+
+None of the passages mention any existing tool or company that predicts TTB label review outcomes; they only describe TTB regulatory activities, so no evidence of an incumbent or rival is present.
+
+No passage addresses the financial capacity or willingness of small craft beverage owners to pay for a label approval predictor; they only describe TTB review processes or provide unrelated information.
+
+None of the provided passages address how the tool would reach small winery/brewery owners; they discuss TTB's regulatory role, investment ideas, WhatsApp, and URLs, offering no evidence on a distribution route.
+
+No passage addresses the legality of scraping public TTB data or building a predictive tool; the provided snippets discuss TTB's labeling review process and tools but do not mention any laws or terms that would be violated by this margin.
+
+None of the passages describe the TTB COLA process as painful, delayed, or causing financial harm; they merely note regulatory requirements and systems without evidence that small producers are suffering or paying for pre-submission help.
+
+None of the evidence indicates that the business model is illegal, that unit economics are impossible, or that a single company controls 80%+ of the distribution channel. The cited passages only describe TTB regulatory activities and do not establish any of these risk vectors.

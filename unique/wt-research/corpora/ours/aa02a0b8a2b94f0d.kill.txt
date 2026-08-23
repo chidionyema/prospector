@@ -1,0 +1,27 @@
+Probate Hours, what estate clearance really takes.
+
+A weekly data feed for probate software product managers showing how long real UK estate tasks take, so their AI time estimates stop being guesses.
+
+Probate software firms in the UK now ship AI features that promise a family an estimate: how long the house clearance will take, how long the grant will take, what the whole thing will cost. Those estimates are invented. Nobody holds the underlying timing data, because the work happens across thousands of small clearance firms, solicitors and unpaid family carers who never report anything.
+
+This business builds that timing data and sells it as a feed. It recruits primary carers and small clearance operators who are already doing the work, and pays them a small amount to log each step with timestamps: date of death, date the grant application went in, date HMCTS issued the grant, date the property was emptied, skip volumes, whether a caveat or a stopped application delayed things, and the postcode district. Over a year that becomes a panel nobody else has.
+
+The buyer is the product manager or head of data at a UK probate or bereavement software company. Their recurring trigger is every model retrain and every quarterly release where the estimate feature has to hold up in front of a customer. The deliverable is a monthly dataset plus an API: median and 90th-percentile days per stage, split by region, estate complexity and whether property was involved. Priced per seat and per API call, roughly £1,500 to £6,000 a month.
+
+The public source proving the pain is already paid for is the Ministry of Justice's own Family Court and Probate quarterly statistics on gov.uk, which publish grant volumes and the mean waiting time from application to grant. Firms already cite those figures in their marketing. But the MoJ series stops at the court's own door. It says nothing about what happens in the house.
+
+That is the inversion. HMCTS is under sustained pressure to publish more about probate delays, and every improvement to its transparency makes the missing half more valuable, not less. The court can measure only itself. It cannot instrument a private family's clearance work, and it has no lawful basis or appetite to collect timestamps from carers about a bereaved household. So the more aggressive the reporting duty on the court gets, the more obvious the gap in the middle of the timeline becomes, and the more a software firm needs someone who owns the other half.
+
+A small team can run this. It is two people recruiting and paying the panel, one building the pipeline, one selling to perhaps forty UK firms.
+
+Product managers and data leads at UK probate and bereavement software companies, plus the estate administration arms of large will-writing firms. Roughly forty named firms in the UK, buying a monthly data subscription of £1,500 to £6,000.
+
+The Ministry of Justice publishes quarterly Family Court and Probate statistics on gov.uk showing grant volumes and waiting times, and those delays have been a running story since the 2023 service move to a single centre. Probate software firms are shipping AI estimate features into that gap right now, with no data behind the part of the timeline that happens outside court.
+
+The passages show that UK wills-and-probate firms buy case-management and time-recording software (Clio, WealthCounsel, Estateably), which establishes a market of software vendors and law firms but says nothing about anyone searching for, or paying for, timing data on how long real estate tasks take outside court. Nothing in the passages addresses what probate software product managers currently pay for to back their duration estimates; the remaining passages concern an Indian short-video app and a ministry information directory and are irrelevant.
+
+The passages only show that UK legal-technology companies exist and that some have raised large funding rounds (Lawhive €50m, Wordsmith £10.4m, another $60m), plus a product blurb for probate automation software (SpineLegal) and generic Companies House descriptions; none of them say anything about what probate or bereavement software firms spend on external data, or whether a product manager there would buy a £49.99 one-off pack. Investor funding into other legaltech firms is not evidence about this buyer's budget or willingness to pay for a timing dataset.
+
+The passages describe a London legal-technology conference with 5,500 attendees and note that law firms vet AI software vendors before buying, but they never show a route to the specific buyer here — product and data leads at UK probate or bereavement software companies — nor that such firms attend or can be reached there. Nothing in the passages addresses how this data feed would be sold, whether self-serve, through an existing channel, or via any recurring event that forces the purchase.
+
+The passages only restate general UK data protection rules — that anyone collecting personal data must identify a lawful basis, that sensitive ('special category') data needs an extra condition, and that biometric data often counts as sensitive; none of them say anything about paying carers or clearance firms to log timestamps about estate work, and none identify any rule that would block it. Because the rules quoted are generic requirements rather than a prohibition, they neither show this data feed can be run lawfully nor show it cannot.

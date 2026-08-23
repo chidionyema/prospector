@@ -1,0 +1,179 @@
+DRN-4175750
+The complaint
+Mr S complains about Allium Money Limited’s response to a claim he made under Section 
+75 of the Consumer Credit Act 1974.
+What happened
+In 2021, Mr S purchased a solar panel system (“the system”) from a supplier. He paid for it 
+using a loan from Allium. Mr S had a number of issues with the system and tried to resolve 
+these with the supplier (including having the system repaired). He also felt the system had 
+been misrepresented to him because it was not providing the level of benefits he was 
+expecting. Given how long this was taking to get resolved, Mr S eventually contacted Allium 
+to ask for its help. 
+Allium responded to say it felt the supplier’s offers to resolve matters were reasonable and 
+that the system had not been misrepresented to him. Mr S was unhappy with this so 
+complained and asked the Financial Ombudsman Service to look at what happened. Mr S 
+said that to put things right he wanted a significant reduction in the cost of the system, 
+because it was not generating as much electricity as expected and because of the 
+workmanship and service issues he’d had with the supplier. He said that although the 
+supplier had carried out a repair, it had also caused additional damage. And that since then 
+further issues have arisen with the installation.
+Our investigator thought the system had been misrepresented and recommended the 
+complaint be upheld and that the loan should be adjusted so the system does not cost Mr S 
+more than the benefit he could expect to receive over a ten-year period (being the term of 
+the loan). She felt that the supplier had offered to resolve most of the other issues and that 
+Allium need not do any more than adjust the loan and arrange for any outstanding repairs to 
+the system to be completed. 
+Allium rejected this. It did not feel the system had been misrepresented to Mr S because the 
+sales documents made clear the cost and estimated benefits of the system. However, 
+following further discussion, and given the numerous issues Mr S highlighted, Allium offered 
+to remove the system and refund all loan repayments – in effect cancelling the loan 
+agreement and the purchase. 
+Mr S rejected this as he felt the removal of the system would be too disruptive and 
+inconvenient. It appears that his intention would then have been to purchase a replacement 
+system, and he was unhappy at the prospect of having to apply for a new loan in order to do 
+so. He said he would accept a full refund if he could keep the system, since that would allow 
+him to pay another solar panel company to rectify any ongoing issues (and presumably add 
+more solar panels and battery storage). 
+Allium rejected this suggestion as being too generous. But indicated it was open to 
+alternative methods of redress. It later offered to provide redress in line with our 
+investigator’s suggestion – adjusting the loan so Mr S would pay no more for the system 
+than the benefit he is likely to receive over ten years. Allium engaged an industry body to 
+calculate the likely benefit over ten years, which was £8,563.26. This is £7,380.32 less than 
+
+the total amount payable under the original loan agreement – a significant reduction in the 
+cost of the system.
+Mr S remained unhappy and did not accept the proposed settlement. He said the 
+calculations were wrong of unreliable and that he would expect additional solar panels and a 
+battery to be installed on top of what was offered. Allium rejected this and asked that an 
+ombudsman make a decision on the complaint.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Section 75 of the Consumer Credit Act makes a creditor (in this case Allium) liable for any 
+misrepresentation or breach of contract by a supplier of goods and services (in this case the 
+solar panel system) where the goods or services were purchased using certain types of 
+credit (in this case the loan with Allium). I have the power to look at complaints about how a 
+financial business has responded to a claim under section 75. 
+So, while I can look at issues around misrepresentation or breach of contract by the supplier 
+(which can include poor workmanship), I can’t take make Allium compensate a customer for 
+distress and inconvenience caused by the supplier, such as if the customer experiences 
+poor service when trying to resolve issues with the supplier. 
+Here Allium has accepted that something has gone wrong, and that Mr S should be 
+compensated in some way. It offered to cancel the agreement by removing the system and 
+refunding Mr S his payments. That would’ve put him in the financial position he would’ve 
+been in if he’d never agreed to the purchase. That is generally an option where there has 
+been a breach of contract. The other typical option being to enforce the contract. But looking 
+at the contract I’m satisfied that the system installed matches the system that Mr S agreed to 
+purchase. 
+Mr S was not happy with this, so I think it is fair that some alternative compensation is 
+offered. It is clear that Mr S wants to have a solar panel system. And, if anything, he wants 
+one that is capable of generating and storing more electricity than the one he has. 
+Mr S says he expected the system to provide for more of his electricity needs than it does. 
+But I’m not persuaded that the evidence is sufficient for me to conclude that the supplier 
+represented the system as doing this. So, I am not going to tell Allium to do anything in 
+terms of improving the installed system. 
+I’m also mindful that when contacting the Financial Ombudsman Service Mr S said he 
+wanted a significant reduction in the cost of the system. So, I think compensation that does 
+that is appropriate here. 
+The dispute now is over what that compensation should be. Looking at the sales documents, 
+there is a performance estimate showing the system was expected to provide 3,621 kWh of 
+electricity per year and an estimated financial benefit of £509.24 in the first year. This was 
+from using electricity as it is generated, using electricity stored in the battery, and receiving 
+payments or credits for electricity exported to the grid.
+An industry body has validated the calculations and said they were in line with industry 
+standards at the time. So, I don’t think I can reasonably conclude that the estimates were a 
+misrepresentation. I appreciate the actual benefits received may have been less than this, 
+but the actual benefits depend on how the customer uses electricity in their home, as well as 
+other factors such as electricity prices. I think that is why the sales documents include a 
+disclaimer that says, “The performance of Solar PV systems is impossible to predict with 
+certainty due to the variability in the amount of solar radiation (sunlight) from location to 
+location and from year to year. This estimate is based upon the standard MCS procedure 
+and is given as guidance only. It should not be considered as a guarantee of performance.”
+I appreciate Mr S has raised some concerns that the savings estimates were based on 
+incorrect information – being his level of usage in a smaller property. While I acknowledge 
+what Mr S is saying, it seems to me that this would mean the savings estimates were if 
+anything lower than they should’ve been. Because a larger property would generally use 
+more electricity than a smaller one. So, if there was an error in the calculation, it does not 
+appear to me that it would’ve been to Mr S’s detriment. 
+Having taken everything into account, I am satisfied that Allium’s offer of settlement in this 
+case is fair and reasonable. So, I am upholding this complaint and directing it to put things 
+right as set out below (which is what it has already offered to do). 
+In terms of the calculation of the benefit over ten years, I can see that Allium has asked an 
+industry body to do the calculation, and that the settlement is based on this. That seems 
+reasonable and is in line with our approach to redress in this type of case (including the 
+assumptions that have been made). 
+The savings are based on the amount of electricity Mr S’s system has generated (and likely 
+will in the future) and how much of that he has and is likely to use (instead of buying 
+electricity from his energy supplier). 
+The industry body used the electricity bills closest to the time of sale, which was actually 
+from slightly after the sale. This was used solely to inform the unit price of electricity that 
+Mr S was paying, which on the bill was 17.6 pence per kWh. I understand that prior to the 
+installation Mr S was with a different supplier and was paying 18.55 pence per kWh (at his 
+previous property). 
+That means the calculation will show the benefit over ten years to be slightly less than it 
+would’ve been if the pre-installation electricity price had been used. That difference is in 
+Mr S’s favour in terms of the settlement of this complaint, since it means he would have to 
+pay less for the system than if the higher unit price had been used to calculate the benefit 
+over ten years. 
+I note that Mr S has now moved onto a specific electricity tariff that may allow him to make 
+additional savings, which have not been included in the benefit calculation. Again, this is to 
+Mr S’s benefit rather than his detriment in terms of the settlement of this complaint. 
+Mr S also mentioned a six-month delay in receiving certification that would allow him to 
+benefit from export payments. I don’t think any account of this need be taken in calculating 
+the settlement. This is because the supplier previously agreed to compensate Mr S for the 
+lost export payments caused by this delay (so he has or will receive that benefit). 
+Overall, I’m satisfied that the calculations used by the industry body, which informed Allium’s 
+settlement offer, are fair and reasonable. And I don’t think any additional compensation or 
+redress is warranted. 
+Mr S has informed us that there are outstanding issues with the system that need repairing. 
+If it has not already done so, Allium should arrange for the system to be inspected and for 
+any issues it is liable for to be resolved. 
+Putting things right
+Allium should put things right by recalculating the original loan based on the known and 
+assumed savings and income to Mr S from the solar panels over a ten-year period, so he 
+pays no more than that, and he keeps the solar panel system and any future benefits once 
+the loan has ended. 
+Because the benefit over ten years is less than Mr S agreed to pay for the system under the 
+loan agreement, Allium should restructure Mr S’s loan, so he pays no more than £8,563.26 
+for the system (being the ten-year benefit). 
+By recalculating the loan this way, Mr S’s monthly repayments should’ve been smaller, 
+meaning that he paid more each month than he should’ve done, resulting in an overpayment 
+balance. As Mr S has been deprived of the overpayment balance, Allium should add 8% 
+simple interest per year from the date of the overpayment to the date of settlement. Allium 
+previously confirmed the overpayment plus interest would be £952.16 after tax is deducted. 
+Allium should recalculate this amount at the time of settlement since more time will have 
+passed since it did this calculation. 
+Mr S can choose from the following options as to how he would like the overpayment 
+balance to be used:
+A. to reduce the outstanding balance of the loan and he continues to make his current 
+monthly payment resulting in the loan finishing early,
+B. to reduce the outstanding balance of the loan and he pays a new monthly payment 
+until the end of the loan term, 
+C. they are returned to Mr S, and he continues to make his current monthly payment 
+resulting in his loan finishing early, or 
+D. they are returned to Mr S, and he pays a new monthly payment until the end of the 
+loan term.
+If Mr S accepts my decision, he should indicate on the acceptance form which option he 
+wishes to accept.
+If Mr S has settled the loan, Allium should pay him the difference between what he paid in 
+total and what the loan should have been under the restructure above, with 8% interest per 
+year for the time he was without that money.
+If Mr S has settled the loan by refinancing, he should supply evidence of the refinance to 
+Allium, and Allium should: 
+1. Refund the extra Mr S paid each month with the Allium loan.
+2. Add simple interest from the date of each payment until Mr S receives his refund.
+3. Refund the extra Mr S paid with the refinanced loan.
+4. Add simple interest from the date of each payment until Mr S receives his refund.
+5. Pay Mr S the difference between the amount now owed and the amount he would’ve 
+owed if the system had been self-funding
+Allium should also pay £100 compensation for the trouble and upset caused.
+Allium should also inspect the system to identify any issues for which it is liable and arrange 
+for these to be rectified (if it has not already done so).
+My final decision
+For the reasons I’ve explained, I uphold this complaint. I direct Allium Money Limited to put 
+things right as set out above. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr S to accept or 
+reject my decision before 5 February 2024.
+ 
+Phillip Lai-Fang
+Ombudsman

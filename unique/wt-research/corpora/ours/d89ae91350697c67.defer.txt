@@ -1,0 +1,15 @@
+R&D tax credit drafts for UK AI startup CTOs.
+
+We draft the technical narrative section of HMRC R&D claims for AI-startup CTOs, so the founder files under the post-April-2024 merged scheme without an outside adviser.
+
+UK AI startups paying engineer salaries claim corporation-tax R&D relief on qualifying expenditure, but HMRC's Additional Information Form (from 1 April 2024, per HMRC's CIRD manual CIRD245000) demands a per-project written justification of the technological uncertainty and what advances the field. Specialists today (BDO R&D, RandDTax, Jumpstart) charge 15 to 30 per cent of the claim value or £4,000 to £10,000 fixed fees.
+
+We read the chief technical officer's engineering artefacts — git commit messages, design docs, pull request descriptions — and draft the per-project narrative organised against HMRC's qualifying tests. The chief technical officer reviews, edits, and submits via HMRC's Making Tax Digital for R&D portal.
+
+We charge £400 to £1,500 per claim against the £4,000 to £10,000 adviser price. What we keep over time is a corpus of HMRC enquiry outcomes from public bulletins and tribunal decisions mapped onto HMRC's tests; rebuilding that corpus is what slows a new entrant.
+
+We rebuilt this from the claim workflow up: what an early-stage AI chief technical officer needs to file under the merged scheme, rather than what a specialist adviser's engagement model expects to bill against.
+
+UK AI-startup chief technical officer or operations founder, typically pre-Series A, hiring 3 to 25 engineers and filing one or two R&D claims a year.
+
+From 1 April 2024 the merged R&D relief scheme (Finance (No. 2) Act 2023 amendments; HMRC CIRD245000) raised the bar on narrative specificity; specialist adviser pricing has not settled and dissatisfaction is rising among startup operators who used to file under the old SME scheme.

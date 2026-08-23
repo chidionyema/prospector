@@ -1,0 +1,300 @@
+DRN-4911136 
+ 
+ 
+The complaint 
+ 
+Mr and Mrs G complain that Accelerant Insurance Europe SA/NV (Accelerant) has sought to 
+reduce settlement of a claim made under their landlord’s building insurance policy. 
+ 
+Where I’ve referred to Accelerant, this also includes any communication or action by agents 
+acting on their behalf. 
+ 
+What happened 
+Mr and Mrs G own a property which is let out to tenants, and they have a landlord’s building 
+insurance policy underwritten by Accelerant. 
+ 
+In February 2023 Mr and Mrs G discovered malicious damage had been caused to the 
+property by unknown individuals (not the tenant), so they made a claim to Accelerant. 
+ 
+Accelerant looked into things, and they concluded Mr and Mrs G were underinsured as the 
+rebuilding cost declared was significantly lower than what they say it should have been. As a 
+result, Accelerant referred to the policy, which said that in the event of underinsurance, a 
+claims settlement would be reduced based on the percentage insured for. Accelerant had 
+concluded Mr and Mrs G were 53% underinsured, so they said only 47% of the claim would 
+be payable. 
+ 
+As Mr and Mrs G were unhappy with Accelerant’s position, they approached the Financial 
+Ombudsman Service.  
+ 
+One of our investigators looked into things and upheld the complaint in part. She said that 
+she didn’t think Accelerant had reached the wrong decision when concluding that there had 
+been a misrepresentation regarding the sum insured.  
+ 
+However, the investigator said that Accelerant had unfairly sought to reduce the claim 
+settlement based on the percentage insured. Instead, she said that based on the applicable 
+insurance law, Accelerant should be reducing the settlement based on the percentage of 
+premiums paid – if that was more favourable to Mr and Mrs G. 
+ 
+Accelerant didn’t agree so the case was passed to me to decide.  
+ 
+
+ 
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+Having done so, I’ve reached the same outcome as our investigator. 
+ 
+I’ll also explain that my consideration here is in relation to Accelerant’s actions as the 
+insurer. Mr and Mrs G raised a separate complaint about the broker, but my consideration in 
+this case is solely in relation to Accelerant. 
+ 
+Mr and Mrs G have a landlord building insurance policy. As the policy is for a property they 
+let out and receive income from, the relevant law which applies here is the  
+Insurance Act 2015 (the Act).  
+ 
+The Act states that Mr and Mrs G were required to make a fair presentation of the risk to 
+Accelerant when taking out (and renewing) their policy. That means disclosing any material 
+information Mr and Mrs G knew, or ought to have known. Or failing that, disclosure which 
+gave the insurer sufficient information to put a prudent insurer on notice to make further 
+enquiries for the purpose of revealing those material circumstances.  
+ 
+If the insured, in this case Mr and Mrs G, fail to make a fair presentation of the risk, the Act 
+makes it clear that the insurer needs to decide whether the breach is a ‘qualifying breach’. It 
+is a qualifying breach if, but for the breach of the insured’s duty to make a fair presentation, 
+the insurer would not have entered into the contract of insurance at all or would have done 
+so only on different terms. If the insurer decides it is a qualifying breach, it then needs to 
+decide whether it is deliberate or reckless or neither deliberate nor reckless. And this gives 
+the insurer certain remedies depending. I’ll consider this further below. 
+ 
+Mr and Mrs G’s policy terms also mention the Act, and separately needing to make a fair 
+presentation of the risk and what may happen if they don’t: 
+ 
+“7. MISREPRESENTATION 
+You must make a fair presentation of the risk to us. This means you must disclose at 
+inception or variation to this Policy and prior to each renewal every material 
+circumstance which you know or ought to know and not make misrepresentations to 
+us. If you do not make a fair presentation to us, we can: 
+ 
+1. avoid this Policy from inception or renewal if we would not have issued it or 
+continued it knowing the true situation 
+2. avoid a variation to this Policy if we would not have accepted it had the true 
+situation been known 
+3. alter the terms of this Policy from the date the non-disclosure or 
+misrepresentation was made to those we would have applied had the true 
+situation been known 
+4. reduce the payment for a claim 
+5. cancel this Policy from the date the non-disclosure or misrepresentation was 
+made. 
+ 
+This may result in claims not being paid or not being paid in full” 
+ 
+ 
+ 
+And in the statement of fact: 
+ 
+“It is your duty to make a fair presentation of the risk to us. This means that you must 
+advise any information that may influence us in the acceptance of this insurance and 
+the terms provided. This applies prior to the start of cover, any alteration during the 
+policy period and prior to each renewal. If you fail to advise us of any incorrect 
+information or omissions your policy may not respond the event of a claim.” 
+ 
+And: 
+ 
+“YOUR STATEMENT OF FACT 
+ 
+• Please check your Statement of Fact to ensure all details are accurate and correct 
+and that you have advised all important or relevant information which may influence 
+our decision to accept this insurance. 
+ 
+• If any information in this Statement of Fact is incorrect or incomplete, please contact 
+your Insurance Agent as soon as possible 
+ 
+• If any information declared on your Statement of Fact or Schedule is incorrect or 
+incomplete, we may: 
+- cancel or void your policy 
+- change the terms of your policy 
+- refuse to deal with all or part of any claim or reduce the amount of any claim 
+payment” 
+ 
+Was there a misrepresentation by Mr and Mrs G and did they breach their duty to make a 
+fair presentation of the risk? 
+ 
+When Mr and Mrs G’s policy was renewed with Accelerant, the sum insured (which had 
+been index linked and increased from previous years) was declared as £92,306. Accelerant 
+says that when asked, Mr and Mrs G didn’t declare an accurate rebuild value of the property 
+to be insured.  
+ 
+The following was reflected in their policy documents: 
+ 
+What is the total rebuilding cost?   £92306 
+ 
+Directly underneath this on the documents, it explained what was meant by rebuild cost: 
+ 
+“The full rebuilding cost of your buildings means the cost of rebuilding if the buildings 
+were completely destroyed. This is not necessarily the market value of the property.” 
+ 
+When validating the claim, Accelerant estimated the rebuild value should have been, at the 
+least, £195,000. Whilst this was at the date of loss rather than the most recent renewal date, 
+it was within the same policy period. So, on balance, I find this is likely to have been a more 
+reasonable estimate than the £100,000 less that was actually declared on the policy at 
+renewal. And I haven’t seen any other valuations or estimates which supports that lower 
+amount either. 
+ 
+ 
+ 
+It was Mr and Mrs G’s responsibility to provide a rebuild value to Accelerant (or correct what 
+was declared at renewal if it wasn’t sufficient). This is outlined in Mr and Mrs G’s policy 
+documents: 
+ 
+“Declared Sums Insured 
+Correct values at risk must be advised to us. If the sums insured you request are not 
+adequate this will result in the amount we pay in the event of a claim being reduced. 
+You should review your sums insured and levels of cover regularly to ensure these 
+remain adequate.” 
+ 
+Mr and Mrs G have said they think Accelerant should be determining the rebuild value for 
+them, however, the duty was on them to make a fair presentation to Accelerant.  
+ 
+The renewal documents highlighted the importance of the correct rebuild value, what may 
+happen if this was incorrect, and also gave direction of how Mr and Mrs G may be able to 
+obtain this: 
+ 
+“Adequacy of Insurance Values 
+It is the responsibility of the insured to ensure that all sums insured & policy limits are 
+adequate. It is strongly recommended that an appropriate professional 
+(e.g.surveyor/accountant) be consulted to ensure the sums insured & limits under the 
+policy are suitable.” 
+ 
+I can’t reasonably conclude that Mr and Mrs G made a fair presentation of the risk as it 
+seems they, wrongly, assumed Accelerant would determine the rebuild value for them, and 
+therefore didn’t attempt to establish what an accurate rebuild sum insured should be. So, I’m 
+of the view that Mr and Mrs G breached their duty to make a fair presentation of the risk. 
+ 
+Was the breach qualifying? 
+ 
+Under the Act, there are certain remedies available to insurers in the event of a breach of the 
+duty of fair presentation. But only where the insurer can demonstrate that, but for the breach, 
+it: 
+ 
+• would not have entered into the contract of insurance at all, or 
+• would have done so only on different terms. 
+ 
+A breach for which the insurer has a remedy against the insured is referred to as a qualifying 
+breach. 
+ 
+Accelerant confirmed that had a more accurate rebuild sum been provided, they would have 
+charged more for the policy. They haven’t calculated exactly what that would have been for 
+the year in question, but when they updated the current policy year, this resulted in a 
+significant uplift in premiums, so on balance there would also have been a significant uplift 
+the year before too. And given the amount underinsured, the rise was reflective of that.  
+ 
+Whilst I haven’t been given the exact figures as they haven’t been calculated yet, I’m 
+persuaded that there is a qualifying breach because Accelerant would have acted differently 
+by charging higher premiums (exact amount to be calculated) if the rebuild sum declared 
+was more reasonable. 
+ 
+ 
+ 
+Was the breach deliberate of reckless, or neither deliberate nor reckless? 
+ 
+The remedies available to Accelerant under the Act depend on whether they consider the 
+breach of the duty was deliberate or reckless, or neither. And it is for Accelerant (as the 
+insurer) to show that the breach was deliberate or reckless. 
+ 
+A qualifying breach is deliberate or reckless if the insured – 
+ 
+• knew that it was a breach of the duty of fair presentation, or 
+• did not care whether or not it was in breach of that duty. 
+ 
+The remedies available for a breach that is deliberate or reckless state the insurer – 
+ 
+• may avoid the contract and refuse all claims, and 
+• need not return any premiums 
+ 
+Accelerant has neither sought to avoid the policy or refuse the claim. Instead, it’s sought to 
+reduce the claim settlement. So based on the actions Accelerant took, I think it’s reasonable 
+to conclude that they ultimately considered the breach to be neither deliberate nor reckless. 
+And this is more favourable than treating it as deliberate or reckless, so I think Accelerant 
+has acted fairly by doing so. 
+ 
+The available remedies 
+ 
+Under the Act, where the qualifying breach is neither deliberate or reckless, and an insurer 
+would have charged higher premiums, they can proportionately settle the claim based on the 
+percentage of premiums paid against what should have been had there been a fair 
+presentation. 
+ 
+However, Accelerant has sought to rely on a policy term to reduce the claim settlement in a 
+different way, based on the percentage of the sum Mr and Mrs G were insured for, which 
+was calculated to be 47%, rather than the percentage of premiums paid. On the face of it, 
+this is contrary to the relevant law. 
+ 
+Contracting out 
+ 
+The Act does contain a ‘contracting out’ section. This means that an insurer can choose to 
+include and rely on policy terms which aren’t consistent with the Act.  
+ 
+Accelerant seeks to rely on the following term in the statement of fact to reduce the claim 
+settlement: 
+ 
+“If you make a claim and your sum insured is not enough we will only be able to 
+settle claims at the percentage you are insured for. For example if the buildings sum 
+insured only represents 70 % of the full rebuilding cost then we will not pay more 
+than 70 % of your claim. The full rebuilding cost of your buildings means the cost of 
+rebuilding if the buildings were completely destroyed. This is not necessarily the 
+market value of the property.” 
+ 
+This is different to the remedy in the Act as the calculation is based on the percentage 
+insured for, rather than the percentage of premiums paid. 
+ 
+Whilst the Act does include a section which means an insurer can ‘contract out’, to be able to 
+do so it needs to meet the ‘transparency requirements’. These are: 
+ 
+ 
+ 
+• The policy term must be clear and unambiguous in its effect 
+• The insurer must take sufficient steps to draw to the attention of the insured the 
+disadvantageous policy term 
+ 
+The term itself is in the policy statement of fact and does appear clear and unambiguous in 
+my view. But having said that, it’s not actually in the full policy terms and conditions. 
+However, it should also be sufficiently drawn to Mr and Mrs G’s attention. Whilst the term is 
+in the statement of fact, I don’t think it has been sufficiently drawn to Mr and Mrs G’s 
+attention that this term may be disadvantageous, or that they are entering into a contract 
+with agreement that claims would be settled relying on average, rather than the Act, which 
+could be disadvantageous to them. 
+ 
+Therefore, in principle, I’m not satisfied the ‘transparency requirements’ have been met to be 
+able to ‘contract out’, or consequently, that Accelerant has acted fairly by applying this term 
+rather than the remedies under the Act, which would be proportionate based on the 
+premiums. So that’s how I’d expect Accelerant to settle the claim – unless acting outside of 
+the Act treats Mr and Mrs G more favourably than the Act requires. 
+  
+However, our investigator asked Accelerant what the premium would have been had a more 
+reasonable estimate of the rebuild sum insured been declared at renewal 2022. But despite 
+requesting confirmation, Accelerant hasn’t provided this. Therefore, I can’t be certain that 
+applying average in line with the terms actually disadvantages Mr and Mrs G more than the 
+proportionate settlement remedy outlined in the Act. 
+ 
+Therefore, if the proportionate remedy in the Act puts Mr and Mrs G into a better position 
+than applying average, this is how Accelerant will need to settle their claim. If not, it’s 
+existing offer will treat them fairly. So, if Mr and Mrs G accept my final decision, Accelerant 
+will need to calculate what the premiums should have been and settle the claim in whichever 
+way is more favourable to Mr and Mrs G. 
+ 
+My final decision 
+It’s my final decision that I uphold this complaint in part and direct Accelerant Insurance 
+Europe SA/NV to: 
+ 
+• Calculate what the premium would’ve been at the 2022 renewal based on what the 
+rebuild sum insured ought reasonably to have been estimated as at that time. 
+• If applying the proportionate remedy under the Insurance Act 2015 is more 
+favourable to Mr and Mrs G than applying average, Accelerant will need to settle the 
+claim in this way instead. 
+ 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr G and Mrs G to 
+accept or reject my decision before 13 August 2024. 
+   
+Callum Milne 
+Ombudsman

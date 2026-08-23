@@ -1,0 +1,23 @@
+School Transport Appeal Builder.
+
+A web tool that generates a legally‑structured appeal pack for parents denied free school transport, powered by FOI‑sourced local‑authority success data and templated arguments.
+
+First‑principles: the raw pain is parents feeling powerless against council distance‑measurement or safety denials. Instead of generic advice, give them a hyper‑local evidence file with statistics on how often a particular authority loses at appeal, thereby increasing win rates—and charging a flat fee for the dossier.
+
+Squeezed‑middle parents (age 35‑55) whose child is denied statutory home‑to‑school transport and who lack time to fight a council appeal alone.
+
+Councils under budget pressure are adopting rigid automated distance thresholds, creating a wave of denials. Recent FOI releases show many appeals succeed when argued correctly, yet no low‑cost product exists to equip parents with tailored, data‑backed submissions.
+
+None of the passages address the durability of the tool's value, commoditization risk, or whether the underlying need is evaporating. They discuss unrelated topics like AI policy, WhatsApp, and general defensibility, with one only confirming appeals exist but not value durability.
+
+None of the provided passages discuss school transport appeals, council denials, FOI data, or any competing service in this niche. Irrelevant evidence is no evidence.
+
+None of the passages address whether squeezed-middle parents have the budget and motive to pay for a £25–50 appeal kit; the 2018 crowdfunding article mentions special needs families but does not speak to the general payer segment's solvency.
+
+No passage discusses school transport appeals, parents as buyers, or a self-serve web tool distribution channel; they cover freemium, small business marketing, WhatsApp, moderation appeals, and Getty Images – all irrelevant.
+
+The candidate exploits a legitimate statutory appeal process; passage [25085be04408d774] confirms appeals exist and legal aid may be available, indicating lawfulness. No passage suggests any illegality or falsification.
+
+None of the provided passages mention school transport appeals, parental denials, or any related pain point; they discuss unrelated topics like platform safety, WhatsApp, AI-generated case law, and forensic guidance.
+
+No evidence found to support any of the specified risk vectors.

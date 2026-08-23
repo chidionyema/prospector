@@ -1,0 +1,25 @@
+PitchSweep – The freelance writer's weekly brief alert that catches hidden public-sector copywriting work.
+
+A weekly paid email that sifts UK public procurement portals for copywriting, content design and editorial freelance opportunities, so you stop missing the quiet briefs.
+
+This is a paid newsletter for freelance writers and content designers who want a steady flow of public-sector leads. Every week it scans Contracts Finder, Find a Tender, and local council e-tendering systems, pulling out Briefs that are too small for agencies but perfectly sized for a solo practitioner. Each item includes a plain-English summary of the requirement, the named buyer, budget if stated, and a one-paragraph tip on how the brief maps to typical freelance deliverables.
+
+Most public-sector copywriting work never reaches the networks freelancers rely on. It sits on platforms that are hard to navigate and written in procurement language. By curating only the briefs a writer can actually win, PitchSweep acts like the trade magazines that used to print tender notices, but filtered for the gig economy. The operator builds a crawler and a growing database of past awards, which feeds future curation and improves hit rates over time.
+
+This borrows the model of specialist analyst briefings used in the defence sector, where private insight services extract signal from government procurement noise. The durable wedge is the compounding dataset of past award values, decision patterns and buyer behaviour — a proprietary data asset that gets stronger with every issue. A one-person team can run the crawler, write the summaries and manage a subscriber list through a platform like Substack or Ghost, with payment built in.
+
+Freelance copywriters, content strategists and editorial consultants who want to diversify their client base beyond referrals and who see public-sector briefs as a reliable, under-accessed income stream. They pay £12 a month for early access to the weekly drop.
+
+The UK government’s transparency agenda forces sub-OJEU opportunities onto public platforms, but no single service surfaces them for creatives. Meanwhile, more writers are leaving staff roles and need predictable lead flow. The number of micro-briefs (under £10k) is growing as councils digitise services, yet most freelancers ignore them because they don’t know they exist.
+
+Passages show UK Contracts Finder is free, open to suppliers, and already sends daily email alerts for saved keyword/CPV/value searches, with Find a Tender covering higher-value notices; that describes free first-party discovery, not whether a paid writer-specific curated brief still has lasting paid margin. Nothing in the cited text addresses durability of niche plain-English curation or past-award insight for freelancers, and the Australia, Fauci, and Roblox passages are unrelated.
+
+The passages only describe free government portals such as Contracts Finder and some live marketing or creative tenders; they never name or describe any paid curator, newsletter, or lead service that already dominates filtered public-sector copywriting briefs for freelancers. Nothing in them shows whether that niche is open or already captured.
+
+The passages only tease UK freelance pay levels (£15–£15.17/hour; rising ProCopywriters day rates) and survey headlines about income; they never say these writers buy paid lead tools or have room and motive for a £12/month briefs alert. Nothing shows the segment is solvent for this product or willing to pay for it.
+
+Passage 12fa5c38fb167c23 describes a joinable alliance of 875+ copywriters, content writers, UX writers and content designers built for networking and growth—the exact buyers of a freelance-writing lead newsletter. That is an existing, executable channel to reach them; the other passages cover sponsorship pricing, author-only groups, scam warnings, or unrelated writing clubs and do not block that route.
+
+The passages define the UK Open Government Licence and describe web scraping in general, and they mention Find a Tender tools and an EU tenders portal, but none state whether crawling UK procurement sites, republishing tender notices, or selling curated briefs is allowed under law or those portals’ terms. Nothing in the evidence affirms or denies that PitchSweep’s paid margin can exist without a legal or contractual breach.
+
+The passages note a large UK freelance market, rate pressure for many freelancers, and that copywriters are surveyed, but none describe freelancers missing or struggling to find public-sector copywriting briefs on procurement portals, nor anyone paying for curated alerts of that kind. They therefore do not establish that this specific lead-finding problem is real, acute, and paid for now.

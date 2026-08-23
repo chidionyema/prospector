@@ -1,0 +1,21 @@
+CALPADS integration validator for California EdTech.
+
+A vertical tool that generates CALPADS integration test cases and validates submissions against the CDE's published schemas, for California EdTech SaaS vendors.
+
+California Department of Education uses CALPADS (California Longitudinal Pupil Achievement Data System) to collect student data from every district. EdTech SaaS vendors (SIS, LMS, assessment platforms like PowerSchool, Illuminate, Aeries, Frontline, Clever) need to integrate with CALPADS to stay certifiable for California K-12 sales. CALPADS has three annual submission windows (Fall 1, Fall 2, End-of-Year) with distinct appendices and code sets. CDE released CALPADS Update 22.0 in August 2024 with new student climate survey fields. Today vendors spend 6-12 weeks per CALPADS update cycle on integration consultants, or hire CSIS and WestEd advisories. The tool ingests CDE's CALPADS codes and appendices (CDE.ca.gov/CALPADS), generates vendor-side integration tests, and validates submissions. The deliverable is a validated submission package and a regression pack keyed to the next CDE update window.
+
+This widens from a single CALPADS submission type to the full CALPADS value chain, including Fall 1, EOY, Fall 2 windows and appendices A-H.
+
+The wedge is proprietary data: the parsed CALPADS schema history across multiple CDE update cycles, structured into a model that no CDE district has built. New copycats would need to build the CDE schema corpus from scratch. Trigger: every Fall 1, EOY, and Fall 2 window. Buyer: VP Engineering at a California-certifiable EdTech SaaS. Public source: CDE.ca.gov/CALPADS and the CALPADS Appendices A-H.
+
+The VP Engineering at an EdTech SaaS vendor selling to California K-12 districts (PowerSchool, Illuminate, Aeries, Frontline, Clever, Scoot). They already spend 6-12 weeks per CALPADS update cycle on integration consultants and pay CSIS or WestEd for advisories.
+
+CDE released CALPADS Update 22.0 in August 2024 with new student climate survey fields. CDE also released CALPADS Update 23.0 in 2025 with new course code definitions. California certified EdTech vendors are required to ship certified integrations for each cycle.
+
+None of the passages address California K-12 data systems, CALPADS, or EdTech vendor integration pain. The provided texts concern UK EdTech policy/market research or unrelated pancake recipes, so they offer no evidence on whether California EdTech vendors are paying to solve CALPADS integration problems.
+
+No passage addresses whether California EdTech SaaS engineering teams have budget or willingness to pay £79.99 for a CALPADS validation tool; the sources only show PowerSchool product pages and general California geography facts, which say nothing about the buyer's spending on CALPADS integration tooling.
+
+The passages only contain generic descriptions of California as a U.S. state and an Italian octopus-and-potato recipe; none address CALPADS, EdTech SaaS vendors, California K-12 procurement channels, or any route to reach the VP Engineering buyer.
+
+None of the passages address CALPADS, the California Department of Education, EdTech vendors, or any legal/terms-of-service framework relevant to the candidate's margin; the passages discuss construction common data environments and bottled water, which are unrelated to the legality of building a CALPADS integration validator.

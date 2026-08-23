@@ -1,0 +1,21 @@
+The Pipeline Index – the weekly forward-demand forecast for UK freelance creatives, built from public data signals so you can pitch before the herd.
+
+A weekly report that forecasts freelance demand in design, writing and video by analysing public data, helping you find work before the rush.
+
+This borrows the way commodity traders use forward-demand indices to lock in better prices, and applies it to the unpredictable feast-and-famine cycle of freelance creative work. Each week the report distils signals from Companies House filings of new marketing agencies, Arts Council grant awards that imply upcoming campaigns, ONS service-sector output trends, Contracts Finder opportunities, and planning applications for commercial shoots. The analysis translates these into a 4-week forward demand score per discipline, with an archive that grows into a proprietary dataset of lead-lag relationships — something a solo newcomer cannot quickly replicate. The format is a concise email and a simple dashboard built in a no‑code tool, making it fully automatable after initial signal discovery. Because the data is scraped from open UK sources and then uniquely correlated, the moat is not the raw data but the compounding accuracy of the forecast model over time.
+
+Freelance designers, copywriters, video producers and creative strategists in the UK who need to time their business‑development efforts and want an early‑warning system for demand shifts. They pay £12 per month for the weekly report, drawn from a professional‑development budget they already allocate to tools like Adobe or notion.
+
+Post‑brexit volatility in UK creative services, the rise of remote pitching across regions, and the growing use of public‑data signals by larger agencies create an information gap that hurts solo freelancers. Meanwhile, the ONS and gov.uk data APIs have become more accessible, and the cost of no‑code automation makes it possible for one person to run a niche intelligence product without a team.
+
+The passages describe live freelance job boards, aggregators, creative talent marketplaces, and generic demand-forecasting tools for company teams, but none show whether a UK public-data forward-demand forecast for freelancers is real, lasting, or already given away for free. They never address that product’s margin or whether any free or bundled alternative has erased it.
+
+The passages describe a Creative UK freelance-economy report, general freelance-skills advice, Upwork predictive-analytics hiring, fintech trends, and startup statistics. None say whether any dominant provider or well-funded rival already sells a weekly forward-demand forecast for UK freelance creatives from public data.
+
+The passages note freelance market swings and Creative UK research on reduced work and low pay for creative freelancers, but none say those freelancers have money set aside for tools or will pay for a demand-forecast subscription. Nothing here shows they can and will pay £12 a month for this report.
+
+Passages show creative freelancers already gather on open platforms: free signup to find work across millions of freelancers [0957f57130cd58ad], and Dribbble as a popular place for creative talent to meet and connect [4d1fa65301e0736c]. That concentration of the named buyers in easy-to-join online venues is a usable route to reach them.
+
+A passage states that more public government data will be released under an open licence that allows free reuse, including commercial reuse, and that data behind government websites will be published in reusable form. That directly backs building a paid UK forecast product from open public sources without needing illegality or falsified measures.
+
+Passages state that freelancers’ feast-or-famine cycle has intensified, with longer dry spells that squeeze earnings, including for UK freelancers. Separate passages show freelancers already adopt paid client-acquisition and pipeline tools, so the demand-timing pain is real and people are paying to ease it now.

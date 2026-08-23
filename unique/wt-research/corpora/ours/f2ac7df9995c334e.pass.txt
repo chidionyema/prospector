@@ -1,0 +1,23 @@
+Gig Deactivation Reversal Dossier.
+
+A productized service that builds a proven appeal pack for gig workers unjustly deactivated by platforms like Uber, DoorDash, or Instacart, using a proprietary dataset of successful appeal arguments and outcome patterns.
+
+Transplanting the structure of successful school admission appeals into the gig economy: a solo operator collects crowdsourced deactivation case data, identifies winning patterns, and converts a worker’s raw narrative into a legally persuasive subscriber‑ready dossier, charging a flat fee only if the appeal is filed.
+
+Gig worker aged 18–27 who has been deactivated and sees the service as a lifeline to restore their primary income source, paying from their remaining cash buffer (often $49–$99).
+
+Growing gig workforce, increasing number of algorithmically‑driven deactivations with limited human recourse, and a small but highly motivated body of workers who will pay for a better shot at reinstatement.
+
+UK tribunal cases (Iqbal v Uber London, Hussein v Uber, Manjang v Uber Eats) demonstrate ongoing, contested deactivations within the UK gig economy, confirming the problem persists. US evidence that drivers 'rarely get reinstated' through internal appeals [6ba9dfd6227030a8] indicates platform processes remain opaque and unfavourable, sustaining demand for third-party advocacy. No UK-based free or commoditised incumbent appeal service is documented in the passages (IDG is US-based), so the value is not shown to be already absorbed.
+
+No passage shows a dominant UK incumbent or funded rival productising gig-deactivation appeals. The platform's own internal review is described as barely functional and one-sided for drivers, while Acas is a broad free employment-advice service with no evidence it covers contractor-on-platform disputes, and IWGB legal help is gated behind union membership and not presented as a specialist appeal engine. The UK gig-deactivation appeal niche therefore appears open in these passages.
+
+The ASHE earnings tables [8e921ad4e2ee8463], [ed3a0e72a0c93ca9], and [0bae286017ab2675] contain only cookie consent screens with no actual wage data, and the remaining passages either describe generic financial-hardship concepts [42c6e23e34b0a142, 257360fea6468393] or US-specific retirement withdrawal rules [302eeb80c6cc78e9]. No passage provides the earnings or disposable income of UK gig workers aged 18–27, so affordability of a £49.99 one-time fee cannot be determined from this evidence.
+
+The passages show existing high-traffic channels where deactivated UK gig workers already gather: Facebook groups with more than 100,000 subscribers trading Deliveroo/Uber Eats accounts, and an IWGB mobilisation reaching around 200 drivers protesting unfair dismissals. These demonstrate that a solo operator can reach a large, self-identified buyer pool through low-friction routes (social groups, union networks), and the existence of a live US deactivation-help phone service further confirms the channel is executable.
+
+The passages discuss UK employment tribunal representation rights, lay representatives, and wasted costs orders, but none address whether third-party appeal-writing services for gig platform deactivations are lawful. The gig economy context (Uber, DoorDash, Instacart) is not covered, and the passages do not establish whether such a service would breach platform terms or require legal qualification.
+
+The passages establish that platform deactivation is a real and acute problem: Uber Eats drivers have been locked out by facial-recognition checks (72d379d10318527d), drivers have sued over automated deactivation in the Netherlands (d35bba696b3f2cb4), and hundreds staged a London strike explicitly demanding 'reinstatement of unfairly deactivated drivers' (bb55abe9e09c620f).
+
+The passages contain no evidence that a third-party appeal-writing service for gig deactivations is banned by UK law or requires legal qualification; UK employment tribunals explicitly permit lay representatives [e562e1b2b8834c2f, 296cc6e43e87e7a1], and no passage shows acquisition costs exceeding a £49–99 fee. No single provider controls 80%+ of UK deactivation-appeal distribution — the closest free alternatives (IDG is US-only, Acas offers general advice, IWGB legal help is union-gated) are fragmented and none cover the niche end-to-end [94f951700a5e7ba5, d8bae9bbbaeef7f9, 74e4a91ff65877f9].

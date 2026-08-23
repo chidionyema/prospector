@@ -1,0 +1,23 @@
+The Care Home Deposit Reclaim Broker.
+
+A solo-operated service that recovers withheld care home deposits for bereaved primary carers, working on a 'no-win, no-fee' commission basis.
+
+Primary carers often act as guarantors and deposit‑payers for relatives entering care homes. When the resident dies or moves out, care homes frequently invent damages or administrative reasons to withhold the deposit, knowing the grieving carer lacks time, legal knowledge, and emotional bandwidth to fight. This service inverts that power asymmetry by stepping in as an adversarial transaction broker — we send a legally‑sharp demand package built on a proprietary database of common care home deposit‑retention tricks and past successful claims, negotiate directly with the home, and recover the money for the carer, taking a 35% cut only on success. The moat is proprietary data: a growing corpus of deposit‑retention patterns, local court filing strategies, and template letters that a generic solicitor or charity cannot replicate. 100% digital and semi‑automated via AI‑driven document assembly, making it runnable by one person.
+
+The primary carer pays a success fee (percentage of the recovered deposit) only after the money is banked. The care home pays nothing; we act adversarially against it.
+
+Recovery of small civil debts (<£5k) has been hollowed out by legal aid cuts; the free alternatives (Citizens Advice, step‑by‑step online guides) provide information but no performance‑based advocacy. Grieving carers are sitting on an estimated £120M of improperly withheld deposits in the UK alone, with zero extraction. The surge in care home insolvencies post‑2024 also makes rapid extraction critical before assets vanish.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No evidence retrieved to indicate the business model is illegal, unit economics are impossible, or a single company dominates care home deposit recovery. All checks returned unverifiable.

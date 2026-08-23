@@ -1,0 +1,21 @@
+OriginLedger, proves who owns your startup's code and IP.
+
+A tool that captures signed IP assignments the instant a contractor or co-founder makes their first GitHub commit, so founders pass Series A due diligence without a scramble.
+
+Most early UK startups are built by people who never sign anything. A friend codes the first version before there's even a company. A freelance developer from Upwork builds the MVP over six weekends. A university co-founder writes the core algorithm as a student, before the company exists. Under UK law none of that code belongs to the company automatically — the Copyright, Designs and Patents Act 1988 gives ownership to whoever wrote it, unless they signed it away in writing. Employees are the exception; everyone else keeps their copyright by default.
+
+OriginLedger is a small tool a founder installs on day one. It connects to GitHub and Figma, watches for anyone newly added as a collaborator, and sends them a one-page IP assignment to e-sign before their next commit merges. Every signature, every contributor, and every repo or file they touched is logged with a timestamp, building a clean record as the company grows instead of one someone has to reconstruct from memory two years later.
+
+That reconstruction is exactly what breaks deals. When a VC's lawyer runs due diligence before a Series A, a gap in the IP assignment chain is one of the most common reasons a term sheet gets delayed or repriced — not because founders were careless, but because nobody was tracking contributors from month one. A solicitor or a paperwork platform like SeedLegals can hand you a template the day you ask for one, but neither watches who is actually committing code in real time; by the time a founder remembers to ask, the contractor has moved on and stopped replying to emails. OriginLedger's record can only be built as you go — a company that starts using it in year three has already lost the ability to prove what happened in year one, which is exactly why it has to be adopted early and stays hard to leave once it is.
+
+The founder-operator pays a monthly subscription on the company card — free for the first three contributors, then priced per seat as the team grows. Accelerators such as Entrepreneur First or Techstars are a plausible second payer, licensing it across a whole cohort so every portfolio company is diligence-ready before demo day.
+
+Cheap AI coding tools and platforms like Upwork have made it normal for a solo founder to ship a working product before incorporating or hiring anyone formally, so the number of informal, unpaperworked contributors per startup has grown. At the same time UK VCs have tightened IP due diligence after deals were delayed or repriced over ownership gaps discovered late in the process.
+
+One passage states incomplete IP assignment chains are among the most common legal deficiencies found in startup due diligence, and another confirms founders scramble to close such gaps only after an investor exposes them, directly evidencing an acute, real pain point people act on.
+
+The passages give SeedLegals pricing in Singapore dollars (S$200–S$4,990) with no UK price, and none of the passages state what OriginLedger's own £79.99 pack would cost the buyer or confirm the buyer can afford it — they only describe competitor products and generic startup-lean advice.
+
+The passages only describe what GitHub is and that it's widely adopted by developers; none address whether OriginLedger itself has a low-friction path to founder-buyers (e.g., self-serve signup, GitHub App marketplace listing, accelerator channel).
+
+Three passages are irrelevant (definitions of electronics, a band, a shop advert), and the remaining three merely describe that IP assignment deeds are a known legal instrument used in UK founder/SEIS/trademark contexts — none address whether OriginLedger's specific margin (automated e-signature capture triggered by GitHub/Figma collaborator additions) requires or avoids breaching any law or terms of service.

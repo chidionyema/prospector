@@ -1,0 +1,31 @@
+Nudge Letter Fix, cuts your Airbnb tax bill HMRC guessed.
+
+For people renting a spare room, driveway or holiday let who get an HMRC letter built from Airbnb or Booking.com data, a fixed-fee service recalculates what's actually owed and drafts the reply.
+
+Since January 2024, UK rules called DAC7 force platforms like Airbnb, Booking.com and Vrbo to hand HMRC each host's gross booking income every year. HMRC now runs 'one-to-many' nudge letter campaigns straight off that data, and the first big wave landed through 2025 and is still running in 2026. The letters use the platform's gross figure, not the taxpayer's real position, so they routinely ignore Rent-a-Room relief (£7,500 tax-free for a room in your own home), the £1,000 property income allowance, jointly-owned splits between a partner, and the transitional mess left by the Furnished Holiday Lettings regime being abolished from April 2025. A mortgage-holding professional who lets out a room or a static caravan for extra income opens one of these letters and sees a number that looks like a tax demand, when their real liability might be a fraction of it, or nothing at all.
+
+This is a fixed-fee, one-person service: send over your nudge letter and your platform payout history, and get back a worked reconciliation showing the true taxable figure against every relief that applies to your ownership structure, plus a drafted response letter to HMRC. It's built once as a repeatable method and templated response library, then delivered by video call plus a short written pack, so one person can run dozens of cases a month without scaling headcount.
+
+The part that inverts the usual compliance-tool shape: HMRC's own guidance and its 'check if you need to tell us' tool can explain the rules, but it cannot take your side in a dispute with itself, cannot advocate for the specific relief mix that applies to a joint-owner with a spare room and an FHL wind-down, and has no incentive to make your letter smaller. Every fresh nudge-letter wave HMRC sends out, using its now-annual DAC7 data feed, makes this service worth more, not less, because the case library of resolved reconciliations for each relief combination gets faster to reuse next time. That's the opposite of most compliance products, which get less useful as rules settle down.
+
+A professional aged 35-55 with a mortgage and kids who lets a spare room or a small holiday let on the side, and has just opened an HMRC letter that estimates tax owed from their Airbnb or Booking.com payout data. They pay a fixed fee, once, to make the number right and get a defensible reply drafted, because the alternative is either overpaying out of panic or ignoring a letter from HMRC.
+
+DAC7 (the Platforms Operators Due Diligence and Reporting Requirements Regulations 2023) made digital platforms report host income to HMRC from January 2024, with the first data delivered by January 2025. HMRC's one-to-many nudge letter campaigns built on that data ramped through 2025 and continue into 2026, arriving just as the Furnished Holiday Lettings tax regime was abolished from April 2025, so many hosts no longer know which reliefs even apply to them anymore.
+
+A passage shows an existing paid service category, "HMRC Nudge Letters — Get Professional Help With HMRC," describing a taxpayer who acts on a letter and pays owed tax, which is direct evidence people already seek and pay for help with these letters. Another passage confirms nudge letters are actively sent to multiple taxpayer groups, showing the trigger event driving that demand is real and ongoing.
+
+One passage explicitly says HMRC's enforcement campaign, full DAC7 platform reporting and the April 2026 MTD ITSA rollout are converging right now to create an acute, time-sensitive pain, and another confirms HMRC is actively sending nudge letters built from platform data today.
+
+The passages show existing, reachable Airbnb-host audiences — an official community forum with over 1.5M members and Facebook host groups — that a beginner could post into or approach directly, which is the kind of ready-made channel this claim needs.
+
+The passages cover HMRC tax-agent registration rules starting April 2026, generic definitions of money, and unrelated financial-product review sites — none say whether preparing DAC7 nudge-letter reconciliations and reply drafts for a fee is lawful or requires specific authorisation. Nothing here confirms or rules out that this fixed-fee margin can exist without breaking law or agent-registration terms.
+
+The passages confirm the Platform Operators (Due Diligence and Reporting Requirements) Regulations 2023 (SI 2023/817) came into force 1 January 2024, matching the DAC7 timeline claimed, and confirm the Furnished Holiday Lettings regime is abolished from 6 April 2025, matching the transitional-relief claim. Both load-bearing factual pillars of the hypothesis check out against retrievable regulatory sources rather than being contradicted.
+
+Airbtics data shows average Bournemouth Airbnb hosts earn roughly £30,000/year from hosting, income against which a one-time £29.99 fee for resolving an HMRC letter is trivially affordable and clearly motivated. The mortgage-comparison passages are generic ads with no bearing on this payer's ability to pay.
+
+The passages confirm nudge letters exist and that people search for how to respond to them, but none describes a channel for reaching hosts (Airbnb/holiday-let landlords with a nudge letter) — the Google Ads passages are about unrelated ad-policy compliance, not a distribution route for this service.
+
+The passages describe HMRC's general services and Rent a Room mechanics but contain no evidence that hosts are actually receiving nudge letters, panicking over them, or paying anyone to fix them; one passage (b9b36dcac72fc34a) merely names confusion as a category, not documented acute pain or payment behavior.
+
+The passages don't show this activity is banned or that a single provider locks up the channel, but they also never confirm the service can legally be delivered by an unregistered adviser: HMRC is introducing mandatory tax-agent registration from April 2026, and none of the retrieved passages say whether a fixed-fee reconciliation-and-reply service falls inside or outside that requirement. That's a gap worth closing before launch, not a proven blocker.

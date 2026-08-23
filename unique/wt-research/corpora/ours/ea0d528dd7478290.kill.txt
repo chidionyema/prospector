@@ -1,0 +1,31 @@
+AI decision logs for Illinois tech agency disputes.
+
+Fixed-fee service that produces a court-reporter-style verbatim record of what an AI tool actually did during a project, for use in Illinois client disputes.
+
+The agency owner runs an AI deployment agency in Illinois. A client disputes the AI's behavior — hallucination, bias, inaccuracy, IP infringement. The client demands proof of what the AI actually did. The agency has technical logs but needs a legally-formatted, neutral record that meets Illinois discovery standards.
+
+This borrows the court reporter model and applies it to AI behavior. For each dispute, the service produces a fixed-fee 'Decision Log' — a court-reporter-style verbatim record of the AI's behavior at issue, formatted to meet Illinois Supreme Court Rule 201 discovery standards. The log includes timestamps, inputs, outputs, model versions, and human-readable interpretations, all under evidentiary seal if needed.
+
+This commits to shape (A) — an AI-native service where the model does work a named human role (court reporter) is paid for today. The court reporter role is well established; the AI replaces the verbatim transcription and interpretation work that court reporters do for legal proceedings.
+
+The wedge is the technical methodology for converting raw AI logs into legally-formatted, neutral documentation. This is hard to replicate. The AI vendor's own logs are technical and biased by self-interest; clients want third-party documentation that meets Illinois discovery standards and can be admitted as evidence. The service accumulates proprietary data on common AI dispute patterns, judicial expectations, and successful documentation across many cases.
+
+The trigger is each client dispute or audit. The deliverable is a fixed-fee decision log document (20 to 50 pages). The price is $5,000 to $15,000 per decision log.
+
+Illinois-based AI deployment agency owners in active client disputes. The agency owner has direct budget authority and is the named party to the dispute; the agency's clients see the decision log as evidence.
+
+AI litigation is increasing in Illinois, with BIPA cases like Cothron v. White Castle setting precedents for AI behavior documentation and the Illinois Supreme Court issuing guidance on AI in litigation. Clients are increasingly demanding third-party verification of AI behavior. The 2023 to 2024 wave of generative AI failures has made clients more skeptical of vendor self-reporting.
+
+The passages describe the human court-reporting market — Illinois per-page transcript charges under 705 ILCS 70/5, Northern District of Illinois rates, a Cook County reporter's office, and the debate over whether AI transcription can replace certified reporters — but none of them addresses documenting what an AI tool did during a project or producing evidence for client disputes over AI behavior. Because nothing here speaks to demand, pricing, or substitutes for AI decision logs, I cannot say the value behind this service is real and lasting.
+
+The passages show established players in adjacent areas — Warden AI sells third-party AI bias audits and certification covering Illinois HB 3773 [71e5d000d7b69e48, e3ffc02aecf943de], Fisher Phillips sells AI bias audits to employers [9089391785ec00b9], and Reveal/Logikcull is a $1bn+ e-discovery platform with 38,000 users for handling disputes and investigations [4da8c06f0cb69628, 5fe23dce49f972f2, f9602dbc834c9074, 80e45c2211f2450d, 7971421c46eb3472] — but none of them describes producing a verbatim, court-ready record of what a specific AI system did for use as evidence in a client dispute.
+
+The passages show that businesses buying AI consulting work routinely spend thousands to tens of thousands of dollars — $2,000 to $50,000+ per engagement with typical fixed fees of $3,500–$18,000 (b9a7c71905f1b3fa), $5,000–$25,000 per project or $150–$350 per hour (010b408a1e53f497), and Chicago agency day rates of roughly €1,310–€1,740 (dfa5fc200ee2fd44); healthy agencies themselves run $600K–$2.5M revenue on $3,000–$6,000 monthly client retainers (db076c071fc454f8).
+
+The passages show directories that list AI agencies and Illinois tech companies (an ITA member directory of 500+ companies, an AI agency search directory filterable by Chicago, and AI consultant directories), which establishes that these agency owners can be found and contacted; but nothing in them addresses reaching an agency at the moment it is in a client dispute over AI behavior, which is the trigger this service depends on.
+
+The passages describe Illinois discovery rules (Rule 201 and related amendments), the state-employed court reporter role, the certified shorthand reporter licensing rules, and the per-page transcript fee schedule under the Court Reporters Act, but none of them says anything about whether a private party may prepare and sell documentation of an AI system's behavior for use in a dispute.
+
+The passages show organizations are already being sued and held liable over AI system behavior — Air Canada was ordered to pay compensation over its chatbot's bad answers [60ecbc8b6cc30e3c], a job applicant sued Sirius XM over alleged AI hiring discrimination [6e7656498254dfac], a radio host sued OpenAI over a fabricated claim [a57d1bba95a698e5], and a law firm describes courts expanding accountability for AI vendors while contracts push risk around [5d9442fb22febf48].
+
+Nothing in the passages shows this service is banned or restricted to licensed parties: the Illinois discovery rules and court reporter fee schedules cited describe how official court transcripts are ordered and priced, not who may document an AI system's behavior for a private dispute [27adc0f20d1e18e3, e2965437a4ab88f2, bb792eca4402f6bd]. Buyers can plainly afford the price — businesses already pay $5,000 to $25,000 per AI consulting project [010b408a1e53f497, b9a7c71905f1b3fa] — and no passage shows any single provider holding most of this market; the named players (Warden AI, Fisher Phillips, Reveal) sell bias audits and e-discovery, with no share figure given [71e5d000d7b69e48, 9089391785ec00b9, 4da8c06f0cb69628].

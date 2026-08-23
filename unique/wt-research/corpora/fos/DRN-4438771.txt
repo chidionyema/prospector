@@ -1,0 +1,437 @@
+DRN-4438771 
+ 
+ 
+The complaint 
+ 
+Mr H complains that Revolut Ltd won’t refund money he lost when he fell victim to a scam. 
+ 
+What happened 
+Mr H was speaking with someone on a dating app, who I’ll call ‘M’. M told him about 
+significant profits they had made investing through an investment platform which I’ll call ‘V’. 
+Mr H downloaded V’s trading app and felt it appeared trustworthy, he says M also showed 
+him evidence of the profits she had made, so he began to invest, following advice M gave to 
+him. Mr H initially made a small investment of £100 and believed he had earned good profits 
+on this investment. He says he asked to withdraw some profits, but his request was refused, 
+and he was told to make further payments for money laundering checks. Mr H carried on 
+making payments to V for investments and believed he had made a very significant profit 
+over the next couple of weeks.  
+ 
+Unfortunately, and unknown to Mr H, V was not a legitimate investment, he was dealing with 
+a scammer. When he again asked to withdraw his profits, he was told he must pay a large 
+tax bill first, and at this stage Mr H became suspicious and realised he had been scammed. 
+ 
+In total, Mr H made card payments and transfers of over £110,000 to buy cryptocurrency 
+which he then passed on to the scammers. The payments he made are detailed below. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Mr H contacted Revolut to let it know what had happened, but it declined to refund any of the 
+disputed payments. Revolut said that the payments were not out of character for Mr H, given 
+his previous account usage, and that the loss had been from Mr H’s accounts with the 
+cryptocurrency exchanges, so it did not consider it was liable for that loss.  
+ 
+Payment Date Amount  Payee 
+Payment 1 17/04/2023 £100 Card payment 
+Payment 2 19/04/2023 £3,500 Card payment 
+Payment 3 19/04/2023 £100 Card payment  
+Payment 4 21/04/2023 £4,100 Card payment 
+Payment 5 21/04/2023 £60 Card payment 
+Payment 6 25/04/2023 £24,300 Bank transfer 
+Payment 7 28/04/2013 £22,500 Bank transfer 
+Credit 28/04/2023 £504.95 Credit from crypto exchange 
+Payment 8 30/04/2023 £11,200 Bank transfer 
+Payment 9 01/05/2023 £11,100 Bank transfer 
+Payment 10 01/05/2023 £55 Bank transfer 
+Payment 11 01/05/2023 £13,900 Bank transfer 
+Payment 12 02/05/20236 £18,400 Bank transfer 
+Payment 13 03/05/2023 £6,894 Bank transfer 
+Credit 04/05/2023 £124.50 Credit from crypto exchange 
+ 
+ 
+Unhappy with this, Mr H referred his complaint to our service. Our investigator thought 
+Revolut should have provided Mr H with a tailored warning relating to cryptocurrency 
+investment scams at the time of Payment 2. Had it done so, our investigator considered it 
+more likely than not that Mr H would not have made any further payments to the scam.  So, 
+they recommended that Revolut refund Mr H’s loss from that point onwards, minus 50% as 
+they also considered Mr H should share some responsibility for his loss.   
+ 
+Mr H accepted the investigator’s findings, but Revolut did not. It maintains that the activity on 
+Mr H’s account was not unusual enough to warrant intervention, and that it does not have an 
+obligation to prevent fraud and scams. Revolut also says that, in any case, Mr H’s loss was 
+from his cryptocurrency accounts, not from his Revolut account. So, it does not consider it 
+should bear any responsibility for that loss. 
+ 
+As an agreement couldn’t be reached, the complaint has been passed to me to decide. 
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+In broad terms, the starting position at law is that an Electronic Money Institution (“EMI”) 
+such as Revolut is expected to process payments and withdrawals that a customer 
+authorises it to make, in accordance with the Payment Services Regulations (in this case the 
+2017 regulations) and the terms and conditions of the customer’s account. 
+ 
+And, as the Supreme Court has recently reiterated in Philipp v Barclays Bank UK PLC, 
+subject to some limited exceptions banks have a contractual duty to make payments in 
+compliance with the customer’s instructions. 
+ 
+In that case, the Supreme Court considered the nature and extent of the contractual duties 
+owed by banks to their customers when making payments. Among other things, it said, in 
+summary: 
+• The starting position is that it is an implied term of any current account contract that, 
+where a customer has authorised and instructed a bank to make a payment, it must 
+carry out the instruction promptly. It is not for the bank to concern itself with the 
+wisdom or risk of its customer’s payment decisions. 
+• At paragraph 114 of the judgment the court noted that express terms of the current 
+account contract may modify or alter that position. In Philipp, the contract permitted 
+Barclays not to follow its consumer’s instructions where it reasonably believed the 
+payment instruction was the result of APP fraud; but the court said having the right to 
+decline to carry out an instruction was not the same as being under a legal duty to do 
+so. 
+ 
+In this case, the terms of Revolut’s contract with Mr H modified the starting position 
+described in Philipp, by – among other things – expressly requiring Revolut to refuse or 
+delay a payment “if legal or regulatory requirements prevent us from making the payment or 
+mean that we need to carry out further checks” (section 20).  
+ 
+So Revolut was required by the terms of its contract to refuse payments in certain 
+circumstances, including to comply with regulatory requirements such as the Financial 
+Conduct Authority’s Principle for Businesses 6, which required financial services firms to pay 
+due regard to the interests of their customers and treat them fairly. I am satisfied that paying 
+ 
+ 
+due regard to the interests of its customers and treating them fairly meant Revolut should 
+have been on the look-out for the possibility of fraud and refused card payments in some 
+circumstances to carry out further checks. 
+ 
+In practice Revolut did in some instances refuse or delay payments at the time where it 
+suspected its customer might be at risk of falling victim to a scam.  
+ 
+I must also take into account that the basis on which I am required to decide complaints is 
+broader than the simple application of contractual terms and the regulatory requirements 
+referenced in those contractual terms. I must determine the complaint by reference to what 
+is, in my opinion, fair and reasonable in all the circumstances of the case (DISP 3.6.1R) 
+taking into account the considerations set out at DISP 3.6.4R. 
+ 
+Whilst the relevant regulations and law (including the law of contract) are both things I must 
+take into account in deciding this complaint, I’m also obliged to take into account regulator’s 
+guidance and standards, relevant codes of practice and, where appropriate, what I consider 
+to have been good industry practice at the relevant time: see DISP 3.6.4R.  So, in addition to 
+taking into account the legal position created by Revolut’s standard contractual terms, I also 
+must have regard to these other matters in reaching my decision.  
+ 
+Looking at what is fair and reasonable on the basis set out at DISP 3.6.4R, I consider that 
+Revolut should in April 2023 have been on the look-out for the possibility of fraud and have 
+taken additional steps, or made additional checks, before processing payments in some 
+circumstances.    
+ 
+In reaching the view that Revolut should have been on the look-out for the possibility of fraud 
+and have taken additional steps, or made additional checks, before processing payments in 
+some circumstances, I am mindful that in practice all banks and EMI’s like Revolut did in fact 
+seek to take those steps, often by:  
+ 
+• using algorithms to identify transactions presenting an increased risk of fraud;1 
+• requiring consumers to provide additional information about the purpose of 
+transactions during the payment authorisation process;  
+• using the confirmation of payee system for authorised push payments;   
+• providing increasingly tailored and specific automated warnings, or in some 
+circumstances human intervention, when an increased risk of fraud is identified.   
+ 
+For example, it is my understanding that in April 2023, Revolut, whereby if it identified a 
+scam risk associated with a card payment through its automated systems, could (and 
+sometimes did) initially decline to make that payment, in order to ask some additional 
+questions (for example through its in-app chat).  
+ 
+I am also mindful that:  
+ 
+• Electronic Money Institutions like Revolut are required to conduct their business with 
+“due skill, care and diligence” (FCA Principle for Businesses 2), “integrity” (FCA 
+ 
+1 For example, Revolut’s website explains it launched an automated anti-fraud system in August 2018: 
+https://www.revolut.com/news/revolut_unveils_new_fleet_of_machine_learning_technology_that_has
+_seen_a_fourfold_reduction_in_card_fraud_and_had_offers_from_banks_/ 
+ 
+ 
+Principle for Businesses 1) and a firm “must take reasonable care to organise and 
+control its affairs responsibly and effectively, with adequate risk management 
+systems” (FCA Principle for Businesses 3)2. 
+• Over the years, the FCA, and its predecessor the FSA, have published a series of 
+publications setting out non-exhaustive examples of good and poor practice found 
+when reviewing measures taken by firms to counter financial crime, including various 
+iterations of the “Financial crime: a guide for firms”.   
+• Regulated firms are required to comply with legal and regulatory anti-money 
+laundering and countering the financing of terrorism requirements. Those 
+requirements include maintaining proportionate and risk-sensitive policies and 
+procedures to identify, assess and manage money laundering risk – for example 
+through customer due-diligence measures and the ongoing monitoring of the 
+business relationship (including through the scrutiny of transactions undertaken 
+throughout the course of the relationship). I do not suggest that Revolut ought to 
+have had concerns about money laundering or financing terrorism here, but I 
+nevertheless consider these requirements to be relevant to the consideration of 
+Revolut’s obligation to monitor its customer’s accounts and scrutinise transactions.    
+• The October 2017, BSI Code3, which a number of banks and trade associations were 
+involved in the development of, recommended firms look to identify and help prevent 
+transactions – particularly unusual or out of character transactions – that could 
+involve fraud or be the result of a scam.  Not all firms signed the BSI Code (and 
+Revolut was not a signatory), but the standards and expectations it referred to 
+represented a fair articulation of what was, in my opinion, already good industry 
+practice in October 2017 particularly around fraud prevention, and it remains a 
+starting point for what I consider to be the minimum standards of good industry 
+practice now (regardless of the fact the BSI was withdrawn in 2022).  
+• Revolut should also have been aware of the increase in multi-stage fraud, particularly 
+involving cryptocurrency when considering the scams that its customers might 
+become victim to. Multi-stage fraud involves money passing through more than one 
+account under the consumer’s control before being sent to a fraudster. Our service 
+has seen a significant increase in this type of fraud over the past few years – 
+particularly where the immediate destination of funds is a cryptocurrency wallet held 
+in the consumer’s own name. And, increasingly, we have seen the use of an EMI 
+(like Revolut) as an intermediate step between a high street bank account and 
+cryptocurrency wallet.   
+• The main card networks, Visa and Mastercard, don’t allow for a delay between 
+receipt of a payment instruction and its acceptance: the card issuer has to choose 
+straight away whether to accept or refuse the payment.  They also place certain 
+restrictions on their card issuers’ right to decline payment instructions.  The essential 
+effect of these restrictions is to prevent indiscriminate refusal of whole classes of 
+transaction, such as by location. The network rules did not, however, prevent card 
+issuers from declining particular payment instructions from a customer, based on a 
+perceived risk of fraud that arose from that customer’s pattern of usage.  So it was 
+ 
+2 Since 31 July 2023 under the FCA’s new Consumer Duty package of measures, banks and other 
+regulated firms must act to deliver good outcomes for customers (Principle 12), but the circumstances 
+of this complaint pre-date the Consumer Duty and so it does not apply. 
+3 BSI: PAS 17271: 2017” Protecting customers from financial harm as result of fraud or financial 
+abuse” 
+ 
+ 
+open to Revolut to decline card payments where it suspected fraud, as indeed 
+Revolut does in practice (see above).      
+ 
+Overall, taking into account relevant law, regulators rules and guidance, relevant codes of 
+practice and what I consider to have been good industry practice at the time, I consider it fair 
+and reasonable in April 2023 that Revolut should:   
+ 
+• have been monitoring accounts and any payments made or received to counter 
+various risks, including preventing fraud and scams;   
+• have had systems in place to look out for unusual transactions or other signs that 
+might indicate that its customers were at risk of fraud (among other things). This is 
+particularly so given the increase in sophisticated fraud and scams in recent years, 
+which firms are generally more familiar with than the average customer;    
+• in some circumstances, irrespective of the payment channel used, have taken 
+additional steps, or made additional checks, or provided additional warnings, before 
+processing a payment – (as in practice Revolut sometimes does); and  
+• have been mindful of – among other things – common scam scenarios, how the 
+fraudulent practices are evolving (including for example the common use of multi-
+stage fraud by scammers, including the use of payments to cryptocurrency accounts 
+as a step to defraud consumers) and the different risks these can present to 
+consumers, when deciding whether to intervene.  
+ 
+Whilst I am required to take into account the matters set out at DISP 3.6.4R when deciding 
+what is fair and reasonable, I am satisfied that to comply with the regulatory requirements 
+that were in place in April 2023, Revolut should in any event have taken these steps. 
+      
+Should Revolut have recognised that Mr H was at risk of financial harm from fraud?  
+ 
+Mr H’s Revolut account had been open for several years at the point the scam payments 
+were made. So, Revolut had an extensive account history against which to compare any 
+new payments. And the initial payment Mr H made was small, and was to a cryptocurrency 
+exchange Mr H had used before, so I don’t think this payment would have been an 
+immediate cause for concern. 
+ 
+I’m also aware that cryptocurrency exchanges generally stipulate that the card used to 
+purchase cryptocurrency at its exchange must be held in the name of the account holder, as 
+must the account used to receive cash payments from the exchange. Revolut would likely 
+have been aware of this fact too. So, it could have reasonably assumed that payments Mr H 
+was making would be to a cryptocurrency wallet held in Mr H’s name.  
+ 
+But by April 2023, when these transactions took place, firms like Revolut had been aware of 
+the risk of multi-stage scams involving cryptocurrency for some time. Scams involving 
+cryptocurrency have increased over time. The FCA and Action Fraud published warnings 
+about cryptocurrency scams in mid-2018 and figures published by the latter show that losses 
+suffered to cryptocurrency scams have continued to increase since. They reached record 
+levels in 2022. During that time, cryptocurrency was typically allowed to be purchased 
+through many high street banks with few restrictions. 
+ 
+ 
+ 
+By the end of 2022, however, many of the high street banks had taken steps to either limit 
+their customer’s ability to purchase cryptocurrency using their bank accounts or increase 
+friction in relation to cryptocurrency related payments, owing to the elevated risk associated 
+with such transactions.  This left a smaller number of payment service providers, including 
+Revolut, that allowed customers to use their accounts to purchase cryptocurrency with few 
+restrictions. These restrictions – and the reasons for them – would have been well known 
+across the industry. 
+ 
+So, taking into account all of the above I am satisfied that by the end of 2022, prior to the 
+payments Mr H made in April 2023, Revolut ought fairly and reasonably to have recognised 
+that its customers could be at an increased risk of fraud when using its services to purchase 
+cryptocurrency, notwithstanding that the payment would often be made to a cryptocurrency 
+wallet in the consumer’s own name. 
+ 
+And the second payment Mr H made to the scam, for £3,500, was significantly larger than 
+any other payment that had debited Mr H’s account previously. So, while Mr H had 
+previously made cryptocurrency related transactions, meaning the purchase of 
+cryptocurrency was not entirely out of character, bearing in mind the value of this payment I 
+think that the circumstances should have led Revolut to consider that Mr H was at 
+heightened risk of financial harm from fraud. In line with good industry practice and 
+regulatory requirements, I am satisfied that it is fair and reasonable to conclude that Revolut 
+should have warned Mr H before this payment went ahead. 
+ 
+What did Revolut do to warn Mr H, and what should it have done? 
+ 
+I’ve thought carefully about what a proportionate warning in light of the risk presented would 
+be in these circumstances. In doing so, I’ve taken into account that many payments that look 
+very similar to this one will be entirely genuine. I’ve given due consideration to Revolut’s duty 
+to make payments promptly, as well as what I consider to have been good industry practice 
+at the time this payment was made. 
+ 
+Taking that into account, I think Revolut ought, when Mr H attempted to make Payment 2, 
+knowing that the payment was going to a cryptocurrency provider, to have provided a 
+warning (whether automated or in some other form) that was specifically about the risk of 
+cryptocurrency scams, given how prevalent they had become by the end of 2022. In doing 
+so, I recognise that it would be difficult for such a warning to cover off every permutation and 
+variation of cryptocurrency scam, without significantly losing impact. 
+ 
+So, at this point in time, I think that such a warning should have addressed the key risks and 
+features of the most common cryptocurrency scams – cryptocurrency investment scams. 
+The warning Revolut ought fairly and reasonably to have provided should have highlighted, 
+in clear and understandable terms, the key features of common cryptocurrency investment 
+scams. I recognise that a warning of that kind could not have covered off all scenarios. But I 
+think it would have been a proportionate way for Revolut to minimise the risk of financial 
+harm to Mr H by covering the key features of scams affecting many customers but not 
+imposing a level of friction disproportionate to the risk the payment presented. 
+ 
+If Revolut had provided a cryptocurrency investment scam warning, would that have 
+prevented the losses Mr H incurred after that point? 
+ 
+ 
+ 
+I’ve thought carefully about whether a specific warning covering off the key features of 
+cryptocurrency investment scams would have likely prevented any further loss in this case. 
+And on the balance of probabilities, I think it would have. There were several key hallmarks 
+of common cryptocurrency investment scams present in the circumstances of Mr H’s 
+payments, such as being approached on a social media type platform by someone offering 
+investment opportunities, being advised on trades by an unregulated third-party, being 
+promised unrealistic returns, and being unable to withdraw any ‘profits’. 
+ 
+I’ve also seen no indication that Mr H was asked to, or agreed to, disregard any warnings 
+provided by Revolut. Neither do I think that the conversations I’ve seen demonstrate a 
+closeness of relationship that Revolut would have found difficult to counter through a 
+warning. I understand that Mr H did not agree to the fraudsters demands for him to pay taxes 
+on his withdrawal and it was his difficulty in withdrawing money that led him to realise he had 
+been scammed, so he was clearly willing to question what he was being told by the 
+scammer if he had been given reason to doubt that what he was doing was part of a 
+legitimate investment. 
+ 
+With all this in mind, I’m satisfied that Mr H was not so taken in by the fraudsters that he 
+wouldn’t have listened to the advice of Revolut. 
+ 
+I’ve also seen no evidence that Mr H was provided with warnings by the firm from which the 
+funds used for the scam appear to have originated. His Revolut account appears to have 
+been linked to that account for several years and therefore would have likely been an 
+established and trusted payee. 
+ 
+Therefore, on the balance of probabilities, had Revolut provided Mr H with an impactful 
+warning that gave details about cryptocurrency investment scams and how he could protect 
+himself from the risk of fraud, I believe it would have resonated with him. He could have 
+paused and looked more closely into the investment scheme before proceeding, more likely 
+than not revealing the scam and preventing his further losses. 
+ 
+Is it fair and reasonable for Revolut to be held responsible for consumer’s loss?  
+In reaching my decision about what is fair and reasonable, I have taken into account that the 
+funds lost to this scam originated with another bank, and were passed to Mr H’s 
+cryptocurrency accounts before being sent on to the scammers.  
+ 
+But as I’ve set out in some detail above, I think that Revolut still should have recognised that 
+Mr H might have been at risk of financial harm from fraud when he made Payment 2, and in 
+those circumstances it should have provided Mr H with a relevant warning about that 
+payment. If it had taken those steps, I am satisfied it would have prevented the losses Mr H 
+suffered. The fact that the money used to fund the scam came from elsewhere and/or wasn’t 
+lost at the point it was transferred to Mr H’s own account does not alter that fact and I think 
+Revolut can fairly be held responsible for Mr H’s loss in such circumstances. I don’t think 
+there is any point of law or principle that says that a complaint should only be considered 
+against either the firm that is the origin of the funds or the point of loss.  
+ 
+I’ve also considered that Mr H has only complained against Revolut. I accept that it’s 
+possible that other firms might also have missed the opportunity to intervene or failed to act 
+fairly and reasonably in some other way, and Mr H could instead, or in addition, have sought 
+to complain against those firms. But Mr H has not chosen to do that and ultimately, I cannot 
+compel him to. In those circumstances, I can only make an award against Revolut.  
+ 
+ 
+ 
+I’m also not persuaded it would be fair to reduce Mr H’s compensation in circumstances 
+where: the consumer has only complained about one respondent from which they are 
+entitled to recover their losses in full; has not complained against the other firm (and so is 
+unlikely to recover any amounts apportioned to that firm); and where it is appropriate to hold 
+a business such as Revolut responsible (that could have prevented the loss and is 
+responsible for failing to do so). That isn't, to my mind, wrong in law or irrational but reflects 
+the facts of the case and my view of the fair and reasonable position.  
+ 
+Ultimately, I must consider the complaint that has been referred to me (not those which 
+haven’t been or couldn’t be referred to me) and for the reasons I have set out above, I am 
+satisfied that it would be fair to hold Revolut responsible for Mr H’s loss from Payment 2 
+(subject to a deduction for Mr H’s own contribution which I will consider below).  
+ 
+Should Mr H bear any responsibility for his losses?  
+ 
+In considering this point, I’ve taken into account what the law says about contributory 
+negligence as well as what’s fair and reasonable in the circumstances of this complaint. 
+ 
+There’s a general principle that consumers must take responsibility for their decisions. I’ve 
+duly considered whether Mr H should bear some responsibility by way of contributory 
+negligence. And considering the details of this scam I do think it is fair that he bear some 
+responsibility for his losses. 
+ 
+I say this because Mr H has said he found out about this investment after he was contacted 
+by someone on a dating app who told him they had made good profits, not the usual route 
+where one would find legitimate investment advice. And by the time of Payment 2, Mr H 
+appears to have believed he had made a proportionally very large profit on his initial small 
+investment, this really does strike me as being something Mr H should have seen was too 
+good to be true, this is not the kind of return that a legitimate investment would generally 
+offer, not even a high risk one such as cryptocurrency. I understand that Mr H says V’s 
+trading platform appeared professional, but I’ve been unable to locate any independent 
+reviews (either positive or negative) of V, so it would seem that Mr H decided to invest 
+without seeking any independent opinions regarding whether it was a legitimate or 
+trustworthy business. I’m also aware that, after his initial small investment, Mr H was told he 
+couldn’t withdraw his profits without making more payments into the scheme, and I think this 
+should have been a point of further concern to him. 
+ 
+So, having thought carefully about this, I do think that Mr H ought to bear some responsibility 
+for his losses and that the refund due to him should be reduced by 50% accordingly. I also 
+note that Mr H appears to have credited some funds back into Revolut from his 
+cryptocurrency account at a later stage in the scam, and those funds should also be 
+deducted from any refund due to him. 
+ 
+Putting things right 
+To resolve this complaint Revolut should: 
+• Refund 50% of Mr H’s loss (minus any credits received as detailed in the table 
+above) from Payment 2 onwards (inclusive); and 
+• Pay 8% simple interest per annum on the refunded amount, calculated from the date 
+of each payment to the date of settlement (less any tax properly deductible). 
+ 
+ 
+ 
+My final decision 
+I uphold this complaint, Revolut Ltd should now put things right in the way I’ve set out above. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr H to accept or 
+reject my decision before 6 February 2025. 
+   
+Sophie Mitchell 
+Ombudsman

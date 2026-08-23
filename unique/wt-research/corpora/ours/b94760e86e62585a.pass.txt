@@ -1,0 +1,35 @@
+Unpaid-hours audits for NHS doctors and nurses.
+
+An API that reads published NHS rotas and timesheets, applies each worker's contract terms, and returns the overtime, unsocial hours uplifts and Working Time holiday pay owed.
+
+NHS staff regularly do hours their trust never pays them for. The 2023 BMA junior doctor survey found 79% worked beyond their contracted hours; the same is true across nurses, midwives and allied health professionals. The shortfall per worker per year runs from a few hundred to several thousand pounds.
+
+Calculating what's owed is messy because pay depends on several overlapping things: the worker's contract (NHS medical and dental terms for doctors; Agenda for Change for nurses and others), unsocial hours uplifts (nights at 30%, weekends at 50%, bank holidays higher), on-call availability allowances, and Working Time Regulations holiday accrual (4 weeks under regulation 13 of the Working Time Regulations 1998, rising to 5.6 weeks).
+
+NHS trusts use e-roster systems (Allocate, HealthRoster, RosterMaster) but those systems show the trust's view of the rota, not the worker's view of what they are owed. There is no commercial product that turns a worker's rota into a per-shift underpayment figure.
+
+HoursBack ingests a published rota (as a PDF, photo or structured data), the worker's contract details and an optional timesheet of hours actually worked. It applies the right NHS terms and returns a structured breakdown: per-shift underpayment, total annual shortfall, and a draft grievance letter plus an employment tribunal evidence pack. It does not file anything; the worker, or their union rep, submits.
+
+Every rota the system processes adds to a private dataset: how each NHS trust pays overtime, which specialties have the worst breaches, which contract clauses are most often misapplied. That dataset makes the next estimate sharper and the next grievance stronger. It cannot be bought or scraped; only paying workers for their data builds it.
+
+This borrows the way auto insurers price premiums against a published telematics index, and applies it to NHS working hours. Just as the insurer's data tells the driver whether the premium is fair, HoursBack's data tells the worker whether their pay is fair.
+
+Growth: BMA membership benefits (about 190,000 members), NHS forums (Doctors.net, Reddit r/JuniorDoctorsUK, Tiko's Hub), employment law firm partnerships that take cases on no-win-no-fee, and TikTok and Instagram where NHS workers openly share pay horror stories. Side door: integration with payroll-on-demand apps (Wagestream, Hastee) that already serve NHS staff.
+
+NHS specialty registrars, consultants and senior nurses (NHS pay band 6 and 7) aged 30 to 60, on stable income and a defined pension, who routinely do unpaid overtime; a recurring £500 to £5,000 per worker per year in unclaimed pay. Also the employment lawyers and BMA local negotiating committee reps who represent them.
+
+Three years of NHS industrial action have made pay a normal conversation. The NHS Long Term Workforce Plan (2023) has intensified workload pressure. E-roster adoption is now near-universal so paper trails exist. AI vision APIs make parsing messy rota PDFs into structured data economically viable at the point of need.
+
+The passages confirm NHS unsocial hours enhancements (nights, weekends, bank holidays) exist under Agenda for Change and remain complex enough that workers need calculators and payslip checks to verify correctness, showing the underlying pay-complexity problem is real and current (2026 rates).
+
+None of the passages describe any incumbent turning NHS rotas into per-shift underpayment figures; the e-roster and EWA passages ([2ce8c99e8bbc6b12],[4d069cc8aabd184a],[ed51a3a5b1fe5989]) only describe generic pay-cycle/advance-pay services, not overtime or Working Time Regulations pay analysis, so they neither confirm nor rule out a dominant player in this specific niche.
+
+The passages describe junior doctors' financial hardship (45.3% struggling with rent, 50.8% with heating bills) and NHS-wide pay-rise/budget figures, but none states whether the actual buyer segment named in the pitch — registrars, consultants and band 6/7 nurses with stable income — can or will pay a one-off £79.99. The hardship stats concern a different, more junior cohort and household bills, not discretionary spend on a pay-recovery tool.
+
+The passages show BMA offers member discounts on legal advice, learning, and supplies, but none mentions a rota/pay-underpayment tool, a channel to distribute one, or any partnership program HoursBack could join.
+
+None of the passages address NHS rota parsing, unpaid overtime calculation, or any legal mechanism relevant to HoursBack's operation — they cover insurance claims apps, VA disability claims, and UK claims-management-company (CMC) regulation, which is a different activity (pursuing compensation claims, not computing pay owed from rota data).
+
+The passages show BMA members striking over pay and describing it as pay erosion so severe the union compared doctors' hourly pay unfavourably to a cafe chain, and BMA's own tracker surveys are described as painting a 'devastating picture' of conditions — evidence of an acute, currently-unresolved pay grievance among NHS doctors that people are actively organising and protesting to fix.
+
+No passage shows this activity is illegal or reserved for a licensed third party — the only regulatory passages found concern claims-management-company rules, which the evidence itself says is a different activity (pursuing compensation, not computing pay owed from a rota). No passage shows one company holding most of the distribution or data channel this depends on, and no passage shows the cost of winning a customer exceeding what that customer could ever pay; the CAC and margin figures behind the unit-economics claim are unverified assumptions, not the same as evidence of an impossible ratio.

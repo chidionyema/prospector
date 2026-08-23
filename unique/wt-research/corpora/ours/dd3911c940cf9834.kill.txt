@@ -1,0 +1,27 @@
+Bunker Blending Arbitrage Coordinator.
+
+A solo operator builds a hyperlocal service that identifies and executes cost-optimal blending of drop-in biofuels and RFNBOs for individual vessels calling at a specific EU port, pocketing a share of the penalty avoidance savings.
+
+By analogical transfer from the 'local fuel optimization consultant' model used by regional trucking fleets to meet CARB low-carbon fuel standards, a solo agent can physically sample and verify fuel blends at a single busy EU port (e.g., Rotterdam, Algeciras), negotiate with small local biofuel suppliers, and schedule bunkering for inbound ships to exactly meet their FuelEU deficit, without the shipowner needing a global fleet-wide optimization team. The value grows as penalty-doubling makes non-compliance exponentially expensive.
+
+Shipping operators of 5,000+ GT vessels calling at the specific EU port (e.g., a tramp operator with 3-10 ships stopping at Rotterdam 6-12 times a year each).
+
+FuelEU Maritime took effect January 1, 2025, and the first annual compliance deadline (reporting 2025 data in 2026) is approaching. Most small-to-mid-size operators have no in-house pooling or blending expertise and face doubling penalties for non-compliance in subsequent years. Local biofuel availability and pricing is fragmented and opaque.
+
+The passage discusses the general risk of misreading needs in quiet markets but does not address whether shipping operators are actively searching for or paying for bunker blending arbitrage coordination services.
+
+The passage describes a solo operator selling websites to local businesses, which is unrelated to the candidate's bunker blending arbitrage opportunity at EU ports under FuelEU Maritime. No passage addresses the currency of the candidate's specific opportunity.
+
+The passage describes a solo operator selling websites to local businesses via Google Maps scraping and automated outreach, but does not address any route to reach paying buyers for bunker blending arbitrage coordination at EU ports.
+
+The provided passage is a project report about hyperlocal grocery delivery and contains no information about bunker blending, FuelEU Maritime regulations, or any legal/contractual constraints on the candidate's proposed service.
+
+The passage describes a solo operator selling websites to local businesses, which is unrelated to the candidate's claims about FuelEU Maritime, bunker blending, or port-specific fuel optimization. No passage addresses the core factual claims of the candidate.
+
+The passage discusses a local news publisher's revenue struggles, not shipping operators' ability to pay for fuel blending services. It provides no information about payer solvency for the described maritime service.
+
+The passage describes a solo operator selling websites to local businesses via automated outreach, which is a different business model and buyer than the candidate's bunker blending arbitrage service for shipping operators. No passage addresses distribution channels for fuel blending services to maritime clients.
+
+The passage describes a solo operator earning money selling websites to local businesses, which is unrelated to the candidate's maritime fuel blending arbitrage service. No passage addresses whether shipping operators are currently paying to solve FuelEU compliance deficits.
+
+The gathered evidence is insufficient to justify killing the idea based on a deliverability or demand failure. The provided citations, such as sources related to AI-driven web design services (705873bd6d5933fb), local news publishing (9799ebe4025d8849), and hyperlocal grocery delivery in India (acca620a0ee44fa0), are unrelated to the specific logistics, regulatory environment, or market demands of FuelEU Maritime and bunker fuel arbitrage. As there is no grounded evidence indicating that the proposed method fails, that the channel is closed, or that there is no buyer demand, a decisive kill cannot be rendered.

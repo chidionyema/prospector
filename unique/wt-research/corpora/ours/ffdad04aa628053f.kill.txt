@@ -1,0 +1,25 @@
+ClientRisk Brief – the weekly email that rates UK companies on how reliably they pay freelancers, using court data and inside tips.
+
+A weekly subscription briefing that scores a company's payment track record for freelance creatives, built from UK county court judgments and a private panel.
+
+Freelancers lose thousands every year to clients who pay late or never, yet they have no systematic way to check a prospect's payment behaviour beyond a quick Google. ClientRisk Brief borrows the model of a corporate credit‑rating agency but turns it into a journalistic product for sole creatives. Each week, the email profiles two firms. It uses a composite score drawn from publicly available Companies House filings (like late penalty notices), Registry Trust county court judgment data, and confidential tip‑offs from a growing panel of freelance designers, writers and developers who log every invoice they chase.
+
+The score is not a legal credit rating – that would need a licence – but an editorial risk assessment grounded in hard evidence. The solo operator writes the briefing and manages the data pipeline. Over time the panel's data set becomes a moat: it captures granular, real‑time payment patterns no free register can match.
+
+Why it sticks: the more freelancers join the panel, the sharper the scores get, and the harder it is for any rival to recreate that proprietary data lake. The email arrives every Monday morning, priced at £9 a month, so a freelancer can check a new lead before they sign the contract.
+
+A freelance graphic designer in Bristol, earning £35,000 a year, who lost £2,400 last year to a client that went bust owing her three months of invoices. She now pays £9 a month to screen every serious prospect before committing to a project.
+
+Registry Trust data shows UK county court judgments against companies up 15 % year‑on‑year. Freelancer forums are full of stories about unpaid invoices, yet no media product systematically mines the court record and real‑world panel data to flag the worst payers for creatives.
+
+The passages show that UK company filings are free to search and that county court judgments exist as records of unpaid debts, but they never say whether a paid weekly briefing that scores how companies pay freelancers still has lasting, non-free value. They do not address durability of that product’s edge, nor do they show that free registers have wiped out all room for such a service.
+
+The passages note freelancers should build their own client-vetting habits and that Creditsafe sells general credit, payment-trend, and risk monitoring tools, but none say whether any provider already dominates—or even serves—a freelancer-facing weekly score of how UK clients pay. Without evidence that this exact need is owned by a market leader or left wide open, the claim cannot be decided.
+
+The passages cover job posting for hiring freelancers, freelancer earning-potential marketing, free tools that monetize elsewhere, AI contract and productivity advice, and guides to client-management software for freelancers. None state whether freelancers can or will pay for a subscription that screens how reliably companies pay them.
+
+The passages describe UK freelance creative pay bands and NIC cost pressure, plus generic email metrics (subscriber acquisition cost, list cleaning, open times, send frequency). None of them show a concrete, executable path—self-serve, forcing mechanism, or existing channel—by which ClientRisk Brief reaches those freelancers.
+
+The passages only describe Companies House public filings, an unrelated fire-risk service, and past defamation awards for false or fake publications in Quebec and the UK. None of them say whether a UK weekly email that scores companies’ freelancer-payment behaviour from court records and tip-offs can be sold lawfully, or whether it must break the law or falsify data to make money.
+
+UK tradespeople are owed almost £4,000 each on average in unpaid invoices (£3.5 billion in total), and freelancer/SME guidance treats non-payment chasing as standard practice, so late and missing client payment is a real, costly problem people already organise around. Demand for invoice factoring as a paid cash-flow fix further shows operators spend money to cope with that same payment gap.

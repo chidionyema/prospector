@@ -1,0 +1,23 @@
+Retiree Garden Legacy Service.
+
+A solo operator designs, plants, and maintains low-maintenance perennial gardens for retirees, then documents the garden's design and care instructions as a 'living legacy' package for their heirs.
+
+Retirees with gardens face a dual pain: the physical burden of maintenance as they age, and the emotional desire to leave something tangible and beautiful for their family. A local service that combines garden labor with a legacy documentation component (a printed guide, a video tour, a plant map) creates a unique value proposition that a generic landscaper cannot easily replicate. The 'broaden' lens expands from simple maintenance to include the emotional legacy angle, which is a high-margin, low-cost add-on.
+
+Retirees (aged 60-75) who own a home with a garden, have moderate disposable income, and express concern about the garden's future after they are gone or unable to tend it.
+
+The large baby boomer cohort is aging into this exact pain point. They have both the financial resources and the emotional attachment to their homes and gardens. The trend toward 'death positivity' and legacy planning is growing, making the documentation aspect timely.
+
+The passage states that a 'low-maintenance landscape' is 'one of the most frequently requested goals' by clients, indicating a real and durable demand for this value. It also clarifies that maintenance involves 'time, knowledge, and tools,' which not everyone possesses or desires, further validating the need for a service addressing this complexity.
+
+The passage describes Molly Plants LLC as an exclusive horticultural company providing high-quality, personalized garden design and maintenance. However, it does not mention any service related to documenting garden designs or care instructions as a 'living legacy' package for heirs, which is a core component of the candidate's unique value proposition.
+
+The provided passage discusses the author's personal financial concerns and motivations for leaving a corporate job, not the financial capacity or willingness to pay of the target retiree demographic for a garden legacy service.
+
+The passage discusses how landscapers should think about marketing and advertising to get clients, but it does not describe or affirm the existence of a low-friction, self-serve, or existing channel for distribution. It focuses on a mindset shift regarding advertising ROI rather than detailing specific distribution routes or their friction levels.
+
+The passage outlines general landscaping licensing requirements, noting that activities beyond basic lawn mowing can trigger additional state contractor licenses or certifications. However, it does not explicitly state whether the specific activities of 'designing, planting, and maintaining low-maintenance perennial gardens' for this service definitively fall under categories that require such licenses, nor does it confirm that the margin cannot exist without breaking the law.
+
+The passage describes a seventy-year-old retiree actively engaged in starting and maintaining a garden, but it does not mention any physical burden of maintenance or an emotional desire to leave a legacy for heirs. It does not address whether these are real or acute problems.
+
+The core hypothesis of the 'Retiree Garden Legacy Service' is built upon the assumption that retirees face a dual pain: the physical burden of garden maintenance and an emotional desire to leave a legacy for their heirs. However, the 'pain_reality' check indicates that this premise is unverifiable, with a low confidence (0.43). The provided source (ccca91303e544985) even describes a seventy-year-old retiree actively engaged in starting and maintaining a garden, explicitly stating it 'does not mention any physical burden of maintenance or an emotional desire to leave a legacy for heirs. It does not address whether these are real or acute problems.' This directly undermines the foundational problem the service aims to solve. Without validated pain points, the unique value proposition is severely weakened, as there's no clear evidence that the target audience genuinely experiences the problems this service intends to alleviate.

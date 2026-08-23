@@ -1,0 +1,138 @@
+DRN-5377151 
+ 
+ 
+The complaint 
+ 
+Mrs W complains about the way Barclays Bank UK PLC trading as Barclaycard (‘BC’) 
+handled a claim she made to it. 
+What happened 
+The parties are familiar with the background details of this complaint – so I will briefly 
+summarise them here. It reflects my role resolving disputes with minimum formality. 
+Mrs W paid for some of the cost of a second-hand car for her daughter using her BC credit 
+card. The rest was paid for via bank transfer. However, she says there were mechanical 
+faults with the car and the garage was unwilling to help. 
+Mrs W raised a claim to BC to get her money back. BC said that it was unable to raise a 
+chargeback due to the requirement of the scheme rules not being met. It also said that the 
+technical criteria was not in place for Mrs W to have a Section 75 claim against it. 
+Mrs W complained about the outcome of the claim – and escalated it to this service. Our 
+investigator did not uphold the complaint and the matter has been referred to me for a final 
+decision. 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+While I might not comment on everything (only what I consider key) this is not meant as a 
+discourtesy to either party – it reflects my role resolving disputes with minimum formality. 
+ 
+I am sorry to hear about the issues with the car Mrs W helped to fund for a family member. 
+However, it is worth noting here that BC is not the supplier of the goods. So when looking at 
+what is fair I consider its role as a provider of financial services – and what it fairly could 
+have done to help Mrs W with the information that was reasonably available to it at the time.  
+ 
+As Mrs W used a credit card to pay for the goods in dispute I consider the protections of 
+chargeback and Section 75 of the Consumer Credit Act 1974 (‘Section 75’) to be particularly 
+relevant here. 
+ 
+
+ 
+ 
+Chargeback 
+ 
+A chargeback is not a legal right but based on the rules of a particular card scheme. In this 
+case it appears the card scheme is the Visa one which I have considered here in deciding 
+what is fair. 
+ 
+BC did not have to raise a chargeback, but it would be considered fair to do so where the 
+claim had a reasonable prospect of success. In this case BC says that when looking at a 
+claim like this the requirements of the chargeback rules were not met because the goods 
+had not been returned to the supplier. I have looked at the relevant rule here which I 
+consider to be ‘Not as described or defective merchandise/services’ and I don’t consider BC 
+is quite right in its analysis. A chargeback can be raised if goods have not been returned yet 
+as long as there is sufficient evidence that the consumer attempted to return the goods and 
+this was refused. 
+ 
+However, even if BC had raised a chargeback, I am not persuaded that the evidence 
+presented to it at the time shows that it is more likely to have succeeded than not. It is clear 
+that the supplier would have defended the chargeback – correspondence shows it had 
+contested the prior claim that it was liable for the faults. And had the chargeback been 
+pushed forward to arbitration by the card scheme it is also difficult to say that the result 
+would have been in Mrs W’s favour. I say this because the car at the time of sale was 
+around eight years old and had travelled around 85,000 miles. The main issue appeared to 
+be the requirement to replace the timing chain which could be put down to reasonably 
+expected wear and tear in an older high mileage car like this one – and there was no expert 
+report or similar evidence to persuasively show otherwise. And while it has been mentioned 
+that there was a recall on the car – it wasn’t clear if the car was actually suffering from a fault 
+connected with this (I also note the update required appeared to have been carried out by a 
+dealer in any event).  
+ 
+I also note Mrs W has submitted further evidence she says shows the car was defective at 
+the time of sale – but my role here is to look at how BC handled the claim at the time – and 
+this information wasn’t presented then. 
+ 
+In summary, there wasn’t persuasive evidence that the issues with the car were more than 
+reasonably expected wear and tear at the time the claim was made. So, even if BC could 
+have progressed a chargeback I don’t consider it would have had a reasonable prospect of 
+success in any event. 
+ 
+For completeness I note that our investigator pointed out that under chargeback Mrs W 
+would not be able to recover the full price of the car in any event (and that even if the 
+chargeback had succeeded, and the car was taken back, it might be economically worse 
+than having the repairs carried out). Mrs W says she was under the impression she only had 
+to put part of the cost on her card to recover the full amount. However, this does not apply to 
+chargeback - where only the amount paid on the card can be recovered. It does apply to 
+Section 75 – however, this claim fails for the reasons I have detailed below. 
+ 
+Section 75 
+Section 75 in certain circumstances allows Mrs W to hold BC liable for a ‘like claim’ for 
+breach of contract or misrepresentation in respect of an agreement by a supplier of goods or 
+services which is funded by the credit card. 
+There are certain requirements that need to be met in order for Section 75 to apply – which 
+relate to things like the cash price of the goods or the way payment was made. After 
+ 
+ 
+considering these factors I think the requirements are not in place for Mrs W to have a valid 
+Section 75 claim against BC in respect of the agreement for the car. I will explain. 
+ 
+In order for Mrs W to have a Section 75 claim against BC in respect of the quality of the car 
+she would need to be able to make said claim against the supplier in court. Essentially, she 
+needs to have a contractual agreement with the supplier here. This is often referred to as the 
+requirement for a valid ‘Debtor-Creditor-Supplier’ agreement. In this case the key issue is 
+whether there is the relevant agreement between Mrs W (‘the Debtor’) and the car garage 
+that supplied the car (‘the Supplier’). 
+ 
+In this case it appears the contract to supply a vehicle was made with Mrs W’s daughter. It is 
+her name that appears on the written contractual agreement for the car (and she signed the 
+customer declaration). To reinforce this I note the log book is also in her name, and she is 
+the primary insured on the car. As an aside I also note that in her later communications with 
+the supplier about the faults Mrs W’s daughter’s does not act in a way inconsistent with 
+someone who has contracted to own the car. So prima facie, it is Mrs W’s daughter who has 
+the contractual agreement with the supplier, and the potential claim in court against it in 
+relation to the quality of the car. Which means that Mrs W does not have a claim against the 
+supplier – or BC under Section 75.  
+ 
+I know Mrs W financed the car. Unfortunately, simply paying toward a purchase does not 
+give rise to the required contractual agreement here.  And while I know Mrs W benefits from 
+the purchase as it is used to take her to places she needs to go I don’t consider this is 
+enough to establish the required agreement for a claim against BC here. And while Mrs W’s 
+testimony is that she was the one who has a contract with the supplier – the evidence 
+doesn’t support that here. 
+ 
+It is also worth noting in any event, that even if a Section 75 claim were valid – for similar 
+reasons to those I have mentioned above – I don’t think the information presented at the 
+time of the claim persuasively shows that the car was suffering from more than expected 
+wear and tear. So BC would not necessarily be expected to agree that a breach of contract 
+had occurred without further information. 
+ 
+I know my decision will come as a disappointment to Mrs W. I am also sorry to hear about 
+the challenges she has explained with her health and that of other family members. 
+However, I don’t consider BC should fairly have to pay out to her in respect of the car. 
+ 
+My decision does not prevent Mrs W seeing what recourse her daughter might have in court 
+against the supplier. But that is something she can seek independent legal advice on. 
+ 
+My final decision 
+I don’t uphold this complaint. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mrs W to accept or 
+reject my decision before 1 May 2025. 
+   
+Mark Lancod 
+Ombudsman

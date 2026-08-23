@@ -1,0 +1,13 @@
+The Mark Scheme Mirror – GCSE English Essay Grader for Parents.
+
+A web app that uses a proprietary dataset of examiner-marked AQA GCSE English Language Paper 1 essays to give students calibrated grades, assessment-objective breakdowns, and predicted grade boundaries, sold to parents seeking a tutor-level feedback loop at a fraction of the cost.
+
+By obtaining a unique dataset of real, anonymised AQA English Language essays paired with official scores and examiner rationales, I can build an AI grader that simulates the exam board's exact standard far more accurately than generic tools, making it indispensable for parents wanting concrete feedback before the final exam.
+
+Parents of GCSE English students (squeezed middle, time-poor, ambitious) in England who are dissatisfied with the one or two mocks provided by schools, paying £15–25 per month during the exam year.
+
+Ofqual’s 2023 consultation on AI in assessment signals regulatory openness; post-pandemic grade inflation has created a hyper-competitive mindset among parents; and generative AI now enables low-cost, board-specific fine-tuning. The chaos of 2020 teacher-assigned grades left a lasting appetite for transparent, external validation.
+
+The passage shows a free generic GCSE English AI marker using 'examiner-style' criteria exists, but per the durability rule a mere free substitute only refutes if it is a total commodity removing ALL margin; this generic tool does not address the candidate's specific value (calibration to AQA's exact standard via a proprietary dataset of real examiner-marked essays), so it neither affirms nor negates that durability.
+
+The passage shows Top Marks AI already provides AI marking for AQA GCSE English Language, achieving a 0.94 correlation with AQA on 16-mark questions, demonstrating an incumbent already solves this need well.

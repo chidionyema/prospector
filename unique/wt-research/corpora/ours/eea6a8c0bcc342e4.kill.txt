@@ -1,0 +1,23 @@
+RemedyCheck, finds errors in your McCloud pension fix.
+
+A fixed-fee check for NHS, teacher, civil service, police or fire staff that audits your McCloud pension remedy statement for errors before you choose.
+
+RemedyCheck checks the Remediable Service Statement your pension scheme sent you — the letter from NHS Pensions, Teachers' Pensions, the Civil Service Pension Scheme, the Local Government Pension Scheme, or your police or fire scheme, fixing the 2015 pension age-discrimination problem — and tells you in plain terms whether the maths behind it is right, before you make your choice between old and new scheme benefits.
+
+This borrows the way a public loss adjuster re-checks an insurer's own assessment of your claim before you sign it off, working for you instead of for the party that wrote the number. Pension scheme administrators are marking their own homework: they wrote the statement, they built the calculator, and they have no reason to go looking for mistakes that would cost the scheme more money. RemedyCheck plays the same outside role for pension remedy statements that a loss adjuster plays for a home insurance claim.
+
+Under the hood it's a small team of two to four actuarial-literate operators plus a calculation engine that re-derives your remediable service year by year — legacy accrual versus 2015 scheme accrual, annual allowance tax interaction, opted-out periods — from the underlying service data on your statement, and flags where the scheme's own number doesn't match. Every case reviewed adds to a pattern library of the specific error types each administrator's software tends to produce (a known issue with the batches NHS Pensions and Capita, who administer Teachers' Pensions, have been issuing since 2023), so the engine gets faster and sharper at spotting the next one. It does not recommend which option to pick — it only proves the arithmetic behind both options is correct, so it stays out of regulated financial advice.
+
+Pricing is a fixed fee for the audit, with an optional success fee capped as a percentage of any corrected value the client recovers, mirroring how loss adjusters and tax-refund specialists price against the money they find rather than the hours they spend.
+
+An NHS nurse, teacher, civil servant, police officer or firefighter, typically 45 to 65, who has received a Remediable Service Statement from their scheme and must make an Immediate Choice or Deferred Choice decision about how their pension is calculated for the 2015 to 2022 remedy period. They pay for the audit themselves, out of household savings, because the decision is one-off and irreversible once made.
+
+Schemes have been issuing Remediable Service Statements in bulk through 2023 to 2025 under the Public Service Pensions and Judicial Offices Act 2022, most with a set window to make a choice once the statement lands. NHS Pensions and Capita, who run Teachers' Pensions, have both publicly acknowledged calculation and processing backlogs in this remedy round, and once a member makes their choice it cannot be undone, so there is a real, time-limited reason to get a second opinion now rather than after the fact.
+
+Three passages are about the 1970s TV show McCloud and have no bearing on pension remedy audits. The remaining passages only show NHS Pensions has limited support capacity and a Total Reward Statement tool exists; none show people actively searching for or paying to have their Remediable Service Statement independently audited.
+
+None of the passages address whether NHS, teacher, civil service, police or fire staff have budget or motive to pay a fee for a McCloud remedy statement audit; they cover unrelated pension tax refund claims and generic cost-of-living indices.
+
+None of the passages describe any channel — union, employer, scheme website, or otherwise — through which RemedyCheck could reach McCloud remedy statement recipients; they cover unrelated Teachers' Pension general advice, State Pension eligibility, an unrelated Nigerian college admission notice, and FCA rules on financial promotions.
+
+None of the passages address McCloud pension remedy statement audits, actuarial review services, or any legal restriction on third-party checking of pension calculations; they concern the FCA's advice/guidance boundary, firm authorisation, and an unrelated trade-term acronym.

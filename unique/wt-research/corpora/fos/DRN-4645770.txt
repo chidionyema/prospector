@@ -1,0 +1,166 @@
+DRN-4645770
+The complaint
+P, a limited company, complains that Barclays Bank UK Plc unreasonably declined to refund 
+money lost to a scam. It would like the funds refunded to them.
+What happened
+P has appointed representatives, but for ease of reading in this decision I’ll refer only to P.
+P is a property developer that holds accounts with Barclays. In June 2022 it reported to the 
+bank that they had been victim of an email intercept scam. It had made a payment to what 
+was thought to be a subcontractor who had recently sent updated payment details. P had 
+then made a payment of £34,140.26. 
+Barclays were able to recover £143.92, which was returned to P. But the bank declined to 
+refund anything further – they said the size of P’s business meant it wasn’t covered by the 
+Contingent Reimbursement Scheme (CRM) Code for reimbursement from scams. As the 
+payment wasn’t out of character for P’s account, the bank didn’t think it should have 
+triggered any additional checks.
+Unhappy with this P referred its complaint to our service. One of our investigators looked into 
+what happened, and initially didn’t think Barclays needed to do anything further, reasoning 
+that P had authorised the payment and didn’t see any reason the bank would question it.
+However, the investigator later revised their position, saying that upon review of P’s balance 
+sheet it would be considered a microenterprise, and as such in scope of the CRM. On that 
+basis they reassessed the claim under the Code. In summary they thought that the claim 
+should succeed – they did not feel Barclays had provided effective warnings to P about the 
+payment, and about a negative match in the account name. 
+The investigator felt P had no reason to doubt the payment instruction was genuine and had 
+followed their internal processes correctly. They asked Barclays to refund the outstanding 
+amount; and pay 8% simple interest on this amount from the date the claim was declined to 
+the date it was paid.
+Barclays rejected this outcome – arguing that payments into P’s account showed that the 
+turnover was too high to be a microenterprise, so couldn’t be covered under the CRM code. 
+The investigator found that this income was from a loan facility, and they didn’t see that loan 
+credits would count towards the turnover of the business. The bank still disagreed, and as no 
+agreement could be reached the complaint has been passed to me to decide.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+In deciding what’s fair and reasonable in all the circumstances of a complaint, I’m required to
+
+take into account relevant: law and regulations; regulatory rules, guidance and standards;
+codes of practice; and, where appropriate, what I consider to have been good industry
+practice at the time.
+The starting position in the relevant regulations – the Payment Services Regulation 2017 
+(PSRs) and the terms of P’s account is that they have authorised the payments and are 
+responsible for the transaction carried out. 
+But where the customer made the payment because of the actions of a fraudster
+it may sometimes be fair and reasonable for the bank to reimburse the consumer even
+though they authorised the payment.
+When thinking about what is fair and reasonable in this case, I’ve considered whether
+Barclays should have reimbursed P in line with the provisions of the CRM Code it has signed 
+up to and whether it ought to have done more to protect P from the possibility of financial
+harm from fraud.
+P has asked for redress under this code. This allows for the refund of losses to authorised 
+push payments (APP) fraud to eligible victims, subject to certain exceptions. Barclays’ main 
+contention is that P aren’t eligible under the code.
+I think there are several key questions for me to answer here, which I shall take in turn.
+Is P covered by the CRM Code?
+There doesn’t seem to be any dispute that P is the victim of APP fraud – so the key question 
+in deciding whether the CRM Code covers them is whether they are a microenterprise or 
+not.
+The CRM Code refers to the definition of microenterprise from the PSRs, which in turn refers 
+to the Annex to Recommendation 2003/361/EC, of 6 May 2003. Article 2 of this defines a 
+microenterprise that employs fewer than 10 people and whose annual turnover and/or 
+balance sheet total does not exceed EUR 2 million.
+When considering this I’ve noted that P also has linked enterprises as well, which share the 
+same directors and have shareholders voting rights over P. So, I have taken these 
+enterprises into account alongside the figures of P.
+I’ve seen nothing to suggest P employed 10 or more people at the time, or in the two years 
+prior to the complaint. So, I’m satisfied they meet the headcount criteria. From P’s balance 
+sheet it’s clear it has assets of over EUR 2 million – but the test is not exceeding this amount 
+in assets and/or turnover. 
+P has argued that it doesn’t have any turnover and has submitted the accounts and tax 
+returns for the reference year, and the two years previous. These figures show that the 
+turnover figure is low, with effectively no profit. This ties in with the publicly available 
+information on Companies House. I would think it unlikely that P would file incorrect 
+accounts with HMRC, given the consequences of doing so.
+Barclays have argued that P’s accounts were clearly receiving over EUR 2 million in income 
+– for example receiving over GBP 3 million in 2022 alone. But I also note from the account 
+statements that most of this income is from a single lending company. P has provided a 
+statement with this lender showing this is borrowing. 
+For the purposes of deciding whether P is a microenterprise, turnover would be income from 
+the provision of goods or services. I’ve seen nothing in any guidance provided about what 
+constitutes a microenterprise to suggest that income from lending should apply towards 
+turnover. I’m not persuaded that the borrowing P has taken out counts towards the turnover.
+Barclays have also queried how P are receiving lending if there was no turnover. The loan 
+statements don’t show any repayments to the sums borrowed yet – and based on the nature 
+of the business I don’t think it’s unreasonable that repayment is deferred to the completion of 
+development. 
+I’m satisfied that at the time of the complaint P had a turnover of less than EUR 2 million. 
+Therefore, taking in to account the headcount criteria as well it would count as a 
+microenterprise for the purposes of the PSRs. The provisions of the CRM should apply.
+Should P receive a refund under the CRM Code?
+Under the CRM Code it’s generally expected that the bank should refund their customer if 
+they’ve been the victim of an APP scam. But this is also subject to several exceptions where 
+they may decide not to reimburse the full losses.
+Barclays haven’t commented on any of these exceptions – as the bank’s position has been 
+that P simply isn’t covered by the code. And I have disagreed with them on this point. But to 
+be fair to them I have considered the exceptions I see as relevant here.
+Did Barclays meet its obligations under the CRM Code? And did P ignore an effective 
+warning?
+The CRM Code says that effective warnings should be risk based and, where possible,
+tailored to the APP scam risk indicators and any specific APP scam types identified through
+the user interface with which the customer is initiating the payment instructions.
+Barclays did identify a risk with the payment P made and provided a warning, based on what 
+P identified as the purpose of the payment. 
+Barclays have provided screenshots of the warnings would have seen before the payment 
+was made. One of them warns P that it is about to make a payment to a new recipient. But 
+I’m not persuaded this would be particularly impactful in the circumstances. The directors of 
+P were under the impression that they were making a payment to a recipient they had paid 
+before – these were new accounts details certainly, but the recipient was a company they 
+had dealt with previously.
+The message also warns of an unexpected invoice – but this was an invoice that was 
+expected. There is mention of an updated invoice with new account details, but I’m not 
+persuaded this would have been impactful, as it doesn’t explain the nature of these scams. 
+I’m also not minded that this will have registered with P in the same way as describing how 
+an email intercept scam works or how to spot one. 
+In this case I’m not persuaded that the warnings presented by Barclays were effective – and 
+on this basis I can’t say P ignored an effective warning either.
+Did P make the payments without a reasonable basis for belief?
+I need to consider not just whether P believed it was sending money to a subcontractor, but 
+whether it was reasonable for it to do so.
+I’m satisfied that P had a reasonable basis for belief that the payment they were making was 
+for a legitimate invoice. The invoice appeared to come from a known contractor and was 
+expected. The emails are generally in the same tone and style as the legitimate emails from 
+the contractor, and the fraudulent invoice is very similar to the legitimate invoices. And the 
+explanation given by the fraudster for the change in bank details wouldn’t have caused 
+concern. So, I don’t consider Barclays can rely on this exception for declining to refund P.
+There was a mismatch in the name of the account when it went through the Confirmation of 
+Payee system. The warning that P would have seen says “beneficiary name validation”, but I 
+don’t think this makes it clear that the account names didn’t match. The directors of P have 
+also commented that it wasn’t uncommon for them to receive this warning. I’m not 
+persuaded this warning should have had a significant impact in their decision to proceed with 
+the payment or would have given P concern that the reason for making payment wasn’t 
+legitimate.
+Did P follow its own internal procedure for validating the payment correctly?
+Lastly, I’ve considered whether P followed its processes for approving the payment. The 
+process P has described involved the directors checking the payment details were accurate 
+before making payment – rather than the nature of the payment. I’m not persuaded here 
+there was a failure in P’s internal processes, or that they should have picked up on the email 
+intercept themselves at this point. 
+Overall, I don’t consider that any of the exceptions in the CRM Code apply here. I can’t see a 
+reason for Barclays to decline to refund P’s remaining losses.
+Did Barclays do enough to prevent the payment, or recover the funds?
+Considering my conclusions above, it is not necessary in this case to consider whether 
+Barclays should have done more to prevent the payment being made. But for completeness, 
+I agree with the bank that the value and nature of this payment wouldn’t have been so out of 
+character for the usual activity on the account that the bank should have intervened and 
+asked more questions about it.
+I’ve also considered if the bank exercised enough care and urgency in trying to recover the 
+stolen funds from the payee bank before they were irretrievably removed by the scammers. 
+The scam payment was made 24 June 2022 and the scam was reported later on the same 
+day. I’m uncertain exactly when Barclays contacted the receiving bank but know it was told 
+only £143.92 remained. So even if there was a delay (and I have no reason to believe there 
+was) I don’t consider it would make a difference in this case as scammers usually remove 
+funds rapidly.
+My final decision
+My final decision is that I uphold this complaint, and Barclays Bank UK Plc must:
+Refund the remaining losses of £33,996.34 to P
+Add 8% simple interest per annum to this amount from the date the claim was 
+declined to the date of settlement
+If Barclays consider that they are required by HMRC to deduct tax from this interest amount, 
+they should tell P how much has been deducted. They should also provide P with a tax 
+deductions certificate if P asks for one, so it can reclaim the tax from HMRC if eligible.
+Under the rules of the Financial Ombudsman Service, I’m required to ask P to accept or 
+reject my decision before 7 June 2024.
+ 
+Thom Bennett
+Ombudsman

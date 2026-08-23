@@ -1,0 +1,23 @@
+Disability Duty Refund Broker.
+
+Audits your past overseas purchases of specialist disability equipment and reclaims incorrectly charged import duties that should have been exempt, splitting the refund 70/30.
+
+Aggressive customs enforcement post-Brexit causes erroneous duty charges on goods entitled to relief; a solo operator can arbitrage the gap between HMRC's automated collections and the manual reclaim process, building a compounding database of decision patterns.
+
+Primary carers (contingency fee from refunds obtained from HMRC).
+
+Post-Brexit customs systems have led to a surge in incorrect duty demands; many carers are unaware of disability reliefs; HMRC has a backlog of manual claims.
+
+The passages confirm VAT zero-rating reliefs exist for disabled people on certain supplies (b9bca3685bdf3b1a, b270dede5db6b962), but none address import duty exemptions for overseas disability equipment purchases or confirm that erroneous import duties are being charged on such goods post-Brexit; the Brexit disruption passages concern plant/food border controls (f1a8fc260bc7a0c2) and motorcycle imports (4785e6336cb518e7), not disability equipment.
+
+No passage identifies a dominant or well-funded incumbent specifically auditing past overseas purchases of disability equipment and reclaiming incorrectly charged import duties for individual carers. HMRC provides its own guidance and form C285 [4ef86543ab69e738, f956ac7f2f85125c, beded4752a3df1d6], and one general customs broker article [bf090e5e26e09b4c] exists, but it addresses businesses and general EU imports rather than the disability-niche for carers, leaving the specific segment underserved.
+
+The candidate's payment model is contingency-based (30% of refunds obtained), meaning primary carers pay nothing upfront and only surrender a share of money HMRC owes them. Passage 69e4b9d9c8ec3a51 confirms HMRC's internal manual explicitly permits no win no fee arrangements for agents claiming redress on behalf of clients, so the mechanism is lawful and operational.
+
+Passages confirm existing UK carer communities and forums (Almond Tree Foundation, Carers Community Network with 2,000+ active members, Parent Carer Forums) where the target buyers already congregate, providing a plausible channel to reach them. ICO passages note PECR restrictions on unsolicited marketing to individuals, which constrains the route but does not eliminate it (consent-based or community-partner approaches remain available).
+
+Passage [4ef86543ab69e738] confirms that claiming repayment of overpaid import duty and VAT via form C285 or the Customs Declaration Service is a legitimate HMRC process available to individuals, and passage [69e4b9d9c8ec3a51] explicitly describes contingency-fee ('no win no fee') arrangements as a recognised HMRC practice for agents. No passage indicates that using an agent to assemble and submit disability-equipment duty-refund claims, or taking a percentage of the refund obtained, is unlawful; the warning in [e1a279e1d84e11a6] concerns Self Assessment refund companies and is not about…
+
+Passages confirm a real, documented problem: disability customs reliefs exist (f956ac7f2f85125c, cba0d6fb5046d9f0), a formal reclaim mechanism (BOR286) is available for wrongly calculated duty/VAT on postal imports (dc4ba36a11a5a600), post-Brexit rule changes altered consumer customs treatment creating error risk (d18262fe4519a939), and a tribunal case shows parties actively disputing import duty charges (230f7356b445a38f).
+
+No evidence in the passages shows the contingency-fee refund broker model is illegal (HMRC explicitly recognises no-win-no-fee agent arrangements and individual C285/BOR286 reclaim routes), nor that customer acquisition costs would exceed the per-claim fee, nor that a single provider controls most of this niche. The remaining weaknesses are unverified assumptions about average refund size, acquisition channel, and repeat-claim frequency rather than the three specific blocker conditions.

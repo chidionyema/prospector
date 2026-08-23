@@ -1,0 +1,37 @@
+PayPace, know how fast a client pays before you invoice.
+
+PayPace tells UK freelance creatives how fast a prospective client actually pays, before they take the job, using payment-speed data pooled from other freelancers who've invoiced that same client.
+
+Freelance designers, writers, developers and consultants send an invoice and then just wait. If a client is going to pay in 9 days or 90, the freelancer usually only finds out after the work is done and they're stuck chasing it. IPSE, the body that represents the UK's self-employed, has repeatedly flagged late payment as one of the biggest financial stresses freelancers face.
+
+PayPace flips the timing round. Before taking on a new client, a freelancer types the client's name in and sees how long that client has actually taken to pay other freelancers in the past — not a generic industry average, but a real number tied to that named business.
+
+The data comes from freelancers themselves. When someone connects their invoicing tool (Xero, FreeAgent, QuickBooks, or a bank feed through Open Banking), PayPace reads their own paid and overdue invoices and adds the payment pattern for each client to a shared, anonymised pool. A freelancer only sees a client's score once at least three other freelancers have logged invoices to that same client, which pushes people to invite others who've worked with the same agency or brand so the record fills in faster. That invite step is the entire growth engine — no ads, no outbound sales.
+
+This only works because it's a record built across many freelancers' clients, not one person's own accounts. Xero, FreeAgent and QuickBooks can already tell a freelancer that one invoice to one client is 40 days overdue. They can't tell a freelancer, before any work starts, that this same client has quietly taken 65 days on average to pay six other freelancers this year. Building that means pooling data across many competing customer accounts on the same platform, which cuts against the tenant-by-tenant isolation these tools are built and audited on — and it would mean showing one paying customer's payment behaviour to another paying customer who's about to become their supplier. None of the three has a reason to build that against itself.
+
+PayPace is free to connect and log your own invoices; £12 a month unlocks live client scores, with a higher tier for small studios tracking cash flow across several freelancers. Distribution runs through the Xero App Store, the FreeAgent App Marketplace and the QuickBooks App Store, where freelance creatives already look for tools that plug into their invoicing.
+
+Freelance creatives themselves — designers, copywriters, developers and consultants — who pay £12 to £25 a month once they want to see live client payment-speed scores rather than just contribute their own invoice data for free.
+
+Open Banking rules now let a freelancer share their bank feed with one click instead of typing invoices in by hand, and the Xero, FreeAgent and QuickBooks app marketplaces have matured into places freelance creatives already browse for add-on tools — both are what make a pooled, cross-freelancer payment database practical for the first time.
+
+IPSE calls late payment 'the scourge' of UK freelancers and reports 32% of freelancers experienced it in Q1 2024, and a voluntary code meant to fix this had patchy compliance, showing the pain is real, ongoing and costly enough that freelancers actively track it.
+
+The freelancer-marketplace and accounting-software passages ([5eb0633a8a9a1cb6], [aaf166e3db0f26f4], [e088827928c31a22]) only describe that such tools and freelancers exist, saying nothing about freelancers' budget or willingness to pay a monthly fee. The employment/income passages ([5dcd048935afab0a], [71f75836b5bf5bdb]) describe financial strain among a subset of self-employed people who lost income, but don't establish whether freelance creatives generally can or will pay for this specific product.
+
+The passages confirm Xero and FreeAgent serve freelancers and small businesses, and that Xero operates an App Store/Marketplace with a defined listing-approval process where third-party apps reach that same user base. That's a self-serve channel PayPace can list on to reach freelance creatives who already use these tools.
+
+None of the passages address whether pooling client payment-speed data across freelancers' accounting/banking accounts is lawful — they cover The Open Championship, The Open University, a medical platform, generic UK GDPR guidance pages, an anonymisation tool, and Companies House lookups, none of which analyse consent, data-sharing, or ToS constraints for this specific practice.
+
+UK's Payment Practices Reporting duty already forces large companies to publish exactly the metric PayPace is selling — average days taken to pay invoices and late-payment rates — as free, downloadable CSV reports, so for any client that qualifies as a large business the 'first-to-know' payment-speed data is already public. That undercuts the claim that this insight is only obtainable by pooling freelancers' private invoice data.
+
+Creditsafe already offers a free, named-company payment-history and credit-score lookup and is described as one of the UK's leading business credit reference agencies with a 300-million-company database, which is the same core promise — checking how a company pays before you invoice it — delivered by an established market leader rather than an open niche. The other passages (time-tracking software, Fiverr payments, a freelance marketplace) show no conceptual overlap with pooled client payment-speed data and add nothing.
+
+The passages describe the Prompt Payment Code being actively tightened right now from 60 to 30 days, with the AAT still pushing for further reform and the OSBC's own admission that its limited powers leave UK SMEs vulnerable to late payment today — signalling this is a live, unresolved regulatory issue rather than a settled or stale one.
+
+The passages show established, well-adopted paid tools (Chaser with 10,000+ users, plus Trove, Satago, Paraglide) already serving UK freelancers/SMEs for chasing and tracking invoice payment status, meaning buyer demand is already being met by existing paid alternatives rather than evidencing unmet demand for a pre-invoice client payment-speed score.
+
+The passages independently confirm the pain-point claim underlying the hypothesis: IPSE explicitly describes late payment as 'the scourge' of the UK self-employed, and concrete data (105-day waits for facilities management, £22,000 average unpaid invoice, near two-month waits in manufacturing) corroborate that late payment is a widespread, measurable problem rather than an unverified assertion.
+
+No passage says this business model is illegal or blocked, and none gives a customer-acquisition-cost or lifetime-value figure, so neither a regulatory blocker nor impossible unit economics is evidenced. Creditsafe already sells a free named-company payment-history lookup and is called 'one of the leading' UK credit reference agencies with a 300-million-company database, but the same passages also name a rival (Company Watch) and separate paid invoice-chasing players (Chaser, Trove, Satago), so no single company is shown holding 80%+ of this distribution channel.

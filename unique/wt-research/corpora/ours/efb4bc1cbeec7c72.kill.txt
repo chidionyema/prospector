@@ -1,0 +1,27 @@
+The Home Baker's Health Department Hoop-Jumper Kit.
+
+A physical and digital combo pack sold to home-based bakers in the USA: a laminated, fillable logbook for temperature logs, allergen cross-contamination checks, and cleaning schedules, plus a set of magnetic 'Must-Know' signs for the kitchen (e.g., 'Wash Hands: 20 Seconds', 'Allergen: Nuts'), designed to pass a cottage food health inspection on the first try.
+
+First-principles: a home baker (cottage food operator) in 45+ US states must comply with local health department regulations (e.g., temperature logging, allergen statements) but has zero training in HACCP protocols. They fail inspections due to missing paper logs or improper signage, losing income from delayed sales or fines. Existing solutions: generic restaurant-supply logbooks (£20) that are over-complicated for a home kitchen, or free PDFs from the state health department that are text-heavy and intimidating. A solo operator can create a niche, beautiful, 'cottage food only' kit sold on Etsy/Amazon FBA for ~$25. The kit includes: 1) a spiral-bound, 90-day logbook pre-filled with sample entries for common cottage foods (cookies, bread, jams); 2) a set of 5 double-sided, magnetic, icon-rich 'critical control point' signs; 3) a one-page 'Inspector Cheat Sheet' with the top 3 things they check. The creator curates it by state (e.g., California vs. Texas rules differ) and updates it yearly when regulations change.
+
+Home-based bakers in the USA, mostly women aged 25-55, selling at farmers' markets or online, who must pass a state or county health inspection to get a permit (cost $50-$200/year). They are already spending on packaging, ingredients, and market fees.
+
+Cottage food laws have expanded to 48+ states since 2020, but many new bakers enter the market without formal food safety training. Pinterest and TikTok are flooded with 'failed my health inspection' horror stories. No mass-market product focuses on the home-scale compliance pain point—restaurant suppliers ignore this segment. The kit is a classic micro-ecommerce physical good with a digital component, shippable via USPS, low returns.
+
+The passage confirms willingness to pay for inventory and shopping organization logs for home bakers, but does not demonstrate buyer intent for the specific pain point of health department compliance or inspection preparedness.
+
+The only provided passage concerns a UK-specific food safety product that is currently unavailable, offering no evidence regarding the currency or viability of the proposed US-based cottage food compliance kit.
+
+The passage confirms that similar digital organizational resources for cookie-based businesses are actively sold directly to consumers online, demonstrating a viable and accessible route to market.
+
+The provided passage demonstrates that selling temperature control log sheets is a commercially available activity, implying the business practice is lawful and standard. No information in the passage suggests this activity requires breaking the law or falsifying data.
+
+The passage confirms that affordable, digital, and printable logbooks for food safety and HACCP compliance already exist, directly contradicting the hypothesis that no such focused, accessible products are available to fill the gap between generic restaurant-supply books and free government PDFs.
+
+The passage confirms that home bakers are actively purchasing digital business organization and planning tools for their bakery operations at a price point similar to the candidate's proposal. This demonstrates both the ability and willingness of this demographic to pay for products that aid in managing their bakery operations.
+
+The provided passage describes a home-based baker's experience and need for organized records, but it does not address the distribution channels for the proposed 'Hoop-Jumper Kit' to those buyers.
+
+The existence of a commercial digital solution, PassMyKitchen, dedicated to automating and managing food temperature logging and record-keeping for inspections, confirms that these compliance requirements are a real and acute pain point that businesses seek professional tools to solve.
+
+The product hypothesis is built on the false premise that home-scale compliance is an unserved market. Existing digital, HACCP-compliant record books are already widely available at lower price points and higher functionality than the proposed kit (f6d87ed2cd534363). Furthermore, home bakers are increasingly adopting mobile-first, automated logging systems (153a9487654af3bd) because paper logs—the core of the proposed physical kit—are inherently fragile and unreliable in a kitchen environment (b620e376460b9f43). There is no demonstrated demand for a physical kit when cheaper, more durable, and more effective digital alternatives already exist.

@@ -1,0 +1,33 @@
+Building Safety Manager for UK social housing high-rises.
+
+An evidence pack for UK social housing high-rises that turns fragmented fire, structural and lift logs into a BSR gateway-ready submission, so the Building Safety Manager signs in days.
+
+We give the Building Safety Manager (BSM) at UK social housing high-rises a pre-built evidence pack for BSR Gateway submissions. The BSM uploads the building's existing logs (from Sigma, Active, ARMA, paper). We return the BSR-ready submission in days, ordered against what the Regulator has actually flagged in published decisions.
+
+UK high-rise residential buildings (HRBs, 18m+) must submit a safety case to the Building Safety Regulator (BSR, part of HSE) at each Gateway under the Building Safety Act 2022. The first Gateway submissions have been in scope since October 2023. BSR has begun publishing decisions, and many of them are rejections citing weak evidence in fire risk assessment, structural integrity, lifts, evacuation drills, and the 'golden thread' of building information. Each Gateway submission takes social housing landlords 12+ weeks to assemble, and rejections trigger a 6-month remediation cycle. Every UK HRB must now have a named Building Safety Manager.
+
+The wedge is proprietary data. Every published BSR decision teaches the model which evidence gets rejected. BSR does not publish a fix-it list, and CAFM systems (PlanRadar, Ascora, Glider) do not grade evidence against published decisions. We start with the ~600 UK HRBs owned by social housing landlords (Peabody, Clarion, L&Q, Hyde, A2Dominion), then expand to private HRB owners and managing agents. The product broadens from the per-Gateway pack to the full UK HRB safety management pipeline, including ongoing compliance, remediation, and resident engagement.
+
+Building Safety Manager at a UK social housing landlord (e.g., Peabody, Clarion, L&Q, Hyde, A2Dominion, Network Homes).
+
+BSR became operational in October 2023. The first Gateway decisions were published in 2024 with a rejection rate above 30%, and the submission backlog is 18+ months. Each UK HRB now requires a named BSM by law.
+
+Only one passage [6bc64cdd9eed9ea7] touches the relevant domain — it describes HSE research into Accountable Persons' preparedness for new Building Safety Regulator duties — but it does not establish that Building Safety Managers are currently paying for gateway submission help, nor does it speak to rejection rates, timelines, or actual spending behaviour. The remaining passages are unrelated (HSE guidance navigation, a medical BSR reference, BSR as Business for Social Responsibility, and BSR Sweden).
+
+The passages show UK social housing landlords face major safety compliance pressures including the Building Safety Act ([1b8b19ca76a5d5a6], [78be3493d96b1616]) and actively invest in compliance leadership, as A2Dominion hiring a Director of Governance & Compliance demonstrates ([992f0157bad235a4]); while budgets are described as decreasing, £79.99 is trivially affordable for any such organisation, so the payer both has motive and the means to pay this amount.
+
+The passages identify the target social housing landlords (Peabody, Clarion, L&Q, A2Dominion, Hyde, etc.) as existing entities and members of a body, but no passage describes a distribution channel, procurement framework, regulatory forcing mechanism, or self-serve route through which a BSR evidence pack could reach a Building Safety Manager.
+
+None of the passages address whether a third party may lawfully compile BSR Gateway evidence packs; they cover processing volumes, approval rates, and a BAC ethics statement, but say nothing about restrictions on who can prepare submissions, contractual terms with the regulator, or falsification concerns.
+
+No passage addresses the Building Safety Act 2022, BSR Gateway submissions, published BSR rejection decisions, or the workload of Building Safety Managers; the passages cover general building definitions, unrelated UK government topic listings, the Online Safety Act, and a car review, so the durability of this specific value cannot be assessed.
+
+The passages describe the complexity of BSR Gateway submissions and common rejection causes, and one passage [8ea5bf3024199c48] shows PlanRadar presenting on 'Digitising the Building Safety Case' at a UK construction event, but no passage establishes PlanRadar's market share, whether Ascora or Glider serve this segment, or whether any single provider dominates BSR evidence-pack preparation for existing social housing HRBs — leaving the dominance question unaddressed.
+
+Passages dated as recent as 04.06.26 confirm BSR is actively operational, with 167 live Gateway 2 cases covering 17,076 residential units and an approval rate of 75% (implying 25% rejection) as the process continues to evolve with new remediation improvement plans — indicating a live, ongoing regulatory need rather than a stale regime.
+
+Peabody is actively hiring two Lead Building Safety Managers at £70k in Asset Compliance and Building Safety, and the role description includes developing Building Safety Cases and Safety Case Reports [95029c522ac565f8, 2ddad39bcf43f9c4]. Combined with the documented statutory compliance burden on England's 4.4 million social housing homes [eb67319f37fd48fc], this shows the target buyer (BSM at a social housing landlord) is a real, funded role actively being filled right now, creating clear latent demand for tools that accelerate Gateway submissions.
+
+The passages do not address any of the candidate's core factual claims about the Building Safety Act 2022, the Building Safety Regulator, Gateway submission requirements, rejection rates, the legal mandate for named Building Safety Managers, or the ~600 UK HRBs owned by social housing landlords; only one passage [51a3c95547053212] touches tangentially on high-rise cladding remediation, and the remainder are irrelevant (generic aerial photos, tower block history, Adele discography).
+
+No objective risk vector from the three categories is grounded in the evidence. The passages do not show any single provider holding a dominant share of BSR Gateway submission preparation for UK social housing high-rises, do not demonstrate that compiling third-party evidence packs is prohibited, and do not show acquisition costs exceeding lifetime value.

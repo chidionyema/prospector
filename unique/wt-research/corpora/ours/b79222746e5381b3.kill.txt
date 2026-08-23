@@ -1,0 +1,21 @@
+Chip supply audits for AI hardware startups.
+
+A weekly intelligence service telling hardware operations managers at UK AI chip and robotics startups which of their components are quietly heading for a shortage, months before the distributor admits it.
+
+An operations manager at a UK company that builds physical AI kit — edge inference boxes, robot arms, sensor rigs — spends their week chasing part availability. The distributor's website says a chip is in stock. Six weeks later the order is pushed to 2027 and the production run dies.
+
+This service watches the leading indicators the distributors do not publish, and sells the conclusion. It reads UK Companies House filings for the British importers and contract manufacturers in the chain, watching for late accounts, charges registered over stock, and director resignations — the tells of a supplier about to fail. It reads the UK's own export control decisions, published quarterly by the Department for Business and Trade in the Strategic Export Controls reports, to spot which component categories are being licensed more slowly. And it reads the lead-time promises made on distributor listings each day, keeping the history that the distributors themselves overwrite.
+
+That last part is the point. Every price and lead-time page on a distributor site is rewritten in place. Nobody keeps yesterday's version. A service that has recorded the daily promise for three years knows which suppliers habitually promise sixteen weeks and deliver forty. That record cannot be bought or reconstructed later, and it grows more valuable every week it runs.
+
+The angle here is deliberately awkward for the people it watches. It takes the buyer's side against the supplier, using the supplier's own published words. A distributor cannot run this, because their commercial job is to sell the part they have, not to warn you their promise usually slips. Their whole revenue depends on the customer believing the stated lead time.
+
+The deliverable is a Monday morning brief: your bill of materials, scored, with the three parts most likely to slip this quarter and the named alternates that historically hold their dates. Sold per bill of materials, per month.
+
+This fits the shape where the payer is a named budget-holding role inside a technology company facing a recurring chore. The public source proving the pain is already paid for is the Strategic Export Controls annual report and the licence refusal statistics on gov.uk, plus the shortage disclosures that UK hardware firms file in their own Companies House accounts under principal risks.
+
+Hardware operations managers and heads of supply at UK companies of roughly 20 to 200 people that manufacture AI and robotics hardware — the people who already sign purchase orders and already employ someone to phone distributors all week.
+
+UK export licensing for advanced computing components has tightened, and the government publishes its licence decisions quarterly. At the same time, demand for AI inference hardware has pushed lead times on ordinary supporting parts out to a year. Small UK firms are competing for parts against buyers a thousand times their size, and have no way to see a slip coming.
+
+SiliconExpert is described in the passages as 'the global leader in electronic component and supply chain solutions' with 500 data engineers, a database of 1 billion+ parts, and services that 'avoid or manage supply chain disruptions' — meaning the very intelligence value the candidate proposes (knowing which components will slip before the distributor admits it) is already delivered by a dominant incumbent. A clear market leader with comprehensive supply-chain risk tools commoditises the core margin before any new entrant can capture it.

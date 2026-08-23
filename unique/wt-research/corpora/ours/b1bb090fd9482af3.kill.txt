@@ -1,0 +1,11 @@
+Invoice Justice – The Freelancer's Non-Payment Recovery Service.
+
+A done-with-you service that chases unpaid client invoices for freelance creatives and gig workers using AI‑drafted escalation sequences and a proprietary delinquent‑payer database, taking a flat fee only on recovered money.
+
+Gen Z freelancers lose 5–15% of their monthly income to clients who simply ignore small invoices. The emotional friction and time cost of chasing payment makes them write off the money, yet a persistent, professionally‑phrased escalation—backed by a growing reference set of successful tactics per industry—dramatically lifts recovery rates. Broadening the service across all solo‑earner categories (design, writing, code, beauty, repairs) creates a recurring pipeline with no credential barrier.
+
+A freelance graphic designer or delivery rider who has an outstanding invoice under £500 and values recovering cash more than the £25‑40 flat recovery fee.
+
+Gig platforms are pushing more work into direct‑client relationships (off‑platform); real‑time payment rails (Faster Payments) make ‘ignoring’ the new late payment; a solo operator can now automate 90% of the escalation cadence with LLMs and email APIs, making a manual‑feeling high‑touch service scale to hundreds of clients.
+
+All six passages show free, ready-to-use UK chaser-letter and email templates (Citizens Advice, statutory demand forms, and multiple 'copy-paste' late-payment sequences) covering the exact same friendly-to-final-notice escalation this service sells, which directly contradicts the claim that this value is durable and non-commoditised.

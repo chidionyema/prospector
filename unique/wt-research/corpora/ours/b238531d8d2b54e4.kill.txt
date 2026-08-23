@@ -1,0 +1,21 @@
+PitchBox — self-service film and voiceover booths for freelancers, built into coworking buildings.
+
+A small chain of soundproofed, unmanned video and voiceover booths inside coworking buildings, booked by the minute through an app, so freelance designers, writers and consultants can record client pitches and brand video without owning a studio.
+
+A freelance designer, writer or consultant increasingly needs short bursts of proper video: a client pitch, a LinkedIn update, a voiceover demo, a portfolio walkthrough. Most of them record it at a kitchen table or a shared coworking desk, with echo, bad light and someone's phone ringing in the background. This borrows the way self-storage firms and automated car washes rent unmanned bays by the minute, unlocked by an app with no one on site, and applies it to a soundproofed booth with a ring light, a mounted camera and a teleprompter.
+
+The booths would sit inside coworking buildings run by chains such as IWG, Fora or regional operators, under a paid agreement rather than sold to freelancers as a raw amenity. The coworking operator gets a bookable feature it can charge members for and use to justify membership renewal; the booth operator gets guaranteed foot traffic and a location it does not have to market for. Because the deal is agreed building by building, a rival chain cannot simply walk in and install a competing booth in the same lobby once the first agreement is signed.
+
+Each booth costs roughly £6,000-£10,000 to build and kit out, and running one is mostly automated: booking, payment, unlocking and file upload happen through the app, with a two-to-ten-person team handling installation, a weekly cleaning and maintenance round, and the host relationships. A freelancer pays around £15-£20 for a 20-minute slot, or a monthly pass for regular users, which is well below the day-rate pricing of a staffed production studio and priced for someone fitting a recording into a gap between client calls, not booking a studio day in advance.
+
+Individual freelance creatives (designers, writers, developers, consultants) who pay £15-£20 per 20-minute session or a monthly pass for unlimited off-peak use, and the coworking operator hosting the booths, who pays a site fee or takes a revenue share in exchange for offering it as a member amenity.
+
+ONS put the UK self-employed workforce at over 4.2 million in 2024, and personal-brand video (LinkedIn posts, pitch reels, voiceover demos) has become a normal part of winning freelance work, not an optional extra. At the same time, AI-generated video and stock footage are flooding feeds, which makes a freelancer's own recorded voice and face a more valuable way to stand out, not less. Coworking chains have also expanded meeting-room capacity across UK cities since 2021 and are actively looking for paid add-on amenities to justify membership price rises, making them a realistic partner for a booth-hosting deal right now.
+
+The passages show generic language-practice, vocal, and photo booth products and unrelated freelance/e-commerce guides, but none show freelancers actively searching for or paying to solve a lack of professional pitch/voiceover recording space near their coworking desk.
+
+The passages give generic UK income, tax, and employment statistics and one unrelated anecdote from a self-employed appliance repair technician, but none report income, spending power, or discretionary budget specifically for freelance creative professionals (designers, writers, consultants); one passage even flags elevated poverty risk among the self-employed generally, which cuts against rather than supports assumed solvency. No passage ties self-employment income levels to willingness or ability to pay for a personal-branding video service.
+
+The passages only show that coworking operators exist and offer memberships/rooms (Fora, IWG, Intelligent Office); none address whether an outside operator can sign a paid host or revenue-share agreement to install a booked-by-minute booth inside their buildings.
+
+The passages cover home-recording-studio costs and general UK change-of-use planning permission mechanics, but none says whether an unmanned, app-booked video/voiceover booth installed inside a coworking building requires change of use, a specific license, or breaches any law or terms.

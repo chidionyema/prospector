@@ -1,0 +1,13 @@
+Pharmacy First pathway templates for pharmacy software.
+
+A fixed-fee template pack per NHS Pharmacy First clinical pathway, mapping consultation steps to reimbursement claims, shipped to pharmacy SaaS vendors.
+
+NHS England's Pharmacy First service, launched in January 2024, covers seven clinical pathways: sinusitis, sore throat, earache, infected insect bite, impetigo, shingles, and uncomplicated urinary tract infection. Each pathway has a specific consultation flow, a defined product recommendation list, and a reimbursement claim code under the NHS Pharmacy First framework.
+
+Pharmacy dispensing system vendors (Cegedim Rx, EMIS Pharmacy, Positive Solutions, Titan Pharmacy Systems) need to integrate each pathway's consultation template, red-flag criteria, and reimbursement claim format into their software. NHS England publishes the service specification as a free PDF; the vendor's job is to translate that specification into their own schema. Vendors pay pharmacy clinical consultants £500 to £2,000 per pathway integration or absorb it as engineering hours. A fixed-fee template pack priced at £1,500 to £3,000 per pathway per vendor is the productised equivalent.
+
+Each vendor's schema is its own. Once mapped for Cegedim Rx's consultation template structure and Positive Solutions' claim format, the next pathway addition is incremental work the regulator's free PDF cannot deliver.
+
+A product lead at a UK pharmacy dispensing system vendor (Cegedim Rx, EMIS Pharmacy, Positive Solutions, Titan Pharmacy Systems). They buy the template pack ahead of each new Pharmacy First pathway release or update.
+
+NHS England has signalled expansion of Pharmacy First with new pathways being scoped for 2025 and 2026, building on the initial seven. Each addition triggers a new template pack for each vendor.

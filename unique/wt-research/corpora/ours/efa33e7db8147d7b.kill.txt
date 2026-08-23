@@ -1,0 +1,23 @@
+SensorySnap – Custom 3D-Printed Classroom Fidget Tools.
+
+A solo-operated service that designs, 3D-prints and ships bespoke tactile fidget tools for individual pupils, sold directly to special‑needs teachers who need effective sensory interventions but lack off‑the‑shelf options.
+
+Combine the maker movement’s affordable 3D‑printing with the rising identification of sensory processing needs in UK schools (Why Now: EHCP backlogs forcing teachers to source ad‑hoc supports). The teacher’s acute friction is wasting budget on generic fidgets that don’t work for specific pupils; the solo operator uses a parametric CAD layer fed by teacher descriptions to produce a tailored physical tool that no bulk manufacturer can economically offer. Physical_ops form: CAD design, in‑house printing, post‑processing and postage. (combine_signals lens).
+
+SENCo or classroom teacher in a state school using their own department budget (typically £100–£300 per term for resources).
+
+Post‑pandemic surge in pupil sensory dysregulation, stretched NHS occupational therapy waiting lists force schools to self‑fund interventions, and desktop 3D‑printers are now reliable enough for small‑batch production.
+
+The passages discuss generic 3D-printed fidget toys and free STL files, but none address the custom, teacher-specified ergonomic tailoring that forms the candidate's value proposition; thus, durability of that specific value cannot be confirmed or refuted.
+
+Passage e1368ff01c8152f1 mentions a 'new competitor' challenging market dominance but provides no specifics linking it to the niche of custom 3D-printed classroom fidget tools for special-needs teachers; all other passages are irrelevant. No evidence establishes either the presence or absence of a dominant incumbent, so the claim is unverifiable.
+
+Passages discuss general fidget toy market and 3D printing profits but none mention UK state school teacher budgets, SENCos, or willingness to spend department funds on custom fidgets. Irrelevant to the specific payer.
+
+Passages mention generic 3D-printed fidget products and a teacher's fidget business success, but none describe a self-serve or low-friction distribution route to special-needs teachers specifically, leaving the existence of such a route unaddressed.
+
+Passages indicate that fidget toys sold in the UK need testing and marking, confirming a lawful regulatory pathway exists; no evidence that the margin inherently requires illegality.
+
+None of the passages mention teachers, schools, special-needs contexts, or any evidence that someone is paying to solve a problem with custom 3D-printed fidget tools; they only cover general 3D-printing tips and unrelated topics.
+
+No evidence of regulatory blockage, impossible unit economics, or incumbent monopoly in the provided passages.

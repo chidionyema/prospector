@@ -1,0 +1,31 @@
+Model Card Bench, rents you the eval rig buyers demand.
+
+A weekly rental of a ready-made testing rig that runs the safety and accuracy checks UK enterprise buyers now demand of small AI vendors, with signed result files.
+
+This is a picks-and-shovels business. You do not sell the AI product, and you do not sell advice. You rent the bench that other people's AI products have to sit on before a buyer will sign.
+
+The buyer is the head of engineering or the technical co-founder at a UK software company with 5 to 40 staff that sells an AI feature to banks, insurers, the NHS or a government department. The recurring trigger is a procurement questionnaire. UK public bodies buy software through the Crown Commercial Service G-Cloud and Digital Marketplace frameworks, and the government's own Algorithmic Transparency Recording Standard asks a supplier to describe how a model was tested, on what data, and with what error rates. Banks and insurers ask the same questions because the FCA and the Bank of England published joint AI surveys and the Senior Managers regime makes a named person accountable for a model in production. None of those documents can be answered honestly from memory.
+
+What the small vendor actually lacks is not knowledge. It is apparatus. Running a real evaluation means a held-out test set, a fixed model version, repeatable prompts, seeded runs, a red-team pass, a bias slice by protected characteristic, latency and cost measurement, and a tamper-evident record that the run happened on the date claimed. Building that in-house takes an engineer two months and then rots the moment the model version changes.
+
+So you build it once and rent it. A customer books the bench for a week. They point it at their API endpoint. It runs the battery, stores every prompt and response with hashes and timestamps, and produces two artefacts: a machine-readable results file and a plain-English evidence pack that maps each result to the exact question a G-Cloud or bank questionnaire asks. Price it at £2,400 per week of bench time, or £900 a month for a standing slot with quarterly re-runs when a model version changes.
+
+This borrows the way calibration houses work in engineering. A small machine shop does not own a coordinate measuring machine; it books time at a UKAS-accredited lab and walks out with a certificate its customer accepts. Nobody thinks the lab is a middleman. It owns capital equipment and a repeatable method, and the certificate is worth more than the measurement because of who stands behind it.
+
+The thing that compounds is the bench itself, plus the answer library. Every questionnaire you map adds a row: this bank's question 4.2 is satisfied by this test output. After 150 customers you hold the only mapping between the actual wording of UK enterprise AI questionnaires and the specific test that answers each one. That is a working asset, and it lives in your test harness, not in a document a rival can copy.
+
+A team of three runs this. One engineer maintains the harness, one person runs bookings and writes evidence packs, one sells. Delivery is mostly compute plus a day of human review per engagement, so margin holds above 70%.
+
+The legal position is clean because you make no claim about whether the product is safe. You report what the tests returned, on what date, against which model version. The vendor makes the claim; you supply the measurement.
+
+Heads of engineering and technical co-founders at UK AI software companies with roughly 5 to 40 staff who are mid-way through a procurement questionnaire from a bank, an insurer, an NHS trust or a central government department, and who have a signature date they are about to miss.
+
+The UK government's Algorithmic Transparency Recording Standard became mandatory for central government departments, so their suppliers now get asked for testing evidence in writing. The FCA and Bank of England have run joint surveys on AI in financial services, and firms have pushed those questions down to their software vendors. At the same time model versions change every few months, which makes any evidence more than a quarter old worthless — so the same customer comes back.
+
+The only passage with any bearing says the Algorithmic Transparency Recording Standard became mandatory for central government in 2024 [4be34ad21138e32e], which describes an obligation on government bodies but says nothing about small AI vendors searching for, or paying for, testing and evidence services. The remaining passages concern UK legislation publishing, a driving agency, typography and Google products [49b34442f12299fa, 02ae2510007ae2fb, 1608ce08532741f4, 351742c000ed60d9, fe73136c14460470], and none mention demand for AI evaluation work, prices paid, or vendors asking for help.
+
+The passages only describe UK and European startup funding activity in general terms, one London AI startup's £231.4m raise, and the UK AI Security Institute's free Inspect evaluation framework; none of them say anything about what small UK AI vendors spend on procurement or compliance evidence, or whether they would pay for such a pack. With no passage addressing these buyers' budgets or willingness to spend, there is no basis to judge a £49.99 one-off charge either way.
+
+Passage 74da508e621607a9 shows the Digital Marketplace is an established, working channel through which small firms reach government buyers, with £1.39 of every £3 spent there going to SMEs — so a named, listable route to exactly the kind of small UK software vendor described already exists, and 1057772a4aba40bf confirms suppliers are actively listed on G-Cloud.
+
+The passages describe UK bodies that accredit independent evaluators and separate material on misleading environmental claims and CMA/ASA investigations, but none of them addresses whether renting a testing rig and issuing timestamped, factual test results to AI vendors is permitted or prohibited. Nothing here says such measurement work requires a licence the business would lack, nor that reporting test outputs without a safety claim breaks any law or contract.

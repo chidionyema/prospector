@@ -1,0 +1,19 @@
+CDI rate filing pack for California insurtech.
+
+California insurtech startups using AI for rate determination get a CDI rate filing packet with model explainability and prohibited-class checks, so filings stop bouncing.
+
+California Department of Insurance requires every rate filing to include evidence that the rating plan does not use prohibited classes (race, religion, national origin, etc.) and that any AI/ML model used in pricing is explainable to a CDI reviewer. California insurtech startups using AI for underwriting and pricing — Lemonade, Root, and AI auto and homeowners competitors — pay actuarial consultants $5,000-25,000 per rate filing plus AI explainability reviews, and CDI rejections delay product launches by months. We pre-build the CDI rate filing evidence pack — model explainability report, prohibited-class screen, SERFF-ready PDF binder — matched to CDI's current filing review expectations under California Insurance Code §1861.02 and the CDI's 2024 AI guidance. We compound proprietary data on CDI rate filing precedents, AI/ML model explainability templates CDI has accepted, and prohibited-class check protocols specific to California (which differ from other states). Each filing the system processes pushes a new precedent and a new accepted template variant into the library. CDI publishes rate filing forms through SERFF but does not provide AI-explainability review tooling, and actuarial consultancies cannot replicate the California-specific precedent library a copy starting tomorrow would lack.
+
+Founders, heads of actuarial, and heads of ML at California insurtech startups filing rates with CDI — Lemonade, Root, and AI auto, homeowners, renters, and life insurtech competitors selling into California.
+
+CDI issued formal AI guidance in 2024 clarifying that AI/ML models used in pricing must meet the same explainability standards as traditional actuarial models. California insurtech AI startups have seen rising CDI rate filing rejections through 2024-2025, and each new product launch or model change is a recurring trigger.
+
+The passages describe the history of actuarial science and the general function of SERFF as a standardized filing platform, but none address California insurtech startups, CDI AI explainability requirements, or any current search or payment activity for an AI-specific rate filing pack.
+
+The passages do not establish that anyone is actively seeking or paying for a California-specific CDI AI rate filing evidence pack.
+
+The passages show that some insurtechs raise substantial funding, including a California insurtech startup that raised $9.5 million, but they do not establish that AI rate-filing startups have budget for or will buy this £49.99 pack. [e2b57b4a3fe6f267] [a1383ab97f65dccf]
+
+No passage describes a distribution channel, self-serve route, or forcing mechanism for reaching founders and actuarial/ML heads at California insurtech startups with a CDI rate filing product; the passages only list insurtech companies generally and an unrelated Kentucky insurtech innovation event, leaving the route to buyer entirely unestablished.
+
+None of the provided passages address CDI rate filings, insurance regulation, AI explainability requirements, or any matter bearing on the lawfulness of the candidate's margin; the passages cover California state symbols, general California geography, and Windows update troubleshooting.

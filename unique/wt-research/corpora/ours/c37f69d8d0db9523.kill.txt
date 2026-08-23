@@ -1,0 +1,31 @@
+OverpaidCare — the fixed-fee check that gets a carer's overpaid Carer's Allowance debt written off.
+
+For family carers hit with a Carer's Allowance overpayment demand, this is a fixed-fee service that builds the official-error case and asks the DWP to write the debt off.
+
+Carer's Allowance in the UK has a hard earnings limit. Earn a pound over it in a week and you lose the whole week's payment. The DWP often does not notice for years. Then a letter arrives demanding thousands of pounds back, sometimes tens of thousands.
+
+This service is one person, working from home, doing one narrow job well. A carer sends their overpayment letter, their bank statements and their payslips. Within five working days they get back a finished pack: a mandatory reconsideration request, a written argument that the DWP's own delay caused the debt to grow, and a formal request to waive recovery.
+
+The argument has a specific shape. The DWP has run automated earnings alerts since 2019 through its link to HMRC's Real Time Information. If the department was told a carer's earnings had risen and sat on that alert for three years, the carer can argue the department caused the loss. The National Audit Office reported in 2019 that DWP was not acting on most of these alerts. A House of Commons Work and Pensions Committee inquiry reported in 2024 on exactly this failure. Those published findings are the backbone of every pack.
+
+Most of the work here is the invert. The usual move is to help someone comply with the rules. This does the opposite: it takes the fact that the DWP is getting more aggressive at recovering debt, and turns that aggression into the reason the service exists. The harder the department chases, the more people need someone to argue back. The DWP cannot build this. It cannot write the argument against itself.
+
+The money is a flat £180 per pack, paid up front. No percentage, no regulated claims-management activity, no debt advice — the pack is a document the carer signs and sends themselves. That keeps it outside the FCA's claims-management permissions, which cover regulated claims only, and outside the debt-adjusting rules, because the operator never negotiates on the carer's behalf.
+
+What compounds is the outcome file. Every pack that comes back with a decision — written off, reduced, refused — is logged against which argument was used, which DWP debt centre replied, and how long it took. After two hundred packs the operator knows which wording works at which office. That is a record nobody else holds, because no charity publishes decision-level outcomes and no carer ever sees more than their own letter.
+
+Distribution is free and already assembled. Carers UK forums, the Benefits and Work community, the r/DWPhelp subreddit and several large Facebook carer groups have the same thread every week: 'DWP says I owe £8,000, what do I do?' Answering those threads honestly, in public, with real detail, is the whole marketing plan.
+
+One person can run this at around thirty packs a month once the argument templates are built and an AI assistant does the first pass on the bank statements.
+
+Family carers in the UK who have received a Carer's Allowance overpayment letter from the DWP Debt Management office. Typically someone caring for a parent or disabled child, working a few hours a week around the caring, who drifted over the weekly earnings limit without realising. They pay £180 because the demand is for thousands and a solicitor will not touch a benefits overpayment for that money.
+
+The DWP has been recovering historic Carer's Allowance overpayments at scale, and the issue became national news in 2024 after reporting on carers being pursued for debts built up over years of unactioned earnings alerts. The Work and Pensions Committee ran an inquiry into it. In 2025 the government began raising the Carer's Allowance earnings limit, which draws yet more attention to the old debts still being chased. Every one of those letters is a person searching online for help tonight.
+
+Passages show people are actively worried about and seeking help with Carer's Allowance overpayments right now: a Carers UK forum thread from July 2024 directly addresses someone anxious about receiving an overpayment, and a May 2024 Carers UK article notes the issue 'has been in the news a lot lately,' indicating active public demand and search behaviour around this problem.
+
+The passages show the Carer's Allowance overpayment issue is actively live in 2025–2026: the government published an Independent Review in November 2025 (690086ec5ebd18d1), DWP announced new measures including text alerts and a checking overhaul (0c79fa58a5a41705), over 32,000 earnings-related overpayments were recorded in 2025-26 (40253a3fc04849a6), and thousands of carers are currently set to have debts reduced, written off or reimbursed (f24abf9532483b03). This is a current, ongoing regulatory and enforcement trend, not a peaked leftover.
+
+The passages confirm r/DWPHelp is an active subreddit hosting UK benefits discussion and that Carers UK hosts threads about Carer's Allowance overpayments, so the named forums are real, open channels where carers post demands like 'DWP says I owe £8,000'. The sitewide rule against spam and inauthentic activity is a constraint but does not bar a novice from answering threads with detailed, genuine replies. No passage shows any of these channels closed to this kind of response.
+
+The passages confirm that the FCA regulates claims management activity in Great Britain, but none of them address whether preparing a mandatory reconsideration request pack for a Carer's Allowance overpayment constitutes regulated claims management activity, nor whether such a document-preparation service falls outside FCA authorisation requirements. Whether this business model requires FCA authorisation or falls within debt-adjusting rules is not addressed by any passage.

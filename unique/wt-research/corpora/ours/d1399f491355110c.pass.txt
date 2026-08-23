@@ -1,0 +1,33 @@
+Classify federal code rights for Georgia founders.
+
+A code-rights workspace maps each Small Business Innovation Research deliverable to federal rights rules and the build history behind it.
+
+This is a code-rights workspace for a named technology role inside a Georgia software company, so the business is SELLS-TO-TECH. The payer is the founder or chief technology officer of a 2–20-person Georgia company with a Small Business Innovation Research award or federal defense sales. The workspace reads the company's repositories, award and contract files, and build records. It then maps each new deliverable to rights language in 48 C.F.R. Part 227 and Defense Federal Acquisition Regulation Supplement clause 252.227-7017.
+
+The public framework also includes the U.S. Small Business Administration's Small Business Innovation Research Policy Directive. The recurring trigger is a new award, a federal request for technical data, a request-for-proposals amendment, or a prime contractor adding a deliverable. The deliverable is a file-level rights ledger, links from each file to its award or contract, and a reproducible build manifest. The tool flags conflicts for counsel but does not give a final legal opinion.
+
+This borrows provenance controls from a software bill of materials, where every component must trace to its origin and permitted use. The U.S. Bureau of Labor Statistics Occupational Employment and Wage Statistics program is the public proof that software developers, lawyers, and compliance officers are paid occupations. Charge $999 a month plus a $1,500 award intake. Repository scanning and rule matching do most of the work, with disputed files routed to counsel. Reach buyers through Georgia APEX Accelerators, the Georgia Tech startup ecosystem, SBIR consultants, and small-business teams at defense primes.
+
+The lasting value is the award-specific code-rights graph connecting contract text to actual files and prior build evidence, rather than a generic clause library that any template site can copy.
+
+The founder or chief technology officer of a 2–20-person Georgia software company holding an SBIR award or selling software to federal defense buyers.
+
+SBIR and defense buyers regularly request technical data under 48 C.F.R. Part 227 and DFARS 252.227-7017, turning mixed code history into a recurring rights question.
+
+The passages only describe the existence of DFARS/SBIR data-rights clauses (b929c6b1327652e9, 4dc76dc287e29089, cd5366a059bbd5b7, f10a141ca4550f34) and a government resource page (6c7b85d9e99e5509); none show search volume, community questions, existing paid products, or buyers actively purchasing code-rights tooling.
+
+Passage [3ff7f8ece6d67567] shows Phase I SBIR awards range from $50,000 to $314,000, and [745111b19eacc37b] indicates Phase 2 and Phase 3 involve larger amounts, meaning award-holding Georgia founders hold meaningful non-dilutive capital. A $999/month ($11,988/year) subscription plus a $1,500 intake fee is a small fraction of such awards, so the payer has budget; motive to manage code rights follows from the same active-program context shown in [447db8219ba95092], which confirms recurring DoD SBIR activity that would generate rights questions.
+
+The passages confirm that Georgia Tech APEX Accelerator operates nine sites across Georgia serving small businesses seeking government contracts, offering proposal reviews, solicitation interpretation, and bid-matching — exactly the buyer persona the candidate targets — providing an existing, executable channel to reach Georgia founders with SBIR or federal defense exposure.
+
+The candidate explicitly states the tool 'flags conflicts for counsel but does not give a final legal opinion,' positioning it as an assistive software product rather than legal representation. Passage 4ca6fe3efa44c5af shows AI tools used in legal contexts are permissible when they gather information and schedule consultations rather than dispense legal advice, and the candidate's design follows that pattern.
+
+The passages confirm that DFARS technical data rights provisions are 'numerous and complex' and that protecting these rights is 'a crucial factor in the success of a contractor in dealing with the DoD' [d06257c642c07164], with specific marking mandates [8761785ac8af4d09] and distinct SBIR data rights rules under active regulatory change as recently as 05/07/2026 [cd5366a059bbd5b7, 8f9dc6e8324bc70f].
+
+The passages confirm the underlying regulatory need is live and current: SBIR/STTR were reauthorized on April 13, 2026 through September 30, 2031 (d2227a0972a238ff), a new SBIR foreign disclosure policy was issued April 20, 2026 (d43bb06d1de9af72), and DFARS 252.227-7017 received a change with an effective date of May 7, 2026 (b4cbb7b6afb6f157), with the clause itself active and undergoing renumbering under the Revolutionary FAR Overhaul (6e5b83cd3595835f).
+
+The passages show SBIR award and company data is publicly searchable by agency, location, and identifier, but they do not confirm the specific beginner-followable channels the candidate names — Georgia APEX Accelerators, the Georgia Tech startup ecosystem, SBIR consultants, or defense-prime small-business teams — nor do they show that a novice can actually execute outreach through any of them.
+
+The passages confirm that 48 C.F.R. Part 227 (Patents, Data, and Copyrights) exists with Subpart 227.4 on Rights in Data, and that DFARS technical-data clauses (252.227-7013, 252.227-7015) are real (sources 513932a210a014c5, 807377cdfba4f21a, f953cbdce58016cb, 0f698d774cc8ae51, 7c64136876e5d663, 381ac74c5fa15fb8), but no passage mentions the specific clause 252.227-7017 the candidate relies on, so that core citation cannot be confirmed or denied from the provided evidence.
+
+The passages show DFARS 252.227-7017 and Subpart 227.4 are real, active clauses (sources 513932a210a014c5, 807377cdfba4f21a, f953cbdce58016cb), and the candidate positions the tool as conflict-flagging software that defers legal opinions to counsel (4ca6fe3efa44c5af, f04ffcaec27a8a3c), so no ban on this service is evidenced. No passage shows a single provider holding most of the SBIR rights-tooling channel; competitors cited are a fragmented mix of SBIR consultants, federal contract lawyers, Git history, and spreadsheets (per the candidate's own commodity_premortem). Phase I awards range $50K–$314K (3ff7f8ece6d67567) and Phase 2 can reach ~$2.15M (745111b19eacc37b), making the $999/month + $1,500 intake price a small fraction of the customer's award capital, so unit economics cannot be ruled impossible on this evidence.

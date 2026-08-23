@@ -1,0 +1,23 @@
+The Public Bid Autopsy.
+
+A fortnightly paid newsletter dissecting winning freelance proposals obtained via FOIA, revealing the pricing, positioning, and language patterns that actually win government and university creative contracts.
+
+Freelancers lose bids because they guess what clients want; by reverse-engineering real winning proposals obtained through automated FOIA requests, they can adopt proven pitch structures, scope language, and rate benchmarks that are otherwise invisible. This creates a proprietary intelligence asset that compounds as more proposals are analysed.
+
+Freelance designers, writers, developers and consultants who bid on public-sector or institutional creative work and need a competitive edge beyond generic advice.
+
+FOIA automation tools (MuckRock, automated request workflows) and AI-powered document parsing (LLMs) make it possible for a solo operator to systematically harvest, redact and analyse winning proposal documents at scale, converting a slow manual process into a repeatable intelligence product.
+
+Passages contain fragments about freelancing, Upwork proposals, and AI, but none addresses the durability, commoditization, or reality of the value derived from FOIA-based proposal analysis. No evidence either supports or refutes the claim.
+
+None of the passages mention any incumbent, competitor, or service addressing the specific need of systematized FOIA-based winning proposal intelligence for freelancers; they are entirely irrelevant to the question.
+
+No passage affirms that bidding freelancers have the budget and willingness to pay for a proposal-intelligence newsletter; passage [4ae5f091f2b73589] in fact reports freelancer income falling and budgets diminishing, which cuts against solvency rather than confirming it, while the remaining passages [f367dd7cfa3aa47d][f91189fb3708b638] only show that freelancers transact without addressing their ability or motive to pay for this product.
+
+Passages discuss general freelance marketing channels and client advice, with no connection to the specific newsletter's distribution route.
+
+Passages do not discuss the legality of obtaining proposals via FOIA or publishing analysis; the reference to non-illegal contract clauses is irrelevant to the margin's lawfulness.
+
+The passages discuss Upwork proposal tips and general freelancing advice, none mention or address the acute problem of needing to understand winning public‐sector proposals or paying for such intelligence.
+
+No evidence found in the provided passages that any of these specific risk conditions exist. All claims were unverifiable, with no mention of legal barriers, unit economics, or a dominant incumbent.

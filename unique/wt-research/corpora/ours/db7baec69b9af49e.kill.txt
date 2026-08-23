@@ -1,0 +1,23 @@
+BandSmart – The Council Tax Challenge Engine.
+
+A tool that generates an evidence-backed council tax band appeal dossier for UK homeowners, using proprietary data on comparable property valuations and VOA decision history to maximise reimbursement chances.
+
+Squeezed-middle homeowners overpay council tax because challenging a band is opaque and time-consuming; by aggregating FOI-sourced appeal outcomes and local sale prices, a solo-built AI can produce a panel-ready submission, converting a £150 one-off fee into £400+ annual savings.
+
+UK homeowners (typically 35-55, mortgage-holders) facing cash-pinch and deliberating on household expenses.
+
+Rising living costs pressure homeowners to scrutinise recurring bills; VOA data is available via FOI but remains uncollated for consumer use; AI document generation is now trivial for a solo developer.
+
+VOA figures show a real, non-trivial success rate for challenges (about 27% overall, 41% for informal band reviews), meaning mispriced bands genuinely exist and can be corrected rather than being a fabricated problem. Government reluctance to run a full revaluation means these legacy valuation errors persist rather than being wiped out, keeping the underlying opportunity alive, though the long 90-180 day resolution time and majority failure rate temper how strong that value is.
+
+The passages only describe the existing government/council band-lookup and challenge service and unrelated social-media content; none assess whether that free official channel or any funded rival already dominates the market for evidence-backed appeal dossiers, so incumbency cannot be judged from this evidence.
+
+The passages only describe council tax band rates, regional averages, and general guidance on challenging a band; none say anything about a homeowner's budget, willingness, or ability to pay a £49 fee. The other three passages are about unrelated topics (a US municipal election, city council meetings, and continuing-education credits) and add nothing.
+
+The VOA's own online portal ([627d8ce50f55cf98], [c54375b3363a1dff]) and free checker tools ([321ddccc219162a3]) show a self-serve, postcode-based lookup channel already exists for accessing band and comparable-property data, which a paid tool can build on top of or streamline. Money-advice sites already funnel traffic to council tax challenges ([600d9316b9405a26], [fb3d5d662060a30b]), showing an existing acquisition channel for this exact audience.
+
+The passages describe council tax band challenges as a formal, official process run through the Valuation Office Agency or equivalent body, with government tools for lookups and challenge forms — a sanctioned statutory mechanism, not a workaround requiring any breach of law or terms.
+
+The passages only show that council tax bands exist and can be challenged via a VOA online form or email — none states that homeowners find this process painful, opaque, or costly enough to pay a third party, nor do they mention overpayment or reimbursement outcomes. The Microsoft passages are entirely unrelated and add no evidence.
+
+The passages describe council tax band challenges as a normal, government-sanctioned process run through the Valuation Office Agency, with no sign it's illegal or blocked for a third party to assist with. No passage gives a customer-acquisition cost or a per-customer revenue figure to test against each other, and none shows a single named company holding most of the market for this kind of appeal service — the closest thing is the VOA's own free lookup tool, but that's the regulator's own channel, not evidence of a dominant private competitor.

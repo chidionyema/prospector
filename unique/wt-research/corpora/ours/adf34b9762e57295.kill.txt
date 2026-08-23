@@ -1,0 +1,11 @@
+CareFee Lens – the self-funder’s window into what your council really pays for care.
+
+See your local authority’s secret care home rates and use them to negotiate your own fees down to the council’s price.
+
+When a local authority pays for someone’s care, it negotiates a weekly rate with care homes that is typically 30-40% lower than the “self-funder” rate. Many retirees paying for their own care don’t know this. This tool inverts the council’s information advantage by using FOI requests to compile a database of block-contract rates for every care home in a given area. A retiree or their family enters the postcode and care home name, and the tool shows the council rate for that home, if available, and provides a script and letter to ask the home to match it. The dataset is proprietary and constantly updated — the council cannot stop gathering and sharing it, but they won’t volunteer it. The moat is the aggregation work; a solo operator can run it with automated FOI submissions and scraping.
+
+Retirees (or their adult children) facing self-funded care home fees. They pay £79 for a localised report, including a negotiation guide.
+
+Care costs are soaring, and the “self-funder subsidy” is under growing scrutiny. The Competition and Markets Authority has noted the gap, but no consumer tool yet exists.
+
+Free league tables already publish local-authority care rates gathered by FOI across all 173 English and Welsh councils, including residential homes, and current fee-rate maps continue that coverage. That free public dataset removes the paid tool’s claimed durable edge in aggregating and selling council rates obtained the same way.

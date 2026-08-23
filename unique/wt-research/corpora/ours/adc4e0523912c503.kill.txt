@@ -1,0 +1,25 @@
+ProbeProof — the mobile calibration crew that keeps your small food business inspection-ready.
+
+A regional van crew visits your kitchen each quarter, calibrates every probe and scale on the spot, and leaves UKAS-traceable certificates your biggest buyers accept.
+
+Small UK food producers — cheesemakers, jam makers, micro-brewers, charcuterie makers — need their temperature probes, pH meters, refractometers and weighing scales calibrated against a traceable standard. Without proof, supermarket buyers and B2B wholesalers walk away. Today they post instruments to a lab and lose them for days, replace kit too often, or run uncalibrated.
+
+We bring a van crew to your premises on a fixed rota. Two trained engineers spend two hours calibrating every instrument against UKAS-traceable references, leave a digital certificate per device, and store a per-client history in our database. By visit four you have a two-year calibration trail in one place — exactly what a SALSA or BRC audit asks for.
+
+The wedge is the calibration history itself. Each visit compounds the value of staying with us, so switching costs grow quarterly. The trained engineer skill, the in-van bench standards and the documented procedure are technical IP a new entrant can't replicate by simply hiring.
+
+Why this survives the lab alternative: sending instruments away means days of downtime per device, multiplied across every probe in your business. A cheesemaker with twelve probes cannot afford two weeks offline. The lab also charges £300+ per instrument; we charge a flat subscription covering everything.
+
+UKAS itself does not compete: it accredits labs, it does not run a commercial service. SALSA and BRC set the rules but do not sell calibration. So we sit in the gap.
+
+Small UK food producers with 3 to 20 staff — artisan cheesemakers, micro-brewers, charcuterie makers, jam and preserve makers, small dairies, raw honey producers, natural cosmetics makers — any SMB whose buyers demand evidence of calibrated instruments.
+
+Post-Brexit, supermarket buyers (Tesco, Sainsbury's, M&S, Waitrose) demand stricter traceability proof from artisan suppliers. SALSA and BRC audits now require evidence of instrument calibration. HMRC is tightening record-keeping around quality claims. The artisan food sector has grown sharply since 2020, with new micro-producers launching every month, and none can afford their own in-house calibration lab.
+
+The passages discuss general consumer thermometer calibration (free ice/boiling point methods), product listings for digital thermometers, and probe thermometer features, but none address whether small UK food producers are actively searching for or paying for commercial mobile calibration services. There is no mention of UKAS-traceable calibration demand, SALSA/BRC compliance needs, or any commercial calibration service transactions.
+
+The passages do not directly address whether small UK food producers have budget and motive for a calibration subscription service. One passage [16b2af574b1b7f71] shows artisan cheesemakers experienced severe financial distress (losing up to 90% of business during the hospitality shutdown), suggesting vulnerability in the segment, while another [02843d4188276752] shows consultancies serving artisan food brands, but neither establishes whether these businesses currently can and will pay ~£200/month for calibration. The passages lack specific evidence on the target customers' current financial c
+
+The SALSA directory (sources 587cd42f66f91024, 910abcfb3230aabb, d8ac6f4577694503) provides a searchable, pre-built list of exactly the target customers — small UK food producers — filterable by product type and region, which serves as a low-friction prospecting route. Source f8483564bd9bb337 confirms these buyers exist at scale, as 96% of the UK food and drink market consists of SMEs, and the same passage characterises them as under-resourced and under-capitalised, consistent with outsourcing calibration rather than building in-house capability. Sources 37bbfde1b8d5ae55 and 623fe8d483f9e352 i
+
+The passages show mobile on-site calibration vans as an existing, legitimate service offering in the UK (DM Calibration), and calibration is a recognised conformity assessment activity that UKAS accredits. Nothing in the passages suggests the service model described requires falsifying measurements or breaching any law or terms — the activity itself (calibrating instruments and issuing certificates) is lawful.

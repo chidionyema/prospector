@@ -1,0 +1,15 @@
+ICO children's code privacy reviews for UK AI CTOs.
+
+We draft a privacy review per the ICO's children's rules for UK children's AI app CTOs, so each new feature ships against all 15 standards in days, not weeks.
+
+The ICO's children's code (the Age-Appropriate Design Code) covers any online service likely to be accessed by under-18s, with 15 standards covering best interests, age-appropriate application, transparency, default settings, data minimisation, parental controls, profiling, geolocation and so on. A chief technical officer at a children's AI app must run a Data Protection Impact Assessment against all 15 standards before each launch or major change. Privacy consultancies charge £3,000 to £10,000 per assessment; skipping it exposes the company to ICO action (the ICO has stepped up enforcement under the children's code since 2024 with multiple formal notices).
+
+We read the product spec and data flows, score against each of the 15 standards, and draft the Impact Assessment with mitigation language for each. The chief technical officer reviews, edits and files internally before launch.
+
+What we keep over time is a corpus of past Impact Assessments and ICO enforcement decisions mapped onto the 15 standards, growing with each customer's releases.
+
+We widened this past the high-risk 3 to 5 standards a privacy consultancy would scope, so the deliverable covers all 15 systematically and is the same shape per release.
+
+UK chief technical officer at a children's AI app or EdTech startup, typically Series Seed to Series A, with a product roadmap of monthly releases aimed at under-18 users.
+
+ICO enforcement on the children's code has stepped up since 2024 with formal notices to several platforms; children's AI startups face the requirement at every release and lack an in-house data protection officer.

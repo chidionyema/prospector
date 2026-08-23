@@ -1,0 +1,155 @@
+DRN-4307778
+The complaint
+Mr P complains about the way American Express Services Europe Limited (AESEL)  trading 
+as American Express handled a claim he made in respect of a transaction on his credit card.
+What happened
+The details of this complaint are well known to the parties. So I will only cover these briefly 
+here and focus on giving reasons for my decision.
+Mr P used his AESEL card to purchase flights for his granddaughter and her partner from a 
+travel agent (‘the agent’). The booking was made in April 2020 and the flights were due to 
+depart in February 2021. However, due to the circumstances around the pandemic the 
+flights were cancelled.
+Mr P was unable to get a refund from the agent (which later went out of business) so 
+contacted AESEL to raise a dispute. Mr P is unhappy with the outcome and the way AESEL 
+handled things. He said it kept asking him for the same information and took too long.
+AESEL did not uphold the dispute it said it was out of time to raise a chargeback and that 
+Section 75 of the Consumer Credit Act 1974 (‘Section 75’) did not apply.
+Our investigator did not uphold the complaint either. She noted that any chargeback would 
+be out of time and that Section 75 did not apply to the transaction because of the nature of 
+the agreement.
+Mr P disagreed so the matter has come to me for a final decision. I issued a provisional 
+decision as follows:
+I won’t comment on all the evidence I have seen – only what I consider to be particularly 
+relevant. This isn’t intended as a discourtesy but reflects my role resolving disputes 
+informally.
+Firstly, despite the unfortunate situation with the cancelled flights it is important to note here 
+that AESEL is not the provider of travel services. So when deciding how it handled the claim 
+I consider its particular role as a provider of financial services. In doing so I consider 
+chargeback and Section 75 relevant considerations as they are ways AESEL might 
+reasonably be able to help Mr P get his money back.
+In brief, I don’t think that AESEL is fairly liable for providing a refund to Mr P. I will explain 
+more about my reasons for this in a moment. However, I do think AESEL did not handle the 
+claim as well as it could have done – so, I am making an award to reflect this.
+Chargeback
+Chargeback is a way AESEL might have been able to claim back a refund for Mr P. However 
+it is limited by the particular card scheme rules. One of the key issues with chargeback is the 
+specific time limits in order to raise a claim.
+
+Here AESEL says that when Mr P got in touch with it (October 2022) they had no option to 
+raise a chargeback as it was out of time.
+I have considered what AESEL has said and I think this is correct. Generally for a 
+chargeback reason like ‘service not provided’ (which would be relevant here) there is 120 
+days to raise said chargeback from the date of expected service. Clearly Mr P was out of 
+time as the cancelled booking was set for February 2021. 
+I have also thought about whether another chargeback reason would have been in time – 
+such as that relating to a credit not being processed. But it appears the refund was approved 
+in December 2021 which is more than 120 days before Mr P got in touch with AESEL to 
+raise a dispute in any event.
+Overall, due to the strict chargeback timeframes and when Mr P got in touch with it I don’t 
+think AESEL acted unfairly in not pursuing a chargeback here.
+Section 75
+Section 75 can allow Mr P to make a claim against AESEL for breach of contract or 
+misrepresentation by a supplier paid using his credit card in respect of specific goods or 
+services.
+However, certain criteria must be met for Section 75 to apply. AESEL says it hasn’t been – 
+specifically the requirement for a valid ‘debtor-creditor-supplier’ agreement between the 
+parties.
+I note there has been a suggestion that the way the payment to the agent was processed 
+means there isn’t a valid DCS agreement. I don’t necessarily agree with that– as simply 
+facilitating a transaction doesn’t always mean there won’t be a DCS agreement. However, I 
+do agree that the other elements here mean there isn’t a valid DCS agreement – so I don’t 
+intend to cover this other aspect in any detail. 
+I don’t think Mr P is able to make a Section 75 claim in respect of the actions of the airline 
+here, or the travel agent which booked the tickets. I say this because:
+•Mr P didn’t pay the airline for services using his AESEL credit card, and he doesn’t 
+have a contractual agreement with it in any event (his family members do); and
+•although Mr P paid the agent for services using his credit card, he has no contract with 
+it – the booking was made by his granddaughter – and the paperwork clearly confirms 
+she is the agent’s customer – not Mr P.
+In deciding that Mr P does not have a contract with the agent I have had regard to its 
+archived terms and conditions from around the time of the booking (we don’t appear to have 
+the terms on file previously). I think these likely reflect the contractual position at the time the 
+booking was made. These show that the agent is contracting with the person making the 
+booking arrangements and do not indicate that by simply paying for the booking Mr P has a 
+contract with it for services rendered. 
+I know this seems quite technical – but in respect of Section 75 AESEL are only fairly liable 
+for a ‘like claim’ which Mr P would have in court against a supplier. Here, despite wanting to 
+do something for his family by paying for flights I don’t think Mr P would be in a position to 
+take the agent he paid to court – so it follows that he doesn’t have a like claim against 
+AESEL. And it hasn’t acted unfairly in declining his claim.
+Mr P has maintained that AESEL was very slow to handle his claim and kept asking him for 
+information it already had. I can see that Mr P first got in touch with AESEL in October 2022 
+yet it didn’t give him an outcome to his claim until February 2023. It took over four months to 
+deal with the matter and I can see it kept going back to him asking for more information – yet 
+it wasn’t clear to me what it needed to be able to consider the dispute and carry out an 
+investigation or that it didn’t already have sufficient information to understand things. It would 
+also have been reasonably clear at an early stage that the chargeback was out of time.
+I don’t think the letters AESEL sent Mr P were particularly clear and kept telling him the 
+matter was going to be closed. At one point AESEL told him to go back to the supplier to 
+resolve things (even though it could have fairly looked into a Section 75 claim). Furthermore, 
+despite going back and forth with Mr P over many months AESEL appears to only have 
+started to consider Section 75 in February 2023. In early February 2023 it sent him a Section 
+75 claim form. I question why it took AESEL months to send him this and begin to look at 
+Section 75. I can see Mr P was frustrated as a lot of the information AESEL asked for in this 
+form he noted he had sent it already.
+Mr P was clearly frustrated with how AESEL handled things. I know it has said it doesn’t 
+have a timeframe set down in law to handle claims. However, the FCA has issued guidance 
+in April 2021 which is relevant here that states:
+We expect credit and debit card providers to handle section 75 and chargeback claims in a 
+reasonable timescale, and remind firms of their obligations to treat customers fairly. If there 
+are delays in processing claims, firms should clearly explain the reason for the delay.
+I don’t think the claim was handled as well as it could have been particularly around 
+communication and reasonable timescales. With all this in mind I think that AESEL should 
+pay Mr P £150 for the distress and inconvenience he has suffered as a result of its claim 
+handling in the particular circumstances here.
+My provisional decision
+I partially uphold this complaint and direct American Express Services Europe Limited 
+(AESEL)  trading as American Express to pay Mr P £150 compensation.  
+I asked the parties for comments. 
+AESEL accepted my findings. 
+Mr P’s responded as follows (via his representative), in summary:
+the agent kept promising a refund up until October 2022 when he contacted AESEL 
+so the chargeback timeframe should kick in then (and at no point has he stopped 
+pursuing this so should not be over any timeframe);
+if he had bought other goods for his family that didn’t arrive he questions whether 
+AESEL would be happy to give a refund because their client has not received the 
+goods they have paid for;
+society should protect those using credit cards for large purchases like this and he 
+has been with AESEL for many years now and when he needs protection he has not 
+received it – this has caused endless stress.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I am very sorry to hear about how this situation with the flight cancellation has impacted Mr P 
+and his family and the stress it has caused. However, the submissions made on Mr P’s 
+behalf do not change my view on the outcome here. I still consider my provisional findings 
+fair and reasonable for the reasons given in said findings (as copied above).
+It is worth underlining that the timescales for chargeback are specified by the card scheme – 
+so even though Mr P was chasing a refund for a while after it was promised and being told it 
+was coming this does not extend the timeframe relating to raising a chargeback for a credit 
+not being paid. So I still don’t think chargeback had a reasonable prospect of success for 
+reasons I have already given.
+Furthermore, my findings are not in respect of other purchases Mr P has made or might 
+make and I am reluctant to cover hypothetical situations regarding the ‘debtor-creditor-
+supplier’ agreement as this is case specific. However, what is key here is that Mr P is not the 
+customer of the agent even though he used his credit card to make the payment. So I don’t 
+consider he has a claim against AESEL in respect of Section 75.
+I acknowledge Mr P’s points about the amount of money spent here and his customer loyalty 
+to AESEL. I also acknowledge that there is often a degree of additional protection available 
+when spending on a card. However, any protections are subject to limitations. In this case I 
+am unable to fairly say that AESEL as a provider of financial services should have paid out a 
+refund here because of the specific limitations around raising chargeback disputes and 
+Section 75 claims. 
+I do still think AESEL’s customer service could have been better – and it appears to agree 
+with me. It should pay compensation for the reasons I have already given in my provisional 
+findings.
+Putting things right
+AESEL should pay Mr P the compensation as set out below.
+My final decision
+I partially uphold this complaint and direct American Express Services Europe Limited 
+(AESEL)  trading as American Express to pay Mr P £150 compensation.  
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr P to accept or 
+reject my decision before 10 November 2023.
+ 
+Mark Lancod
+Ombudsman

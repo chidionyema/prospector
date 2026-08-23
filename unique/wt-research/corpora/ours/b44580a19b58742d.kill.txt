@@ -1,0 +1,13 @@
+GroomSched – The Pet Salon's Breed‑Smart Scheduling Optimizer.
+
+A solo-operated scheduling tool that dynamically sets appointment durations based on breed, coat condition history, and real‑time groomer pace, maximising daily bookings for independent dog grooming salons.
+
+First-principles pain: a groomer’s biggest daily variable is service time — a simple ‘small dog haircut’ can take 45 minutes for a calm Schnauzer or 2 hours for a matted Cockapoo. Most salon owners use fixed 1‑hour slots and lose up to 25% of potential revenue through gaps or overruns. An AI that builds a dynamic schedule from digital dog profiles and historic timing data, then automatically texts owners precise arrival windows, can increase daily throughput without adding staff.
+
+Owner of an independent dog grooming salon (1–6 groomers, often the owner is also a groomer) who manages booking personally and feels the pain of daily schedule chaos.
+
+Small service businesses are over the SaaS‑fatigue hump and now demand niche tools that directly increase revenue. The pet grooming market is booming ($8B+ in the US alone), but software has not moved beyond basic booking; stylist‑level AI scheduling from hair salons can be transplanted. Advances in mobile vision could soon add coat‑condition assessment via a quick photo, making the tool even stickier.
+
+The FAQ passage confirms that grooming appointment length genuinely varies by breed, coat condition, and package, and a second passage confirms matting and coat type drive extra work — this is the structural fact the tool's value rests on, and nothing here shows it evaporating. The existing scheduling tools (MoeGo, ranked appointment software) only offer generic booking/reminders, not breed-specific duration prediction, so they don't commoditise this particular value.
+
+Multiple established platforms (Pawfinity, MoeGo, and others in [60a715b9401e4dfc], [7eae78e6ccbe1a42]) already dominate grooming-salon scheduling with multi-groomer calendars, online booking, and automated notifications, so the space is not open. Passage [7e0fa2e9f8932f3c] confirms the specific gap ('no breed-based pricing... a calendar event doesn't know a Doodle full groom should take longer than a Yorkie bath'), but that only shows a feature gap within an incumbent-saturated market, not the absence of dominant competitors.

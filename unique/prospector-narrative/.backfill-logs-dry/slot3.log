@@ -1,0 +1,7 @@
+DRY-RUN: 10 listed pack(s) from https://prospector-store-api.fly.dev/catalog
+
+{"timestamp": "2026-08-15 16:15:06,385", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83c\udfd7'(U+1F3D7)", "phase": "main"}
+{"timestamp": "2026-08-15 16:15:10,157", "level": "WARNING", "name": "prospector.pack_pdf", "message": "pack_pdf: 1 uncoverable character(s) removed: '\ud83c\udfd7'(U+1F3D7)", "phase": "main"}
+  [   would-convert] a8333b00e91eec66  289579B -> 269414B (-20165B, reordered reader, manifest refreshed)
+  [   would-convert] 2abc23c3c0d05bab  242500B -> 229134B (-13366B, reordered reader, manifest refreshed)
+  [   would-convert] 82a9c38fea398376  303217B -> 273965B (-29252B, reordered reader, manifest refreshed)

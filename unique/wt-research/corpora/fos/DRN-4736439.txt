@@ -1,0 +1,86 @@
+DRN-4736439
+The complaint
+Mr A complains that Revolut Ltd (“Revolut”) won’t refund over £13,000 he lost to an 
+employment scam in May 2023.
+What happened
+Mr A and his wife fell victim to an employment scam after they were contacted by a sham 
+recruiter offering a remote working opportunity that involved reviewing products online. As 
+the complaint has only been brought by Mr A, I will only refer to him throughout the rest of 
+this decision. 
+Throughout the scam, Mr A made 20 payments from his Revolut account between 2-3 May 
+2023 to various different payees to purchase cryptocurrency through the Peer-to-Peer (P2P) 
+market, which he thought he was doing in order to top up his crypto-trading account that was 
+required to complete his tasks. However, he realised he’d been scammed when he was 
+being asked to make increasingly larger payments to withdraw the money he’d earned.
+Mr A reported the fraud to Revolut, but it refused to refund any of the payments as Mr A had 
+authorised them. Unhappy with this, he referred the matter to our service.
+Our investigator didn’t uphold Mr A’s complaint. She thought that Revolut ought to have 
+intervened and spoken to Mr A in light of the unusual payment activity on his account, but 
+she didn’t think this would have ultimately prevented the scam as it was clear Mr A had been 
+told to lie about the purpose of the payment. Mr A disagreed, so the matter has been 
+escalated to me to determine. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so, I agree with the conclusions reached by the investigator for the following 
+reasons:
+It isn’t in dispute that Mr A authorised the disputed payments he made from his Revolut 
+account. The transfers were requested using his legitimate security credentials provided 
+by Revolut, and the starting position is that firms ought to follow the instructions given by 
+their customers in order for legitimate payments to be made as instructed.
+However, I’ve considered whether Revolut should have done more to prevent Mr A from 
+falling victim to the scam, as there are some situations in which a firm should reasonably 
+have had a closer look at the circumstances surrounding a particular transfer. For 
+example, if it was particularly suspicious or out of character.
+It’s accepted that some of the payment activity was considered unusual given that it did 
+trigger Revolut’s fraud prevention systems and led to it making further enquiries – such 
+as the second payment Mr A made on 2 May 2023. Before allowing this payment to be 
+
+made, Revolut asked Mr A to confirm the reason why he was making it, to which he 
+selected “Safe Account”. 
+Revolut said it provided a warning about safe account scams in light of this reason being 
+chosen, but that Mr A proceeded to make the payment. However, Revolut ought 
+reasonably to have known that someone sending money to a ‘safe account’ would most 
+likely be doing so as part of a scam, so I don’t think a written warning was sufficient in 
+these circumstances, and it shouldn’t have allowed the payment to go through at all until 
+it had spoken to Mr A to seek further information regarding whether it was linked to a 
+safe account scam or not. However, even if it Revolut had questioned Mr A further, I’m 
+not persuaded this would have likely prevented his loss in any event. I’ll explain why,
+Our service has seen a transcript of the messages sent between Mr A and the scammer, 
+whom he was in contact with on 2 May 2023 when he was initially attempting to make 
+the payments from another bank. Mr A explained to the scammer that the bank had 
+blocked the payments and warned him about potential fraud. He asked the scammer if 
+they had any suggestions, where they said he should tell the bank he was sending 
+money to his friend or family. Mr A said that his bank told him it seems like the trader is a 
+scam, at which point the scammer suggested buying cryptocurrency directly with his 
+debit card. Mr A then said it wouldn’t be a problem as he had another account with 
+Revolut, where he then proceeded to make the disputed payments. 
+Based on this evidence, it’s clear that Mr A was being coached by the scammer on what 
+to tell his bank if any of the payments were stopped. So, even if Revolut had questioned 
+Mr A further about the reason why he selected “Safe Account” as his payment reason, 
+I’m not persuaded he would have given upfront and honest answers. He seemingly 
+hadn’t told his other bank that he was making these payments as part of his 
+employment, and was told to say he was sending money to family and friends. I note that 
+Mr A was also told by his other bank that it sounded like he was being scammed, yet he 
+still continued to make the payments through his account with Revolut. 
+As a result, I’m not persuaded any further questioning, or scam warnings Revolut 
+could’ve provided would have likely revealed the scam in these circumstances. So, I 
+don’t consider it would be fair and reasonable to hold Revolut liable for failing to prevent 
+Mr A’s loss. 
+I also don’t think there was anything more Revolut could’ve done to recover the money 
+Mr A lost either. It seems that the payees he sent money to were part of the P2P crypto 
+market, where he would’ve received cryptocurrency in return for the money he paid. So, 
+there would’ve been no basis for Revolut to recover the money he had paid to these 
+individuals. Even if Mr A had sent money directly to the scammers account, I note that he 
+didn’t report the fraud until 2 June 2023 – almost a month after the payments were 
+made. So, it seems highly unlikely any funds would’ve remained at this point. 
+I appreciate this will likely come as a disappointment to Mr A, and I’m sorry to hear he has 
+been the victim of a cruel scam. However, I’m not persuaded Revolut can fairly or 
+reasonably be held liable for his loss in these circumstances. 
+My final decision
+For the reasons given above, I do not uphold this complaint. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr A to accept or 
+reject my decision before 29 May 2024.
+ 
+Jack Ferris
+Ombudsman

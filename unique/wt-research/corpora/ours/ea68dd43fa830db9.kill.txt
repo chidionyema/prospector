@@ -1,0 +1,21 @@
+ClashBack — The Casual Worker's Universal Credit Pay-Cycle Audit & Backpay Pack.
+
+A done-for-you productized service that audits a gig or casual worker's last 12 months of Universal Credit statements against their actual payroll calendar, finds the assessment-period clashes (two paydays landing in one UC month) that silently wiped out hundreds of pounds of their award, and delivers a ready-to-file mandatory reconsideration pack plus a forward pay-date plan to stop it recurring.
+
+Lens: broaden. Instead of fixing one bad UC month (the narrow consensus shape), widen to the worker's entire annual pay-calendar value chain: weekly, fortnightly and 4-weekly paid casual workers structurally collide with UC's rigid monthly assessment periods, producing months where UC drops to zero and months of clawback — a defect the Court of Appeal (Johnson) already forced DWP to correct for monthly-paid claimants but which volatile-paid gig workers must still fight case-by-case. A solo operator with AI parsing of UC statement PDFs and payslips can industrialise this: detect every historical misallocation, generate the RTI-evidence-backed reconsideration letter for backdated correction, and issue a personalised 'pay-date defence calendar' (which shifts to accept, when to report, when a clash month is coming) as the recurring artefact. The compounding asset is a proprietary case archive of which decision-maker arguments and which employer payroll calendars (major hospitality, warehouse and delivery platforms) produce clashes and which reconsideration framings win — data DWP will never publish and generic advice charities never systematise.
+
+18-27 year old casual and gig workers on Universal Credit with weekly/fortnightly/4-weekly pay (hospitality zero-hours staff, warehouse temps, delivery riders) — paying a fixed £39 audit fee, or a success-based £79 when the pack recovers a wiped month (typically £300-£900 of restored UC), plus a £5/month clash-forecast calendar subscription.
+
+Managed migration is pushing the remaining legacy-benefit and tax-credit population onto UC through 2025-26 just as casualised weekly-paid work peaks among under-27s; DWP's post-Johnson fix only covers monthly-paid claimants, leaving volatile-paid workers to trigger corrections themselves via mandatory reconsideration — a right almost none of them know exists, with an expanding backlog of 12-month-backdatable errors accumulating right now.
+
+Only [aacf333244f8c73c] touches assessment-period paydate clashes, but it describes a single anecdotal case of budget worry, not evidence that the underlying value/pain is durable, widespread, or uncommoditised; the other passages concern surplus earnings and general UC mechanics, which are conceptually distinct.
+
+These passages describe generic UC guidance, eligibility, Citizens Advice's Help to Claim, and the mandatory reconsideration process, but none address whether a retrospective assessment-period/payday-clash audit and reconsideration-pack service exists or is dominated by an incumbent.
+
+The only passage on Universal Credit payment timing states a six-week delay leaves claimants unable to afford food, indicating acute cash shortage rather than spare budget for a £49 upfront fee; nothing here shows this payer segment can absorb that cost.
+
+None of the passages address a route to reach ClashBack's UK Universal Credit claimant buyers; they concern an image generator, population statistics, migrant smuggling, TikTok's ad manager, and general FCA social-media promotion rules with no connection to gig worker distribution channels.
+
+These passages describe FCA regulation of CMCs, complaint/warning-list channels, and unrelated fraud/telemarketing prosecutions, but none say whether a document-audit-and-template-pack service (where the claimant self-files) falls inside or outside the regulated CMC perimeter.
+
+The passages confirm the assessment-period clash is real: monthly-paid claimants can get two pay dates in one assessment period due to early/holiday payday shifts, and this was significant enough that DWP introduced 2020 regulations to reallocate earnings between periods to keep awards fair — proving both that the misallocation happens and that it materially distorts awards.

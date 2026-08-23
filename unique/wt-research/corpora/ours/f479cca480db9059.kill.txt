@@ -1,0 +1,11 @@
+The Gig Tide.
+
+A monthly paid newsletter with a premium real‑time forecasting dashboard that tracks freelance demand and rate shifts across UX, development, and content strategy, using proprietary scraped job‑board data and agency insider surveys to map AI‑driven market upheavals.
+
+Freelance creatives face feast‑or‑famine cycles exacerbated by AI tools that compress generic skill rates while demand for niche expertise spikes. By combining forward‑looking job‑market signals with insider trend surveys and packaging them into a predictive dashboard, freelancers can time their skill investments, adjust pricing, and navigate disruption—turning market intelligence into a defensible career moat.
+
+Mid‑to‑senior freelance UX/UI designers, front‑end developers, and content strategists who need to anticipate AI commoditization and command premium rates.
+
+The 2024 wave of generative AI tools is radically revaluing creative skills in real time; lagging job‑board snapshots leave freelancers blind, while the demand for predictive rate intelligence that captures AI’s impact on specific niches has never been higher.
+
+Upwork already publishes a free, quarterly Skills Index ranking the fastest-growing freelance skills by actual billings data, and IPSE already publishes a free quarterly Confidence Index covering day rates, capacity utilisation and earnings — both first-party sources giving away the exact category of signal (skill demand shifts, rate trends) the paid dashboard proposes to monetise. That overlap undercuts the claim that this market intelligence is a defensible, non-commoditised asset.

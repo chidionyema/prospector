@@ -1,0 +1,105 @@
+DRN-4652499
+The complaint
+Mrs F complains that Monzo Bank Ltd (‘Monzo’) hasn’t refunded a payment she says she 
+didn’t make or otherwise authorise. 
+What happened
+Mrs F says that on 19 December 2022 she saw a mobile notification to say that she had an 
+email regarding a payment request from a company that allows customers to make online 
+payments. I’ll refer to this company as P in this decision. Mrs F went through P’s website to 
+log into her account and saw a message that said she had sent a payment of £579.99 to a 
+company she didn’t recognise. The message said that if the payment wasn’t authorised Mrs 
+F should contact P’s customer support and provided the number. Mrs F logged into her 
+account with P and called the number to speak to P. What Mrs F didn’t know at the time was 
+that the support number was fake, and she was speaking to a scammer.
+The scammer told Mrs F that the transaction could be cancelled but that her main bank 
+account (not with Monzo) had been compromised. Mrs F was reassured that banks work 
+together. To protect her funds, Mrs F was told to transfer her balance to her Monzo account 
+– where it would be safe. Mrs F has explained that she takes strong pain medication for 
+chronic pain that can make her feel ‘out of it’ and that she suffers from anxiety. At the time of 
+the call with the scammer she wasn’t able to focus properly and had a panic attack. The 
+scammer asked Mrs F to verify who she was. Later, Mrs F was asked to move funds from a 
+savings account and started to worry about this. She said she’d speak to her bank first.
+Mrs F contacted Monzo via its chat on 19 December 2022, straight after her call with the 
+scammer. She disputed a transaction for £2,154.72.
+Monzo says Mrs F authorised the payment by responding to a message she received, and 
+that Mrs F didn’t take enough steps to satisfy herself she was communicating with a genuine 
+company.
+Mrs F was unhappy with Monzo’s decision. She said she didn’t authorise the transaction so 
+Monzo should refund it. She’s also unhappy with the service she has received from Monzo, 
+and, in particular, difficulties with the chat function and the length of time it took Monzo to 
+reach its decision not to reimburse her. Mrs F says that the delay has impacted her health 
+and also that Monzo’s repeated requests to provide the same information to different people 
+has made her very anxious. 
+Our investigation so far
+The investigator who considered this complaint didn’t recommend that it be upheld. She said 
+a chargeback claim wouldn’t be successful and that Mrs F authorised the transaction by 
+responding to a text message from the scammer so is presumed liable for her loss unless 
+Monzo failed to intervene when an unusual and suspicious payment request was made. As 
+this wasn’t the case, the investigator said Monzo wasn’t liable. 
+Mrs F was unhappy with the investigator’s findings and asked for a final decision, so her 
+case has been passed to me to consider. In summary, she said:
+- When she first contacted Monzo about the transaction she was told that it would be 
+returned. Mrs F questions why the payment wasn’t stopped when it was pending. 
+
+- The payment was unusual given the usual operation of the account. 
+I contacted Monzo and explained why I thought the service it provided caused Mrs F 
+unnecessary stress and inconvenience. Monzo offered to pay Mrs F £100 compensation. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+The relevant law surrounding authorisations are the Payment Service Regulations 2017 and 
+the Consumer Credit Act 1974. The basic position is that Monzo can hold Mrs F liable for the 
+disputed payment if the evidence suggests that it’s more likely than not that she made it or 
+authorised it. 
+I’m satisfied that these payments were properly authenticated. But the Payment Services 
+Regulations 2017 - say that is not, on its own, enough to enable Monzo to hold Mrs F liable. 
+Unless Monzo can show that consent has been given it can’t hold Mrs F liable and the 
+transaction must be regarded as unauthorised. 
+I have seen evidence which shows that Mrs F authorised the transaction by inputting her PIN 
+on her own registered device. Mrs F says that she was asked to verify who she was, and this 
+was why she entered her PIN, but Monzo has provided me with screenshots of the screens 
+Mrs F would have seen. These demonstrate that the amount and merchant were both visible 
+when Mrs F was asked to enter her PIN. I appreciate that Mrs F says she had a panic attack 
+but this doesn’t change the fact the transaction was authorised so I must view it as such. 
+I consider that Monzo acted reasonably in not raising a chargeback as the payment was 
+made as part of a scam so a chargeback wouldn’t have been successful. 
+As I consider that Mrs F authorised the transaction, I can only ask Monzo to refund it if I 
+consider the transaction to be so unusual and out of character that Monzo ought reasonably 
+to have intervened and the intervention would have led to the payment not being made. 
+Although I realise that the loss has had a significant impact on Mrs F, the value of it was 
+relatively low, Mrs F credited her account immediately before the transaction and funds 
+remained in the account after the transaction. There’s also a balance to be struck; banks 
+have obligations to be alert to fraud and scams and to act in their customers’ best interests, 
+but they can’t be involved in every transaction as this would cause unnecessary disruption to 
+many legitimate payments. 
+I’ve also thought about the service Monzo provided to Mrs F. Mrs F has said she was told by 
+Monzo that the pending transaction could be cancelled. I have seen Monzo’s chat which said 
+that the payment would be automatically reversed if the merchant didn’t collect it. But the 
+merchant did collect the payment so it couldn’t be reversed, even though Mrs F reported it 
+soon after it happened. If a payment is pending Monzo has no means to cancel it so there 
+was nothing more Monzo could have done. I agree that Mrs F was later given misleading 
+information though when a Monzo agent said that she needed to ask to stop the payment. 
+Monzo say that Mrs F stopped responding in the chat on 26 December 2022, so it closed her 
+claim three days later. It’s clear this caused Mrs F a lot of additional stress and upset at a 
+time that was already difficult for her. Particularly given the time of year I don’t think Monzo 
+acted reasonably. Monzo then took until 26 February 2023 to communicate an outcome to 
+Mrs F. In the intervening period, Mrs F regularly contacted Monzo. She referred to a panic 
+attack brought on by the stress of repeating the same information to different Monzo agents 
+and to Monzo’s delays causing her anxiety to rocket. Mrs F also said that she got shingles 
+because of the stress and lack of sleep. Monzo offered to refer Mrs F to organisations that 
+could support her but what she really needed was a resolution to her complaint. 
+I recognise that most of the anxiety Mrs F suffered was caused by cruel scammers and that 
+different processes apply in respect of authorised and unauthorised transactions and 
+Monzo’s questions were designed to establish which should apply. But I don’t think the 
+customer service Monzo provided helped an already difficult situation for Mrs F. Monzo has 
+agreed to pay Mrs F £100 compensation which I think is fair.
+Overall, I’m satisfied that Monzo can fairly hold Mrs F liable for the disputed transaction but 
+that it could have provided a better service. 
+My final decision
+I uphold this complaint and require Monzo Bank Ltd to:
+- Pay £100 compensation. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mrs F to accept or 
+reject my decision before 28 March 2024.
+ 
+Jay Hadfield
+Ombudsman

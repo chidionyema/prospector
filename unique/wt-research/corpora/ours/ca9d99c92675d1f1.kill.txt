@@ -1,0 +1,25 @@
+RateCraft — The Freelance Creative’s Rate‑Setting Data Brief, powered by real contract data from people just like you.
+
+A weekly data brief for UK freelance creatives that shows anonymised project rates and terms from real gigs, so you set your prices with evidence, not guesswork.
+
+RateCraft collects anonymised project‑rate data directly from freelance creatives across the UK — designers, writers, developers, illustrators — and publishes a paid weekly digest of current market rates segmented by role, experience level and client type. This borrows the way real‑estate price indexes are built from actual transaction data, and applies it to freelance creative contracts, giving individuals the same pricing power that agencies hold.
+
+Contributors submit recent project details through a simple web form and immediately get access to the full dataset themselves. Over time the dataset becomes a proprietary asset that grows more valuable with each new submission: no competitor can quickly recreate that longitudinal history. The weekly brief includes not just rates but how terms like revision rounds, kill fees and payment schedules vary, so the creative walks into every negotiation armed with facts.
+
+Because the data is both fresh and structured, a solo operator can run the entire engine — automated collection, anonymisation and report generation — leaving only light editorial polish. Distribution is owned via email, and the subscription price stays low enough that even price‑sensitive creatives can justify it the moment one client negotiation goes better.
+
+The freelance creative pays directly — a monthly subscription of £9. They have budget authority over tools that demonstrably lift their income, and the payback comes from a single project priced correctly.
+
+The UK freelance workforce has ballooned post‑pandemic, inflation is forcing rate recalibration, and IR35 reforms have pushed more work into genuine freelance arrangements. Public salary data for permanent roles is abundant (Glassdoor, Indeed), but no reliable, real‑time source exists for short‑term, project‑based creative work. Creatives are fed up with guesswork and leaving money on the table.
+
+The passages only describe freelance hiring marketplaces and one published 2026 average contractor day rate with variation by discipline and seniority. They never say whether structured creative rate intelligence remains scarce paid value or has already been given away as a free or bundled alternative.
+
+Passages show existing rate benchmarks for UK freelancers—including YunoJuno’s Freelancer Rates Report on over 261,000 contracts, other contractor-rate reports covering creative work, salary-equivalence guides, and published surveys or platform averages—but none state that any of these providers hold most of this market or already own a paid weekly creative-rate digest. So they do not settle whether the niche is open or already locked up by a dominant player.
+
+One passage puts UK freelance creatives’ equivalent incomes in the £23,000–£60,000 range and frames rate-negotiation tools as useful for those freelancers. At that earnings level, a £9 monthly fee is clearly within budget, and the stated need to negotiate rates supplies the motive to pay.
+
+None of the passages describe a workable way to reach UK freelance creatives as buyers of a paid rate brief—email lists, communities, marketplaces, or other self-serve signup paths. They cover hiring platforms, rate-benchmark pages, YunoJuno’s free hiring account, a blog-writing tip post, and London’s freelance boom, which do not establish a sales or delivery channel for this product.
+
+The ICO materials say effective anonymisation is a privacy-friendly way to share and unlock data value while meeting UK GDPR, which matches RateCraft’s model of publishing anonymised contributor rate data rather than raw personal data. Nothing in the passages shows that margin depends on illegality, falsification, or a contractual ban; the CMA items concern illegal information exchange among broadcasters, not voluntary anonymised freelancer submissions.
+
+Passages state freelancers commonly undercharge and that at least one person spent years undercharging after relying on peers’ rate advice, which shows a real, ongoing pricing problem. Rate-setting help is also actively offered (a calculator and a free rate guide), so people are seeking fixes for that pain now.

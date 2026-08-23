@@ -1,0 +1,27 @@
+The Freelancer's Late Payment Interest Enforcer.
+
+A £15 Fiverr gig that instantly calculates statutory late payment interest, drafts a formal demand letter, and sends it via recorded delivery to your client — so UK freelancers get paid without confrontation.
+
+UK creative freelancers habitually swallow late payments, unaware or too busy to leverage the Late Payment of Commercial Debts (Interest) Act 1998. A done-for-you gig that handles the paperwork and sends a professionally intimidating letter gives them immediate ROI and removes the psychological burden of chasing clients.
+
+UK-based freelance designers, developers, photographers with invoices over £500 overdue by 30+ days from UK clients.
+
+The Bank of England base rate at 5.25% means statutory interest is now 13.25%, making enforcement highly lucrative; rising business insolvencies cause more payment delays, and the post-pandemic freelance boom created more solo workers without credit control.
+
+The passage shows an existing 'Freelance Recovery' tool offering a Freelance Invoice Penalty Calculator that computes statutory interest and auto-generates a formal legal demand letter, explicitly including the UK Late Payment Act framework — an existing alternative already addressing this exact need, which evidences demand.
+
+The passage only shows that a freelance-invoice penalty calculator with a UK Late Payment Act framework exists; it contains no date, trend, or temporal signal indicating whether this need is currently active, rising, or a stale/peaked leftover.
+
+The single passage is a freelance late-fee/penalty calculator tool page; it says nothing about a route to reach paying buyers, a marketplace, an ad channel, or any distribution path a novice could execute.
+
+The passage only shows that a freelance invoice penalty calculator tool exists that generates statutory interest figures and demand letters across UK/US/EU/India frameworks; it makes no assertion about whether operating such a service is lawful or breaches any terms, so legality cannot be affirmed or negated from it.
+
+The passage shows a retrievable public tool that calculates UK statutory late-payment interest (explicitly the 'GBP (£) – UK Framework (Late Payment Act)') and generates a formal legal demand letter, confirming rather than contradicting the candidate's core mechanism is real and checkable.
+
+The passage only shows a freelance invoice penalty calculator tool interface; it says nothing about whether UK freelancers have the budget or motive to pay for such a service.
+
+The passage only describes an existing free invoice penalty calculator/demand-letter tool; it says nothing about a route to reach freelance buyers (Fiverr, self-serve channel, or forcing mechanism), so it does not address the distribution question.
+
+The passage only shows that a free invoice-penalty calculator/demand-letter tool exists for several jurisdictions; it provides no evidence that the late-payment problem is acute or that freelancers are actually paying to solve it.
+
+The strongest case rests on the single grounded source (aad8fc16cda84aec, freelancerecovery.com/tools/): a live, public tool that already does the core of this gig FOR FREE. It explicitly offers a 'GBP (£) – UK Framework (Late Payment Act)' setting that calculates precise statutory interest/penalties AND auto-generates a 'formal legal demand letter' with a 'FREE Download PDF Notice' the user can edit. That is almost the entire promised deliverable — UK statutory interest math + a professional, editable demand letter — handed over at zero cost. A £15 Fiverr gig charging for exactly this calculation-plus-letter step is selling something a free, self-serve tool already produces, which directly threatens the 'free in a form buyers will use instead' kill criterion. HOWEVER, the case is NOT decisive: (1) the free tool stops at a downloadable PDF — it does NOT do the candidate's actual differentiated deliverable, which is sending the letter via recorded delivery as a third party so the freelancer never personally confronts the client; the candidate's value is the total offload and the perceived authority of an outside sender, none of which the free DIY calculator provides. (2) On demand, the only graded signal cut the OTHER way: buyer_intent was 'supported' (the very existence of a competing 'Freelance Recovery' product evidences real demand for this need), and pain_reality/payer_solvency/route_to_market/distribution all returned 'unverifiable' — i.e. NO grounded evidence of a demand collapse, a closed channel, or a method that fails as sold. There is no grounded deliverability or demand FAILURE in the evidence; the free tool commoditises the calculation but leaves the done-for-you send intact, and demand is affirmatively supported. Under the strict bar (decisive only on grounded deliverability/demand failure, never on mere commoditisation or lack of moat), this does not clear the threshold for a decisive kill.

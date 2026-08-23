@@ -1,0 +1,100 @@
+DRN-5206092 
+ 
+ 
+The complaint 
+ 
+Mr G complains that he has lost out financially because of Interactive Investor Services 
+Limited’s (IISL) actions when reversing a contribution made by his company to his self-
+invested personal pension (SIPP) in error.  
+ 
+What happened 
+The history leading up to this complaint is well known to the parties and has been clearly set 
+out in the investigator’s assessment, so I’ve only summarised key events here.  
+ 
+In May 2024 Mr G’s employer made a payment to his SIPP with IISL in error. Part of this 
+error appears to be that a GBP payment was made into a USD account. Mr G’s employer 
+immediately noticed the error and contacted its bank as well as IISL’s bank to cancel the 
+payment. The funds had not been invested into Mr G’s SIPP and so the payment was 
+reversed by IISL, and money refunded.  
+ 
+However, Mr G says the sum returned in GBP was about 5% lower than what was originally 
+paid. And he raised a complaint with IISL.  
+ 
+IISL investigated things and explained that when the GBP payment was made into the USD 
+account, it was immediately converted into USD, matching the currency of the account. The 
+same USD value was subsequently refunded, as this was how it was received by IISL. They 
+further explained that foreign currency exchange (FX) rates were likely applied by the 
+sending and receiving banks and that they had no control over this. IISL confirmed that no 
+charges were applied by them.  
+ 
+Dissatisfied with this response, Mr G brought his complaint to this service for an independent 
+assessment. One of our investigators looked into things and ultimately concluded that IISL 
+hadn’t made an error causing a loss to Mr G so he didn’t think the complaint should be 
+upheld.  
+ 
+Mr G disagreed and so his complaint has been referred to me for a final decision. 
+  
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+And having done so, I have reached the same conclusions as the investigator and for the 
+same reasons. There is very little I can add to what has already been explained.  
+ 
+It’s clear to me that Mr G has strong feelings about this complaint. He has provided detailed 
+arguments to support his case which I can confirm I’ve read and carefully considered. 
+However, I trust Mr G will not take the fact that my findings focus on what I consider to be 
+the central issues, as a discourtesy. The purpose of my decision isn’t to address every point 
+raised, but instead to set out my conclusions and reasons for reaching them. 
+ 
+
+ 
+ 
+At the outset I think it is useful to reflect on the role of this service. This service isn’t intended 
+to regulate or punish businesses for their conduct – that is the role of the industry regulator, 
+the Financial Conduct Authority (FCA). It is my role to fairly and reasonably decide if the 
+business has done anything wrong in respect of the individual circumstances of the 
+complaint made and – if I find that the business has done something wrong – award 
+compensation for any material loss or distress and inconvenience suffered by the 
+complainant as a result of this. 
+ 
+I appreciate Mr G’s strength of feeling here as the amount available to his employer to 
+contribute to his SIPP has seemingly been reduced through no fault of his own. However, 
+even though Mr G’s employer promptly acted to correct things, it is not disputed that it used 
+the wrong bank account while attempting to contribute to Mr G’s SIPP. This mistake meant 
+that a GBP contribution was paid into a USD account and the currency was converted 
+immediately, as is typical when an account is set up to accept only one currency. And when 
+the funds were returned by IISL, they had to be converted back to GBP. Therefore, it is likely 
+that an FX rate was applied by one or more of the banks involved, either during the initial 
+payment or the subsequent refund, or both.  
+ 
+However, I can’t see that IISL had anything to do with the FX rates that were applied. Nor 
+am I persuaded that IISL had the ability to stop the currency conversion that occurred when 
+GBP was contributed to a USD account. So, I can’t agree that they made a mistake or 
+should have done more. 
+ 
+I’ve also seen no evidence to suggest that IISL did anything wrong in returning the funds in 
+the same currency that they received. And from all I’ve been provided, IISL returned the 
+same value in USD that it received. I’ve seen nothing that suggests to me that IISL 
+benefitted financially from this mistake. So ultimately, I’m unable to conclude that it would be 
+fair to ask IISL to make up the difference caused by FX rates imposed by third party banks 
+over which they don’t have any control.  
+ 
+For completeness, although Mr G has objected to the FX rates used here, I’ve seen no 
+evidence that persuades me that these are set or in any way controlled by IISL, therefore I 
+am unable to comment in this decision on whether these rates were fair.  
+ 
+Mr G has also expressed concerns that IISL is engaging in and supporting predatory 
+practices regarding the FX rates used by their bank more generally. If this remains the case, 
+Mr G can raise these concerns directly with the FCA.  
+ 
+For all these reasons, whilst I know Mr G will be disappointed with this outcome, I’m not 
+upholding his complaint. 
+ 
+My final decision 
+For the reasons set out above, I don’t uphold Mr G’s complaint.  
+ 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr G to accept or 
+reject my decision before 18 April 2025. 
+   
+Jennifer Wood 
+Ombudsman

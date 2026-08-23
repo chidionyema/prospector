@@ -1,0 +1,23 @@
+The Boundary Witness – Retired Neighbour's DIY Evidence Engine.
+
+A web app that converts a retiree's knowledge and historical satellite imagery into a chronology of boundary facts, a statement of truth, and a mediation-ready evidence pack for resolving neighbour disputes without a solicitor.
+
+first_principles – retirees face boundary disputes but can't afford litigation; they need a tool that structures their evidence to near-legal standards.
+
+retiree homeowner facing a boundary dispute.
+
+rise in home improvements during COVID causing disputes, legal aid cuts, availability of Google Earth historical imagery.
+
+The passages explain how to access Google Earth historical imagery and discuss the reconstruction of historic border maps, but do not comment on the durability, commoditization, or value of a tool that structures this imagery into evidence packs.
+
+Passages describe general historical imagery tools (Google Earth, Historic Aerials) but do not mention any tool that structures such imagery into legal evidence packs for boundary disputes. No evidence on whether a dominant incumbent solves this specific need.
+
+The passages describe free satellite imagery tools but never mention retiree finances, budget, or willingness to pay for boundary dispute evidence.
+
+Passages describe how to access historical satellite imagery and a blog about using it for legal purposes, but none address the distribution channel, self-serve route, or forcing mechanism for the candidate's web app.
+
+The passages cover satellite licensing and geospatial regulation but do not address the legality of using historical satellite imagery (e.g., Google Earth) to generate evidence packs, so the question cannot be answered from the provided evidence.
+
+Passages describe free satellite imagery tools but do not address boundary disputes, retirees, or payment for solutions. No evidence about the pain being real or acute.
+
+Every substantive check returned unverifiable, revealing a complete absence of evidence for demand, payer willingness, distribution, legality, or durable advantage. The research found only free, widely available historical imagery tools (e.g., Google Earth, World Imagery Wayback, Historic Aerials) that any retiree can use with simple instructions. There is zero indication that retirees face a boundary-dispute pain point they would pay to solve, nor that a personalized evidence pack adds value beyond what free OSINT guides already provide. The ‘proprietary data’ wedge is unsupported because the underlying imagery is from public sources. The idea amounts to a DIY manual for Google Earth, with no evidence of a real market gap or defensible business. Without a single validated hypothesis, this idea is not worth building.

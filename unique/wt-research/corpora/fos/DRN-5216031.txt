@@ -1,0 +1,162 @@
+DRN-5216031 
+ 
+ 
+The complaint 
+ 
+Ms M complains that Revolut Ltd (Revolut) is refusing to refund her the amount she lost as 
+the result of a scam. 
+Ms M is being represented by a third party. To keep things simple, I will refer to Ms M 
+throughout my decision. 
+What happened 
+The background of this complaint is well known to all parties, so I won’t repeat what 
+happened in detail. 
+ 
+In summary, Ms M tells us she was contacted via a well-known messaging service by a 
+business I will call “X”. X appeared to be helping investors with investing in stocks and 
+cryptocurrency.  
+Ms M was added to a group chat where she observed the interactions of others and started 
+to learn about investing. X then contacted Ms M again and provided her with details of a 
+trading platform it was using.  
+Ms M tells us that she was given details about different subscriptions and high yield 
+programmes and ended up investing most of her money. But when she tried to make a 
+withdrawal Ms M was told she would have to make a further payment of £30,000 first.  
+Ms M enquired on the group chat and realised she was the only real person in the chat, at 
+this point Ms M realised she had fallen victim to a scam. 
+Ms M has disputed the following payments made from her Revolut account: 
+ 
+Payment Date Payee Payment Method Amount 
+1 3 April 2024 EPL Trading Ltd Transfer  £17,000 
+2 9 April 2024  Crypto Withdrawal  5,000 USDT 
+3 9 April 2024  Crypto Withdrawal  7,700 USDT 
+4 10 April 2024  Crypto Withdrawal  6,900 USDT 
+5 15 April 2024  Crypto Withdrawal  4,400 USDT 
+6 16 April 2024  Crypto Withdrawal  4,450 USDT 
+7 22 April 2024  Crypto Withdrawal  10,000 USDT 
+8 23 April 2024  Crypto Withdrawal  10,150 USDT 
+9 25 April 2024  Crypto Withdrawal  7,500 USDT 
+10 1 May 2024  Crypto Withdrawal  2,700 USDT 
+11 2 May 2024  Crypto Withdrawal  8,050 USDT 
+12 8 May 2024  Crypto Withdrawal  6,152 USDT 
+13 10 May 2024  Crypto Withdrawal  6,226 USDT 
+14 11 May 2024  Crypto Withdrawal  6,200 USDT 
+15 14 May 2024  Crypto Withdrawal  6,194 USDT 
+ 
+Our Investigator considered Ms M’s complaint but didn’t think it should be upheld. Ms M 
+
+ 
+ 
+disagreed, so this complaint has been passed to me to decide. 
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+It has not been disputed that Ms M has fallen victim to a cruel scam. The evidence provided 
+by both Ms M and Revolut sets out what happened. What is in dispute is whether Revolut 
+should refund the money Ms M lost due to the scam. 
+What I can and can’t look into in relation to this complaint 
+Our service can’t consider all complaints that are referred to us. The rules under which we 
+operate are set out in the Financial Conduct Authority’s Handbook and are collectively 
+known as the DISP rules. We can only consider complaints that fall within our jurisdiction, in 
+line with these rules. 
+Particularly relevant to Ms M’s complaint is DISP 2.2 which states: 
+“DISP 2.2: Which complaints can be dealt with under the Financial Ombudsman Service? 
+2.2.1 The scope of the Financial Ombudsman Service's two jurisdictions depends on: 
+(1) the type of activity to which the complaint relates…” 
+Those activities are then listed in DISP 2.3 (although I will not list all of them here). We can 
+only consider complaints that relate to an act or omission by a financial business in carrying 
+out one or more of the activities listed in DISP 2.3. 
+Cryptocurrency isn’t electronic money or fiat currency according to the Financial Conduct 
+Authority. Instead, it classifies cryptocurrency, and similar cryptocurrency-assets, as 
+‘exchange tokens’. The operation of cryptocurrency services isn’t currently regulated by the 
+financial regulator in the UK. 
+There are no activities listed in DISP 2.3 which would cover the activity this part of Ms M’s 
+complaint relates to – namely, withdrawing the cryptocurrency and sending it on to the 
+scammer. And so, I don’t think her complaint in relation to the cryptocurrency withdrawals 
+relate to an activity covered by us. 
+I am mindful that Ms M deposited fiat currency to her Revolut account and then exchanged 
+this into the cryptocurrency which was withdrawn and ultimately lost to the scam. But the 
+sending of the cryptocurrency was provided separately from the provision of Ms M’s main e-
+money account. In the circumstances, I don’t consider Revolut’s provision of sending 
+cryptocurrency services to be sufficiently closely linked to its provision of payment services 
+to Ms M (through the provision of her e-money account) that it should be deemed ancillary to 
+this. So, I’m satisfied that this service is unable to investigate the withdrawal of 
+cryptocurrency here. 
+What I can look at, is whether Revolut should have intervened when the deposits into Ms 
+M’s account were made, and when the funds were converted into crypto. 
+I can also look at payment 1 in its entirety, as this payment was a normal transfer. 
+Recovering the payments Ms M made 
+ 
+ 
+Ms M made payments into the scam via transfer and the withdrawal of cryptocurrency that 
+was then moved to the scammer. 
+When payments are made by transfer Revolut has limited options available to it to seek 
+recovery. Revolut has confirmed that it contacted the operator of the receiving account for 
+payment 1, but no funds remained. I don’t think Revolut had any other reasonable options 
+available to it to seek recovery of this payment. 
+As I explained above, I am unable to look at the cryptocurrency withdrawals. 
+Should Revolut have reasonably prevented the payments Ms M made? 
+It has been accepted that Ms M authorised the payments that were made from her account 
+with Revolut, albeit on X’s instruction. So, the starting point here is that Ms M is responsible. 
+However, banks and other Payment Services Providers (PSPs) do have a duty to protect 
+against the risk of financial loss due to fraud and/or to undertake due diligence on large 
+transactions to guard against money laundering. 
+The question here is whether Revolut should have been aware of the scam and intervened 
+when Ms M made payments related to the scam. And if it had intervened, would it have been 
+able to prevent the scam taking place. 
+When Ms M made payment 1 she was making a payment for a significant value to a new 
+payee, as this payment was not in keeping with how Ms M normally operated her account I 
+think Revolut should have had concerns and it should have intervened by providing a human 
+intervention, for example by directing Ms M to its in-app chat facility and asking questions 
+about the payment. 
+Ms M deposited large funds into her Revolut account. As depositing funds into to an account 
+held in your own name comes with little to no risk of financial harm, I don’t think Revolut was 
+required to intervene when funds were deposited.  
+However, Ms M then converted those funds into cryptocurrency. This was not in keeping 
+with how Ms M usually operated her account, and I think it could be argued that Revolut 
+should have intervened when some of these exchanges took place.  
+I can see that Revolut did intervened when Ms M made payment 1.  Revolut saw the 
+payment as a potential scam risk and provided Ms M with several screens. Ms M confirmed 
+she was not being guided on what options to select when making the payment.  
+Ms M was then directed to a questionnaire where she confirmed: 
+• She was not being assisted through the questionnaire 
+• She was transferring to her other account 
+• The type of account was a checking or savings account  
+• She had not installed any software  
+• The account was in her control 
+The information Ms M had provided was incorrect.  
+Ms M was then directed to Revolut’s in-app chat facility where she confirmed she was 
+buying goods, she had to pay an invoice, and she was not being guided on how to answer 
+Revolut’s questions. Ms M then provided a fake invoice to Revolut that had been provided to 
+her by X. 
+ 
+ 
+Before attempting payment 1 from her Revolut account Ms M attempted a similar payment to 
+the same payee from another account she held elsewhere. The payment was flagged, and a 
+conversation took place between Ms M and her other account provider via phone.  
+During this call an incorrect reason for the payment was fabricated. Ms M explained she was 
+volunteering abroad for the second year with a charity providing toys to children. The 
+account provider explained that the business Ms M was attempting to pay was showing as 
+dissolved on companies’ house and this payment was eventually declined.  
+The other account provider also intervened when two other payments were attempted, and 
+she received warnings about the risk associated with cryptocurrency related payments. 
+Despite a payment being declined and clear warnings being provided to Ms M she was still 
+adamant to make payments in relation to the scam and started making multiple smaller 
+payments to her Revolut account, that were then used to finance the scam.  
+Ms M has told us that the information she provided when making the payments was not 
+convincing and Revolut should have done more to protect her.  
+I think Revolut could have intervened further than it did but it’s also clear that Ms M was 
+taken in by X and was willing to take its advice providing dishonest information to multiple 
+banks to make payments in relation to the scam, even when she was warned about some of 
+the potential risks. 
+Providing false information would have made it very difficult for Revolut to uncover the scam 
+that was taking place, and even if it had Ms M has demonstrated that she was willing to 
+evade efforts to protect her and make the payments from other accounts she held elsewhere 
+when faced with obstacles in making payments. With the above in mind, I don’t think Revolut 
+missed an opportunity to prevent the scam, and it is not responsible for Ms M’s loss. 
+My final decision 
+I don’t uphold this complaint. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Ms M to accept or 
+reject my decision before 14 August 2025. 
+   
+Terry Woodham 
+Ombudsman

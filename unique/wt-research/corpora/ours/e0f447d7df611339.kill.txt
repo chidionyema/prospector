@@ -1,0 +1,23 @@
+FineFlip – Commercial Driver Penalty Appeal Buyer.
+
+We pay a truck or delivery driver a cash lump sum for the right to appeal their traffic/parking fine, then use our database of procedural loopholes to overturn it and pocket the full refund—turning a no‑hope chore into instant cash for the driver.
+
+Invert: as transport authorities deploy more automatic enforcement (ANPR, weight‑in‑motion) and issue floods of fines, a growing pool of enforceable penalties are actually invalid due to poorly drafted orders or procedural errors. The driver cannot easily appeal because of time, paperwork, and fear of increased penalties, but we can buy the appeal right at a discount and systematically extract refunds. The more aggressive the authority, the more mis‑issued fines there are to exploit.
+
+A self‑employed van courier, HGV driver, or delivery rider who receives a £130‑£200 penalty charge notice for alleged overstay, ULEZ, weight limit, or tachograph offence – we pay them £60 within 24 hours, then take over the appeal and keep the full £130 if successful.
+
+Digital enforcement is expanding in cities and on trunk roads without commensurate review capacity; 40‑60% of appealable fines are never challenged because of driver indifference or lack of knowledge. At the same time, freelance driver numbers have exploded, and they operate on razor‑thin margins where a £130 fine is catastrophic; they will sell the risk for near‑certain smaller cash.
+
+The passages describe NYC's Stipulated Fine Program for commercial fleets, but they do not address whether the value of buying individual drivers' appeal rights and exploiting procedural loopholes is real, durable, or commoditised. They provide no direct evidence on the candidate's specific value proposition.
+
+The passages discuss penalty charge notices as business expenses (G4S), a settlement over traffic tickets (NYC), and delivery firms’ parking practices, but none identify any existing service that buys appeal rights from drivers.
+
+Passages discuss California court fine reductions and delivery company spending, not the government's budget for refunds or any payer's ability/motivation in a fine-appeal buying model.
+
+None of the passages describe how FineFlip would reach drivers (a distribution route); they cover self-appeal guidance and NYC fleet costs, not a channel for buying appeal rights.
+
+Passages discuss a stipulated fine reduction program and a tax deductibility case, not the lawfulness of buying appeal rights or appealing fines. No passage addresses whether the margin requires illegality or breach.
+
+The passages show a real, acute problem: businesses paying to reduce fines via the Stipulated Program, a tool built to automate ticket fighting, and a law firm offering free consultations for parking ticket scandals — all indicate drivers and operators are actively paying to solve parking ticket issues.
+
+The core premise is undermined by free alternatives: drivers can self-appeal using official guidance (source e0dd0bb124eabfae) and automated tools like Clear Plates (94fe2ad471e914d8) fight tickets at scale. The Stipulated Fine Program (75abe8e78c3f6d12) already offers a discount for no-hearing, commoditizing the appeal waiver. Additionally, legality of buying individual appeal rights is unverified and may breach unauthorized practice of law regulations; payer solvency is uncertain as government refunds are not guaranteed. While there is a clear pain point, the durable wedge is thin and easily replicable, making the business likely a low-margin commodity play.

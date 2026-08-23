@@ -1,0 +1,229 @@
+DRN-5220844 
+ 
+ 
+The complaint 
+ 
+D, a limited company complains about what American International Group UK Limited (AIG) 
+did after it made a claim on its business protection insurance policy.  
+What happened 
+D took out cover with AIG in September 2021 and the policy renewed the following year. In 
+June 2023 there was a theft of stock from storage premises D was using. It claimed for the 
+loss on its policy with AIG. A complaint about delay in the handling of that claim has 
+previously been considered by our service. Our investigator said AIG should pay £300 
+compensation for issues up until January 2024 and expedite the handling of the claim.  
+AIG declined the claim and avoided the policy in May 2024. It said when taking out the policy 
+D said its stock had a value of £5,000. But when making its claim it had said the stock value 
+was £75,000. And if the correct value had been provided it wouldn’t have offered cover 
+based on the alarm system that was in place at the storage premises. It also highlighted that 
+D said its business didn’t operate out of a warehouse but that wasn’t the case.  
+ 
+It thought D’s failure to disclose information was deliberate or reckless and so it would be 
+refusing the claim, avoiding the policy and retaining the premium which the Insurance Act 
+allowed it to do. However, it accepted there had been some further delay in that decision 
+being reached for which it paid an additional £200.  
+ 
+In his most recent view our investigator thought D had been asked a clear question about 
+the value of its stock when the policy was first taken out. And it had selected the minimum 
+amount (up to £5,000) in response. A schedule and ‘Statement of Fact’ provided at policy 
+renewal in September 2022 showed the stock value at that level. Our investigator didn’t think 
+that accurately reflected the value of the stock D had at that time and it should have provided 
+AIG with clear information about this. And he was satisfied if the correct value had been 
+declared AIG wouldn’t have offered the policy at all. He also thought it was fair of AIG to 
+treat this as a deliberate or reckless misrepresentation and act as it had in relation to policy 
+coverage and voidance. And he said the £200 AIG had paid for further delays was fair.  
+ 
+D didn’t agree. It provided very detailed comments and additional information in response to 
+our investigator’s view and in summary said:  
+ 
+• The reasons for AIG’s decision on its claim had shifted during the course of its 
+investigation and this raised concerns about the consistency and validity of its position.  
+ 
+• A reference AIG had made to the ‘Statement of Fact’ saying D didn’t have more than 
+£5,000 on the premises at any one time and amounts over £500 were locked in a safe 
+overnight clearly referenced cash holdings and not stock so wasn’t relevant here.  
+ 
+• When taking out the policy the value of its stock did not exceed £5,000 which is why it 
+had selected cover at that level. And the documents AIG provided didn’t say that total 
+value of stock must not exceed the selected level of cover. And they didn’t contain a 
+requirement to update AIG with changes on stock values during the policy term.  
+
+ 
+ 
+ 
+• It hadn’t been provided with any information by AIG at policy renewal in September 2022 
+which would have prompted it to disclose any change in the value of its stock or let it 
+know an increase in the value required the installation of a different alarm system.  
+ 
+• The comment it had made during a telephone interview with AIG’s investigator about the 
+reasons for selecting the £5,000 stock level had been interpreted subjectively and were 
+made under duress and without independent oversight. It thought the investigator had a 
+conflict of interest because they were acting as both a loss adjuster and a claims 
+investigator.  
+ 
+• The screenshot showing the question it would have been asked when taking out the 
+policy wasn’t contained in the policy document or the ‘Statement of Fact’. It thought the 
+screenshot could easily have been manipulated. And it highlighted other changes that 
+had been made to questions to show how these had evolved over time.  
+ 
+• The policy wording set out the cover that should be provided and that didn’t contain any 
+‘total stock value’ restrictions. Nor did the ‘Statement of Fact’ make clear that the £5,000 
+sum insured should correspond to the total value of the stock. And this should be the 
+primary reference point. 
+ 
+• If AIG’s position was that a better alarm was required for higher value stock that should 
+have been disclosed to it when taking out the policy. It thought this was an after the 
+event justification for policy avoidance. And it said the storage facility’s alarm system did 
+meet modern security requirements and it could obtain verification of the specific grade if 
+required.  
+ 
+• Prior to this claim it made one for theft which was declined because there wasn’t 
+evidence of forcible or violent entry to the premises. However, no issues with stock value 
+had been highlighted at that time (despite the fact the claim exceeded the sum insured 
+under the policy). It asked why it had taken AIG so long to decline the second claim 
+given it had the evidence it needed to do so from the outset. And it set out how it thought 
+AIG should have acted differently in the handling of the claim.  
+ 
+So I need to reach a final decision.  
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+First, I appreciate AIG has referenced a number of different points in its decisions on this 
+claim which include both the answers D gave to questions contained in the ‘Statement of 
+Fact’ and the issues with stock value. But the question I need to consider is whether AIG had 
+fair and reasonable grounds for acting as it did in relation to the claim D made.  
+So I’ve considered first the alleged misrepresentation in relation to the value of the stock; if 
+that in itself provides grounds for AIG to have taken the steps it did then I don’t need to 
+consider the other points it referenced in correspondence with D. However, while I have 
+seen all the comments D made in response to our investigator’s view (including the detailed 
+submissions received earlier this month) I don’t think it’s appropriate or in line with the 
+informal nature of our service to respond to every point. Instead, I’ve sought to focus on what 
+seem to me to be the key issues; those that would impact the outcome of the complaint.  
+ 
+ 
+ 
+And the relevant rules and industry guidelines say AIG has a responsibility to handle claims 
+promptly and fairly. It shouldn’t reject a claim unreasonably. In addition, as AIG’s reasons for 
+declining the claim (and voiding the policy) relate to information it says D should have 
+provided when taking out the policy I’ve also taken into account the relevant law in relation to 
+that which is the Insurance Act 2015. The Act says when taking out the policy D had a duty 
+to make a fair presentation of risk. So it had to disclose:  
+ 
+• everything it knew, or ought to have known, that would influence the insurer’s 
+judgment in deciding whether to insure the risk and on what terms; or  
+ 
+• enough information to put the insurer on notice that it needed to make further 
+enquiries about potentially material circumstance 
+ 
+In considering whether a policyholder made a fair presentation of risk I think it’s reasonable  
+to take into account whether an insurer sought any particular information from them. So I  
+think its relevant to consider what questions AIG asked and how clear and specific those 
+questions were. 
+ 
+In this case the ‘Statement of Fact’ contains a question relating to having more than £5,000 
+on the premises at any time. But I agree with D that relates to cash sums and I don’t think it 
+would reasonably encompass stock. However, AIG has provided details of the sales journey 
+it says D would have completed when taking out the policy. And the screenshots it’s 
+provided say as part of that D would have been asked “How much would it cost to replace all 
+of your stock?”  
+D says those screen shots could have been manipulated. That’s possible but I haven’t seen 
+anything to suggest that happened in this case; the screenshots appear to have been taken 
+directly from the website of the broker D took out cover through. I appreciate different 
+questions may now be asked but that doesn’t mean the screen shots AIG provided don’t 
+reflect the question D was asked when taking out cover.  D also says information about this 
+wasn’t contained in the policy documentation (including the schedule). That may be correct 
+but I think it would have been clear to D from the question it was asked that AIG wanted to 
+know how much it would cost to replace all of its stock and so what the total value of this 
+was. I think that’s something D should reasonably have disclosed in answer to that question.  
+I’ve gone on to think about whether it did so. D says when taking out cover in September 
+2021 it included a figure of £5,000 because that represented the value of its stock at the 
+time. But I don’t think that’s right. When making its subsequent claim it said the value of its 
+stock was £75,000. I appreciate the value at risk could have been increased during that 
+period but D’s audited accounts for the year ending 31 October 2021 say the value of its 
+stock was around £26,600. So it should have chosen the option which reflected that amount.  
+D also had an opportunity to correct the position at renewal in September 2022 and didn’t 
+(the audited accounts for the year ending 31 October 2022 give a similar value for its stock). 
+D says it wasn’t provided with any information which would have prompted it to disclose a 
+change in the value of its stock. But I don’t think that’s right because it doesn’t seem to be in 
+dispute it had access to the policy schedule (it subsequently provided that to us) which said 
+cover for material damage to stock was £5,000.   And I’ve already concluded D would have 
+been aware that AIG wanted to know what the total cost of replacing that stock was.  
+D says the policy didn’t require it to update AIG with changes to the value of stock or explain 
+that the value given should correspond to that. But while the policy may not specifically 
+require that it does says (in line with the requirements of the Insurance Act) “It is essential 
+that all information provided by you is accurate and true to the best of your knowledge and 
+belief. If any of the information is inaccurate or untrue it may entitle us to avoid the policy, 
+ 
+ 
+may impact the terms of the cover or may mean that a claim is not paid or is not paid in full”. 
+And “You have a duty to disclose all material information or sufficient information to put a 
+prudent insurer on notice that further enquiries are needed. A material fact is one which will 
+influence the judgement of a prudent insurer in determining whether to take the risk and if so 
+on what terms. If you are in any doubt as to whether information is relevant and should be 
+disclosed you should contact your broker”. 
+So I think a change in the value of stock at renewal is something D should have told AIG 
+about. In any event the issue isn’t that D didn’t tell AIG about changes to that value but it 
+didn’t give the correct value either when taking the policy out or at renewal. And while I 
+understand some information on stock value was provided when it made its previous claim 
+given that claim was obviously caught from the outset by a policy exclusion I don’t think it 
+was something which should reasonably have prompted AIG to inquire into further. For the 
+reasons I’ve explained, I’m satisfied D didn’t make a fair presentation of risk to AIG.  
+Where that’s the case an insurer has a remedy for a breach of the duty of fair presentation 
+only if it can show it wouldn’t have entered into the contract of insurance or would have done 
+so on different terms (so there’s been a ‘qualifying breach)’. In this case I’ve seen 
+underwriting criteria which satisfy me that for the policy D took out cover would have been 
+declined if the correct stock level (as shown in D’s accounts) had been provided with the 
+type of alarm it said was present at the storage premises. These are terms which apply to all 
+policies like the one D took out and I’ve seen no evidence to show they were created after 
+the event to justify policy avoidance.  
+D has made reference to policy terms in relation to material damage and stock but that’s not 
+the issue here; if AIG would never have offered cover in the first place the policy wouldn’t 
+have been in place at all. D also says it may now be able to show the alarm at the storage 
+premises did meet AIG’s requirements. However, AIG has shown the system that would 
+have been required was a professionally installed one linked to an alarm receiving centre 
+(which was continuously monitored). The ‘Statement of Fact’ says the installed system was 
+“Bells Only (Audible)”. D has provided no other evidence to show the storage facility did 
+have an alarm system that met AIG’s requirements. So I don’t think it was unreasonable of it 
+to conclude there had been a ’qualifying breach’ in this case.  
+If an insurer can show a qualifying breach was deliberate or reckless it can avoid the 
+contract, refuse all claims and doesn’t need to return the premiums paid. The Insurance Act 
+says a breach is deliberate or reckless if the insured knew that it was in breach of the duty of 
+fair presentation or did not care whether or not it was in breach of that duty.  
+I’ve already established D’s stock value when it took the policy out (based on its audited 
+accounts) was around £26,000 against a declared value of up to £5,000. That’s a significant 
+discrepancy and I don’t think it’s one that could likely be attributed to a mistake by D when 
+completing its application. I appreciate that when making the claim D says it reported a loss 
+of £39,000 and it wouldn’t make sense for that claim to exceed the maximum payout under 
+the policy. I’m not clear why D acted as it did but it’s possible it may simply have forgotten 
+the amount it provided for stock when taking out the policy.  
+In any event the other evidence also indicates D made a clear choice about the amount of 
+stock to declare when taking out the policy. I’ve seen the notes of the telephone interview 
+between D’s director and the claims investigator which record him as saying he “took out 
+insurance as needed when at [storage facility] so just picked the lowest figure that he could 
+as didn’t think he needed insurance while at [storage facility]”. That suggests D selected a 
+stock figure it knew to be inaccurate.  
+ 
+ 
+D says those notes have been interpreted subjectively and were made under duress and 
+without independent oversight. I appreciate that being interviewed about the claim may have 
+been a stressful experience for D’s director but I’m not clear why that would have led him to 
+provide inaccurate information about the reasons for selecting the stock cover he did. And 
+I’ve reviewed the notes as a whole and I don’t think AIG has interpreted these subjectively.  
+Nor have I seen other evidence to show the claims investigator did have a conflict of interest. 
+Even if he did I don’t think that would mean the contemporaneous notes he made didn’t 
+accurately record what D’s director said. I don’t think it was unreasonable of AIG to give 
+weight to these notes and conclude the breach by D in this case was deliberate or reckless. 
+In those circumstances the Insurance Act entitles AIG to avoid the contract, refuse all claims 
+and doesn’t need to return the premiums paid. I don’t think it was unfair of it to do that.   
+D has also drawn attention to the time take by AIG to deal with the claim. I don’t think it’s in 
+dispute that did take too long. As part of our previous investigation we concluded that was 
+the case and awarded compensation for that. Those issues don’t form part of this decision 
+but I agree there was then further delay by AIG in reaching an outcome following its previous 
+complaint response. I accept that will have caused D some unnecessary inconvenience but I 
+think the additional £200 AIG has already paid does enough to put things right here.  
+My final decision 
+I’ve decided not to uphold this complaint. Under the rules of the Financial Ombudsman 
+Service, I’m required to ask D to accept or reject my decision before 21 February 2025. 
+   
+James Park 
+Ombudsman

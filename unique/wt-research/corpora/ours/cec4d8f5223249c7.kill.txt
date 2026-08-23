@@ -1,0 +1,21 @@
+CarePulse – The Carer's Daily Activity Data Broker.
+
+A solo-operated service that purchases and anonymises daily caregiving activity logs from primary carers, then sells the aggregated data to health insurers and academic researchers.
+
+Carers' time-use and health-related tasks are a goldmine for care system planning, but no one pays them for it; a broker can capture value by bridging the gap.
+
+Health insurers, care home chains, academic research groups (subscription).
+
+Insurers are investing in social determinants of health; caregiving data is a new asset class.
+
+The passages describe unpaid carers, calls for more carer funding, and official adult social care datasets that English councils submit to NHS Digital for planning and benchmarking [758d73fa962d8110, ad73b9bb8cf99211, 4b0c25c233d24276, 89d62462d992fc41, e4d204441304d200, 356fb250a4807ab8], but they say nothing about whether daily activity logs kept by individual carers have any resale value, or whether anyone currently buys such records.
+
+The passages show that large UK health-data suppliers and platforms exist (IQVIA's patient datasets, dataset marketplaces, OpenSAFELY's NHS-records analysis platform with 200+ projects) and that Carers UK runs a large annual survey of over 10,500 unpaid carers, but none of these is described as buying daily activity logs from individual carers and reselling them — IQVIA and OpenSAFELY cover patient and prescription records, and the Carers UK survey is a once-a-year research report, not a paid high-frequency data feed…
+
+The passages show the UK private health insurance market is large and growing (USD 11.57bn in 2026, rising ~4.86% a year) with big firms like Bupa, AXA, Aviva and VitalityHealth in it [91f32e377a12d4ae][87c06a9e446c73a9][071380cf15e98723], so these firms plainly have money, but nothing states they buy carer activity data or spend anything on it. On the other named buyers, the passages only mention financial strain in NHS providers and adult social care [4f292f4629990e19][89ff2d303656d950], and say nothing about academic research budgets or whether any of these buyers would pay £49 for such a…
+
+The passages describe how carers claim Carer's Allowance from the government [50d406ef90650f7d, 2efc225ec326964d, 80356d6222107be1] and describe registries that recruit volunteers into dementia studies [24ddf676de0a3de5, 6b4037cc20617302, 100d21e6c9e6e00b], but the paying customers here are insurers, care home chains and research groups, and nothing in the passages describes a way to reach or sell to them. Reaching carers as data suppliers is a different problem from reaching the buyers, and the passages say nothing about how anyone sells aggregated caregiving data to those buyers.
+
+The passages establish that UK data protection law (UK GDPR, the Data Protection Act 2018, PECR) governs personal data handling and that regulators fine breaches [2c244c674d8dbde7, a071ad272c0a5da0], and that health data sharing draws scrutiny [59b70109ebfd9e93], but none of them state whether paying carers for their own activity logs and reselling anonymised aggregates is permitted or prohibited. Because no passage addresses consent-based purchase and anonymisation of self-reported carer data, there is no basis here to say the money can or cannot be made lawfully.
+
+The passages show that unpaid carers in the UK are under real financial strain — Carer's Allowance of £67.60 a week is described as failing to reflect the hours they work, many carers are shut out of the benefit entirely, and a carers' charity reports a growing financial burden [10ceda9f6424916f][0e4034ce157ea75a][e4527963a65561f1] — but that establishes that carers are short of money, not that anyone is paying to obtain caregiving activity data.

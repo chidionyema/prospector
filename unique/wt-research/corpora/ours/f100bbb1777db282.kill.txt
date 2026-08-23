@@ -1,0 +1,23 @@
+SEND Assessment Reimbursement Broker – The Private Edu‑Costs Claim Agent.
+
+A solo‑operated service that recovers the cost of private educational assessments (educational psychologist, speech therapy, OT) from reluctant local authorities on behalf of primary carers of children with special educational needs, charging a 30% success fee on recovered sums.
+
+When a local authority fails to provide a statutory assessment within the legal timescale, parents often pay privately to avoid years of educational harm. Yet claiming reimbursement afterwards is a Kafkaesque process that authorities routinely stonewall. This transaction broker inverts the burden: we treat the reimbursement claim as an adversarial debt collection, using a database of past SEND tribunal rulings, statutory timelines, and precise legal phrasing to build a ‘pay or we’ll prove unlawful failure’ package. We negotiate directly with the authority’s legal team and, if necessary, file a pre‑action protocol letter that triggers a settlement. We never go to court — we monetise the settlement window. The carer pays nothing upfront and only shares a percentage of what we recover. The moat is a compilation of proprietary_data sourced from tribunal decision‑scraping, FOI requests, and anonymised client outcomes, giving us a fact‑pattern library that generic debt collectors cannot access.
+
+The primary carer pays a contingency fee of 30% of the total reimbursement recovered from the local authority. No upfront cost.
+
+The national crisis in SEND services means parental self‑funding of assessments has become the norm, creating a huge pool of unrecovered private expenditure (estimated at £80‑100M annually in England). The legal framework (Children and Families Act 2014) entitles families to reimbursement if the authority’s failure is unlawful, but no free service operates as a pure recovery broker. The gap is widening because charities focus on initial EHCP applications, not retrospective cash claims, and law firms are too expensive for small sums.
+
+The passages define commoditization generically but contain no evidence about the candidate's specific value, its durability, or whether it is already commoditised. The question is not addressed.
+
+None of the passages mention the SEND assessment reimbursement service, competing brokers, or any incumbent in this space; they discuss generic education, market concentration, healthcare competition, and clinical psychology, making incumbency unverifiable.
+
+The passages discuss private practice setup, education funding cuts, speech therapy costs, and individual psychologists—none address whether primary carers have budget and motive to pay a 30% contingency fee for a reimbursement recovery service.
+
+None of the passages address the candidate's distribution to primary carers of children with special educational needs; all passages discuss psychological therapy contexts unrelated to the target buyer or route.
+
+Passages do not address the legality of a UK-based SEND reimbursement broker charging success fees; they are either entirely off-topic or describe a U.S. IEP scenario that does not confirm or deny the lawfulness of the candidate's specific model.
+
+None of the passages address the problem of local authorities failing to provide statutory assessments, parents paying privately and struggling to get reimbursement, or any acute pain around recovering these costs. They merely describe speech therapy, psychological assessments, and therapy services, which is irrelevant to the specific pain claim.
+
+No evidence in the provided passages addresses the legality, unit economics, or market concentration of the proposed SEND assessment reimbursement broker; all checks are unverifiable with zero confidence.

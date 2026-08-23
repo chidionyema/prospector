@@ -1,0 +1,27 @@
+Refund clawback broker for Shopify and Amazon sellers.
+
+A commission-only desk that recovers overcharged fees, lost inventory and wrongly-granted refunds from Amazon and Shopify, and only gets paid from money that actually lands.
+
+An online-store operator running £1m–£15m a year on Amazon UK and Shopify loses money in three places at once, and none of it shows up as a line they can chase. Amazon loses or damages stock in Fenchurch and Dunfermline fulfilment centres and does not always reimburse it. Amazon charges the wrong fee band when a carton is measured badly, so a product is billed as 'large' when it is 'standard'. And card refunds go through under the Payment Services Regulations 2017 chargeback route, where the seller quietly eats the money because nobody filed the evidence in time.
+
+This business is a broker in the plain sense: the seller signs a limited authority, the desk works all three recovery routes on their behalf, and takes 20% to 25% of cash actually recovered. Nothing recovered, nothing charged. That is the whole commercial model, and it is what makes the first call easy.
+
+What makes it work rather than just another reimbursement tool is fusing two signals nobody joins up. Amazon changed its FBA reimbursement policy so that from March 2025 lost-inventory claims are paid on Amazon's own estimated manufacturing cost, not the retail price, and it shortened the claim windows. At the same time UK card scheme chargeback volumes rose with the cost-of-living squeeze. Both are deadlines with money attached. A seller misses them because their operations manager is busy shipping, not diarising.
+
+The desk runs on a queue of trigger dates pulled from each client's settlement reports, inventory adjustment reports, and their payment provider's dispute feed. Every client's outcome teaches the desk which claim wording, which carton dimension dispute, and which chargeback evidence bundle actually gets paid, per category and per marketplace. That win-rate history, built across dozens of clients, is the thing a single seller cannot build for themselves — they see their own claims only, roughly forty a year. The desk sees thousands.
+
+A team of three to six people runs this. One does client onboarding and permissions, two work the claim queues with model-drafted evidence bundles, one handles disputes that escalate. Model work handles the drafting and the matching of shipment records to adjustments; humans handle anything a marketplace pushes back on.
+
+This is a sells-to-tech-adjacent play in the AI-native shape: a model does the reconciliation and evidence-drafting work an outsourced claims clerk is paid for today, and the recurring trigger is Amazon's own claim deadline clock.
+
+UK online-store operators doing roughly £1m to £15m a year across Amazon UK and Shopify, usually a founder or an operations manager with three to twenty staff. They pay nothing up front and a fifth of recovered cash. Typical recovery for a £5m seller runs into tens of thousands of pounds a year.
+
+Amazon changed its FBA reimbursement rules in March 2025 so lost stock is repaid at Amazon's estimate of what the item cost to make, not its selling price, and claim windows got shorter. Sellers who used to shrug off a late claim now lose materially more by missing the date.
+
+The passages describe an established market of Amazon FBA reimbursement recovery services — GETIDA, Refully, Eva, Refunzo and others — that sellers already pay on a success-fee basis of 15-25% of money recovered, with no upfront cost [eccc494481fb5b1e][6a24fdd861c499c4]. One vendor markets 'zero commission' against the fact that most such services charge 25%, which only makes sense if sellers are actively shopping and buying in this category today [c4fe5667c80baa70]. The passages do not break this out for the UK specifically, and the solenoid-valve passages are unrelated.
+
+The passages only cover Amazon seller sign-up incentives, generic FBA advice, and UK company insolvency counts; none of them say anything about what UK online-store operators turning over £1m–£15m earn, spend, or are willing to pay for fee-recovery help, so there is nothing here to judge a £49.99 price against. The insolvency material [c88abf728c972a09, e935506e439e1ad8, 5b52044da1753396] is about UK companies in general, with the failures concentrated in three unnamed sectors, so it neither shows these sellers can pay nor shows they are going broke.
+
+The passages only describe generic Amazon seller-account mechanics — signing up, listing products, brand enrolment, new-seller discounts — plus one line about granting extra people access to a single Seller Central account [a2b78d7504fedaa3][efcc500c7c5a9b5f][5b72b32665942b3f][cb1284213c0d2c26], and two Turkish privacy notices [a93a25f37e49fd0d][54309de9b5f5ea47].
+
+The passages are either generic US insurance claim-filing pages (Liberty Mutual, Allstate) or fragments about UK claims management regulation and FCA payments rules that never say whether recovering marketplace fees, lost stock or card disputes for a seller falls inside a regulated activity, nor what Amazon's or Shopify's terms permit [6efd1abee03a7992][476d767a5ddb0909][4cf3aa031a774f94][3d85dd04fbcc41d7][8cd39fd80a790811][bc248d9e1c134485]. Nothing here addresses a commission-only recovery desk acting for a business seller, so the lawfulness of the fee cannot be judged either way.

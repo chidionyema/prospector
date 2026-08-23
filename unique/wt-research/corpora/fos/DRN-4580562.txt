@@ -1,0 +1,80 @@
+DRN-4580562
+The complaint
+Mr P has complained Santander UK plc won’t refund him for a transaction he didn’t make.
+What happened
+In 2023 Mr P took out a monthly subscription for computer software to help him buy goods 
+from retail websites. He paid £40 a month for this in May and June from a company (who I’ll 
+call K). He’d also paid a one-off fee in April to another company related to this licence. This 
+payment was processed in the name of a second company, W.
+In June 2023 Mr P found his account was debited £215.24 along with foreign exchange 
+processing fees. He’d not authorised this transaction and complained to Santander. 
+Santander were able to confirm this payment was processed in W’s name, using the same 
+terminal ID as the regular payments Mr P had made to K. They believed he’d authorised this 
+further transaction.
+Mr P brought his complaint to the ombudsman service.
+Our investigator reviewed Santander’s evidence and felt overall Mr P must have authorised 
+this transaction.
+Still unhappy Mr P asked an ombudsman to consider his complaint.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so, I’ve come to a different conclusion. I’ve already shared my thoughts with 
+Santander about why.
+Where there is a dispute about what happened, I have based my decision on the balance of 
+probabilities. In other words, on what I consider is most likely to have happened in the light 
+of the evidence. 
+When considering what is fair and reasonable, I’m required to take into account: relevant law 
+and regulations; regulators’ rules, guidance and standards; codes of practice; and, where 
+appropriate, what I consider to have been good industry practice at the relevant time.
+The regulations which are relevant to Mr P’s complaint are the Payment Services 
+Regulations 2017 (PSRs). These primarily require banks and financial institutions to refund 
+customers if they didn’t make or authorise payments themselves. 
+To help me come to a decision, I’ve reviewed the evidence Santander provided as well as 
+what Mr P has told us. Mr P has been represented by his father throughout this complaint 
+but for ease, I’ll continue to refer to Mr P alone.
+I believe these transactions were carried out without Mr P’s authorisation. I say this because:
+
+The evidence Mr P provided included correspondence from W. This confirms K 
+processed additional unauthorised payments from customers, including others that 
+Mr P knows. This evidence had been provided to Santander when Mr P first told 
+them what had happened.
+Mr P has explained he’d got a notification from Apple Pay notifying him of the 
+disputed transaction. He correctly states that setting up a regular payment on Apple 
+Pay using card details (or direct debit) didn’t provide authority to K to take payments 
+whenever they wished. 
+I appreciate Santander’s point that they have limited ability to investigate merchant 
+fraud (which is what this appears to be) and this is particularly so when these are 
+non-UK transactions, like this one. 
+I confirmed to Santander that I believed Mr P’s testimony – and the paper trail evidence he’d 
+supplied – that he’d not authorised this transaction. They accepted this and agreed to refund 
+Mr P in full if he accepted this as the fair outcome.
+Mr P confirmed he was looking for additional compensation because of the impact of what 
+had happened on him. He felt it was particularly harsh of Santander to doubt his evidence 
+and continue to believe he’d authorised this transaction. I shared Mr P’s eloquent thoughts 
+on this aspect of his complaint with Santander to see whether they would consider making a 
+further offer of compensation. I received nothing further.
+I appreciate some of what Santander has said – they are limited in their ability to investigate 
+disputed transactions that originate overseas but I’ve seen nothing here that Santander 
+carried out any checks at all. Mr P provided them with the same evidence I’ve considered, 
+but this was ignored. It is, of course, possible to falsify email evidence but I wonder why that 
+would be Santander’s first conclusion when looking at what Mr P had shared with them,
+Putting things right
+Firstly I believe the evidence shows Mr P was a victim of fraud and didn’t authorise the 
+disputed transaction. Santander will need to refund £215.24 along with £6.35 of charges for 
+foreign currency conversion. They’ll need to add 8% simple interest to this amount from the 
+date the original transaction debited Mr P’s account until the date of settlement.
+I do believe there’s been an impact on Mr P not just of the initial fraud – which is obviously 
+not Santander’s responsibility – but of the investigation that followed and placed suspicion 
+on him. I am going to ask Santander to pay a further £100 to Mr P in compensation for the 
+added anxiety this has caused him.
+My final decision
+For the reasons given, my final decision is to instruct Santander UK plc to:
+Refund £215.24 to Mr P along with £6.35 charges;
+Add 8% simple interest to those amounts from 22 June 2023 to the date of 
+settlement; and
+Pay Mr P £100 for the trouble caused.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr P to accept or 
+reject my decision before 22 April 2024.
+ 
+Sandra Quinn
+Ombudsman

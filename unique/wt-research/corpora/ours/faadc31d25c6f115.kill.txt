@@ -1,0 +1,21 @@
+AuditArmor — fixed-fee workers' comp audit defense for New York's small tradesmen.
+
+A flat‑fee service that handles your NY workers' compensation premium audit, using classification know‑how to slash your bill.
+
+Small plumbing, electrical, and HVAC shops in New York State often face surprise premium audits from their workers' comp carriers. An auditor may reclassify subcontractors as employees or assign a higher risk code, generating a bill for thousands of dollars that most sole proprietors are too time‑poor and unversed in insurance law to fight. Lawyers cost $250+/hour, making an appeal out of reach.
+
+This service borrows the tax‑audit‑defense model (where a firm represents you for a flat fee) and applies it to workers' comp. For a fixed price — say $499 per audit — a small team of classification specialists collects your payroll records and subcontractor agreements, drafts a written protest citing case law and the New York Construction Industry Fair Play Act, and negotiates directly with the auditor. The team builds a proprietary database of audit outcomes, carrier dispute tendencies, and successful classification arguments, which lets them improve win rates over time.
+
+Distribution comes through plumbing supply houses, electrical wholesalers, trade schools, and targeted Facebook groups. The document‑collection portal and template letters are highly automatable, with human review only for the final argument. The durable wedge is that proprietary dataset: no free tool and no carrier‑side system will ever surface which arguments work against which insurer, because the data has to be gathered adversarially from the tradesperson’s side.
+
+Self‑employed plumbers, electricians, HVAC installers, and small general contractors (1–5 employees) in New York State who receive a workers' compensation premium audit notice.
+
+The New York State Insurance Fund (NYSIF) and private carriers have increased audit frequency following COVID‑era premium holidays, while the state’s Construction Industry Fair Play Act and joint‑enforcement task forces have made misclassification crackdowns more aggressive.
+
+The passages establish that New York workers’ compensation premium audits are required and that insurers publish free self-help audit upload and toolkit materials, but they never show employers searching for, buying, or asking for paid audit-defense or classification-challenge help. Nothing here documents active demand or existing paid alternatives for that specific service.
+
+The New York construction passages say workers’ comp audits are routine and can bring costly surprises, which only shows contractors face premium risk—not that small tradesmen have money for, or actually buy, paid audit-defense help. The remaining passages discuss tax, crowdfunding, or cyber audit fees and never state what these New York plumbing, electrical, or HVAC shops pay or can afford for workers’ comp audit representation.
+
+Passages show plumbing and HVAC supply houses already serve contractors and plumbers, including across New York, so those trade channels already gather the intended buyers. That is an executable path to reach them without inventing a new audience.
+
+The passages ban non-lawyers from practicing law in New York and discuss attorneys or licensed representatives for workers’ compensation claimants, but they never say whether a fixed-fee team may lawfully draft protests, cite case law, and negotiate an employer’s premium classification audit with a carrier. Nothing in the excerpts shows that this fee requires illegal conduct, a terms breach, or falsified measurements—nor that the activity is expressly permitted.

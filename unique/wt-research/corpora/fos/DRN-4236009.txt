@@ -1,0 +1,130 @@
+DRN-4236009
+The complaint
+Mr O complains that Elevate Portfolio Services Limited (“Elevate”) failed to complete the 
+transfer of his pension savings to another provider in a timely manner. 
+What happened
+Mr O held pension savings with Elevate that he decided to transfer to another provider – 
+I will call that firm “G”. G submitted a transfer request to Elevate using the automated 
+Origo Options system. It was received by Elevate on 21 September 2021. Elevate sold 
+Mr O’s pension investments and transferred the resulting proceeds to G on 4 October.
+But Elevate failed to correctly update the Origo system with the progress of the transfer – it 
+failed to update the system to show that Mr O’s funds had been sent. I can see that G placed 
+an update request to Elevate on the Origo system the day after the transfer had been made. 
+But Elevate says that it either failed to notice that request, or that it failed to act on it.
+Around two weeks later, on 19 September, Mr O’s financial advisor got in touch with Elevate 
+to query the status of the transfer. He was told that the payment had been made on 
+4 October. But Elevate still failed to correctly update the payment status meaning that G 
+remained unable to apply the funds to Mr O’s new pension plan. The financial advisor 
+contacted Elevate again on 21 October, asking for the payment status to be updated. And he 
+called again the following day when no changes had been made. Following that call Elevate 
+corrected the Origo record to show the funds had been sent.
+Mr O complained to Elevate about the delay. He said that his pension savings had been held 
+in cash, rather than invested, for an extended period of time due to Elevate’s failure to 
+update the Origo transfer information. He asked that Elevate calculate whether he had lost 
+out as a result of the delayed investment of his pension savings.
+Elevate agreed that it had been at fault in not correctly updating the transfer information for 
+around two weeks. But it didn’t agree that failure should have prevented G from allocating 
+the inbound payment to Mr O’s pension plan, and investing his pension savings. So it didn’t 
+think it was necessary to calculate whether Mr O had lost out – it said any losses were the 
+responsibility of G. Unhappy with that response, Mr O brought his complaint to us.
+Mr O’s complaint has been assessed by one of our investigators. He thought that Elevate 
+was responsible for the delay to the investment of Mr O’s pension savings. So he asked 
+Elevate to work out whether the delay had caused Mr O to lose out, and if appropriate to pay 
+him some compensation.
+Elevate didn’t agree with that assessment. So, as the complaint hasn’t been resolved 
+informally, it has been passed to me, an ombudsman, to decide. This is the last stage of our 
+process. If Mr O accepts my decision it is legally binding on both parties.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+
+reasonable in the circumstances of this complaint.
+In deciding this complaint I’ve taken into account the law, any relevant regulatory rules and 
+good industry practice at the time. I have also carefully considered the submissions that 
+have been made by Mr O and by Elevate. Where the evidence is unclear, or there are 
+conflicts, I have made my decision based on the balance of probabilities. In other words 
+I have looked at what evidence we do have, and the surrounding circumstances, to help me 
+decide what I think is more likely to, or should, have happened.
+At the outset I think it is useful to reflect on the role of this service. This service isn’t intended 
+to regulate or punish businesses for their conduct – that is the role of the Financial Conduct 
+Authority. Instead this service looks to resolve individual complaints between a consumer 
+and a business. Should we decide that something has gone wrong we would ask the 
+business to put things right by placing the consumer, as far as is possible, in the position 
+they would have been if the problem hadn’t occurred.
+There have been three regulated businesses involved in the transfer of Mr O’s pension 
+savings. Elevate originally held Mr O’s pension plan before his monies were transferred to G. 
+And Mr O was assisted in making the transfer by his financial advisor. But this complaint 
+only relates to the actions of Elevate. It wouldn’t be appropriate in this decision for me to find 
+that other parties should pay Mr O compensation. But I have considered whether the actions 
+of those parties might reasonably reduce, or entirely remove, any compensation that might 
+be due to Mr O from Elevate.
+Elevate accepts that it failed to correctly update the transfer status on the Origo system to 
+show that the funds had been sent to G. But it says that shouldn’t have prevented G from 
+adding those funds to Mr O’s pension plan, and so he should have been able to invest the 
+transferred funds as soon as that had happened. But I don’t agree.
+I don’t think it is reasonable for Elevate to dictate how the processes of another firm should 
+be structured. G has said that it has very clear processes to ensure the safety and integrity 
+of any client monies that it receives. It says that it uses the updated “funds sent” status on 
+the Origo system to authorise the matching of incoming payments and their allocation to a 
+consumer’s pension plan. I don’t think that is an unreasonable approach to take.
+So, when Elevate failed to correctly update the payment status, G was unable to match the 
+transferred funds that it received. I can see that, on the day after receipt of the funds, it 
+contacted Elevate to ask that the payment status was updated, but no response was 
+received. I accept that it might have been appropriate for G to make further requests of 
+Elevate for action to be taken. But it does seem that it kept Mr O and his financial advisor 
+updated, and allowed the financial advisor to chase Elevate on Mr O’s behalf.
+Elevate has said that it might have been more appropriate for G to return the transferred 
+funds if it had been unable to match them. And I am sure that is ultimately what G would 
+have done. But I cannot see that approach would reduce the potential investment loss that 
+Mr O now faces. His pension savings would still have been uninvested. But, instead of sitting 
+unmatched with G, they’d just be within the banking system being returned to Elevate.
+I think that, ultimately, the responsibility for any loss that Mr O has suffered through the 
+delayed investment of his pension savings, falls to Elevate. It initially failed to correctly 
+update the transfer information. It failed to act on a reminder from G for the update to be 
+made. And it wasn’t until after a second request from Mr O’s financial advisor, that matters 
+were corrected.
+So I think that Mr O’s complaint should be upheld. Elevate now needs to establish whether 
+the delayed investment of Mr O’s pension savings has caused him to lose out, and if so to 
+pay him appropriate compensation as set out below.
+Putting things right
+Mr O’s pension savings were invested by G two working days after it received confirmation 
+of the transfer. I think it is reasonable to conclude that similar investment timescales would 
+have applied if nothing had gone wrong. So Mr O’s pension savings should have been 
+invested two working days after G should have received confirmation the funds had been 
+sent – the investment should have taken place on 6 October 2021.
+So, to put things right, Elevate should;
+Establish, with the assistance of G, the investments Mr O could have made, had the 
+funds been available for investment on 6 October 2021. Elevate should assume that 
+the funds would have been invested at that time in identical proportions to the 
+investments Mr O made when the transfer status was finally updated.
+Calculate what those investments would have been notionally worth at the time 
+Mr O’s pension savings were actually invested. If the notional value is greater than 
+the transferred value, Mr O has suffered a loss and should be paid the difference,
+Any difference that is to be paid as compensation should be increased (or reduced) 
+to reflect the overall gains (or losses) experienced across Mr O’s pension savings 
+with G between the date the transfer actually completed and the date of this final 
+decision.
+Elevate should pay into Mr O's pension plan to increase its value by the total amount 
+of the compensation plus investment returns. The amount paid should allow for the 
+effect of charges and any available tax relief. Compensation should not be paid into 
+the pension plan if it would conflict with any existing protection or allowance.
+If Elevate is unable to pay the total amount into Mr O's pension plan, it should pay 
+that amount direct to him. But had it been possible to pay into the plan, it would have 
+provided a taxable income. Therefore the total amount should be reduced to 
+notionally allow for any income tax that would otherwise have been paid. This is an 
+adjustment to ensure the compensation is a fair amount – it isn’t a payment of tax to 
+HMRC, so Mr O won’t be able to reclaim any of the reduction after compensation is 
+paid.
+The notional allowance should be calculated using Mr O’s expected marginal rate of 
+tax at his selected retirement age. I think it’s reasonable to assume that Mr O is likely 
+to be a higher rate taxpayer at the selected retirement age, so the reduction would 
+equal 40%. However, as Mr O would have been able to take a tax-free lump sum, the 
+reduction should be applied to 75% of the compensation, resulting in an overall 
+reduction of 30%.
+My final decision
+My final decision is that I uphold Mr O’s complaint and direct Elevate Portfolio Services 
+Limited to put things right as detailed above. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr O to accept or 
+reject my decision before 16 August 2023.
+ 
+Paul Reilly
+Ombudsman

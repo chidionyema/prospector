@@ -1,0 +1,812 @@
+DRN-4027395
+The complaint
+Mr and Mrs P have complained about the way Society of Lloyd’s (SoL) have handled a claim 
+they made under their Premier Guarantee New Home Warranty (the warranty).
+What happened
+Mr and Mrs P own an apartment in a building comprised of 16 apartments which were 
+completed in 2009/2010 (the building). Mr and Mrs P are represented in their complaint by 
+Mr P. Mr P is also an owner of one of the apartments in the building and is representing the 
+remaining owners who have separate, but the same complaints with our service. Because 
+the complaints are about the same claim decision made by SoL, I issued a provisional 
+decision on the complaint brought by Mr P and explained that my findings in that provisional 
+decision would apply to the complaints brought by the other leaseholders.
+I issued my provisional decision on 10 February 2023, explaining why I was intending to 
+uphold Mr P’s complaint, and by extension, Mr and Mrs P’s complaint. Here’s what I said in 
+my provisional decision: 
+What happened
+Mr P and SoL are represented in this complaint by a number of different 
+professionals. However, for ease of reference I will refer to Mr P’s professionals as N, 
+and SoL’s professionals as A. SoL is responsible for all of the acts or omissions by 
+the professionals acting as its agent.
+Mr P is the owner of an apartment in a building comprised of 16 apartments which 
+were completed in 2009/2010 (the building). In addition to bringing his own complaint 
+to this service, Mr P represents the other owners in the building who have separate, 
+but the same complaints with our service. Because the complaints are about the 
+same claim decision, Mr P and the other leaseholders are aware that what I say 
+here, in respect of Mr P’s complaint, will apply to the same complaints brought by the 
+other leaseholders who are represented by Mr P.
+In 2014, Mr P and the other leaseholders noticed damage in some apartments 
+caused by an ingress of water. SoL accepted the warranty claim for areas where 
+damage had occurred, but didn’t agree to undertake works to the building, where no 
+material damage had been observed. SoL’s agent at that time, who I’ll refer to as M, 
+dealt with the claim and applied one collective excess.
+In late 2018, Mr P and the other leaseholders noticed an ingress of water into 
+Apartments 5, 6, 10 and 16 within the building and made a claim on the warranty for 
+the resulting damage. SoL’s agent acknowledged the claim and agreed that the 
+damage had resulted from defects in common areas of the building.
+After investigating the claim, SoL offered Mr P and the other leaseholders a cash 
+settlement to discharge its liability under the warranty and settle the claim. However, 
+the proposed settlement wasn’t accepted. Mr P complained to SoL about the way the 
+
+claim had been handled, and also about the way it had interpreted the policy terms to 
+arrive at the net settlement offer of approximately £8,000. Mr P said the scope of 
+works that SoL based its offer on was incomplete, and he disagreed with SoL’s 
+application of five separate excesses to the claim.
+Mr P complained to SoL about its claim decision and received SoL’s second stage 
+response to his complaint on 27 August 2021. In that response SoL said that, having 
+carried out an extensive review of the complaint files, it found no fault on the part of 
+the underwriters in the decisions they’d made or the proposals they’d put forward.
+Unhappy with SoL’s response, Mr P brought his complaint (and those of the other 
+leaseholders) to this service in early 2022. Our investigator considered all the issues 
+Mr P had raised and issued his view partially upholding the complaint in October 
+2022.
+Mr P accepted all but two of the conclusions in our investigator’s view. In particular, 
+he didn’t agree with our investigator’s conclusion that SoL’s settlement offer didn’t 
+need to cover costs relating to the installation of cavity trays for the parapet walls. He 
+also didn’t agree it was reasonable to omit the removal and refitting of the glazed 
+balustrade from the scope of works, on the basis that it is a major cost item the 
+leaseholders are required to pay because of regulation requirements. Mr P 
+expressed the view that SoL declined the opportunity to find an alternative contractor 
+to carry out the repairs because they were aware that no contractor could carry out 
+the repairs based on SoL’s estimate or method of working.
+SoL didn’t accept our investigator’s view on the application of multiple excesses to 
+the claim. However, it did accept the other conclusions he reached. 
+As the parties haven’t agreed on how Mr P’s complaint ought to be resolved, the 
+matter has been passed to me for a decision to be made.
+What I’ve provisionally decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+In making my provisional decision, I’ve first considered whether SoL has fairly 
+applied the policy terms relating to the application of excesses to the settlement offer. 
+The second issue I’ve considered is whether SoL has made a fair offer to Mr P and 
+the leaseholders to settle the claim. While I haven’t addressed each and every point 
+raised by the parties, I have considered all of their evidence and submissions in 
+making my provisional decision on this complaint.
+What is covered by the warranty?
+Mr P’s warranty is divided into different sections of cover which apply to different 
+circumstances and different periods of the term of the warranty. Mr P’s claim (and 
+that of the other leaseholders) for damage to the building has been accepted by SoL. 
+However, I’ve detailed the relevant terms and definitions below, for ease of 
+reference, as I will refer to these terms in the remainder of this decision.
+Section 3.3 ‘Structural Insurance’, is relevant to Mr P’s complaint as the claim was 
+made during years three to ten of the warranty. 
+Section 3.3 states that SoL will indemnify Mr P, the Policyholder, against all claims 
+discovered and notified to SoL during the Structural Insurance Period in respect of 
+‘the cost of complete or partial rebuilding or rectifying work to the Housing Unit which 
+has been affected by Major Damage….’. 
+It goes on to say that in the event of a claim under this section, the Underwriter has 
+the option either of paying the cost of repairing, replacing or rectifying any damage 
+referred to in section 3.3 (1) and (2), or itself arranging to have the damage 
+corrected.
+The warranty defines ‘Major Damage’ as:
+‘a) Destruction of or physical damage to any portion of the Housing Unit … 
+b) A condition requiring immediate remedial action to prevent actual destruction of or 
+physical damage to any portion of the Housing Unit … 
+In either case caused by a defect in the design, workmanship, materials or 
+components of: the Structure; or the waterproofing elements of the Waterproof 
+Envelope…’ 
+The ‘Waterproof Envelope’ is defined as: ‘the basement, ground floors, external 
+walls, roofs, skylights, windows and doors of a Housing Unit’.
+‘Housing Unit’ is defined as (among other things): ‘The property described in the 
+Certificate of Insurance comprising the Structure, all non-load bearing elements and 
+fixtures and fittings for which the Policyholder is responsible; and any Common Parts 
+retaining or boundary walls forming part of or providing support to the Structure’.
+The ‘Common Parts’ are defined as: ‘Those parts of a multi-ownership building (of 
+which each Housing Unit is part), for a common or general use, for which the 
+Policyholder has joint ownership and/or legal responsibility’.
+The ‘Structure’ of the ‘Housing Unit’ is described as being comprised of the following 
+elements (among others):
+load-bearing parts of ceilings, floors, staircases and associated guard rails, 
+walls and
+roofs, together with load bearing retaining walls necessary for stability;
+non-load bearing partition walls;
+roof covering;
+any external finishing surface (including rendering) necessary for the water-
+tightness
+of the external envelope;
+floor decking and screeds, where these fail to support normal loads;
+The warranty defines ‘Excess’ in the following way: 
+‘As noted on the Initial Certificate and Certificate of Insurance the Underwriter shall 
+not be liable for the first part of any payment made in respect of a valid claim under 
+the Policy for a Housing Unit. 
+A separate Excess shall apply to each separately identifiable cause of loss or 
+damage for which a payment is made under the Policy by the Underwriter, regardless 
+of whether more than one cause of loss is notified at the same time’.
+However, it’s important to note that the warranty does not define what is meant by 
+‘separately identifiable cause of loss or damage’.
+Paragraph 5 of the conditions set out in section 6 provides for an increase in the 
+Excess as follows: 
+‘The…….Excess referred to within the Certificate of Insurance will be increased in 
+line with the RICS House Re-Building Index or 10% per annum compound, 
+whichever is the lesser, on each anniversary of the commencement of the period of 
+insurance for Sections… 3.3…’ 
+Lastly, the financial limits for claims involving common parts are set out in section 7 
+of the warranty, which says:
+ ‘The maximum the Underwriter will pay for any claim relating to Common Parts will 
+be the amount that the Policyholder has a legal liability to contribute towards the cost 
+of repairs, rectification or rebuilding works. Claims are subject to the financial limits 
+for the individual sections detailed above and the Excess as detailed in the Initial and 
+Certificate of Insurance’.
+So, in summary, Mr P’s warranty covers him for damage to his apartment and his 
+proportion of the cost of repair of damage to any common parts he’s responsible for, 
+if caused by a defect in the structure of the building or the waterproof envelope. 
+Cover is subject to the cost of repairs exceeding the Excess. And a separate Excess 
+can be applied for each separate cause of loss or damage, and/or for each 
+leaseholder/policyholder who shares responsibility for the common parts – in the 
+event of a common parts claim.
+Has SoL fairly applied the Excess clauses to the claim?
+The warranty provides that an excess may be applied to: ‘each separately identifiable 
+cause of loss or damage for which a payment is made under the Policy by the 
+Underwriter.’
+The first point of disagreement between Mr P and SoL is in relation to how many 
+causes of loss are relevant to the claim. Although ‘cause’ isn’t defined in the warranty 
+terms, understanding what ‘cause’ means, informs how many excesses ought 
+reasonably to be applied to the claim, in line with the warranty terms and conditions.
+Mr P believes only one excess ought to be applied, on the basis there is a single 
+cause of damage, namely the failure of the waterproofing envelope of the building (or 
+put more simply, a lack of weather-tightness).
+However, SoL has applied five excesses to the claim, resulting in a settlement offer 
+of approximately £8,000. The five separately indemnifiable causes of loss it has 
+identified include:
+1. Cavity Trays: Damage caused due to water ingress via open cavities in the 
+external elevations. No cavity trays were fitted which had allowed water to 
+pass freely from the point on entry at Apartment 16 into Apartment 6, via the 
+open cavity of Apartment 10 (with repairs totaling £10,906.50 excluding VAT, 
+in SoL’s scope of works (SOW)).(Note: for ease of reference and for clarity all 
+amounts referred to in this decision are exclusive of VAT, unless otherwise 
+stated).
+2. Defective membranes to balconies: Further defects caused water to enter into 
+apartments, being poorly installed / missing membranes on the balcony 
+surfaces of Apartments 16, 10 and 6, located under the raised patio slabs 
+(with repairs totaling £23,424.50 in SoL’s SOW).
+3. Rainwater discharge issues: The rainwater discharge system is poorly 
+designed causing rainwater to back up on the patios of the apartments and 
+enter the building via defects in the balcony membrane and surrounding 
+upstands. The rainwater passes from Apartment 16’s main roof and balcony 
+via rainwater downpipes and onto the balcony of Apartment 10 below, then 
+passes via the same method to the balcony of Apartment 6 below. All 
+rainwater outlets that discharge the rainwater are undersized, blocked with 
+shingle, debris, or sand deposits (with repairs totaling £4,108.50 in SoL’s 
+SOW). 
+4. Glazed balustrade: Apartment 16 has a glazed balustrade located on its 
+balcony over a low parapet wall that is set in between coping stones located 
+over the cavity structure in the parapet wall. The glass screen is sealed with 
+defective and inadequate silicone and there is no damp-proof course as a 
+secondary defense against water ingress. Further, the parapet wall does not 
+appear to have any internal cavity tray and water ingress passes through the 
+open cavities of the parapet wall via the open cavity wall of Apartment 10 
+below, and into the ceiling of Apartment 6 below (with repairs totaling 
+£6,271.10 in SoL’s SOW).
+5. Render: The render elevations to the upper floor apartments are cracked, 
+defective and show signs of water penetration, in a location that cavity trays 
+should be installed. Due to the lack of any weep holes, SoL’s engineer, A, 
+suggests no cavity trays exist (with repairs totaling £9,625.00 in SoL’s SOW). 
+Our investigator concluded that the second, third and fourth causes of loss identified 
+by A, all related to the balconies, and therefore comprised one identifiable cause of 
+loss, namely, defects in the balconies leading to an ingress of water. Our investigator 
+also concluded that the first and fifth causes of loss identified by A, all related to the 
+external walls, and would comprise a second identifiable cause of loss, namely, 
+defects in the external walls leading to an ingress of water.
+The warranty covers physical damage to any portion of the building, caused by a 
+defect in the design, workmanship, materials or components of the structure or the 
+waterproofing elements of the Waterproof Envelope.
+The two reports completed by A in January 2020 and June 2020, and the two reports 
+completed by N in December 2018 and November 2019 provide details of the 
+damage and defects, affecting the building. The content of these reports is 
+particularly relevant when considering the question of how many separate causes of 
+loss may have caused the damage.
+In their first report, N observed from their inspection, that no cavity trays had been 
+provided at various locations. They said that the cavity could be viewed from 
+Apartment 6 at the lowest level, up into the cavity above Apartment 10, carrying on 
+up through to the balcony of Apartment 16. N also said it appeared that rainwater 
+was hitting either the glass screen to Apartment 16’s balcony, or the blockwork, and 
+the French door on the junction with Apartment 10’s balcony. From there the water 
+ran down the blockwork on the inside face of the cavity and discharged into 
+Apartment 6’s ceiling. 
+N commented that the blockwork to Apartments 10 and 16 were provided with a 
+rendered finish which was permeable so would allow for moisture ingress to pass to 
+the inside fabric of the building. N also advised that a cavity tray should have been 
+provided, which would ensure the moisture doesn’t travel to the apartment below. 
+N said that the balcony arrangement to Apartment 16 was provided with glazed 
+balustrading and coping stones, but it was highly likely that there was no cavity tray 
+provided at the top of the parapet wall, which was allowing water to emanate down 
+through the glazed balustrading and coping stones into the cavity. N concluded that 
+the lack of cavity trays at various floor and parapet levels was allowing water to pass 
+down through the building, eventually coming down into the inside fabric of the 
+building, affecting Apartment 6 internally. N recommended that cavity trays were 
+fitted at two different levels, at Apartment 16’s level, along the top of the parapet wall 
+and at Apartment 10’s level, along the line of the threshold to the bi-fold doors.
+The supplementary report issued by N in November 2019 added that the parapet 
+walls and glass balustrading that hadn’t been completed at lower ground/ground floor 
+level, first floor level and the end gable to Apartments 10 and 16 are all contributing 
+to the current problems. The other issue highlighted by the supplementary report was 
+the cold bridging on the underside of the concrete slabs to the balconies, and the 
+absence of insulation that was causing interstitial condensation. N said the only way 
+to fully resolve the problem would be to remove the lower ground floor ceilings, at 
+least in the front sections where to step in the building occurs, to provide additional 
+insulation to the underside of the concrete slab.
+On A’s second inspection of the building, which was reported on in the June 2020 
+report, A concluded that major defects had been found and the cause of water 
+ingress appeared to be from the balconies who’s original design and water flow had 
+been incorrectly calculated and catered for. The outlets on the balconies were 
+considered two small for the area and were all obstructed. The balcony base 
+structure was missing a membrane and was inadequately sealed leading to water 
+ingress into the recess below. Incorrect downpipes, gutters and waterflow detail and 
+design of various balconies meant they were clogged and had inadequate outfall, 
+resulting in water ingress. A recommended, for Apartments 16, 10 and 6, that the 
+balcony floor be replaced and sealed using a membrane type product, tanked to all 
+upstands. A also recommended the downpipes be extended and replaced, and the 
+outlets enlarged for faster water flow incorporating leaf guards and debris prevention 
+measures.  
+A noted that Apartment 16 and Apartment 10’s external render had cracked in many 
+places and vegetation and green algae was observed to be growing from the gaps. A 
+said that water penetration was evident with zero cavity weep holes, suggesting that 
+cavity trays hadn’t been installed. A recommended that the existing render system be 
+removed and replaced and cavity trays be installed as required. 
+In summary, both A’s and N’s reports confirmed damage has occurred, caused by 
+defects in two portions of the Housing Unit. The portions in question are the 
+balconies and walls, which are allowing water ingress into the apartments below. So, 
+I think it’s reasonable to conclude there are two separately identifiable causes of loss, 
+i.e. defective balconies and defective walls. I’m therefore currently of the view that 
+SoL’s application of five excesses is unreasonable and results in an unfair application 
+of the warranty terms to Mr P’s claim.
+The purpose of a building warranty is to protect a homebuyer against significant 
+repair costs due to construction issues. SoL’s approach of applying an excess to 
+each and every defective component within a recognised portion of the building 
+effectively avoids, or significantly limits, its liability to provide cover for the cost of 
+repair of the damage. SoL’s approach effectively relieves it of its liability for the very 
+circumstances that the warranty is intended to cover, causing it to be essentially 
+worthless. I’m currently not satisfied that SoL’s approach is fair as it effectively moves 
+the risk of having to pay significant sums to repair damage caused by construction 
+defects, to homeowners, in circumstances where, such costs ought to be covered by 
+the warranty.
+In my view, and as previously communicated to SoL by my ombudsman colleagues 
+in their final decisions in other cases similar to this, there is a more reasonable 
+interpretation of the policy terms, which reflects the purpose of the warranty. And that 
+is, where there are multiple defects in a recognisable portion of the building, which 
+are contributing to a single type of damage, the defects ought to be grouped into one 
+claim. Bearing in mind the purpose of the policy, I’m satisfied its only reasonable to 
+consider the separately identifiable causes of loss to be the defective portions, rather 
+that the individual components that make up those portions. So, in Mr P’s case, the 
+lack of cavity trays in the external walls and the damaged render ought to be grouped 
+into one claim as they make a separately identifiable cause of damage, i.e. defective 
+walls. And the defective waterproof membranes on the balconies, failed sealant 
+around the glazed balustrade, and inadequate facilitation of rainwater discharge from 
+the balconies, ought to be grouped into one claim as they make another separately 
+identifiable cause of damage, i.e. defective balconies.
+Having provisionally concluded that only two excesses (for each leaseholder) ought 
+to be applied to the settlement offer, I’ve next gone on to consider the offer SoL 
+made to Mr P and the other leaseholders, to indemnify them for the cost of repair of 
+the damage covered by each claim.
+My role, the informality of this service, and considerations relevant to the available 
+evidence 
+Before I explain the decision I’ve provisionally reached, I think it helpful if I first clarify 
+a few preliminary matters which are relevant to the way I’ve come to my decision. 
+As the parties may be aware, the Financial Ombudsman Service is an informal 
+dispute resolution service, established under Part XVI of the Financial Services and 
+Markets Act 2000 as ‘a scheme under which certain disputes may be resolved 
+quickly and with minimum formality by an independent person’. As the independent 
+person, it’s my role to resolve this dispute by reference to what is, in my opinion, fair 
+and reasonable in all the circumstances of the case.
+SoL has had a significant period of time in which to assess and comment on the 
+SOW provided by N on behalf of Mr P and the leaseholders (N’s SoW). However, the 
+comments it provided to our investigator on that scope of work could be described as 
+‘broad brush’. The lack of detailed comment has made it more difficult for me to come 
+to a provisional decision on this complaint that resolves the dispute between the 
+parties. Given the time that’s passed since the claim was first made and given the 
+works that have been completed to mitigate further damage to the building, I don’t 
+think requiring a further investigation and scope of works would be productive in 
+resolving this complaint. 
+My role in resolving this complaint isn’t to loss adjust the scopes of work that have 
+been provided, however, I am responsible for resolving the dispute. I think that can 
+most fairly be done by considering the elements of the scopes of work in dispute, 
+taking account of the comments from their surveyors on the other’s scope of works, 
+and then giving my reasoned view as to why I think particular items should, or should 
+not, be included in SoL’s cash settlement.
+Is SoL’s offer to settle the common parts claim fair in the circumstances?
+SoL’s SOW separated the total cost of £65,202.72 (including VAT), into five separate 
+claims. The only claim that exceeded the common parts excess of £20,044.48 was in 
+relation to defective waterproof membranes on the balconies, which was costed at 
+£28,109.40 (including VAT). After deducting the common parts, or ‘collective’ excess, 
+SoL made Mr P and the leaseholders a Mr P, for the claim, of £8,064.92 (including 
+VAT).
+The leaseholders obtained two estimates for the repair works to the building and 
+apartments. The first estimate was for £142,553 and the second was for 
+£111,009.18. The leaseholders decided to proceed with the lower estimate, provided 
+by the contractor who had carried out the repair works to other parts of the building in 
+2014. The leaseholders had the balcony repair works carried out the first half of 
+2021. The works relating to the installation of the cavity trays were due to be 
+commissioned later in the year. The current status of the repair works hasn’t currently 
+been provided. 
+Mr P explained that the scope of works the leaseholders decided to proceed with was 
+provided by contractors who’d made detailed visits to the property, whereas SoL’s 
+SOW was completed by a quantity surveyor who had never visited the site and had 
+no detailed knowledge of the building or its location. Mr P’s surveyor explained that 
+he’d quantified the scope of works based on his previous experience of the site and 
+working in the area for the last thirty years. He believed the scope he’d provided was 
+required to resolve the current issues with the building. SoL’s surveyor said their 
+SOW was based on tender returns from previous repairs so were proven to be 
+market rates.
+Given the significant difference in costs between the two scopes of work, our 
+investigator requested comments from the parties’ surveyors to try and elicit what 
+contributed to such a large divergence. After considering their responses, our 
+investigator concluded that SoL only needed to cover the items included in its SOW, 
+but the cost of those items needed to be based on the costs included in the lower 
+quotation provided by Mr P and the leaseholders.
+While that approach can be helpful in some cases, I don’t think it serves to facilitate a 
+fair and final resolution of this complaint, because in this case, the scopes of works 
+aren’t easily comparable. Also, there are some items that I think have been omitted 
+from SoL’s SOW, which should be included in the cash settlement.
+In deciding whether SoL’s settlement offer is fair and reasonable, I’ve considered the 
+scopes of works, and the parties’ surveyors’ comments on the scopes of work. 
+Having done so, I’ve identified a number of significant items of repair that have been 
+omitted from SoL’s SOW. Where the evidence is inconsistent, inconclusive or 
+contradictory, I make my decision based on the balance of probabilities – i.e. what I 
+think more likely than not, is the case. 
+I’ve first considered the works included in the SOWs which relate to claim 1: installing 
+cavity trays in the external walls and repairing the render. I’ve then gone on to 
+consider the works included in the SOWs which relate to claim 2: balcony membrane, 
+sealing of glass balustrade, installing cavity trays in parapet walls, defective 
+discharge of water from the balconies. As the water ingress from the balconies is the 
+larger cause of damage, I’ve also considered the inclusion of repair costs for internal 
+repair and redecoration of the affected apartments under claim 2. Lastly, I’ve 
+considered the inclusion of costs for provisional or contingency items.
+Claim 1: Installation of cavity trays in external walls and repair of render 
+SoL’s SOW allowed £10,906.50 for the works required to install cavity trays in the 
+external walls. No comments have been made on this by either party, so I don’t need 
+to make a finding on this item of repair. 
+However, the parties haven’t agreed on the costs that should fairly be included in 
+SoL’s cash settlement for the external render.
+In A’s June 2020 report, it was observed that the external render had cracked in 
+many places and water penetration was evident, suggesting that no cavity trays had 
+been installed. It was stated that the existing system would need to be removed and 
+replaced, installing cavity trays as required.
+In response to a question about this, SoL’s loss adjuster advised our investigator that 
+it wouldn’t be possible to install cavity trays without opening the blockwork which 
+would effectively remove the render in those areas. 
+Mr P’s surveyor explained that the render allowed for in N’s SOW was to completely 
+re- render the panels as the leaseholders didn’t want scars on the panels, which 
+seemed reasonable given the value of the apartments. In N’s report it was recorded 
+that it would be difficult to patch repair the areas of render, following installation of 
+cavity trays. N said that it would be more aesthetically pleasing to undertake a 
+complete repair to the front face of the block work, to appease the otherwise 
+aesthetic difference between the two types of render finish which would be clearly 
+visible externally. In A’s June 2020 report, they also commented in relation to 
+Apartments 10 and 16 that the existing render system will need to be removed and 
+replaced, suggesting that a ‘patch repair’ wouldn’t provide an adequate repair.
+However, SoL’s surveyor commented that rendering the whole surface would amount 
+to betterment. They’ve said that N’s SOW allowed for 56sqm of render to be 
+replaced, however, only 25sqm of render is required to be replaced, as the only area 
+of render damaged by the defect is that on Apartment 10 where an additional cavity 
+tray is being installed above the French doors.
+I don’t agree with SoL that rendering complete panels amounts to betterment. The 
+purpose of the warranty is to provide an indemnity to the leaseholders for the 
+damage covered. Having considered the comments included in both A’s and N’s 
+reports regarding the repair of the render and having considered Mr P’s surveyor’s 
+comments on this point, I don’t consider that carrying out patch repairs to the render 
+would provide that indemnity. I’m therefore of the view that SoL’s cash settlement 
+should include the cost of replacing the 56sqm of render, not just the 25sqm deemed 
+reasonable by its surveyor. 
+In N’s SOW the 56sqm of render was allocated a cost of £5,320. This constitutes 
+31sqm more than SoL’s surveyor thought should be covered. So, I’m currently of the 
+view that SoL’s cash settlement, in relation to the render, should be increased by 
+£2,945 (31/56 x £5,320). When the additional costs for the render, and VAT are 
+added to the two amounts allocated by SOL to this claim, the total comes to 
+approximately £28,000 which exceeds the common parts excess of £20,044.48. 
+Claim 2: Balcony membrane, glass balustrade, installation of cavity trays in parapet 
+walls and defective discharge of rainwater from balconies.
+There are seven elements of the SOWs that are in dispute, regarding the repairs to 
+the balconies. I’ve addressed them under the following headings: 1. Preliminaries, 2. 
+Installation of cavity trays in parapet walls, 3. Removal and refitting of the glazed 
+balustrade, 4. ACO drainage channels, 5. Discharge of water from balconies, 6. 
+Internal repairs and redecoration, and 7. Additional sums. 
+1. Preliminaries
+SoL’s surveyor said they felt the preliminaries (at £14,908.00) included in N’s SOW to 
+be approximately twice what would be expected on works of this scale, and they 
+didn’t consider a fully covered scaffold necessary to carry out the proposed works. In 
+response, Mr P’s surveyor explained that the fully covered scaffold was necessary 
+due to the exposed location of the building. 
+N’s SOW included £7,500 for covered scaffolding. Given that the location of the 
+damaged portion of the property is sea-facing and given the contactor’s obligation to 
+protect the building whilst carrying out the repair works, I think allowing for covered 
+scaffolding is fair in the circumstances. SoL haven’t provided any other specific 
+comment on the items included in the preliminaries. 
+2. Installation of cavity trays in parapet walls
+The first point Mr P raised in response to our investigator’s view was in relation to the 
+parapet walls, cavity trays. Mr P believes the costs of installing cavity trays in the 
+parapet walls, which is an industry recognised standard, recognised by Premier 
+Guarantee, should be included in the settlement offer. His surveyor has explained 
+that the alternative repair proposal put forward by A doesn’t meet the industry 
+recognised standard, and in this exposed location in which the building has been 
+constructed, cavity trays are required to prevent water ingress into the internal fabric 
+of the building.
+Page three of the warranty terms and conditions, under the heading, ‘The Quality of 
+Your Housing Unit’: says:
+‘The Developer has been issued with Premier Guarantee’s Technical Manual. This 
+sets out the functional requirements the Developer and/or the Builder has to comply 
+with when constructing a Housing Unit’.
+In the definition section of the warranty terms, ‘Defect’ is described as:
+ ‘A failure to comply with a functional requirement in the Technical Manual in respect 
+of the construction of the Housing Unit. Failure to follow the performance standards 
+or guidance supporting the functional requirements does not in itself amount to a 
+Defect, as it may be possible to achieve the recommended performance in other 
+ways’.
+A proposed an alternative repair, in SoL’s SOW for the 2019 claim, to installing cavity 
+trays in the parapet walls, as is permitted by the warranty term quoted above. A 
+specified that the balcony waterproof membrane was to be terminated into the inner 
+skin of the parapet wall and a lead cover flashing was to be installed over the top to 
+protect the membrane.
+However, Mr P’s surveyor recommended the installation of cavity trays to achieve a 
+lasting repair. He noted that repair had been agreed by SoL when settling the 2014 
+claim and had achieved a lasting repair.
+The standards relevant to the installation of cavity trays are included in: ‘Chapter 7: 
+Superstructure (External)’ of version 9 of the Premier Guarantee Technical Manual 
+(which is relevant to the construction of this building). Chapter 7 says a cavity tray 
+should be used, especially where the balcony above forms part of the roof below 
+(see paragraph 7.1.16), which is the case with this building.
+The affected area of the building in question is to the rear of the property, which has 
+a series of stacked, but offset terraces serving the residential apartments. The 
+terraces form the roofs of the apartments below. The terraces are guarded by a 
+glazed balustrade system, secured in a steel shoe. As the balconies form part of the 
+roof below in this building, paragraph 7.1.16 is particularly relevant to the question of 
+whether it would be reasonable to include the cost of installing cavity trays in the 
+parapet walls, in the cash settlement.
+In addition, the location of the building is also a relevant consideration. In A’s reports 
+it is recorded that the development is located on an elevated sea facing clifftop. All of 
+the main habitable areas are sea facing with external balconies which are partially 
+enclosed by stone walling and glazed screens overlooking the beach.
+Taking these factors into account, I’m currently of the view that it’s reasonable to 
+include the cost of the installation of cavity trays in the parapet walls, in the cash 
+settlement.
+3. Removal and refitting of the glazed balustrade
+The second point Mr P made in response to our investigator’s view was regarding the 
+removal of the existing glass and stainless-steel balustrade. Mr P says that 
+adherence by any contractor to the Construction (Design and Management) 
+Regulations 2015 (CDM regulations) would require the balustrade to be removed 
+while the works are carried out, and refitted. Mr P said that as it is a major cost item 
+they are forced to pay because of regulation requirements, it should be included in 
+the settlement offer. SoL disagrees.
+I note that the schedule of works prepared for SoL, dated March 2014, did allow for 
+the ‘careful removal of the existing glass and stainless steel balustrade in existing 
+channel set into the head of the wall and dressed coping stones; all to be set aside in 
+a safe and secure store for re-use (page 3 section 3)’.
+I’ve also considered the CDM Regulations when coming to my provisional conclusion 
+on this element of the settlement offer. Regulation 19 requires all practical steps to 
+be taken, where necessary to prevent danger to any person, to ensure that any new 
+or existing structure does not collapse if, due to the carrying out of construction work 
+it may become unstable, or is in a temporary state or weakness or instability.
+Paragraph 3.3.1 of SoL’s SOW says: 
+‘c. the Contractor shall remove the internal and external concrete parapet coping 
+stones either side of the glass balustrade and carefully store for reinstatement’.
+Paragraph 3.7 ‘Health & Safety’ says: 
+‘a. The Principal Contractor shall comply with all enactments, regulations, and 
+working rules relating to the safety, health and welfare of work people and other 
+persons authorised to be on site.’
+SoL’s SOW doesn’t provide for the removal of the glazed balustrade. Instead, A had 
+specified that the defect to the glazed balustrade could be repaired by leaving the 
+glazing in place then applying waterproof membranes up to and under the stone 
+copings.
+SoL’s surveyor commented that the removal and re-fitting of the glazed balustrade, 
+along with a provisional sum to replace the glazing, increased the costs by 
+£16,078.00.
+Taking the above points into account in respect of the accepted safety requirements, 
+I’m currently of the view that it’s reasonable to include the costs relating to the 
+removal and reinstatement of the glazed balustrade in the cash settlement.
+4. ACO drainage channels
+SoL’s surveyor said that SoL’s SOW was drawn up to remove the requirement for 
+ACO drainage channels on the affected balconies. He said that would be achieved 
+by using plastic pedestals on which the paving slabs are fitted, to allow rainwater to 
+flow under the slabs and out of the outlets. 
+SoL’s surveyor also explained that A had chosen to not use ACO drainage channels 
+in SoL’s SOW as they would bring water up on top of the paving slabs and closer to 
+the underside of the door frame, potentially allowing water ingress under the door 
+frame. A was also of the view that as the slabs would be laid on a sand and cement 
+screed that would clog the drainage. They felt that N’s SOW, in this respect, 
+amounted to betterment. 
+However, Mr P’s surveyor said the new ACO channels would ensure that the surface 
+water was taken directly to the outlet, and not left sitting on the top of the balcony 
+deck. He said that was good practice in that geographical area. Mr P’s surveyor 
+explained the arrangement proposed by A is currently in situ and is not working 
+effectively due to its location and wind driven sand blocking the underside of the 
+slabs.
+SoL’s surveyor said the installation of ACO drainage channels increased the 
+proposed repair costs by £1,195. 
+Taking account of the evidence of Mr P’s and SoL’s experts, I’m currently of the view 
+that the proposed repair recommended by Mr P’s surveyor is, on balance, more 
+reasonable. So, I’m intending to require SoL to cover the cost of installing ACO 
+drainage channels in the cash settlement in order to deliver a lasting and effective 
+repair.
+5. Discharge of water from balconies
+SoL’s surveyor commented that costs for works to increase the drainage discharge 
+from the balconies had been omitted from N’s SOW. A specified that the drainage 
+outlets needed to be increased in size to allow the greater flow of water off the 
+balconies. Paragraph 6.3 of SoL’s SOW appears to address this issue, allowing 
+£1,450 for new, wider through-wall outlets, rainwater downpipes, and hopper system. 
+N said that if it was agreed that this needed to be done, then an appropriate sum 
+needed to be agreed. As SoL’s surveyor has confirmed this work needs to be done, 
+to complete an effective repair, then the related costs need to be included in the cash 
+settlement. As A had made provision for £1,450 in SoL’s SOW to cover this, I’m 
+currently of the view that this amount should be included in SoL’s cash settlement.
+6. Internal repairs and redecoration
+Mr P’s surveyor said that the redecoration of the internal parts of the building, in the 
+affected apartments, was due to the external defects and shouldn’t be treated as a 
+separate claim. However, SoL’s surveyor said that the internal repairs and 
+redecoration for the three affected apartments would need to be the subject of 
+independent claims from each apartment owner, subject to their own excess. Those 
+works were calculated to amount to £8,638.14. 
+Having considered the arguments on this point, I don’t agree that the owners of the 
+three affected apartments need to make additional claims, which would be subject to 
+additional excesses. The damage to the inside of the apartments was caused directly 
+by the defect which caused major damage to the common parts. So, I agree with Mr 
+P’s surveyor, that the internal repairs and redecoration should form part of this claim. 
+I’m therefore currently of the view that the cash settlement should include the 
+£8,638.14 allowed for in N’s SOW for the internal repairs and redecoration.
+7. Additional sums
+I’ve next considered the additional sums highlighted by SoL’s surveyor. These 
+included contractors’ overheads and profits (OH&P) in relation to the glazed 
+balustrade and stone copings of £650, and a contractor’s mark up (or profit) of 
+£8,991.02. SoL’s surveyor objected to these costs being included in N’s SOW. 
+However, Mr P’s surveyor explained that the costs that have been put forward are a 
+result of two separate pricing exercises and these are at the current market level. He 
+said that in the current buoyant market, it is difficult to obtain quotes as all the 
+contractors are busy and choosing which projects to price. Having considered the 
+arguments on this point, I find Mr P’s surveyor’s comments persuasive, and I think it 
+reasonable to include these costs in the cash settlement.
+Provisional sums included in N’s SOW
+The SOW prepared for the leaseholders also included a contingency of £5,825, a 
+provisional sum of £7,650.00 and a sum of £2,100 in case any existing cavity trays 
+need to be removed. In arguing for these costs to be included in the cash settlement, 
+Mr P’s surveyor said that not allowing for any contingency or provisional sums is 
+dangerous and not recognised as good industry practice. SoL’s surveyor didn’t 
+dispute this and commented that contingency was to be negotiated and was not part 
+of A’s costings.
+Given the approach SoL have taken in considering Mr P’s claim, and given the 
+ongoing damage that was being caused to the building by the defects, I think it was 
+entirely reasonable for the leaseholders to proceed with the lower estimate, in 
+carrying out repairs to the building. I also think it’s reasonable to make provision for 
+works necessary to repair the damage, which aren’t able to be quantified at the 
+outset (such as the removal of any existing cavity trays). However, I’m not able to 
+make an award in relation to costs that remain unknown. So, with regard to the 
+provisional sums referred to, once the works have been completed, Mr P should 
+present the invoices to SoL, for an appropriate reimbursement to be made. If any 
+final ‘provisional’ costs are disputed by SoL, then Mr P and the leaseholders can 
+make a second complaint about that, and if necessary, refer it to this service. 
+How should the leaseholders’ claims be moved forward?
+While this decision has been made in respect of Mr P’s complaint, and his proportion 
+of legal responsibility for the common parts, SoL and the other leaseholders 
+understand that my decision applies to the complaints of the other leaseholders, as 
+they arise from the same claim decision.
+For each of the two common parts claims, Mr P and the other leaseholders can only 
+claim for their share of the repair costs. To determine each leaseholder’s share of 
+responsibility for the common parts, SoL will need to consider the lease agreement.
+I understand from the submissions that the applicable excess for each of the 
+leaseholders is, in respect of the apartment(s) they own. If so, and if responsibility for 
+the common parts is shared equally among those 16 apartments, for the claim to 
+succeed its value would need to exceed the collective excess of £20,044.48, that is, 
+16 x £1,252.78. As I’ve explained above, I’m satisfied that claim 1: walls, and claim 2: 
+balconies both exceed the collective excess. 
+I think the leaseholders’ decision to proceed with carrying out the repair works, in 
+light of the ongoing and worsening damage to the building, and in view of the 
+unreasonable approach SoL was taking in seeking to apply five excesses to the 
+claim, was reasonable in the circumstances. Having considered the two SOWs and 
+the parties’ surveyors’ comments on the SOWs as detailed above, I’m currently of the 
+view that SoL’s SOW has omitted significant repair costs in relation to the following: 
+Full repair of the render
+Preliminary items such as the covered scaffolding
+Removal and reinstatement of the glazed balustrade
+ACO drainage channels
+Internal repairs and decorations
+Additional sums
+In addition, I think the cost of remediating the discharge of water from the balconies 
+also ought to be included in the cash settlement.
+However, the provisional sums shouldn’t be included in the cash settlement at this 
+stage. Once the actual sums have been established, Mr P can present the invoices 
+to SoL and at that time, that part of the claim can be settled.
+I’m therefore intending to uphold this complaint and require SoL to settle the claim by 
+paying the amount detailed in N’s SOW, subject to the deductions and additions set 
+out below.
+I concluded by saying that SoL should pay Mr P and the leaseholders a settlement amount 
+of £76,172.06.
+I explained that some of the repairs have already been completed. So, where the 
+leaseholders have already paid for repairs (either directly or via a service charge), I said SoL 
+will need to pay 8% simple interest per annum on that part of the settlement, from the date 
+the leaseholders paid for their share of the repairs, to the date that the awards in this final 
+decision are paid. 
+I said that I had reached my provisional conclusion on what the fairest settlement is, based 
+on the limited information I have available, which I think is fair and reasonable in the 
+circumstances of this case.
+I invited Mr P and SoL to provide any final comments or information they would like me to 
+consider, before issuing my final decision on the complaint. Both parties provided additional 
+submissions. The submissions provided by Mr P were made on behalf of himself, 
+Mr and Mrs P and the other leaseholders whom he represents.
+Mr P said that he and the other leaseholders have been pursuing a fair and equitable 
+settlement of their claim for a period now approaching four years. He explained that having 
+to deal with the costs of the necessary repairs during that period has led to various 
+challenges for the leaseholders, and during that time costs for building repair and 
+construction have increased dramatically. As a result, there are additional points he would 
+like to make, but as he and the other leaseholders are worn down by the process, they are of 
+a mind to accept the provisional decision without reservation. However, that would only be 
+on the basis that SoL doesn’t dispute or challenge any aspect of the provisional decision 
+with a view to mitigating the proposed settlement amount.
+SoL provided a detailed response, from the underwriters, in response to the provisional 
+decision. However, rather than setting out their arguments in this background section, I will 
+refer to them in the next part of this decision, when giving reasons for my final decision on 
+this complaint. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+While SoL have made detailed submissions, on behalf of the underwriters, in response to 
+the provisional decision, they haven’t caused me to change my conclusions on this 
+complaint, as I will explain. Therefore, while I understand the frustration expressed by Mr P, 
+on behalf of Mr and Mrs P and the other leaseholders, as SoL’s comments haven’t mitigated 
+the settlement amount, I consider it appropriate to proceed to now issue my final decision on 
+this complaint. 
+SoL strongly disagreed with the findings reached in my provisional decision. They have 
+commented that the provisional decision does not correctly take into account the law that 
+applies to the interpretation of the excess provision in the policy. However, they have not 
+explained which piece of legislation they think I have failed to consider. In any event, while I 
+have considered all of the relevant information relating to this complaint, I am making my 
+decision based on what I consider is fair and reasonable in the circumstances of this case. 
+And having done so, I remain of the view that the way SoL have applied the excess 
+provision in the policy, to the leaseholders’ claim, creates an unfair outcome for them.
+SoL say they are concerned by my comments that by correctly applying policy excesses to a 
+shared common part liability it has rendered this policy ‘essentially worthless’. They say that 
+they appreciate a policyholder may be unhappy about the excesses and limits that apply, 
+because they make the settlement amount smaller and will not cover the total loss. However, 
+SoL believes the policy terms clearly set out the excess provision and say that, as is obvious 
+from the settlement sum offered, the payment of excesses doesn’t render the policy 
+‘worthless’. 
+I have considered SoL’s comments, but I remain of the view that their application of five 
+excesses to the claim is unfair. By applying an unreasonable number of excesses to the 
+claim, they have reduced the settlement offer from a sum in excess of £140,000 to 
+approximately £8,000. Clearly, that is not a ‘worthless’ sum, as it is £8,000. However, in my 
+provisional decision, I referred to it being ‘essentially worthless’, which I maintain is the case, 
+given that the indemnity it provides for repair works that it purports to cover, equates to 
+approximately 5% of the cost to the leaseholders of those repairs. 
+SoL also considers that I have taken the wrong approach to the interpretation of the wording 
+of the policy, by conflating ‘item of claim’ with ‘cause of loss or damage’ and by considering it 
+in the context of section 3.2 of the policy which is not applicable, as the claim falls under 
+section 3.3 of the policy. They point out that the excess wording in the policy expressly 
+contemplates there may be more than one excess applied. SoL also say that I have mis-
+applied the case of Zagora Management Property Limited & Others v Zurich Insurance Plc 
+and others [2019] EWHC 140 (TCC) (‘the Zurich case’) to the policy wording and 
+circumstances relevant to the present case, which are quite different.
+First, I have neither referred to ‘item of claim’ nor the Zurich case in my provisional decision. 
+SoL may be referring to comments made by my colleagues in the two previous final 
+decisions that have been issued by this service, explaining why SoL’s approach in applying 
+multiple excesses is unfair and unreasonable. As per my ombudsman colleagues’ previous 
+decisions, and my provisional decision, our approach is based on what we consider to be fair 
+and reasonable, not necessarily the Zurich case.
+Second, I explained in the provisional decision that as the claim was made in years 3 to 10 
+of the policy, it is section 3.3 that applies, not section 3.2. While I did refer to the Premier 
+Guarantee Technical Manual when commenting on SoL’s surveyor’s views regarding the 
+installation of cavity trays, that was intended to be indicative of the standards applicable at 
+the time of construction. It was not intended to imply that the claim ought to have been 
+considered under section 3.2. 
+Third, I did not say in the provisional decision that only one excess could apply. I explained 
+that a reasonable application of the excess clause would, in this case, lead to two excesses 
+being applied to the claim.
+SoL says that as the excess provision refers to a ‘separately identifiable cause’ these ‘clear 
+and concise words’ give rise to an excess for each separately identifiable defect that 
+materially contributes to the need for the remedial work. And on the basis of the independent 
+expert technical evidence, SoL maintains there are five separately identifiable proximate 
+causes of loss, so the application of five excesses under the policy to the claim is therefore 
+fair and reasonable.
+I gave detailed reasons in the provisional decision for why I disagree with SoL’s submissions 
+on this point. A repetition of their original arguments has not caused me to come to a 
+different conclusion. As I explained in the provisional decision, both the leaseholders’ and 
+SoL’s surveyors confirmed that damage has occurred, caused by defects in two portions of 
+the Housing Unit. The portions in question are the balconies and walls, which are allowing 
+water ingress into the apartments below. So, I think it is reasonable to conclude there are 
+two separately identifiable causes of loss, i.e. defective balconies and defective walls. 
+Therefore, only two excesses should be applied to the claim.
+I went on to say that in my view, and as previously communicated to SoL by my ombudsman 
+colleagues in their final decisions in other cases similar to this, there is a more reasonable 
+interpretation of the policy terms, which reflects the purpose of the warranty. And that is, 
+where there are multiple defects in a recognisable portion of the building, which are 
+contributing to a single type of damage, the defects ought to be grouped into one claim. 
+Bearing in mind the purpose of the policy, I am satisfied it is only reasonable to consider the 
+separately identifiable causes of loss to be the defective portions, rather that the individual 
+components that make up those portions. So, in this case, the lack of cavity trays in the 
+external walls and the damaged render ought to be grouped into one claim as they make a 
+separately identifiable cause of damage, i.e. defective walls. And the defective waterproof 
+membranes on the balconies, failed sealant around the glazed balustrade, and inadequate 
+facilitation of rainwater discharge from the balconies, ought to be grouped into one claim as 
+they make another separately identifiable cause of damage, i.e. defective balconies.
+As I remain of the view that only two excesses (for each leaseholder) ought to be applied to 
+the settlement offer, I have next gone on to consider SoL’s comments in relation to my 
+provisional conclusions on the offer SoL made to Mr and Mrs P and the other leaseholders, 
+to indemnify them for the cost of repair of the damage covered by each claim.
+SoL have provided a seven-page letter from their surveyors in response to my findings 
+regarding the settlement offer which I have also considered.
+I note that this claim has been ongoing for approximately four years, so there has been 
+ample opportunity for SoL to obtain advice from their experts and make a fair offer to settle 
+this claim, before now. Having reviewed the submissions from SoL’s surveyors, A, I don’t 
+consider they provide any further clarity on the points in dispute. Rather, A has provided 
+comments, based on their interpretation of the policy terms, which support SoL’s attempt to 
+apply five excesses to this claim. But I’ve already explained why I do not agree with SoL’s 
+arguments on the application of the excess clause. And while A has gone into some detail to 
+explain why they support SoL’s view on the excess clause, they have not persuaded me to 
+come to a different conclusion on this key issue.
+I also disagree with A’s assertion that I am seeking to re-write the policy terms and I 
+disagree with their interpretation of what they consider to be the ‘ordinary meaning of the 
+contractual terms’. I would also point out that I am not the first to disagree with how the 
+excess clause has been interpreted in this policy. As A will be aware, from their review of the 
+reports relating to the 2014 claim, in that case the surveyor, loss adjuster and the same 
+underwriter also took a different view and applied only one excess to a similar claim. 
+A has made a number of observations on the preliminary conclusions I reached in my 
+provisional decision regarding the render, the preliminary costs, the cavity trays, the glazed 
+balustrade, and the ACO drainage channels. 
+I have considered A’s detailed comments on these points, however, I would re-iterate what I 
+said in my provisional decision, that my role is not to loss-adjust the scopes of works 
+provided. Rather, as I explained in my provisional decision, given the number of elements in 
+the leaseholders’ scope of works that I consider SoL haven’t fairly accounted for in its scope 
+of works, and taking account of the approach SoL chose to follow in seeking to apply five 
+excesses to the claim, I remain of the view that it was entirely reasonable for the 
+leaseholders to proceed with the lower estimate, in carrying out repairs to the building. 
+I also remain of the view that it is reasonable to make provision for works necessary to repair 
+the damage, which are not able to be quantified at the outset (such as the removal of any 
+existing cavity trays). However, I am not able to make an award in relation to costs that 
+remain unknown. So, with regard to the provisional sums referred to, once the works have 
+been completed, Mr P, on behalf Mr and Mrs P should present the invoices to SoL, for an 
+appropriate reimbursement to be made. If any final ‘provisional’ costs are disputed by SoL, 
+then Mr and Mrs P and the leaseholders can make a second complaint about that, and if 
+necessary, refer it to this service. 
+I understand there will remain some elements of disagreement between SoL’s surveyors and 
+the leaseholders’ surveyors, as to the detail of the works that are required to repair the 
+damage covered by the warranty. But, given the time that has passed since the claim was 
+made, and given the unreasonable approach SoL have taken to settling the claim, I remain 
+of the view that a fair and reasonable way to resolve this complaint is to require SoL to settle 
+the claim by paying Mr and Mrs P and the other leaseholders, the total amount detailed in 
+the leaseholders’ surveyors (N’s) scope of works, subject to the deductions and additions set 
+out below.
+So, SoL should pay Mr and Mrs P and each of the leaseholders their proportionate share of 
+the settlement amount of £76,172.06 calculated as follows:
+Leaseholders’ scope of works £111,009.18
+Less the provisional costs allowed for in N’s SOW  -£15,575.00
+Plus, the costs included in SoL’s SOW for fixing  
+the discharge of water elements of the balconies                 £1,450.00
+Plus, VAT (on the total amount)   £19,376.84
+Less two excesses  -£40,088.96
+Total:   £76,172.06
+Some of the repairs have already been completed. Where the leaseholders have already 
+paid for repairs (either directly or via a service charge), SoL will need to pay 8% simple 
+interest per annum on that part of the settlement, from the date the leaseholders paid for 
+their share of the repairs to the date of settlement.
+This decision has been made in respect of Mr and Mrs P’s complaint, and their proportion of 
+legal responsibility for the common parts. For each of the two common parts claims, 
+Mr and Mrs P and the other leaseholders can only claim for their share of the repair costs. 
+To determine each leaseholder’s share of the repair costs (‘their proportionate share’), SoL 
+will need to consider the relevant lease agreements. I have issued decisions in relation to 
+the other leaseholders’ complaints, regarding their proportion of legal responsibility for the 
+common parts, on the same date as this decision, as they arise from the same claim 
+decision.
+Putting things right
+I uphold this complaint and require Society of Lloyd’s to pay Mr and Mrs P:
+their proportionate share of £76,172.06 (including VAT) in settlement of the claims; 
+and 
+8% simple interest per annum on any parts of the settlement where they have 
+already paid for the repairs (either directly or via a service charge), from the date of 
+that payment, to the date of payment of the awards detailed in this final decision. 
+(NB: If Society of Lloyd’s considers it’s required by HM Revenue & Customs to deduct 
+income tax from any interest paid, they should tell Mr and Mrs P how much they’ve taken off. 
+If requested, Society of Lloyd’s should also give them a certificate showing the amount 
+deducted, so they can reclaim it from HM Revenue & Customs if appropriate). 
+My final decision
+My final decision is that I uphold this complaint and require Society of Lloyd’s to pay the 
+awards detailed above.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr P and Mrs P to 
+accept or reject my decision before 20 April 2023.
+ 
+Carolyn Harwood
+Ombudsman

@@ -1,0 +1,11 @@
+CropSync – The Microgreens Harvest Scheduler.
+
+A planting schedule optimiser that tells microgreens growers exactly what to plant and when, based on their restaurant clients’ demand forecasts and grow‑system parameters, to eliminate waste and guarantee reliable weekly harvests.
+
+Micro‑farmer solopreneurs selling to chefs waste 5–15% of their crop because they manually guess planting schedules that must align with fast, variable demand cycles (7–14 days). By ingesting order patterns and grow‑tray specs, an algorithm can produce a daily ‘plant this, harvest that’ list that minimises seed waste and missed orders – a direct, cash‑on‑the‑table problem that no existing tool solves for this niche.
+
+Microgreens or urban‑indoor herb growers (solopreneur operations, often one person managing everything).
+
+Local‑food restaurant sales surged post‑pandemic; growers are tech‑native but too small for farm ERP; low‑code AI/ML scheduling frameworks make it feasible for a solo developer to build an optimiser that runs on simple historical order data.
+
+The passages show multiple purpose-built microgreens crop-planning tools already serving this exact niche — SeedLeaf ('THE PROFESSIONAL CHOICE FOR MICROGREENS CROP PLANNING AND ORDER MANAGEMENT', weekly crop production planning) and Grown Like A Pro (460+ features, AI-powered scheduling, free to start) — negating the candidate's positive claim that no existing tool solves microgreens scheduling and that the value is a durable, uncommoditised wedge.

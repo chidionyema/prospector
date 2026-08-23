@@ -1,0 +1,13 @@
+MotionDraft.
+
+An AI tool for traffic attorneys that drafts ready-to-file defense motions for traffic violations, pulling from a database of successful arguments and local judicial tendencies.
+
+narrow: Solo traffic attorneys spend hours replicating motions; a tool that combines generative AI with a proprietary corpus of winning motions by judge can double their case capacity and improve win rates, something generic legal writing aids can't do.
+
+Solo and small traffic law firms (1-5 attorneys) handling volume traffic ticket cases.
+
+Digitization of court dockets makes thousands of past motions accessible for training; rising fine amounts make each case more valuable to defend.
+
+The passages describe general legal-analytics tools, judicial-analytics research, a UK solicitor AI guide, and a note that 'basic AI triage' has become commoditized, but none of them address a proprietary database of judge-specific winning traffic-defense motions or whether that narrow dataset retains value.
+
+Thomson Reuters CoCounsel is described as a professional-grade generative AI legal assistant, backed by authoritative content and best-in-class security, that follows attorneys through research, analysis, and drafting workflows — a well-funded incumbent already offering AI-driven drafting to the legal market this candidate targets.

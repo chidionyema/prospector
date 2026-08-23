@@ -1,0 +1,21 @@
+PGCB vendor approvals, for PA sportsbook AI.
+
+Generates PA Gaming Control Board vendor approval packets for sports betting AI vendors selling to PA sportsbook operators under Act 42 of 2017.
+
+This is a sells-to-tech tool for founders and Heads of Compliance at PA-based sports betting AI vendors (oddsmakers, fraud detection, KYC, player tracking, marketing compliance) seeking PA Gaming Control Board approval to sell to PA sportsbooks. The PA Sports Wagering Act (4 Pa.C.S. § 1201 et seq., enacted as Act 42 of 2017) requires PGCB vendor approval before any third-party software touches a licensed PA sportsbook platform, and the approval is at PGCB's discretion based on internal scoring criteria that are not published in detail.
+
+This borrows the way FDA medical device clearance uses internal reviewer scoring against an unpublished rubric, and applies it to PA PGCB vendor approvals which use the same discretionary scoring model. PA currently has 14 licensed online sportsbooks (FanDuel PA, DraftKings PA, BetMGM PA, and 11 smaller operators), each onboarding multiple AI vendors as the platforms rebuild odds, fraud, and marketing stacks. The vendor approval takes 60 to 180 days and the vendor's launch schedule slips. The tool replaces the 30 to 60 hour gaming regulatory lawyer engagement at a $5,000 fixed fee per vendor approval.
+
+It works because the PGCB publishes vendor approval requirements at a high level, but the discretionary scoring is internal, and the vendor needs to anticipate what PGCB will ask. The wedge is the proprietary database of past PGCB vendor approval decisions and the discretionary scoring patterns observed at PGCB public meetings. The strongest free alternative is the PGCB's published vendor approval requirements page; the PGCB structurally cannot publish its internal scoring without compromising its discretion, and a gaming regulatory lawyer cannot scale to a $5,000 fixed fee per approval.
+
+Founders and Heads of Compliance at PA-based sports betting AI vendors (oddsmakers, fraud detection, KYC, player tracking) who need PGCB approval before their software can run on a PA sportsbook platform.
+
+PA sports betting handle crossed $7 billion in 2024, PGCB signalled tighter third-party vendor oversight at its 2024 public meetings, and PA sportsbooks are rebuilding their odds, fraud and KYC stacks with AI vendors who now hit a 60 to 180 day approval wall on every contract.
+
+The passages establish that PGCB requires sports wagering gaming service providers to apply for certification or registration (58 Pa. Code § 1405a.1, § 1405a.5) and publish application forms and an accepted-provider list, but none of the passages show search demand, existing paid solutions, or communities actively asking for tools to generate PGCB vendor approval packets, so buyer intent cannot be confirmed from this evidence.
+
+The passages show PGCB sports wagering manufacturer and operator licensing is actively ongoing, with approvals and renewals processed through mid-2026 (e.g., manufacturers approved 07/24/2024, 08/21/2024, 03/25/2026; operator renewals dated 06/17/2026), and a published testing-and-approval rule (58 Pa. Code § 1407a.3), confirming the vendor approval process is live and current rather than a stale leftover.
+
+The passages identify multiple PA-based sports betting AI/data founders (ee9862f15dcbdb2a, fe3164ce45d5ac60, d3db92d78a621522, 2508f5a3891e3886, 04c7dc82eb0fac50) with public LinkedIn profiles and a gaming-law practitioner who handles licensing (1256ab525ef6a63d), establishing that the buyer segment is findable and reachable via standard open channels a novice can execute. No passage blocks or restricts outreach to this segment.
+
+The passages show Pennsylvania broadly prohibits unauthorized practice of law under 42 Pa.C.S.A. § 2524 and that even assisting with legal documentation can violate the statute (Opinions 94-102, 96-104), but none of them address whether preparing administrative PGCB vendor approval packets for businesses—as opposed to representing laypersons in court or legal matters—crosses that line, so the lawfulness of this specific margin cannot be determined from the passages provided.

@@ -1,0 +1,23 @@
+AI bid packets for Georgia state contract bidders.
+
+Pre-built bid packets that turn a Georgia agency's first AI RFP from a state agency into a winning response, in the language GTA reviewers score against.
+
+You sell pre-built bid packets to Georgia agency owners bidding their first AI RFP from a state agency. The agency owner buys because the State wants three things in every bid under the Georgia Procurement Manual and O.C.G.A. § 50-29 (both published at doas.ga.gov): a past performance volume keyed to specific projects, an AI methodology whitepaper, and a fixed-price schedule aligned to state templates. Georgia Technology Authority (GTA) reviewers score against these sections, and an agency owner who has never bid state work rebuilds the binder from scratch and loses on section weighting.
+
+This borrows the way GSA schedule proposal writers structure their bids against the federal government's standard 'what must be in your bid and how it gets scored' template, and applies that structure to Georgia state procurement where no consultant-grade service exists.
+
+The recurring trigger is every Georgia state-issued RFP for AI services. The State increased AI procurement in 2024 under the GTA strategic plan and refreshed Enterprise Policies, and the General Assembly's AI Commission began steering state agencies toward AI pilots in late 2024.
+
+The strongest free alternative is the GSA schedule proposal template library and the State Accounting Office's vendor handbook on doas.ga.gov. GSA covers federal procurement, not Georgia state; SAO publishes pricing formats but no AI methodology; neither binds to the Georgia Procurement Manual sections GTA actually scores, and neither ships a pre-built AI bid packet for the Georgia market.
+
+Owner of a Georgia digital, marketing or AI agency bidding state-issued AI RFPs through the Department of Administrative Services procurement portal.
+
+GTA's 2024 strategic plan expanded AI procurement; GTA's Enterprise Policies were refreshed in 2023; the General Assembly's AI Commission began steering state agencies toward AI pilots in late 2024.
+
+The passages show an active Georgia state procurement system (GPR, Team Georgia Marketplace, DOAS templates, a GovDirections category for agency-type services like marketing/PR), but none address AI-specific RFPs in Georgia, demand for pre-built AI bid packets, search activity for such packets, or any existing paid service solving this. The passages do not establish buyer intent for the specific AI bid packet product.
+
+Multiple passages confirm an active, current trend: the 2025 Enterprise IT Strategic Plan [ef0272a1e4950a66], the 2030 Strategic Vision [350282f6f1558aaa], and the AI Procurement Guidelines GS-25-002 effective 7/1/2025 [6dc87c034d68d71d] all establish live frameworks driving state AI procurement right now. Ongoing legislative activity (SB 37 AI Accountability Act in the current 2025-2026 session [39fc33d662d4592f]) and the House AI Committee's December 2024 preliminary findings [3f591c9d36c40565] further confirm the trend is still building, not peaked.
+
+The passages describe an open, accessible Georgia procurement ecosystem: free vendor registration at ssl.doas.state.ga.us, a searchable Vendor Registration System where vendors can be located, annual procurement conferences and Small Business Symposium supplier events, and DOAS procurement training — all of which give a novice a beginner-followable route to identify and reach agency owners bidding on state contracts.
+
+The passages establish Georgia's procurement framework (O.C.G.A. § 50-5-50 et seq., the Georgia Procurement Manual, DOAS administration, and § 16-10-22 prohibiting bid-rigging conspiracy) but identify no statute or rule that prohibits a third party from selling pre-built bid templates to potential bidders; § 50-22-6's contingent-fee prohibition governs contracts between professionals and state entities, not template sales to bidders, and § 16-10-22 targets conspiracies to restrain competition, neither of which a template-product business inherently violates.

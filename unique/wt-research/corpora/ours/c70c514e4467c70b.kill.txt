@@ -1,0 +1,23 @@
+CareDelayBack — recovers money you spent on care while your council dragged its feet.
+
+Recovers privately-paid care costs for unpaid carers when the local authority fails to assess needs on time, for a cut of what's won.
+
+Unpaid carers who pay for home care out of their own pocket while waiting for a local authority needs assessment can reclaim those costs when the council's delay breaches its duty under the Care Act 2014. The service pieces together the timeline, links it to the council's published assessment delays, and packages a claim that cites Ombudsman decisions and statutory guidance—all for a percentage of the sum recovered. This borrows from the way holiday-claims firms bundled flight-delay compensation into a factory process, but applies it to a forgotten market where nothing existed until the backlog became undeniable. The Local Government and Social Care Ombudsman has repeatedly found councils at fault for these delays, and the financial pressure on carers is acute. Because the broker collects a dossier of payment receipts, care logs, and council correspondence, it builds a proprietary dataset of what arguments succeed with which authorities—a pattern library that gets sharper with every case and is unrealistic for a one-off claimant or generalist adviser to replicate. A solo operator running a document-intake engine and an AI-driven letter generator can handle a caseload that a high-street solicitor would never touch at the same price point.
+
+The primary carer pays nothing upfront; the broker takes a 25% success fee from the recovered amount. Carers find the service via carer forums, local Age UK partnerships, or word of mouth in condition-specific support groups.
+
+Council care-assessment backlogs have ballooned since 2020, with some authorities taking over six months for an assessment that the Care Act expects within weeks. The LGSCO has upheld dozens of complaints about delays causing financial loss, and media scrutiny is sharpening. Yet no product exists to turn those findings into a low-friction refund mechanism for the carer who has already spent the money.
+
+One UK passage shows a council missed statutory care-assessment timescales and left someone without suitable care, and another notes the Local Government and Social Care Ombudsman can award money as a remedy for injustice, not as compensation. Neither passage says privately paid care costs are reclaimable, nor that any such recovery remains a lasting, non-eroded source of value.
+
+The passages describe no-win-no-fee solicitors for medical delayed diagnosis or treatment, flight-delay rights, and general Consumer Rights Act delay remedies. None say whether any firm already dominates reclaiming carers’ privately paid care costs after local-authority Care Act assessment delays, so whether that niche is open is not addressed.
+
+Passages show UK councils paying compensation after assessment delays and the LGSCO ordering payment, and a local authority saying it agrees Ombudsman remedies when fault is found. That means recoverable money is actually paid, so a carer can fund a success fee from the award and has clear reason to do so.
+
+Passages show unpaid carers already gather in reachable places: Carers First runs local services and carer groups, and carers publicly describe long assessment waits in online discussion threads. That is an executable path to the same people who would buy recovery help after council delay.
+
+The passages only discuss success fees for care-home negligence, clinical negligence, birth-injury, and Inheritance Act 1975 claims; none say whether reclaiming privately paid care costs after a council assessment delay, or taking a cut of that recovery, is allowed or forbidden. They therefore never speak to whether this service’s margin can be earned lawfully.
+
+The passages mention carers seeking assessments, waiting for council care packages, and interest in recovering past caregiver pay, but none show UK carers suffering acute out-of-pocket home-care losses from delayed needs assessments or anyone paying now to reclaim those costs. Calgary wait-time material is outside the United Kingdom under review and does not fill that gap.
+
+The passages show success fees used in other claim types and councils paying Ombudsman remedies, but none state that reclaiming carers' privately paid assessment-delay costs—or taking a cut of that recovery—is banned. They also never show that winning one customer costs more than any recovery could return, or that a single firm controls most of this market.

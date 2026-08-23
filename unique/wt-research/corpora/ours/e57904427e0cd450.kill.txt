@@ -1,0 +1,21 @@
+GustGuard — daily income for self-employed tree surgeons when the Met Office records gusts above 28 mph in your local area.
+
+A parametric income bond that pays a fixed daily amount when high winds make it unsafe to climb, verified automatically from Met Office station data.
+
+Self-employed tree surgeons lose whole working days when wind gusts are too strong to climb safely, but still carry vehicle, kit and yard overheads. Existing weather insurance is either too broad, too expensive or requires slow claims adjustment, so most absorb the loss. This product borrows the way crop insurers pay out against a published weather index: it uses local Met Office weather station data to trigger a payment the moment gusts exceed 28 mph for two consecutive hours on a standard working day. A solo operator sets a fixed daily benefit, prices it from historical wind-loss patterns in each station’s area, and sells it directly to arborists through trade forums and Facebook groups. The whole system runs on a web app that checks Met Office open data feeds, emails the payout and transfers the money within 24 hours.
+
+Individual self-employed tree surgeons, aged 30–55, who work alone or with one groundie and operate in the domestic and light commercial market. They buy a monthly subscription (roughly £12–£25 depending on postcode exposure) knowing a payout will land without any paperwork the day after a lost day.
+
+More tree surgeons are going self-employed after Brexit and council contract changes, and extreme weather events driven by climate change are increasing the number of unworkable windy days across southern and coastal Britain. Meanwhile the Met Office has made its weather station data freely accessible via APIs, making automated parametric payouts simple to build.
+
+The passages show UK self-employed tree surgeons face inconsistent income and insurance costs, and that a large parametric wind insurance market exists in Europe and globally, but none link wind-stopped climbing days to a lasting, unpaid gap that buyers would keep paying this product to fill. Nothing in the texts says that gap is evaporating or already fully taken by a free or bundled alternative, so durability of this specific value is simply not addressed.
+
+The passages show that parametric weather cover and general sole-trader insurers (AXA, Hiscox) exist, and that weather-index insurance is used in agriculture, but none state whether any provider dominates—or leaves open—parametric wind-day income cover for UK self-employed tree surgeons. They therefore do not establish that this niche is underserved, nor that a clear leader has already captured it.
+
+UK self-employed tree surgeons are shown earning day rates of £250–£380 and roughly £37,000–£48,400 a year, so a £12–£25 monthly subscription is well within budget. The same sources also tell operators to carry insurance, which shows they already pay for risk cover rather than being a segment that will not pay.
+
+The passages show tree-surgery firms and an arborist posting online, plus unrelated publishing, funded-trading, and Etsy compliance text. None of them describe a workable way to reach self-employed tree surgeons as buyers—no trade forum, Facebook group sales path, self-serve signup, or other executable channel.
+
+Passages show parametric extreme-weather and weather-index products are already offered in a UK regulatory setting, including by a firm authorised and regulated by the Financial Conduct Authority. That means this kind of automated weather-triggered payout can be earned under normal authorisation rather than only by breaking the law or inventing false readings.
+
+The passages cover hot-workplace HSE cases, Midwest storm winds, ocean wind forecasts, and general arborist rope-climbing technique advice, but none say self-employed tree surgeons lose paid climb days to high gusts or that anyone is paying now to cover that loss. Nothing here shows an acute, paid wind-day income problem for UK arborists.

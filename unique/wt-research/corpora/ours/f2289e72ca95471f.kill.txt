@@ -1,0 +1,23 @@
+FinalNotify: The Funeral Director's Admin Automator.
+
+A vertical web tool where UK independent funeral directors enter deceased details once, and it instantly generates all necessary GP medical certificates, coroner notifications, Department for Work and Pensions letters, and local authority forms, with a comprehensive dated audit trail.
+
+first_principles: Small funeral homes are drowning in paper and manual form-filling post-death, a process with high error costs (delayed registrations, upset families). A tool that rebuilds this workflow from the ground up using a proprietary set of templates and local authority rules eliminates hours per case, and the data map becomes a switching-cost moat as directors rely on its accuracy.
+
+Single-office funeral directors (≤5 staff) who personally handle administrative duties and want to avoid reputation damage from procedural mistakes.
+
+UK death registration is being digitised but remains a patchwork of paper and online, leaving micro-firms underserved. Funeral tech is generally focused on large chains; no solo-built tool captures the end-to-end post-death admin for the independent market.
+
+The passages define 'vertical', describe obituary piracy, explain geometry, and mention a historical voyage; none address funeral director admin automation or the durability of its value.
+
+PlotBox is mentioned as a deathcare platform for funeral homes, but the passage lacks detail on its feature scope, market share among UK independent directors, or whether it solves the specific post-death admin workflow described—nothing establishes it as a dominant incumbent for this niche. The other passages are irrelevant.
+
+None of the passages address the budget or willingness to pay of single-office UK funeral directors; the anecdote about consumer pre-paid plans and the mention of a large company's acquisition are irrelevant to this specific payer segment's solvency.
+
+None of the passages mention distribution channels for a software tool targeting funeral directors; they contain dictionary definitions, unrelated social media sharing, and a fragment about funeral home acquisition. No evidence addresses the claim.
+
+None of the passages address the legality of generating official forms for funeral directors; they discuss unrelated definitions, a TV advert ban, or generic regulatory standards that do not mention the specific activity.
+
+The only potentially relevant passage (864d070c4222e14c) mentions an "annoying" problem of re-entering data and that "Deathcare tech just solved" it, but does not show funeral directors are suffering, paying for a solution, or that the problem is acute. No passage confirms the pain is real enough to drive payment now.
+
+No evidence found to support any critical risk; all checks unverifiable.

@@ -1,0 +1,25 @@
+Bell Round — the mobile instrument service round for school music departments.
+
+A termly on-site repair and service visit for school music instruments, sold to state secondary music teachers as a fixed per-instrument price with a written condition report.
+
+A state secondary school owns 60 to 200 instruments. Clarinets with split corks, trumpets with stuck valves, violins with no bridge, drum kits with dead heads. The music teacher — one person, often the whole department — has no time to box instruments and post them to a repair shop, and no way to prove to the business manager why the budget is needed. So instruments sit broken in cupboards for years.
+
+This business drives a van to the school on an INSET day or a quiet Friday. It services every instrument on site in one visit: cork, pad, valve, string, bridge, head, cable. It charges a flat rate per instrument serviced, plus a parts schedule agreed in advance. The teacher gets a written condition report listing every instrument by asset number, what was done, and what will fail next term.
+
+This borrows the way commercial kitchen extraction and fire-extinguisher firms work — nobody books a one-off, they buy a scheduled round and a certificate. The certificate is the product as much as the labour. Here the report is what the teacher takes to the school business manager to unlock next year's budget, and what an Ofsted-facing department uses to show the curriculum can actually be taught.
+
+The part that holds is the instrument history. After two or three terms the operator has a per-school, per-asset service record nobody else has: which clarinets in this cupboard fail every year, which trumpets are beyond economic repair, which supplier's stock died fastest. That record makes the renewal quote nearly automatic and makes a rival's cold quote look like guesswork. It also makes the teacher's replacement-purchase argument concrete, which is exactly the thing the school will pay for.
+
+A solo operator with a van and a bench covers roughly 40 to 60 schools on a termly rotation. Bookings cluster in the school year, so the calendar is predictable a year out.
+
+Heads of music in state secondary schools and multi-academy trusts in one region, paying from the department capitation budget. In practice the teacher specifies it and the school business manager signs the purchase order. Music hubs funded through Arts Council England also buy servicing for the instruments they lend to schools.
+
+The government's National Plan for Music Education, published in June 2022, funds Music Hubs to lend instruments to schools, and the hub structure was consolidated into fewer, larger hubs from September 2024. That has pushed more instruments into school cupboards without funding anyone to maintain them. At the same time school budgets are squeezed hard enough that repairing a £400 clarinet beats buying a new one, and the number of independent instrument repair workshops on the high street keeps falling.
+
+One passage shows a repair business already taking paid instrument repair work explicitly from schools as well as individuals, with evaluations and estimates before work begins, so schools are already paying to fix instruments today [be9472575042da2d]; another shows a UK music shop marketing instrument services to customers [e863de9135fa83c2]. The passages do not measure how many schools buy this or what they spend, so the evidence shows demand exists but not its size.
+
+None of the passages say anything about what UK state secondary schools or their music departments can spend: the only budget material describes US school districts cutting programmes (SLCUSD's proposed removal of music and choir operating funds, and other district deficits), and the capitation references are about health payment models and missing Kenyan education funds. There is no evidence here on whether a UK music department or business manager has the money and willingness to pay £49, so affordability against that price cannot be judged either way.
+
+The passages show music hubs funded by Arts Council England and the Department for Education that lend instruments to schools and publish direct contact details for enquiries ([c6f036aed348daea], [25a22f6316026c93]), and a consolidation to 43 larger hubs that concentrates those buyers ([ee572e43f3706afb]) — so a small number of named, reachable organisations hold the instruments a visiting repair round would service.
+
+None of the passages discuss instrument repair, school procurement, trading standards, or any rule that would make charging schools for on-site servicing unlawful; the closest school-related items cover removing trespassers from premises and pupil behaviour/safeguarding training, which say nothing about whether this service can be sold lawfully [ac81b8247c4feb7a][2e3556ae80a7e2b0][034fd5561cea6120].

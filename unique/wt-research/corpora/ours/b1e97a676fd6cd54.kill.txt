@@ -1,0 +1,17 @@
+Texas state AI contract win/loss for GovTech SaaS.
+
+A scored feed of Texas DIR AI procurement outcomes for GovTech SaaS ops managers preparing their next state bid, with rejection reasons and evaluator patterns attached.
+
+GovTech SaaS ops managers preparing Texas state bids cannot easily study past outcomes. Texas SmartBuy, DIR cooperative contracts, and individual agency procurement portals are public, but the data is unstructured. The product continuously ingests Texas state procurement records, tags which solicitations include AI or ML requirements, extracts rejection reasons from award justifications and unsuccessful vendor letters, and produces a feed by evaluator, agency, and AI capability. The wedge is proprietary data: a continuously updated corpus of Texas AI procurement outcomes with evaluator-level scoring patterns. Buyers already spend $50,000 to $200,000 per lost bid on proposal writers and capture consultants; the data cuts the loss rate and lowers those fees.
+
+public sector sales ops managers and capture leads at SaaS companies selling to Texas state agencies, especially where AI features are involved.
+
+The 88th Texas Legislature passed several AI bills that created new state AI procurement categories; Texas is now a major AI procurement market with active DIR solicitations across health, education, and public safety.
+
+The passages cover Texas tourism, Texas history, a map of Texas, Texas.gov's general homepage, and a Scottish rock band called Texas; none address Texas state procurement, AI solicitations, GovTech SaaS bidding, proposal writer costs, or any related pain point.
+
+The passages contain general background on Texas (history, tourism, the state website) and an unrelated Scottish rock band, but none address Texas state procurement budgets, GovTech SaaS spending, DIR contracting expenditures, or the financial capacity of sales ops managers to afford a £79.99 data product.
+
+The passages do not directly address whether a low-friction route exists to reach GovTech SaaS ops managers preparing Texas state AI bids. Source 120300a3235f989d states there is no single role-based venue for GovTech operations people, and source 61354a32351e90bc notes government procurement is slow and rules-bound, but neither establishes or forecloses a concrete channel (e.g., content marketing, LinkedIn, GovLoop per bbf4e17c5eb7af1c) for selling to this specific buyer profile.
+
+None of the passages address the legality of ingesting, tagging, or redistributing Texas state procurement records, scraping Texas.gov or DIR portals, or extracting content from unsuccessful vendor letters — the passages only describe Texas.gov generally, the etymology of the state's name, and tourist attractions.

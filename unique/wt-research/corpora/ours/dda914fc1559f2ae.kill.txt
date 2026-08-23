@@ -1,0 +1,23 @@
+The Zero-Cost Lease Renewal Trigger.
+
+A PLG tool that auto-generates and files a rent review or lease renewal notice for commercial tenants in the UK's rising-rent market, taking a 20% cut of the rent reduction or deferral it secures.
+
+Small business tenants (e.g., independent retailers, cafes, co-working spaces) with rent reviews or lease breaks coming up in a rising-rate environment are individually too busy and intimidated by legal process to challenge their landlord's proposed rent increase. By making a single free input (property address + lease end date) and using Land Registry data and statute-mandated forms (e.g., s.25 notice, third-party rent assessment application), the tool generates a legally compliant trigger document the tenant can file themselves. The tool only charges if the tenant achieves a rent reduction or deferral (via a linked solicitor panel that takes a success fee). The wedge: the tenant's own inertia and the fact that no free tool currently automates the specific statutory notice needed to force a rent review or break.
+
+Small commercial tenants (sole traders, small businesses renting shop/office/workshop space, typically 1-10 employees) who face a rent increase or lease expiry in the next 12 months.
+
+UK commercial rents are rising sharply post-COVID (MSCI data shows 10%+ annual increases in prime locations). Many smaller tenants are renewing leases signed in 2020-2022 at depressed rates and face 20-40% hikes. The statutory process to trigger a rent review or break is a one-page form, but tenants don't know it exists or can be done without a solicitor.
+
+The passage indicates significant ROI and payback (200-400% ROI over two years) for proactive lease event management, confirming that value derived from managing renewals and rent reviews is real and durable.
+
+The passage discusses proactive lease event management and mentions 'The Tech Stack' but does not provide details on whether existing solutions or incumbents adequately address the specific problem of automating rent review/lease renewal notices for UK commercial tenants.
+
+The passage indicates a 12-18 month payback with 200-400% ROI over two years for proactive lease event management, implying a strong financial incentive for payers (commercial tenants) to invest in solutions that secure rent reductions or deferrals.
+
+The provided passage discusses proactive lease event management and general benefits like ROI but does not contain information describing a low-friction route to the buyer for the specified tool. It does not affirm or negate the existence of an executable distribution channel for the candidate.
+
+The provided passage only indicates the existence of UK legislation and a search portal. It does not contain any information about the legality of automating lease renewal notices or the specific statutory mechanisms mentioned in the candidate's hypothesis.
+
+The provided passage describes a product from 'RationalGo' and contains no information regarding the pain points, suffering, or payments related to the specific problem 'The Zero-Cost Lease Renewal Trigger' aims to solve.
+
+The fundamental premise of 'The Zero-Cost Lease Renewal Trigger' is undermined by a complete lack of evidence for the stated pain point. The `pain_reality` check yielded no verifiable information suggesting that small commercial tenants are sufficiently busy or intimidated by the legal process to warrant this tool. Without a validated, significant pain, the market for this product is unproven and potentially non-existent (citation: 86f92fe43abe6efe). Additionally, the `legality` check found no information on the regulatory landscape or licensing requirements for automating statutory legal notices in the UK (citation: 55a811a15aee8159). This introduces significant, unquantified legal and operational risks that could render the idea unfeasible or prohibitively expensive to implement.

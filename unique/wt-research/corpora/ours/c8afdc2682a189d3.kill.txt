@@ -1,0 +1,23 @@
+CrateRun — the van round that packs, insures and delivers fragile handmade work no parcel courier will carry.
+
+CrateRun collects, custom-crates, insures and hand-delivers ceramics, glass, framed art and bespoke furniture for UK makers whose pieces every standard courier's terms exclude or won't cover.
+
+Freelance ceramicists, glassblowers, furniture makers and illustrators who sell big framed prints now sell nationally through Etsy, Not On The High Street, Instagram and TikTok Shop. But the parcel networks that would carry the order — Royal Mail, Parcelforce, DPD, Evri — routinely exclude or sharply limit cover for breakable, high-value or oddly shaped goods in their standard terms. A maker who ships a £280 stoneware vase and has it arrive in pieces gets little or nothing back, and the buyer gets a bad experience the maker can't fix. Today makers cope by underpricing the risk, driving deliveries themselves at the weekend, wrapping parcels so heavily that postage costs eat the margin, or simply refusing to sell certain pieces beyond driving distance.
+
+At the other end of the market sit fine-art logistics firms like Momart and Cadogan Tate, built for galleries and museums moving six-figure collections, with account minimums and lead times that make no sense for a single £300 ceramic delivery to a house in Leeds.
+
+CrateRun sits in the gap. It is a small, local van round — one hub per city, starting in a couple of UK cities with dense maker communities (Bristol, Manchester) — that collects work directly from the maker's studio, packs it in reusable, modular crates built for that specific medium (a different crate profile for thrown ceramics than for framed glass than for flat-pack furniture), and delivers and where needed installs it at the buyer's home. Each job also produces a short condition-report photo set at pickup and drop-off, which protects both the maker and CrateRun if a claim is ever disputed.
+
+The part that compounds: every job adds to a growing record of which packing method, crate design and route actually survives which medium, weight and fragility class. After a few hundred jobs, CrateRun knows things no courier or fine-art logistics firm has bothered to learn at this scale — that a certain glaze thickness needs a stiffer crate wall, that a particular motorway route causes more breakage than a slower B-road, that flat-pack oak needs different corner protection to veneered furniture. That data gets better with every maker who joins and every delivery run, and a new entrant starting from zero can't shortcut it.
+
+Freelance and small-batch makers — ceramicists, glassblowers, furniture makers, and illustrators selling large framed prints — who sell direct to customers online and currently either underprice the shipping risk, deliver pieces themselves, or turn away orders outside driving distance. They pay per collection-and-delivery job, with a discounted block-booking rate for makers who ship every week.
+
+Direct-to-consumer maker sales have grown sharply through Etsy, Not On The High Street, and Instagram/TikTok Shop, meaning far more solo makers now ship large, fragile, one-off items nationally without any gallery or retailer's packing and logistics infrastructure behind them. At the same time, the big courier networks have kept tightening what they'll accept liability for as they push volume through automated hubs built for uniform boxes, not irregular handmade goods — leaving a widening gap between what makers need to ship and what the mainstream networks are actually willing to stand behind.
+
+The passage on specialized art shipping shows a paid market already exists for custom-crated, white-glove handling of ultra-fragile pieces, meaning people are currently paying to solve exactly this fragile-goods shipping problem.
+
+None of the passages mention CrateRun's £49 price, maker income, shipping costs, or any willingness to pay for delivery services — they only cover unrelated craft advocacy bodies, a queer-craft research project, global salary rankings, papercraft software, and a design festival.
+
+Etsy is confirmed as a live, self-serve marketplace where makers already list and sell handmade goods to buyers, giving CrateRun's target makers an existing sales channel to plug delivery into, and Pirate Ship shows Etsy sellers already integrate third-party shipping/logistics tools into that workflow.
+
+The passages show that goods-in-transit insurance for courier-style deliveries is a normal, FCA-regulated product that can be arranged as standard or at higher declared value on request, so a service that packs, insures and delivers goods can obtain lawful cover rather than needing to break any law or breach terms to operate.

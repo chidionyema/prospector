@@ -1,0 +1,21 @@
+SuiteProof — The Independent Upholsterer's Per-Suite Fire-Retardancy & Fillings Compliance Brief.
+
+A vertical web tool for UK 1-5 person upholstery workshops that ingests a fabric/foam bill-of-materials per suite and emits a Trading-Standards-ready FR-compliance brief, matched back-coating treatments and a per-batch traceability ledger.
+
+First-principles rebuild from raw pain: a sole-trader upholsterer reupholstering a three-piece suite has ~14 days between fabric arrival and customer hand-back and cannot afford £180-£250 per-fabric BS 5852 lab tests, so they accept the supplier's own compliance claim on faith — which is exactly where Trading Standards is now prosecuting post-Grenfell under the Furniture (Fire Safety) Regulations 1988 (as amended). The tool ingests supplier SKU codes + their stated FR status, cross-references a proprietary dataset of independently-verified FR treatments, CMHR foam additives and banned-substance watch (PBDEs, decaBDE), and produces a per-suite verdict + remediation list (back-coat supplier, FR interliner spec, customer disclaimer clause) plus a 6-year retention job ledger for defence.
+
+UK sole-trader and 2-5 person upholstery workshops reupholstering domestic three-piece suites — the ~3,800 VAT-registered workshops in the NAFAS / British Furniture Confederation / Worshipful Company of Upholders ecosystem who each do 40-120 suites a year at £900-£4,500 retail.
+
+(1) Post-Grenfell Trading Standards enforcement on FR compliance has shifted from advisory to prosecutorial, with multiple high-profile upholsterer prosecutions in 2023-2024. (2) Post-Brexit, the supplier landscape churned: previously EU-domiciled fabric/foam now re-routes via NI or direct import, breaking old datasheet chains. (3) PBDE / OPFR foam additive bans are phasing in one-by-one through 2026, requiring continuous re-spec. (4) The defunct FIRA Gold list has not been refreshed since 2022, leaving a live data gap.
+
+The passages define flames, combustion, and flame-retardant anti-dripping agents in general terms, with no mention of proprietary compliance datasets, upholstery workshops, Trading Standards enforcement, or supplier datasheets — they have no conceptual overlap with whether SuiteProof's specific data/service value is durable.
+
+The shipping/freight passages have no conceptual overlap with upholstery compliance software, and the BS5852 passages only describe the fire-safety standard itself without naming any tool, product, or competitor serving upholsterers' compliance-brief needs. No passage addresses whether an incumbent already solves this specific problem.
+
+None of the passages address upholstery workshops' budget or willingness to pay for a compliance tool; they cover generic UK sole-trader/limited-company tax mechanics, a VAT-checker service, and general insolvency/business-closure statistics with no tie to this buyer segment or price point.
+
+The passages confirm the BFC exists and engages in policy dialogue, and one general upholsterer directory lists a single business, but none describe any mechanism (member newsletter, listing, partnership) SuiteProof could actually use to reach the ~3,800 target workshops with a self-serve or forcing-function route.
+
+The passages confirm the 2025 amendment came into force and describe general Trading Standards prosecution powers, but none address whether SuiteProof's compliance-brief tool itself (as opposed to the upholsterer's underlying conduct) is lawful to build or sell.
+
+The passages describe fire-safety testing standards (BS 5852, EN 1021-1, BS 5867-2) and fire-resistant fabric benefits in general, but none address whether upholsterers experience real, acute pain or currently pay to solve a fabric/foam compliance-verification problem; the motorcycle passages are entirely unrelated.

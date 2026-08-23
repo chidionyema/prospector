@@ -1,0 +1,23 @@
+Energy Bill Overcharge Detective.
+
+A web tool that analyses uploaded energy bills to spot hidden overcharges, tariff errors, and missed compensation, then outputs a formal OFGEM‑compliant complaint with the exact refund due.
+
+Energy supplier billing is riddled with errors, but consumers either don’t know they’ve been overcharged or can’t construct a winning complaint. An automated diagnostic that cross‑references bill line‑items against a growing database of known supplier errors and regulator rules turns a complex, expert‑only task into a £9.99 self‑serve action. (Lens: first_principles – start from the raw data on the bill and the specific error fingerprints, ignoring the generic template letter approach.).
+
+A squeezed‑middle parent who dreads each energy statement, needs to stretch every pound, and will happily pay £9.99–£29.99 a year for a tool that might claw back £50–£300+ from a supplier they already mistrust.
+
+OFGEM has tightened compensation rules and the energy crisis has made consumers hyper‑vigilant; simultaneously, OCR and document parsing APIs have made low‑cost bill digitisation feasible for a solo operator.
+
+None of the passages discuss energy billing errors, consumer overcharges, or diagnostic tools; they cover WhatsApp, energy market analytics, the World Wide Web, and a Morgan Stanley disclaimer, offering no evidence about the durability of the candidate's value.
+
+The provided passages do not address the presence or absence of dominant incumbents or funded rivals in the energy bill error-detection space. The snippet about overpaying and inefficient price comparison websites is insufficient to confirm underservice in the specific niche.
+
+None of the passages address the budget or willingness to pay of 'squeezed-middle' energy consumers for a bill-analysis tool. The NAO snippet mentions debt but not purchasing intent; the willingness-to-pay table is from an unspecified analysis not linked to this service.
+
+The passages mention generic web technology and energy price comparison websites but provide no evidence of a distribution channel, self-serve mechanism, or route to the target buyer for the specific bill-overcharge tool.
+
+None of the passages discuss whether the automated complaint tool is lawful or requires illegality; they cover WhatsApp, back-billing rules, the web, and heat network regulations, none of which address the candidate's activity.
+
+None of the passages address energy billing overcharges, consumer pain, or any market for detection tools; they cover WhatsApp, a personal meter reading, the World Wide Web, and an energy pricing experiment.
+
+None of the provided passages contain evidence of a regulatory ban, unit economics failure, or an 80%+ distribution monopoly in energy bill overcharge detection.

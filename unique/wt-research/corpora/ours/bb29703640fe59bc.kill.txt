@@ -1,0 +1,23 @@
+The Hospital Charity Care Application Advocate.
+
+A done-for-you service that applies for hospital charity care, using a proprietary database of each hospital’s income thresholds, documentation tricks, and appeal processes, and takes a contingency fee only on debt avoided.
+
+Analogous to grant writing for nonprofits—transplanting expert application writing and institutional knowledge into consumer healthcare. Non-profit hospitals are required to offer charity care, but the programs are deliberately invisible and labyrinthine. A solo advocate armed with a growing database of hospital-specific thresholds and document playbooks navigates this path adversarially, turning a dead debt into cash for gig workers.
+
+Uninsured Gen Z gig workers in states with aggressive charity care laws (e.g., CA, NY) who receive a hospital bill they cannot afford.
+
+Medical debt is the leading cause of bankruptcy for young Americans. New federal rules (effective 2024) mandate hospitals post financial assistance policies online, making systematic scraping feasible. Post-pandemic cost-of-living pressures make recovery of every dollar urgent, while hospitals face increased scrutiny over billing practices.
+
+The passage affirms the value is real and substantial ($14 billion in financial assistance that should be waived annually) and durable because charity care is legally mandated for non-profit hospitals yet remains a 'best kept secret' that many patients don't know exists, preserving the information-asymmetry the service exploits. Nothing in the passage shows the value is fabricated, evaporating, or commoditised.
+
+The only passage describes TruBridge, a vendor selling presumptive-charity and insurance-discovery tools to hospitals to recover their own revenue, which is the opposite side of the market from a consumer-facing advocate filing charity-care applications for patients on contingency. Nothing in the passage addresses whether that patient-advocate space has a dominant incumbent or funded rival.
+
+The passage only describes that US nonprofit hospitals use widely varying criteria for charity care eligibility; it says nothing about whether uninsured Gen Z gig workers have the budget or motive to pay a contingency fee on debt avoided.
+
+The sole passage describes TruBridge, a hospital-side vendor that sells presumptive charity/insurance discovery TO hospitals; it says nothing about a route to reach the candidate's buyer (uninsured gig workers facing a bill).
+
+The passage confirms charity care is a legitimate statutory mechanism—federal law requires nonprofit hospitals to offer it—so applying for it on a client's behalf exploits a lawful, mandated program rather than requiring any illegality or breach.
+
+The passage describes one hospital system adopting presumptive charity care to assist patients, but says nothing about uninsured patients suffering from unaffordable bills or paying anyone to solve that problem, so it does not address whether the pain is real and acute on the payer side.
+
+The candidate's entire thesis rests on a 'proprietary_data' wedge (hospital-by-hospital income thresholds, documentation tricks, appeal paths) monetised via contingency fee. The gathered evidence refutes that wedge on both halves. (1) The free alternative the candidate names as weakest is actually its grave: Dollar For is a free nonprofit that already does the full done-for-you navigation and application of hospital financial assistance at scale — 36,000+ patients helped and over $120M in medical debt crushed, with a public goal of eliminating $1B by 2028 (ec7172b8193e21c9). That is precisely the 'transplant grant-writing into healthcare' service proposed, already operating for free with a compounding national caseload no solo advocate can outpace. (2) The supposedly-proprietary database is already published for free: BillKarma gives state-by-state income limits, the documents to bring, and 'exactly what to say' to trigger the hospital's legal obligation (c5399dc97b55301d) — collapsing the information-asymmetry the service claims to own. With the durable wedge commoditised by free, well-funded incumbents, the contingency-fee model is squeezed from both sides: the payers are by definition low-income (below 200–400% FPL, ~$37k–75k) uninsured workers, and payer_solvency, pain_reality, distribution, and incumbency all came back unverifiable — no grounded evidence that this buyer will pay a fee for what Dollar For and BillKarma already provide free. value_durability's 'supported' verdict is built on the very passage (Dollar For) that destroys the moat.

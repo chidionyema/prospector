@@ -1,0 +1,13 @@
+PartyPressure Pack — The Squeezed-Middle Birthday Cost Decoder.
+
+A workbook that takes your child's birthday week, postcode, and guest-list size and produces a per-venue cost breakdown plus a printable 'we're keeping it small this year' card to hand to relatives — built on a proprietary compiled dataset of UK party venues, entertainers, and cake prices by postcode.
+
+Squeezed-middle parents feel acute party pressure around ages 5-11: each year the cost compounds (venues, entertainers, return gifts, party bags, cake cutting fees) with no neutral source compiling live per-postcode pricing. The current 'free' alternative is parent-forum threads — anecdote, not audit. By transplanting the procurement-rate-card pattern from B2B to the household, a workbook with proprietary venue + entertainer + cake price data plus a printable 'no-thanks' script converts a yearly dread into a 30-minute defensible decision. Lens: analogical (B2B RFP cost-transparency playbooks → family-event budgeting).
+
+Parents aged 35-55 with primary-age children, household income £45-90k, booking 1-3 birthday parties per year and wanting a defensible case against peer escalation. Payer is the named budget-authority parent (typically the mother).
+
+Post-2022 cost-of-living shock pushed venue prices up 20-40% (Haven Hall/FunctionFixer industry data) while parent WhatsApp groups kept escalating. The 'Instagrammable party' normalised across UK primaries in 2020-24 with no neutral pricing source. Recent media coverage (Guardian Dec 2023, i-D Mar 2024) on party-pressure burnout has parents actively looking for an exit ramp — but no tool exists to give them one.
+
+A 2025 report puts the average children's party at £524 and says many parents are cutting back on their child's big day, so the underlying cost problem the product addresses is real, sizeable and current rather than invented; a separate report showing $314 average US spend points the same way. None of the passages describes a free or bundled tool that already compiles party pricing and would strip out the margin.
+
+The passages show established UK services already doing the core job: two listings sites let parents browse and book kids' party venues nationwide with packages, reviews and pricing (161e68695c888c40, 6fe7c0470479b500), Netmums runs a searchable kids' venue finder filtered by age, stage and budget (9a76d6df2970892b), and Poptop, Add to Event and Togather supply free instant quotes from party suppliers and children's entertainers (fe92fca0038f9d11, 5b95bfa4e5cae6a0, e930ed5fe6c76939). Free, live, supplier-specific quoting plus priced venue listings already cover the venue-and-entertainer pricin

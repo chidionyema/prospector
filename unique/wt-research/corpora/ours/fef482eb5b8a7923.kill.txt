@@ -1,0 +1,25 @@
+TMHP manual updates turned into PA templates for vendors.
+
+For Texas digital health founders, a model builds TMHP-compliant prior authorization packets per the Texas Medicaid manual, so your customers stop losing reimbursement to bad paperwork.
+
+The Texas Medicaid & Healthcare Partnership (TMHP) administers Texas Medicaid's prior authorization (PA) process and publishes the Texas Medicaid Provider Procedures Manual - more than 4,000 pages specifying exactly what clinical and administrative documentation must accompany each PA request by procedure code. A Texas digital health vendor selling PA automation to Texas providers and managed care organizations (MCOs) must keep its templates in sync with the manual, or its customers see denied claims and lost reimbursement.
+
+Today this is a 2 to 3 FTE compliance team's job, reading quarterly manual updates and rebuilding per-code templates. The tool ingests each TMHP manual update, generates per-code PA packet templates with required clinical elements and attachments, and ships them as structured content the vendor's software can use. Pricing is a monthly subscription keyed to procedure code coverage, starting at $3,000 a month. It broadens TMHP manual compliance from a 2 to 3 FTE compliance team to a vendor-side tool any digital health startup can buy.
+
+What compounds over time is the proprietary data: a structured corpus of TMHP manual revisions matched to historical denial reasons (TMHP publishes denial codes as public data) - a corpus no generic vendor can replicate for Texas specifically. TMHP publishes the manual but cannot help vendors monetize it; the agency's mandate is policy, not vendor tooling. Multi-state PA vendors (Cohere Health, Olive) treat Texas as one of many markets and lack the Texas-specific denial-code corpus that compounds with each new manual revision. The buyer is the founder-operator of a digital health company selling PA automation to Texas providers or health plans.
+
+A Texas digital health founder-operator selling prior authorization automation to Texas providers or health plans.
+
+Texas HHSC is expanding managed-care prior authorization volume and pushing new procedure codes into the manual; Texas Medicaid enrollment exceeds 4 million lives.
+
+The passages concern Branded Surveys, Microsoft Exchange server updates, Hotmail sign-in, and Word Copilot features; none mention Texas Medicaid, TMHP, the Texas Medicaid Provider Procedures Manual, prior authorization, or denial codes, so the durability of the PA-template value cannot be assessed from this evidence.
+
+The passages cover Texas history, a Texas map, the Scottish band Texas, and the AI company Cohere (not Cohere Health); none address TMHP, Texas Medicaid prior authorization, Cohere Health, Olive, or whether any vendor already dominates the Texas PA-template space.
+
+The passages cover Texas economic history, mountain peaks, and the band Texas; none mention TMHP, prior authorization, Medicaid budgets, or any digital health vendor's ability to pay for compliance tooling.
+
+The passages describe Texas geography, cities, tourism, and a band called Texas — none address Texas digital health startups, prior authorization, TMHP, Medicaid, or any route to reach healthcare vendors, so no evidence supports or refutes a distribution channel.
+
+None of the passages address Texas Medicaid, TMHP, prior authorization processes, healthcare compliance, or any terms of service that would govern whether building templates from a publicly published manual is lawful — the passages are about language-learning forums and a trivia quiz, so the legality of this margin cannot be assessed from the evidence provided.
+
+The passages cover Texas history, geography, and a band called Texas, and never address TMHP, Medicaid prior authorization, compliance tooling, denied claims, or what Texas digital health vendors pay for PA automation, so no evidence speaks to whether the underlying pain is real and acute.

@@ -1,0 +1,35 @@
+Vendor Cull, we cancel the AI tools your staff bought.
+
+A fixed-fee service that finds every AI subscription your agency's staff expensed, cancels the dead ones, and hands you signed proof each quarter.
+
+This sells to technology buyers: the owner of a 15-to-60-person marketing, design or development agency in the UK. It commits to shape (C), selling to a named budget-holding role about a recurring chore anchored to public rules.
+
+Start from the raw pain rather than how software solves it today. A designer expenses Midjourney on a personal card. A developer puts Cursor on the company Amex. An account manager signs up for an AI meeting notetaker that quietly joins client calls. Nobody cancels anything. The agency owner sees one line in Xero called "software" and has no idea what is inside it.
+
+The service is deliberately human-first and boring. Each quarter we take read-only access to the agency's card statements and accounting ledger, plus the Google Workspace or Microsoft 365 admin list of third-party apps staff have connected. We produce three things: a list of every AI tool in use with who bought it and what it costs, a set of cancellations we execute on the owner's behalf, and a signed record of which tools were allowed to keep processing client data.
+
+That third deliverable is the part an agency cannot get anywhere else, and it is why the work recurs. Under UK data protection law, an agency handling a client's customer data is a processor, and Article 28(2) of the UK GDPR says a processor must not bring in another processor without the client's written permission. An AI notetaker sitting in a client call is exactly that. Agencies routinely sign master service agreements with enterprise clients that require a current list of sub-processors on request. Today most agency owners answer that question from memory.
+
+We answer it from a ledger. Every quarter's cull adds another dated snapshot of what that specific agency ran, on whose card, touching which client. After four quarters the owner has a defensible history no new supplier can reconstruct, because the raw material is the agency's own past statements and app-connection logs. Ripping us out means starting the record from zero on the day a client's procurement team asks for it.
+
+Pricing is a fixed quarterly fee of around £900 for agencies under 30 staff, with a smaller ongoing fee for the record itself. Distribution runs through the accountants and bookkeepers who already serve creative agencies, and through the professional indemnity brokers who ask agencies about AI use at renewal.
+
+The work automates well. Statement parsing, app-connection pulls and the drafting of cancellation emails are mechanical. What stays human is the judgement call on which tools touch client data, and that judgement is what the fee actually buys.
+
+Owners and managing directors of UK marketing, design and development agencies with roughly 15 to 60 staff, who hold the card and sign the client contracts. They pay about £900 a quarter, plus a smaller ongoing fee to keep the record current.
+
+UK GDPR Article 28(2) requires written permission before a processor brings in another processor, and Article 30 requires a record of processing activities. AI notetakers, coding assistants and image tools became normal staff purchases across 2024 and 2025, so agencies now have sub-processors nobody authorised. The Information Commissioner's Office has published guidance on AI and data protection, and enterprise clients increasingly ask agencies for a current sub-processor list at contract renewal.
+
+The passages confirm a real, statutory compliance burden: Article 28 mandates written authorization for sub-processors and flows obligations down the chain, and source 9cb62de935de3d67 explicitly values the accumulation of monthly records into '12 months of audit-ready Art. 28 compliance evidence' — which is exactly the dated historical record the candidate sells. Source 549d35785f5767d3 shows controllers in practice require sub-processor annexes with future authorisations, and 5c5f6e6e1e90c423 confirms sub-processor change-notice workflows are a real, regulated workflow.
+
+The passages identify multiple competitors in SaaS spend management (Cledara, Zylo, Torii, Substly) with Cledara explicitly handling UK GDPR compliance processes, but none are described as producing the dated, signed sub-processor authorisation record tied to specific client contracts that the candidate sells. A competitive adjacent market exists, but no passage shows an incumbent that has captured this specific UK GDPR Article 28(2) authorisation-history niche.
+
+None of the passages address UK agency owners' budgets, spending on software subscriptions, or willingness to pay for a vendor-cull service; the sources cover ad profitability benchmarks, hotel revenue metrics, Russian laptop sales, car accessories, and viral videos, which have no conceptual overlap with the candidate's payer segment.
+
+The passages show UK bookkeepers participate in established referral circles with multi-directional professional relationships involving marketing agencies [ae65f5b96f17e653, c8d68fa914d58402], and UK professional indemnity brokers serve businesses with regulatory-tailored advice at renewal [def199f8615edc75, bdeaff7fd94d84c4]. These two professional channels—bookkeeper referrals and PI broker renewal conversations—are structurally positioned to introduce a vendor cull service to 15–60-person agency owners, making a low-friction route a safe commonsense deduction from the evidence.
+
+The passages confirm the UK GDPR/EU GDPR framework requires sub-processor management and registers (sources d20c48f50d5c77c5, 85c9eff5f02b40bb), which underwrites the *demand* for the work, but none of the passages address whether the specific service delivery mechanism (read-only access to card statements and accounting ledgers, cancelling subscriptions on the owner's behalf, or producing sub-processor records for a fee) is lawful or breaches any provider's terms. No passage shows a law or contract term that this margin requires breaking, but equally none addresses it directly.
+
+The passages show AI tools are numerous and that sub-processor lists are a real, published concept, but none address whether UK agency owners are experiencing acute pain from untracked AI subscriptions or paying for a quarterly cull service. The specific claim that people are suffering and paying NOW for this exact problem is not evidenced.
+
+No evidence in the passages shows that any law bans third parties from performing this service, that customer acquisition costs would exceed the lifetime revenue at the stated quarterly fee, or that a single provider controls 80%+ of the distribution channel. Multiple SaaS spend-management vendors (Cledara, Zylo, Torii, Substly) compete in adjacent territory, but none is shown to dominate this specific dated sub-processor authorisation record to a monopolistic degree.

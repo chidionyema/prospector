@@ -1,0 +1,13 @@
+The Architect's Fee Extractor.
+
+A solo-operated service that recovers unpaid design fees from property developers for small architecture practices by filing statutory adjudication claims under the Housing Grants, Construction and Regeneration Act 1996, taking a 25% cut of recovered sums.
+
+Small architecture firms (1-10 partners) routinely face delayed or withheld payments from property developers post-design completion, but lack the legal sophistication or time to pursue statutory adjudication. By productising claims into a fixed-fee process with no upfront cost to the architect, a solo operator can extract value from a structural power imbalance in the construction supply chain.
+
+UK-based architecture practices with 1-10 partners who have unpaid invoices over £2,000 from a property developer for design work (e.g., RIBA stages 2-4). The practice pays 25% of recovered amount only upon successful recovery.
+
+The UK construction industry has a statutory right to adjudication for payment disputes (HGCRA 1996), but uptake is low among design professionals who view it as confrontational. Post-pandemic cash flow pressure on developers has increased late payment frequency, while small architects are too busy to chase. The Technology and Construction Court has recently tightened enforcement of adjudicator decisions, making recovery more reliable.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+The passage explicitly states that Litchfield Malone McDonald (LMM), a law firm, successfully obtained summary adjudication for an architectural firm in a fee dispute. This demonstrates that an incumbent (LMM) already solves the problem of recovering unpaid architectural fees.

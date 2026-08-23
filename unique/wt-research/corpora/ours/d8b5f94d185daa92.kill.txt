@@ -1,0 +1,13 @@
+BioGain Architect – The Solo Developer's Biodiversity Net Gain Plan Engine.
+
+A web tool that turns a small developer's site boundary into a planning‑ready biodiversity net gain plan, complete with habitat maps, planting prescriptions, and a compliant metric calculation—replacing a £2k+ ecological consultant.
+
+First‑principles: The friction is that every small developer now legally must prove 10% biodiversity uplift, but the only current solution is expensive consultancy. A solo operator can scrape public GIS layers, embed the statutory metric and local nature recovery strategies, and use template‑driven AI to generate a complete, defensible plan—turning a regulation into a direct software substitute.
+
+UK small‑scale developers and self‑builders (1–5 unit projects) who cannot absorb consultant fees and need a fast, low‑cost way to satisfy the planning validation requirement.
+
+Mandatory biodiversity net gain came into force in England (February 2024) and is extending to small sites (April 2024); thousands of micro‑developers are hitting this wall for the first time with no affordable tool on the market.
+
+No passage directly addresses whether the candidate's value (a full biodiversity net gain plan engine) is durable or not. The free metric tool and commercial competitor mentioned indicate market activity but do not confirm if the value is lasting or evaporating.
+
+The passages describe two existing tools—a free developer calculator and BNGsmart—that already automate BNG metric calculations, habitat mapping, and compliance documentation for developers, directly showing incumbents are solving this well.

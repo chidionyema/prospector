@@ -1,0 +1,21 @@
+EuroShip Hubs, drop your goods here, we handle EU customs.
+
+Local pack-and-post hubs that register as your EU VAT agent, so freelance makers selling from their own website can ship to EU customers without customs shocks.
+
+Since Brexit, and especially since the EU's July 2021 VAT e-commerce rules, small UK creatives who sell physical work — prints, ceramics, textiles — straight from their own Shopify or Squarespace store to EU customers have to collect and account for EU VAT themselves. If they don't, the buyer gets hit with an unexpected customs bill at the door and often refuses the parcel. Marketplaces like Etsy and Amazon don't have this problem, because EU law treats the marketplace itself as the seller and makes it collect and pay the VAT automatically. A maker running their own website gets none of that cover.
+
+To collect VAT this way under the EU's Import One-Stop Shop scheme, a UK-based seller must appoint an intermediary that is formally established and registered in the EU, and that intermediary takes on joint liability for the VAT owed. The firms that already offer this — Taxually, Eurora and similar — are built for retailers shipping hundreds of parcels a month; their setup fees and monthly minimums make no sense for a ceramicist posting fifteen parcels a month.
+
+EuroShip Hubs runs small pack-and-post counters in UK creative cities, starting with Bristol, Glasgow and Margate, hosted inside existing print studios and craft co-ops rather than as standalone shops. A maker drops off a parcel; the counter's software labels it with the right VAT and customs code; once a day, the hub bundles that city's parcels from dozens of makers into a single consolidated freight shipment to a partner EU depot. Because the intermediary registration and its liability are shared across every maker using that hub, the cost per parcel falls to something a solo seller can actually afford — a flat per-parcel fee plus a small monthly hub membership.
+
+The wedge is twofold: EuroShip is the registered EU intermediary carrying the joint VAT liability, which the big consolidators won't take on cheaply at this volume; and it has physical local density — many makers in one city sharing a daily consolidated shipment — which an online-only national service can't replicate without hubs already built into makers' weekly studio routine.
+
+Freelance printmakers, illustrators, ceramicists and textile artists who sell physical work directly through their own website — not through Etsy or Amazon — to EU customers, typically 10 to 100 parcels a month, who currently either quietly stop shipping to the EU or eat the cost of refused, VAT-shocked returns.
+
+EU customs rules keep tightening rather than easing: the low-value duty exemption is under active review as part of the EU's wider VAT reform programme, and enforcement of the 2021 import VAT rules has hardened since introduction. Meanwhile gov.uk and industry reporting since 2021 have documented small UK sellers dropping EU sales altogether rather than deal with the paperwork, leaving a gap nobody has built a small-volume fix for.
+
+The passages describe how the IOSS intermediary mechanism works (registration, joint liability, monthly reporting) but say nothing about whether UK makers are actively searching for or paying for a low-volume solution, nor about any existing paid alternative sized for 10-100 parcels a month.
+
+None of the passages mention UK freelance creatives' income, budgets, or willingness to pay for shipping/VAT services; they cover unrelated topics (US wage averages, IRS guidance, tablet margins, restaurant menu profitability, video views).
+
+The passages show only generic UK parcel delivery (Royal Mail/Parcelforce) and unrelated tracking/mapping tools, none of which address the actual bottleneck in the claim: EU IOSS intermediary VAT registration and consolidated customs clearance for small makers.

@@ -1,0 +1,11 @@
+The Sole Trader's Kit - Auto-VAT & Tax Prepper.
+
+A pre-configured, sector-specific box of physical goods (branded receipt scanner + pre-paid postage envelopes + tax-deductible cheat sheet) plus a solo-operator run service that photographs, digitizes, and categorizes all receipts and invoices for VAT and self-assessment returns, delivered monthly.
+
+The actual friction is not software but the physical act of collecting, organizing, and filing paper receipts—a problem no free HMRC tool or generic app solves because they require disciplined input. A solo operator can offer a 'receipt concierge' bundled as a physical subscription box, making the service feel tangible and prepaid.
+
+UK sole traders (electricians, plumbers, dog walkers, freelance graphic designers) earning £20k-£80k/year who hate admin and are at risk of MTD fines—a person earning £50k pays £25/month.
+
+HMRC's 'Making Tax Digital' for income tax is rolling out in 2026, forcing 4 million sole traders to submit quarterly digital updates. The free HMRC app exists but requires manual photo-taking and categorizing; most sole traders are overwhelmed and will pay to outsource the entire physical-to-digital pipeline.
+
+The passage describes Shoeboxed, an existing "award-winning service" that directly addresses the "physical act of collecting, organizing, and filing paper receipts" by providing "postage pre-paid envelopes for sending in receipts" and outsourcing scanning, indicating this value is already commoditized.

@@ -1,0 +1,33 @@
+AcceptDock — a wrist rest with three big buttons for saying yes or no to AI code suggestions.
+
+A USB wrist rest with three low-force macro buttons pre-mapped to accept, reject and skip AI code suggestions in Copilot, Cursor and Windsurf, sold to developers and claimable against their employer's home-office equipment allowance.
+
+Developers who use GitHub Copilot, Cursor or Windsurf now hit the same three keys hundreds of times a day: Tab to accept a suggestion, Esc to reject it, and a modifier combo to skip to the next one. That is a new, repetitive strain pattern that did not exist five years ago, and it lands on the same pinky and thumb tendons that were already sore from normal typing. This idea puts those three actions on their own oversized, low-travel buttons built into a padded wrist rest, so the hand never has to stretch to a corner key hundreds of times a shift.
+
+It sells as a physical product through a direct-to-consumer site, the way a standing-desk or ergonomic-mouse brand does: one core SKU around £69, a slimmer travel version, and a subscription add-on for replacement palm pads that wear out every six to nine months. A small team of two to ten people can run this — design and firmware stay in-house, injection moulding and PCB assembly go to a contract manufacturer, and a 3PL in the UK handles fulfilment.
+
+The UK-specific hook is real money already sitting on the table: under the Health and Safety (Display Screen Equipment) Regulations 1992, as updated by HSE guidance for home workers since 2020, employers have a duty to assess and provide suitable equipment for staff who use display screens for long periods, including at home. Most tech employers already run a home-office or DSE equipment allowance, typically £150 to £300 a year, that goes unclaimed because ordering a proper ergonomic setup is a hassle. AcceptDock ships with a one-page DSE self-assessment form that names the specific repetitive movement it addresses, making it an easy line item to expense rather than something a developer has to justify from their own pocket.
+
+The part a generic ergonomic-keyboard brand cannot easily copy is the data. The companion app is opt-in and free, and all it does is log which of the three buttons gets hit hardest and how far the hand travels to reach them, across thousands of real coding sessions on real AI tools. That keeps feeding back into button travel distance, spring force and hand-size sizing, and it lets the product add a fourth or fifth mapped action the moment a new AI coding tool changes its default hotkeys, months before a general ergonomics brand would even notice the shift happened.
+
+Individual software developers who buy it themselves for £69, or expense it through their employer's existing home-office/DSE equipment allowance using the bundled self-assessment form; also IT and workplace-wellbeing budget holders at mid-size tech employers who buy in batches of 10-50 for engineering teams.
+
+AI pair-programming tools went from a novelty to a daily habit for most professional developers between 2023 and 2026, creating a new, high-frequency keystroke pattern that standard ergonomic hardware was never designed around; at the same time, remote and hybrid work has pushed more employers to formalise home DSE equipment allowances that mostly go unclaimed for lack of an obvious, justifiable product to buy with them.
+
+The passages show general demand for programmable macro pads and frustrated forum users trying to remap a 'Copilot key' via AutoHotKey, but none show demand specifically for accept/reject/skip AI-code-suggestion buttons, nor any existing paid product or search volume tied to that exact pain.
+
+UK law requires employers to run DSE assessments for home workers and to fund any equipment those assessments call for, which shows the employer payer has both a legal motive and an obligation to spend money on this kind of equipment.
+
+The passages describe DTC/Shopify channels for mechanical keyboards and general ergonomic accessories, but none mention wrist rests, macro buttons, DSE allowance claiming, or any route to reach AI-coding developers specifically — the pev-hook is irrelevant here.
+
+The passages describe DSE regulations and self-assessment mechanics but say nothing about expense-claim or employer-allowance rules, so they don't show whether claiming a third-party gadget against a DSE budget is lawful or against policy.
+
+The passages only show that RSI as a general concept exists and has resources/guidance (HSE leaflets, an RSI info site, a developer's personal anecdote, mouse/trackball ergonomics), with no mention of AI coding tools, accept/reject/skip suggestion keystrokes, or any pain specific to that workflow. None of the cited passages address whether developers are suffering from or paying to solve this specific AI-suggestion-triggered strain pattern.
+
+The passages are dated 2026 and describe an active, growing market — ongoing head-to-head comparisons of Copilot, Cursor, and Windsurf, and Cursor's valuation climbing from $2.5B to a reported $60B — showing AI coding assistants are a current, expanding habit rather than a peaked or fading one.
+
+The passages show Amazon.co.uk is an open, self-serve marketplace with a beginner's guide for creating a seller account and listing products, and existing wrist-rest products (ROCCAT, HyperX) already sell through it, so a novice can list a similar physical accessory there without specialist expertise.
+
+The passages confirm generic UK home-office/DSE expense categories (furniture, software, equipment) but none names a DSE self-assessment mechanism tying a specific ergonomic device to an employer allowance, nor confirms typical allowance amounts (£150-£300/year) or that developers can expense niche input hardware this way.
+
+None of the three specific conditions is shown: the DSE regulations require employers to fund suitable equipment rather than banning a product like this, no passage prices customer acquisition against lifetime revenue, and no passage shows a single company holding most of the wrist-rest or macro-pad distribution channel — Amazon.co.uk appears open to any seller. The evidence gaps that remain (unverified demand for accept/reject-specific buttons, unconfirmed employer allowance amounts) are coverage weaknesses, not one of these three named risks.

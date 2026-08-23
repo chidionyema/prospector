@@ -1,0 +1,25 @@
+DepositWin — turns a withheld tenancy deposit into a dispute file built from past winning cases.
+
+A fixed-fee service that builds gig workers a tenancy deposit dispute file, drawing on patterns from thousands of past adjudication decisions, so unfair landlord deductions get overturned.
+
+Someone moves out of a shared flat or HMO and the landlord holds back part or all of their deposit for cleaning, marks on the wall, or general wear that came from normal living. The tenant can raise a free dispute with whichever scheme protected the deposit — the Tenancy Deposit Scheme, mydeposits, or the Deposit Protection Service, all set up under the Housing Act 2004. But the free process just hands them a form. It doesn't tell them what actually convinces an adjudicator, so most tenants argue from feeling hard done by rather than from evidence that has worked before.
+
+This service does the opposite. For a flat fee, or a cut of whatever gets recovered, someone reviews the tenant's tenancy agreement, check-in and check-out inventory, photos and messages with the landlord or letting agent, then writes the dispute submission itself. The submission follows the exact structure and wording that has won in similar disputes before, because the operator keeps a running file of anonymised adjudication outcomes and studies which arguments and evidence actually change a decision. This borrows the way personal injury claims firms use a database of past settlement payouts to know precisely what a case is worth and what proves it, and applies the same trick to the small, fast disputes renters fight over deposits.
+
+Every case handled adds another data point on what wins, so submissions get sharper and quicker to produce over time, and a copycat starting from nothing can't match that pattern library on day one. The schemes themselves cannot become this, however much dispute volume grows. They are appointed to sit neutrally between landlord and tenant, and their running costs come from landlord and agent joining fees, so they have every reason to leave tenants figuring it out alone.
+
+Gen Z tenants aged 18 to 27 living in shared flats and HMOs in UK cities, working gig or casual jobs such as food delivery, rideshare driving or freelance work, who need their deposit back fast to cover the next one and can't afford to lose a fight with a landlord's letting agent.
+
+Deposit disputes sit exactly where the current wave of renting reform doesn't reach. The Renters' Rights Bill working through Parliament since 2024 tightens rules on evictions and rent rises, but it leaves the deposit deduction process under the Housing Act 2004 untouched, so the same three schemes keep running the same free but unguided adjudication. Meanwhile more young workers are renting for longer in shared houses with higher tenant turnover, which means more move-outs, more inventories in dispute, and more people who need a withheld deposit back quickly to fund their next move.
+
+The passages confirm evidence gaps and disputes exist around deposit deductions, but none show that a proprietary pattern library of past adjudication outcomes produces durable, hard-to-replicate value — they describe the general adjudication process, not a data moat.
+
+None of the passages describe a rival service that packages winning-argument patterns or past adjudication outcomes into dispute submissions for tenants; they only note the general deposit-scheme legal framework, an unrelated cleaning company, and unrelated consumer topics.
+
+The gig-economy passages give generic global earnings/market-size stats with no UK renter income data, and the deposit-scheme passages just describe the free dispute process itself, so nothing here shows whether gig workers have budget or willingness to pay a fee for this service.
+
+None of the passages describe any self-serve channel, forcing mechanism, or existing route for reaching UK deposit-dispute tenants — they cover Hong Kong deposits, UAE disputes, dispute-rate statistics, police-encounter videos, and irrelevant site metadata.
+
+The passages show FCA-regulated claims management companies exist for tenancy deposit claims and that free ombudsman routes exist, but none state that a productized dispute-file writing service (not a claims management/legal representation firm) requires FCA authorisation or is otherwise barred by law.
+
+[782252c09a09cf79] and [c563dea09f4ef9e5] confirm tenants routinely face deposit deductions they find excessive or unfair and that a whole dispute process with real case outcomes exists around this friction, while [53efbd8fbff039ab] shows the free ADR route only settles disputes rather than preventing the underlying pain. Together they show the deduction fights are common and real enough to generate a formal dispute pipeline, satisfying the low bar of an acute, recurring problem people actively contest.

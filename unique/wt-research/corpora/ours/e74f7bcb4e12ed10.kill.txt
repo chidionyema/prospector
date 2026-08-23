@@ -1,0 +1,35 @@
+RateCheck — the small business tool that hunts down business rates overcharges and builds your appeal pack.
+
+Shows any independent shop, café or office if they’re paying too much in business rates, using real Valuation Office data, and creates the challenge paperwork for a fixed fee.
+
+This borrows the way US property-tax appeal tools like Ownwell scan every home for a protest candidate, and repurposes it for the UK’s business rates — a cost most small occupiers suspect is wrong but never challenge because the process feels opaque.  
+
+The tool asks for your property address.  It pulls the rateable value from the Valuation Office Agency’s open data and instantly compares it against similar premises in your postcode that have a lower assessment.  It flags any that share your use-class, floor area band and location, then builds a side‑by‑side evidence pack you can submit through the VOA’s own ‘Check, Challenge, Appeal’ portal.  
+
+The engine gets smarter as it processes more challenges: every outcome feeds a dataset of what arguments worked, so the next person gets an even sharper recommendation.  Rivals would need the same volume of resolved cases to catch up — and because most small firms never appeal, that dataset is not lying around.  A flat fee of £129 per challenge pack keeps the cost far below a surveyor’s fee while returning hundreds of pounds in the first year if the rates come down.  
+
+The VOA’s online register is free, but it is a neutral listing — it won’t go prospecting for unfair valuations, won’t collate the comparative evidence for you, and won’t draft the formal challenge.  That gap is where a product‑led tool can sit, monetised one appeal at a time.
+
+Independent shopkeepers, café and takeaway owners, small office tenants — anyone leasing a single business unit with a rateable value under £15,000, who sees business rates as one of their biggest fixed costs and suspects they’re being overcharged but has no time to fight it.
+
+The 2023 revaluation pushed up many small-business bills just as energy, wages and input costs spiked.  The VOA’s formal challenge window is open, yet most small occupiers don’t act because the DIY route feels like legal paperwork.  Meanwhile, the VOA has moved its register online and exposed more comparable data — the raw material is finally easy for a software tool to scrape and structure, so the product is buildable today.
+
+Colliers reports a coming surge of business-rates appeals with high success rates, and CVS research finds appeal-processing delays already costing English hotels over £13m a year—evidence that occupiers are actively challenging bills and that the friction is financially material. The presence of dedicated business-rate specialists around that research further shows people already pay for help with this problem.
+
+The passages say UK shops and similar premises pay business rates, that some smaller firms may cut growth spending or close under that burden, and that retail and hospitality SMEs often lack reserves and face high insolvency [2ee73d224fbde071][234d6ac43e003aa2][4f050e8043b0438a]. None of them state whether independent shop, café or small-office occupiers can or will pay for a fixed-fee rates-challenge pack.
+
+The passages show that firms already offer business-rates appeal help to large and small businesses and that appeal websites exist, and they explain when ratepayers may challenge a valuation. They never say how those firms find customers, nor whether a self-serve signup, forced adoption path, or other easy acquisition channel exists for a tool aimed at independent shops and cafés.
+
+Official guidance describes a lawful Check–Challenge–Appeal path: ratepayers may set up a valuation account, raise a check, challenge the Valuation Office valuation, and appeal if needed. Helping users prepare paperwork for that same permitted process therefore does not require illegality or falsified measurements.
+
+Most passages are about unrelated ML or health analytics and say nothing about UK business-rates appeal value. The VOA material only confirms a free official check-and-challenge path exists; it does not show whether paid overcharge-hunting and evidence-pack tooling still retains paying demand or has lost all margin.
+
+Passages name several appeal and rates-checking offers—Appeal Business Rates, a free UK postcode search with appeal signals, another rates appeal service, plus the VOA’s official check/challenge path—but none say any provider holds most of this market or has locked up small-business appeal packs. They also never state that the segment is open or poorly served.
+
+The UK business-rates passages describe rates, Revaluation 2023, and appeal cutoffs in March–April 2023, but none state that a live challenge window or acute overcharge-appeal need exists now versus having already closed. The remaining passages concern US small businesses or unrelated videos and do not speak to current UK rates-appeal demand.
+
+Passages advertise paid UK professional business-rates appeal services that invite businesses to contact experts and buy challenge help now. That shows people are already paying to cut rates bills, so buyer demand for this problem is real.
+
+Official VOA sources show non-domestic rating lists and summary valuations are publicly downloadable, that Business Rates APIs expose rateable values, and that multi-year rating-list snapshots are published. Those retrievable records confirm the product’s core claim that UK business-rate valuations sit in public VOA data a tool can use.
+
+Official guidance describes a lawful Check–Challenge–Appeal route for ratepayers, and nothing in the passages bans third parties from preparing challenge paperwork. The same evidence names several paid appeal helpers and a free VOA path, but never shows acquisition cost exceeding what a customer could ever pay, or one firm holding most of this market.

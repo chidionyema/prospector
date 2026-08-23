@@ -1,0 +1,13 @@
+NurseSole Mobile – On-Site Shoe Repair & Custom Insoles for Healthcare Workers.
+
+A solo operator in a van provides rapid resoling and AI-molded custom insoles to nurses in hospital parking lots, compressing a 2-week podiatrist trip into a 20-minute break.
+
+Combine the rise of mobile health-tech with the unmet foot-pain crisis among an aging nurse workforce. Nurses destroy shoes on long shifts, suffer chronic pain, yet lack time for podiatry. A mobile service that scans, designs, and 3D-prints or heat-moulds orthotic insoles on-site while they work creates a captive, habitual buyer whose data compounds comfort predictions.
+
+NHS nurses and other standing healthcare public sector workers, paying per service (£25–£40) or a monthly subscription for sole maintenance and fresh insoles.
+
+Mobile fabrication costs have dropped, AI-driven orthotic design tools are accessible, and post-pandemic nurse retention pressures mean individuals are willing to spend on self-care if it fits into shift breaks.
+
+The only passage describes a commercial B2B platform that gives clinics mobile orthotic scanning and 7-day fulfillment with no special hardware; it neither affirms that the candidate's value is durable nor shows that value has evaporated, and a paid competing platform is not a total commodity or free first-party tool that removes all margin. It does not address whether demand for on-site insoles for nurses is real and durable.
+
+Passage [f3ab745cdfd3b302] shows Cobbler.ca already runs a specialized 'Medical & Healthcare' line resoling and reconditioning nurses', surgeons', and paramedics' footwear, so a dedicated incumbent already serves the healthcare-worker footwear-repair need rather than the space being open.

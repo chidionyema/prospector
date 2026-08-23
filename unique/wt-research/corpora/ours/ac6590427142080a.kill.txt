@@ -1,0 +1,21 @@
+FreelanceCaseWatch — the freelancer’s guide to UK tribunal and court rulings that set your rights.
+
+A weekly digest and searchable archive of employment tribunal, small claims and county court cases where a freelancer sued a client, summarised in plain English so you know your legal standing.
+
+A subscription media product that scrapes public judgments from BAILII and HM Courts & Tribunals Service, uses AI to identify cases involving freelance creatives (designers, writers, developers, consultants) and summarises the ruling, key arguments and what it means for similar disputes. A free tier delivers a weekly email with one featured case; a paid tier unlocks the full searchable archive and alerts when new relevant cases are published. The solo operator uses legal‑AI summarisation tools plus light editorial oversight to produce reliable, jargon‑free briefings. The moat is the proprietary taxonomy and curated database of freelance‑specific case law, which compounds with each new judgment. Competitors would need to build the same classification system and archive from scratch. The product turns a scattered, impenetrable public resource into actionable knowledge that helps freelancers before they end up in court — or gives them the confidence to push back when a client breaches a contract.
+
+Freelance creatives who want to understand their legal rights regarding non‑payment, scope creep, copyright, misclassification or contract breaches. A paid subscription costs £9 per month for full archive access and alerts.
+
+The UK freelance workforce is growing fast, and case law from the IR35 reforms, worker‑status claims (Uber, Pimlico Plumbers) and the post‑pandemic shift to project work is reshaping rights every month. Freelancers desperately need accessible legal guidance but cannot afford lawyers for everyday questions. AI summarisation is now good enough for a solo operator to monitor and explain judgments accurately and affordably, opening a market that was previously only served by expensive law-firm newsletters.
+
+The passages show free raw UK case materials on BAILII and official tribunal decision search, plus an existing plain-English Employment Tribunal briefing product for employees, but they never say whether a freelancer-focused digest still has lasting paid demand or whether free alternatives have erased that margin. Nothing in the evidence affirms durable subscription value or proves that value has already disappeared.
+
+The passages name general UK legal news and case-law newsletters (Solicitor News, Birketts, Law Brief Update) but never say whether any provider dominates—or even serves—plain-English digests of freelancer-vs-client tribunal and court rulings. They therefore neither show the niche is open nor that a market leader already owns it.
+
+None of the passages say freelance creatives have money or reason to pay for a UK tribunal and court-case digest. They cover hiring ads, a phone unlock tool, a generic UK average salary figure, open freelance-style jobs, and paid surveys, which do not show this audience can or will buy the product.
+
+Passages show newsletters already reach freelancer audiences with measurable sizes and sponsorship activity, and freelancer-facing media already uses a subscribe path. That is an executable, low-friction self-serve channel to the same buyers this digest would target.
+
+The passages show BAILII freely publishes UK case law online and that commercial web scraping can clash with site terms plus UK copyright and data-protection rules, but none say whether scraping BAILII or HMCTS judgments and selling AI summaries is allowed or forbidden. They therefore never settle whether this paid product can operate without breaking law or terms.
+
+Passages report that roughly 29–34% of freelancers had a serious contractual dispute in the past year and that 58% face non-payment or delayed pay with large annual losses. That shows freelancers already face acute contract and payment harm of the kind this digest is meant to help them judge.

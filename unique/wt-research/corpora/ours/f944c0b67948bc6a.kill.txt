@@ -1,0 +1,21 @@
+DataWipe — wipe your personal data from UK data brokers, fixed fee.
+
+A done-for-you service that sends opt-out requests to hundreds of UK data brokers, so your personal data no longer gets sold.
+
+This borrows the classic credit‑repair model, where a service systematically identifies negative entries and disputes them on your behalf—but applies it to the data‑broker ecosystem under UK GDPR.
+
+The operator maintains a regularly updated database of every known UK data broker (including the obscure ones that power direct‑mail lists, people‑finder sites, and background‑check services). For each broker the database stores the exact opt‑out process, email address, web form URL, and any required ID documents.
+
+A client submits minimal personal information (name, address, email, phone) and the service automatically fires off customised erasure requests under Article 17 GDPR, citing the client’s right to object to processing. It then monitors for acknowledgement and re‑sends as needed over a four‑week window. At the end the client gets a report confirming which brokers complied.
+
+The moat is the database itself—painstakingly built from FOI requests to the ICO, Companies House filings, and periodic test enquiries. Copycats would need months of crawling and updating to achieve the same coverage and freshness.
+
+Automation is nearly total: a Python script formats and dispatches the requests, while a simple CRM tracks responses. Only edge cases (brokers demanding wet‑ink signatures) require manual postal mail.
+
+Gen Z workers who are tired of unsolicited marketing, fear their employment or relationship history appearing on people‑search sites, and want to reclaim their digital privacy but lack the hours to navigate dozens of opt‑out forms.
+
+Public awareness of data rights under the UK Data Protection Act 2018 has surged, and the ICO is increasingly penalising non‑compliant data brokers—making them more responsive to correctly framed erasure requests. Meanwhile, the number of UK data brokers has proliferated, creating a worsening ‘whack‑a‑mole’ problem for individuals.
+
+UK users are turning to data-removal services as privacy and GDPR concern rises, and paid automated offerings still compete on broker coverage, automation, and price rather than disappearing. Free DIY lists and templates exist, but they have not wiped out paid demand—Incogni and other ranked services still charge for broader automated removal.
+
+Passages show Incogni and DeleteMe already submit opt-out and removal requests for UK users under UK GDPR, covering large numbers of data brokers, with Incogni rated Editors’ Choice over DeleteMe. That means paid providers already serve this exact need, so the market is not an open gap with no serious existing solution.

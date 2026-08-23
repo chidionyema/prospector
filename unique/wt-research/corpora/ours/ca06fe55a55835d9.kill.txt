@@ -1,0 +1,13 @@
+The Noise Nuisance Evidence Pack Agent.
+
+A solo operator deploys calibrated sound-level loggers in complainants' homes, retrieves them after a monitoring period, and produces a structured evidence pack for submission to the local council under statutory nuisance legislation.
+
+Combining the post-pandemic surge in home‑working (amplifying noise sensitivity) with chronically under‑resourced council environmental health teams, there is a gap for a private, rapid‑response evidence gatherer that forces councils to act. The service is adversarial to the duty‑ imposing body: the council's own first‑party monitoring is slow and often never materialises, while this agent provides an independent, calibrated report that leaves them no procedural excuse. `combine_signals` lens fuses home‑working noise complaints with public‑sector cutbacks.
+
+Public sector workers (teachers, NHS staff) living in urban/suburban areas who suffer from neighbour noise and have exhausted informal channels; they pay a flat fee per monitoring deployment (£150–300).
+
+Home‑working is now permanent for many public sector roles, noise disputes have risen sharply, yet council environmental health budgets are at an all‑time low. No off‑the‑shelf private monitoring service packages the evidence for a statutory nuisance claim.
+
+The passages show calibrated noise recordings are an established, court-proven form of evidence for neighbour-noise nuisance ([f9a016d0ca481ae4], [1ff0a0ada08e58f2]) and that a paid market for exactly this evidence-gathering already operates ([cbb31bf020275ffb]), affirming the value is real and durable rather than fabricated or evaporating. The existing homeowner-recorder hire is a competing substitute, not a free first-party tool removing all margin, so it does not refute durability under the polarity rule.
+
+The passages show multiple existing providers already deliver calibrated, court/legal-grade noise-nuisance evidence systems for complaints — NNR's Class 1 'legal-grade compliance' monitoring [1ff0a0ada08e58f2], Campbell Associates' 'robust evidence' resident-deployable systems [b9c078239f5cdbb1], and Acoustilog's calibrated long-term recordings 'proven as powerful evidence in court' [f9a016d0ca481ae4]. Incumbents already serve the evidence-pack need, so the space is not open.

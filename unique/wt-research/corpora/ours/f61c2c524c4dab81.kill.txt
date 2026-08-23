@@ -1,0 +1,11 @@
+The Last Mile Artifact Decoder.
+
+A subscription service that deciphers handwritten and poorly scanned shipping labels for last-mile delivery drivers, converting them into machine-readable barcodes and delivery instructions via a simple phone photo.
+
+Analogical transfer from medical transcription services to logistics. Last-mile couriers waste time deciphering illegible labels from small shippers who don't use digital systems. A solo operator can train a vision model on a niche dataset of real-world labels and offer a 'photo in, clear instructions out' service per delivery.
+
+Independent last-mile delivery drivers and small courier franchises (e.g., owner-operators under Amazon Flex, UPS subcontractors, or regional parcel services) who are paid per package and lose time decoding bad labels.
+
+E-commerce growth has saturated last-mile routes with packages from small sellers (Etsy, Facebook Marketplace, independent boutiques) who handwrite labels. No free tool exists for a driver to snap a photo and get instant, accurate parsing—OCR on phones fails on cursive, smudged ink, and wet cardboard. The signal is the rise of 'prosumer' shipping volume.
+
+The passage demonstrates that high-quality, LLM-based shipping label OCR is already an established, professional-grade service offered by Veryfi, which challenges the candidate's claim that a solo operator can establish a unique, durable advantage through a proprietary dataset.

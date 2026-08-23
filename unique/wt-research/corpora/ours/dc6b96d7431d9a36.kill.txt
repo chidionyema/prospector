@@ -1,0 +1,35 @@
+PermitLag, sells your unused chip-fab tool slot.
+
+A booking tool that lets a US semiconductor startup resell its reserved but unused equipment time at a shared fab, priced the way airlines sell empty seats.
+
+Small chip and photonics startups buy blocks of time on shared university and state-backed fabs. They pay for the block whether or not their wafers are ready. A run slips, a mask arrives late, a postdoc quits, and the slot burns.
+
+This is a tool the startup's own hardware lead installs. It watches their internal run schedule and their fab's booking system. When a slot is going to go unused, it posts that slot to the other startups already accredited at that same fab, at a price that falls as the date gets closer.
+
+This borrows the way airlines drop the price of an empty seat as departure nears, and applies it to cleanroom hours. Nobody prices fab time this way today. The fab's own booking page treats a slot as booked or free, with one price and no clock.
+
+The payer is the hardware or process lead at a fabless or photonics startup with 5 to 40 staff, the person who signs the fab agreement. The trigger is recurring and predictable: every slipped tape-out, every failed lithography step, every month-end when the block expires.
+
+The deliverable is money back on a slot that was going to be wasted, plus a filled slot for the buyer who needed one this week. The tool takes a cut of each transfer and a monthly seat fee from the seller.
+
+The part that compounds is the record of who actually shows up. After a year, the tool knows which startups no-show, which slots reliably free up in the last 72 hours, and what a Tuesday night deep-etch slot at a given facility really clears for. New entrants cannot buy that history. It only exists by sitting inside the scheduling of both sides.
+
+The public evidence that this pain is already paid for: the National Science Foundation's National Nanotechnology Coordinated Infrastructure lists published hourly rate cards for its member sites, and the CHIPS and Science Act (Public Law 117-167) funds the Natcast-operated National Semiconductor Technology Center, whose facility access is explicitly sold as paid time. New York's Albany NanoTech and California's Berkeley Marvell Nanolab both publish external user rates in dollars per hour. People are already writing these checks.
+
+This names New York State first, where the Albany complex concentrates enough accredited users in one facility for transfers to clear. Start there, then add California.
+
+The hardware or process lead at a fabless semiconductor or photonics startup with 5 to 40 staff, who holds the fab access agreement and the budget for cleanroom hours. In New York State that means the roughly dozens of external users accredited at Albany NanoTech; in California, the external users at the Berkeley Marvell Nanolab and Stanford's nanofabrication facility.
+
+The CHIPS and Science Act of 2022 (Public Law 117-167) has pushed a wave of new hardware startups into shared national facilities rather than owning their own fab. The National Semiconductor Technology Center, run by Natcast, is standing up paid facility access for exactly these firms. More small companies are now sharing fewer, busier cleanrooms, which is precisely the condition that makes a wasted reserved slot expensive and a same-week slot valuable.
+
+The passages describe Albany NanoTech as an advanced university research facility with 300mm cleanrooms used as a technology test-bed, plus NSF and state funding awards, but they say nothing about outside companies booking and paying for equipment time, what that time costs, or whether reserved time goes unused. Without any passage on paid slot booking or wasted reserved hours, there is no basis to judge whether the money saved by reselling an unused slot is real or lasting.
+
+The passages show that shared university and nanofab facilities widely run booking systems such as Agilent's iLab and NEMO for reserving equipment and tracking usage, and that general-purpose schedulers like Calendly and Zoho Bookings exist for appointments; one listing even notes that filling time slots is the traditional paradigm these tools work in. None of them describe any product that lets one accredited user resell or transfer a reserved-but-unused fab slot to another user at a falling price, so the passages neither show that need being served nor that it is open.
+
+The passages are generic definitions of photonics as a scientific field and listings for retail hardware stores in Little Rock, Arkansas; none of them mention semiconductor startups, cleanroom time, fab access fees, or what any such company spends. Nothing here shows whether a hardware or process lead at a chip or photonics startup has the budget and willingness to pay £199.99, so the claim cannot be checked against this evidence.
+
+The passages only describe the Albany NanoTech Complex's physical scale and equipment (80,000 sq ft, 120+ wafer processing and metrology tools) and SUNY Poly's academic accreditation and governance arrangements; they say nothing about how outside startups book time, who those users are, or any way to reach them. Without any passage describing a booking system, a user community, or a channel to the hardware leads who sign fab agreements, there is no basis to judge whether a seller could reach these buyers easily.
+
+The passages cover UC Berkeley undergraduate transfer admissions, the Federal Reserve, IRS tax filing, federal agency naming, and apparel retail — none of them mention semiconductor fabs, cleanroom booking, resale of reserved equipment time, or any rule governing whether a facility's users may transfer their booked hours to each other. With nothing addressing the contracts or laws that apply to this activity, there is no basis to say the profit here would be lawful or unlawful.
+
+The passages only define what nanofabrication and nanomanufacturing are and mention a university's general support for the technology; none of them says anything about startups booking or paying for time on shared cleanroom equipment, about reserved slots going unused, or about anyone spending money to fix that [e1cca7facb3c24dd, 57ef1dc0f869eee2, 0a573281e74499f0, 644c0f02257fe9e9, 2edfde96850ad47e].

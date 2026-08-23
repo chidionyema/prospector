@@ -1,0 +1,13 @@
+The Synthetic-Voice Rider Watch.
+
+A subscription intelligence briefing for freelance voice actors and narrators that decodes the AI-cloning clauses being quietly slipped into studio, audiobook, and e-learning contracts — before they sign them.
+
+Lens: analogical — I transplant the 'earnings-call / 10-K clause-diff' service model that fixed-income analysts pay for (tracking covenant changes buried in bond prospectuses) onto voice-over contracts, where synthetic-voice buyout language is now the covenant that quietly transfers a career's core asset. The daily friction: a solo voice freelancer is handed a 14-page MSA with one sentence granting 'perpetual synthetic replication rights' and has no way to know if that clause is standard, negotiable, or career-ending. Why-now signal: post-2024 SAG-AFTRA AI fights and the 2025-2026 explosion of audiobook/e-learning houses inserting cloning riders. The media asset is a running, member-fed corpus of parsed real contracts — the briefing tells you 'Penguin's new narrator MSA added Clause 9(b); here's the redline that got it struck last month.' That corpus compounds with every submitted contract and no first-party actor can build it.
+
+Working freelance voice actors, audiobook narrators, and e-learning VO artists earning £15k-£120k/yr who sign 5-40 contracts a year and fear signing away cloning rights.
+
+2024-2026 wave of studios/audiobook publishers embedding synthetic-voice replication clauses; SAG-AFTRA AI strike aftermath; cheap voice cloning makes a single bad clause existential, and no reference exists for what is standard vs predatory.
+
+Passages [f9bff4122eabf1ec] and [b3076093d14b5389] confirm AI voice cloning is a real, active technology that builds digital models of a voice's tone/pitch/style and is commercially deployed at scale (7,000+ vocal profiles, 170+ languages), which makes the underlying threat — and thus the value of decoding cloning clauses before signing — real and current, not fabricated or evaporating. [1de664c4f4049db8] confirms voice actors are a represented professional class facing this technology, but no passage shows the value is commoditised or that a free tool removes all margin for the briefing servi
+
+Passages fae8e913dc859875, f4b5a6695a94e5e2, and 659308d43632c84b show NAVA is an established organization already serving voice actors on exactly this need — free AI/synthetic-voice rider templates and contract language available even to non-members, plus an industry-wide fAIr Voices Pledge — so the space around voice-actor AI-clause protection is not underserved but occupied by a dominant free incumbent.

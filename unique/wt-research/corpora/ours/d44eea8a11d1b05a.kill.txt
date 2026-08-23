@@ -1,0 +1,25 @@
+PlanningUmpire – the resident's per-application objection argument builder.
+
+A web tool that shows you exactly which planning arguments have worked in your council area, so your objection or support letter has maximum impact.
+
+Submitting a planning objection or support letter is a black box: you guess which points might sway the committee, but without real data on past decisions you are often ignored. This tool rebuilds the process from first principles. It scrapes every publicly available planning-committee minutes and decision notice for a given local authority, extracts the arguments raised and the outcome, and then maps which types of argument (overlooking, traffic, character, precedent etc.) correlate with approvals or refusals. When a user enters a new application reference, the tool analyses the proposal against that historical pattern and produces a personalised bullet‑point script – not a legal template – that the resident can submit verbatim in the council's online portal.
+
+Because the data is specific to each council’s voting behaviour, no generic guide can match it. The tool is built and operated by one person: the core technology is web scraping, NLP clustering and a simple report generator. Distribution is entirely organic – via local Facebook groups, Nextdoor, community associations and word of mouth – which costs nothing and reaches the exact audience of squeezed‑middle homeowners facing a neighbour’s extension or a new development next door.
+
+The durable wedge is proprietary data that compounds over time: as more authorities are ingested and more outcomes observed, the predictive precision grows and no late-comer can replicate the historical record. The strongest free alternative is the council’s public‑comment system, but that offers zero intelligence about what actually works. Planning consultants charge hundreds and do not deliver this kind of evidence-based argument selection; they typically rely on generic professional judgement, which this tool empirically outperforms.
+
+A householder aged 35‑55, often with a mortgage and school‑age children, who is directly affected by a nearby planning application – a neighbour’s loft conversion, a new housing estate, a commercial development. They have a strong emotional and financial stake (fear of lost light or value) and are willing to pay a modest fixed fee to get a well‑directed objection that feels their own but is secretly data‑backed.
+
+Public participation in planning remains woefully ineffective – most objections are dismissed as irrelevant. At the same time, every council now publishes its planning papers online as a statutory obligation, making the raw materials freely available for the first time at scale. Advances in accessible NLP models (even a single developer can cluster thousands of text snippets) now turn those scattered PDF minutes into a proprietary asset that would have required a research team five years ago.
+
+The passages only describe UK planning mechanics: officer reports drive recommendations, and refusals can turn on policy or comparable approvals. They never say whether council-specific data on which objection arguments succeed remains scarce, paid-for, and not already given away by free portals or generic guides.
+
+The passages only show generic how-to guidance for writing planning objections and government funding for councils and PropTech digital-planning or community-engagement projects; none name a market-leading or already-dominant product that builds council-specific, outcome-linked objection scripts for residents. They likewise never state that this niche is open or that no such rival exists.
+
+The passages state householder application fees in England (about £548 plus a portal charge) and offer free objection letter templates; none say whether neighbours who object to someone else’s application have money or will pay for a paid argument-building tool. Applicant fees and free templates do not show that this buyer segment can or will pay.
+
+The passages show neighbourhood forums discussing local plans, online guides on how to object, and council portals for submitting named comments, but none describe a path by which a paid objection-script tool reaches those householders. They never address Facebook groups, Nextdoor, organic community reach, or any other executable low-friction sales or discovery channel for this product.
+
+The passages only note that UK Re-use of Public Sector Information rules exist or were replaced, plus unrelated site menus, terms, and foreign disclaimers. None say whether scraping local planning minutes and selling a paid objection-argument script is allowed, banned, or blocked by council terms.
+
+The passages show UK residents do write detailed objections, need material planning grounds, and face high approval rates (~83–87%), and that free objection guides exist. They never say anyone pays—or is willing to pay—for help making those objections work.

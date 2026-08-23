@@ -1,0 +1,27 @@
+Sublet Rights Compliance SaaS for Rent-Stabilized Tenants.
+
+A SaaS that monitors rent-stabilized lease clauses and local rent board rules for tenants in high-rent cities, automatically generates and files the legal sublet permission request with their landlord, and tracks response deadlines to prevent wrongful eviction or rent overcharge.
+
+Rent-stabilized tenants in NYC, San Francisco, or Los Angeles often want to sublet while traveling or moving temporarily, but face complex legal hurdles (e.g., NYC requires a written permission request, landlord must respond within 30 days, and tenant must prove primary residence). A solo operator can build a rules engine that scans a tenant's lease and local rent board regulations, auto-generates the compliant request letter, files it via certified mail/web portal, and sends deadline reminders.
+
+A rent-stabilized tenant (e.g., a 35-year-old software engineer in Brooklyn who travels for 3 months) paying $150 per sublet request.
+
+Post-pandemic remote work has spiked temporary relocations; rent-stabilized tenants risk losing their apartment if sublet rules are violated. Landlord-side eviction tech is mature, but tenant-side compliance tools are nonexistent. No first-party tool exists because landlords have no incentive to help tenants sublet legally.
+
+The provided passage describes property management software designed for landlords to navigate rent stabilization regulations, but it does not contain any information regarding tenant demand, search behavior, or existing paid solutions for tenant-side sublet compliance.
+
+The passage describes a landlord-focused auditing tool for rent-regulated apartments and does not address the existence or current need for a tenant-side sublet compliance SaaS.
+
+The provided passage describes a property management software solution for landlords and does not address potential marketing channels or routes to market for a tenant-facing sublet compliance tool.
+
+The provided passage describes a tool designed for landlords to audit apartment compliance with NYC rent regulations and does not address the legality or permissibility of a tenant-side SaaS for automating sublet requests.
+
+The passage confirms the complexity of NYC rent stabilization regulations, but it does not address tenant-specific subletting requirements or the availability of tenant-side compliance tools.
+
+The passage establishes high average rents in NYC but does not address whether rent-stabilized tenants have the motive or budget to pay for a sublet compliance service.
+
+The passage describes a landlord-focused platform for apartment audits (Rent IQ) and does not provide information regarding distribution channels or routes to market for the proposed tenant-side sublet compliance SaaS.
+
+The provided passage describes a tool designed for building owners to audit rent-regulated apartments, not for tenants to manage sublet compliance. It offers no evidence regarding the pain or willingness of tenants to pay for sublet assistance.
+
+The proposed SaaS relies on automated document generation, which fails to address the adversarial nature of rent-stabilization regulations. Sources demonstrate that rent-stabilization compliance is a high-stakes, landlord-focused field dominated by complex DHCR reporting and regulatory auditing. For a tenant, the primary barrier to subletting is not the absence of a form letter, but the landlord's active opposition to subletting a rent-stabilized unit. An automated sublet request is likely to be ineffective against a landlord motivated to deny requests and initiate eviction proceedings; therefore, the method does not deliver the promised outcome of enabling a compliant sublet.

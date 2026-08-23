@@ -1,0 +1,21 @@
+The Solo Studio Financials Podcast & Report.
+
+A monthly podcast and companion data report that anonymises and dissects the income statements, tax hacks, and spending habits of real freelance creatives, building a proprietary financial benchmarking dataset.
+
+Freelancers suffer from acute isolation and have no way to benchmark their pricing, profitability, or business efficiency—they make financial decisions in the dark. Borrowing the ‘open‑book’ franchise model from brick‑and‑mortar businesses (where owners share real numbers), this show attracts high‑intent solos willing to pay for regular anonymised P&L transparency, creating a durable data‑set that gets more valuable as more contributors join.
+
+Solvent, growth‑minded freelancer creatives (designers, developers, consultants) who want to stop guessing and start benchmarking their studio’s financial health.
+
+Inflation, rate stagnation, and the normalisation of remote solopreneurship have made financial benchmarking urgent; the ‘build‑in‑public’ and ‘open‑salary’ movements normalise sharing numbers, providing cover for anonymised data collection.
+
+The passages show that generic freelancer confidence and day-rate benchmarking data already exist (IPSE, CRA, Work Crowd, and other free rate guides), but none address whether anonymised income-statement/P&L benchmarking specifically retains value once these adjacent free resources exist.
+
+The passages show finance-freelancer marketplaces (Upwork, Toptal) and freelancer-rate/benchmarking tools (Pixel, IPSE reports) exist, but none describes a proprietary anonymised income-benchmarking media product built from real freelancer P&Ls, so no dominant incumbent or funded rival solving this specific offering is evidenced.
+
+The passages describe UK freelance/self-employment market size and salary benchmarks, and note businesses increasing spend on hiring freelancers, but none address whether freelance creatives themselves have budget or motive to pay for a financial-benchmarking subscription. Client-side hiring spend is not evidence of freelancer disposable income or willingness to pay.
+
+The passages describe general podcast conversion metrics, ad/agency channels, and unrelated newsletter-to-video tactics, but none address how this specific benchmarking report/podcast would reach and convert freelance creatives who would contribute their financial data.
+
+The passages describe general UK GDPR anonymisation/pseudonymisation obligations (ICO code of practice, re-identification risk standard) but say nothing about whether collecting and publishing anonymised freelancer P&L data specifically can lawfully be done, nor whether the studio's process would meet the 'not reasonably likely' re-identification bar given small sample sizes and distinctive niche business details.
+
+70% of freelancers report feeling lonely, disconnected or isolated [9a74dc5ba22c02eb], and freelance isolation is described as a distinct, real phenomenon with specific effects [341ed87d99bd8284][7911b1111fde4260], establishing a genuine acute pain point among the self-employed. However, none of the passages address financial benchmarking, pricing guesswork, or willingness to pay for anonymised P&L data specifically — the survey/market passages [d7dde7ed960b2b62][747f508088b99956][45f752acd55ee3b2] speak to freelancer confidence and day-rate stagnation, not to demand for a benchmarking…

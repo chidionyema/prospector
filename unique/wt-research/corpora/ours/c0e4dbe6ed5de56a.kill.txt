@@ -1,0 +1,27 @@
+Georgia film tax credit findings, for production software.
+
+A feed of Georgia Department of Revenue audit findings on film tax credit claims, structured for production accounting software vendors so their customers avoid denied claims.
+
+Georgia's film tax credit (O.C.G.A. § 48-7-40.26) gives a 30% transferable credit on qualified production spend. Georgia is the #1 US film production destination, with 400-plus productions spending $4B-plus annually. The Georgia Department of Revenue audits film tax credit claims heavily, and denied claims can result in five- to seven-figure loss per production.
+
+Production accounting software vendors (Movie Magic Budgeting, Showbiz Planning, Greenslate, EP Budgeting) serve Georgia productions. Their customers ask them, before spending on a budget category, whether that spend will survive a DOR audit.
+
+The product is a feed of DOR film tax credit audit findings, classified by spend category (above-the-line talent, below-the-line crew, equipment rental, post-production, location fees), with denial rates and the specific DOR language used to deny. Recurring trigger: each new DOR audit report (quarterly); each new spend category in a production budget. Public source: Georgia DOR Tax Credit and Incentive Reports, Georgia Department of Economic Development film office statistics, and Georgia Open Records Act responses on denied claims.
+
+Built from the raw constraint, not the playbook: the real signal is that DOR has a specific audit playbook — it scrutinizes loan-out corporation arrangements, above-the-line payments to non-Georgia residents, and "qualified production spend" interpretations. The product surfaces that playbook from past denials; that parsed history is the durable advantage.
+
+This is not a Georgia DOR filing tool (the DOR's free first-party portal processes claims). It is the intelligence layer that comes from parsing past audit denials — a dataset the DOR will never publish in structured form.
+
+Tech-vertical (Shape B): this serves the film production software ecosystem and the platform rule (Georgia's transferable film tax credit and its audit regime) that hurts production budgets.
+
+Production accounting operations manager at a film production SaaS vendor (Greenslate, EP Budgeting, Showbiz) with 50–500 Georgia productions as customers.
+
+Georgia's 2024 legislative session debated tightening the film tax credit amid budget pressures, signaling future audit intensification. Production volumes hit record highs in 2024, and DOR audit staff have not scaled proportionally — per-production audit scrutiny is rising. The first wave of post-pandemic film tax credit audits is now completing.
+
+Passage [af7d344d4116671e] confirms Georgia requires mandatory audits for film tax credit claims, with only six firms certified by the Georgia Department of Revenue to perform them and recent legislative tightening of the regime — a commonsense indication that the audit stakes are real and acute enough to warrant such a certification infrastructure. The remaining passages concern unrelated topics (disability tax credit TikToks, a Payments/Crypto auditor role, health-plan prior authorization, CTE settlement denials) and do not address this market.
+
+The passages address general SaaS vendors (Intuit QuickBooks, Xero, Polar, Gusto) and vertical SaaS knowledge bases, but none mention Georgia film tax credits, film production accounting software vendors (Greenslate, EP Budgeting, Showbiz), or the budget authority of operations managers at those firms to purchase a £79.99 data feed on DOR audit findings.
+
+The passages describe film production budgeting software (Movie Magic, Showbiz, Celtx) and note they are cloud-based with subscription models, but none address whether a third-party audit-finding data feed has a low-friction route into these vendors — no marketplace, integration channel, or sales motion is evidenced.
+
+No passage addresses whether Georgia DOR film tax credit audit findings are public records obtainable under the Georgia Open Records Act, whether compiling and reselling them would violate taxpayer confidentiality rules, or whether any statute or contract would block the product. The passages only describe the Georgia DOR's general role [7dca150e1a01d4db] and unrelated tax/audit topics [6451428574d370c0, a455c841f4af2d42], so the legality of this specific data-intelligence margin cannot be ruled on.

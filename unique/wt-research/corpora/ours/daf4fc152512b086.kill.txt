@@ -1,0 +1,27 @@
+FlockBook — the small egg producer's per-flock record-keeping and salmonella testing kit.
+
+A physical binder and digital dashboard that keeps UK small-egg producers compliant with DEFRA rules, with automatic salmonella testing reminders and a flock performance tracker.
+
+Small egg producers—those keeping fewer than 50 birds or selling at the farm gate—must comply with the Egg Marketing Standards Regulations and the National Control Programme for salmonella. They need to keep detailed records of flock treatments, egg sales, and test schedules, but existing options are either generic paper notebooks or expensive farm-management software built for large commercial flocks. FlockBook is a purpose-built physical binder containing pre-printed log sheets, pre-addressed sample submission forms to APHA-approved labs, and a unique QR code that unlocks a simple web dashboard. The dashboard automatically sends SMS reminders for mandatory salmonella testing based on the producer's flock size and the sampling frequency required by APHA. The kit is sold online, printed and shipped on demand with no inventory. The digital companion is built on a no-code platform, keeping the solo operator's overhead minimal. Over time, the aggregated and anonymised data from many small flocks—covering treatment efficacy, testing outcomes, and production patterns—becomes a proprietary dataset that can be sold as benchmarking reports to industry newsletters, feed suppliers, or even Defra. Producers face a real switching cost once a full year of flock records lives inside the platform.
+
+UK small egg producers—hobbyist keepers, micro-farms, and smallholders who sell eggs at the farm gate or through local honesty boxes. They pay a one-off £29 for the binder and first year of digital access, then £12 annually to keep the dashboard active and receive reminders.
+
+Post‑Brexit, APHA has increased inspections of small producers to enforce traceability. At the same time, the cost-of-living crisis has driven a surge in backyard poultry keeping and direct sales, meaning more uncommercial operators are subject to rules they often do not fully understand.
+
+Passages describe a marketed smallholder poultry app and compare multiple poultry record-keeping products (Poultry Log, Flockstar, FarmKeep, My Poultry Manager), which shows people already use dedicated tools for flock records now. That is active demand for the same compliance and tracking problem FlockBook targets.
+
+APHA egg marketing inspectors still inspect registered egg production sites and related premises, and APHA states inspectors will keep assessing faults under established practice, with revised guidance taking effect on 6 April 2026. That shows egg-marketing compliance oversight is an active, current regime—not a finished or abandoned rule set—so the need for producer record-keeping tied to those inspections remains live now.
+
+Passages describe open UK smallholding communities that welcome members, tip-sharing, and advertisers, plus a show-poultry group for breeders and hobbyists. A novice can join those groups and reach the same smallholders and poultry keepers who would buy a small-flock egg record kit.
+
+None of the passages say whether selling a flock record binder, testing reminders, or anonymised benchmarking data to UK small egg producers is lawful or requires breaking rules or falsifying results. They only cover unrelated Defra tagging, pet-shop, and wild-bird rules, plus economy and US poultry notes that do not speak to this product’s legality.
+
+None of the passages address UK small-egg-producer rules, DEFRA/APHA obligations, salmonella testing schedules, or record-keeping requirements. Mentions of eggs, salmonella kitchen tips, or a UK egg hunt do not confirm or contradict the candidate’s core regulatory claims.
+
+None of the passages show that UK small egg producers have money or a reason to buy a paid record-keeping and testing kit. They cover Brazilian poultry exports, smallholder spending in developing countries, and general backyard-chicken tips or courses, with no evidence of what UK hobbyists or micro-farms pay for compliance tools.
+
+Passages describe print-on-demand services that print, bind, and ship to the UK, plus branded drop shipping with no minimums and custom binder makers. That is an executable self-serve path to put a physical binder kit in a UK buyer’s hands without holding inventory.
+
+The passages show Defra-approved Salmonella labs, APHA sample submission, and general Salmonella risk in the food chain, but they never say small egg producers struggle with flock records or testing reminders, nor that anyone pays for a binder or dashboard to fix that. Nothing here establishes an acute, paid-for pain around compliance record-keeping for that group.
+
+The passages never say selling a flock-record binder, testing reminders, or anonymised benchmarking data is illegal, and they never state what it costs to win a buyer versus the £29 then £12 a year that buyer would pay. They show several poultry record apps and open UK smallholding groups plus print-and-ship suppliers, not one firm locking the channel.

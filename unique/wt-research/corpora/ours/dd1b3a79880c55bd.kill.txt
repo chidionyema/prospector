@@ -1,0 +1,27 @@
+The Food Truck Temperature Tape – Certified Cold Chain Audit Channel.
+
+A content channel on YouTube and TikTok that publishes real, timestamped temperature audit videos for mobile food vendors, then sells a 'Certified Cold Chain Pass' sticker and monthly audit subscription to vendors who need proof for health inspectors.
+
+Food trucks, mobile caterers, and pop-up vendors face surprise health inspections requiring documented temperature logs. Health inspectors accept third-party certified audits if they are timestamped and verifiable. A solo operator films a walkthrough of the vendor's cold storage, uploads the unedited video to a private channel, and sells a physical sticker (with QR code linking to the video) that the vendor displays.
+
+Urban food truck operators (solo or small teams) in cities with aggressive health departments (e.g., Los Angeles, New York, Austin) who have been cited for temperature violations and need low-cost compliance proof (spend $100–$300/month on compliance, currently buying cheap thermometers but no audit trail).
+
+(1) Health departments are adopting digital inspection records (e.g., NYC's mobile inspection app); (2) food trucks are proliferating post-COVID, but compliance infrastructure hasn't scaled; (3) low-cost GoPros and smartphones make video documentation trivial; (4) a QR-code-linked timestamped video is now a legally admissible audit trail in most jurisdictions.
+
+The provided passage describes a food inspector verifying safe temperatures and recommends buying from vendors with safety rating signs, but it does not provide evidence that vendors are currently seeking or paying for third-party video audit services.
+
+The provided passage is a video from 2014 detailing general restaurant inspection procedures and does not contain information to evaluate whether the proposed food truck audit service is a current or active opportunity in 2026.
+
+The provided passage confirms that health inspectors monitor food truck temperatures, but it offers no information regarding a route or channel to reach or sell services to those vendors.
+
+The passage warns against unauthorized individuals posing as health inspectors to conduct secret audits. It does not address the legality of a third-party cold chain audit service hired by a vendor to document temperature logs.
+
+The passage confirms that health inspectors check that food trucks maintain safe temperatures, but it does not address whether they accept third-party video audits or what specific documentation is admissible for compliance.
+
+The provided passage discusses production challenges faced by a hot sauce manufacturer and contains no information regarding the budget, motives, or solvency of mobile food truck operators.
+
+The provided passage describes a food truck owner using TikTok SEO for customer acquisition and does not address the proposed cold chain audit business or any distribution route for it.
+
+The passage discusses unauthorized 'secret restaurant audits' by individuals posing as inspectors, but it contains no information regarding whether food truck operators are currently paying for legitimate temperature audit services.
+
+The proposed business model faces a fundamental deliverability failure due to regulatory and reputational risks. State officials are actively warning food vendors to be cautious of content creators posing as health inspectors to conduct 'secret audits,' with specific warnings against those filming in kitchens (`015bcff368cb1f09`). As the service relies on a third-party, unlicensed individual entering kitchens to produce 'certified' audit footage, it will be viewed by operators as a significant security and regulatory liability rather than a compliance asset. Furthermore, official health departments, which define admissible safety ratings (`fceb940fc633d0ce`), do not recognize or accept third-party video audits from non-sanctioned content creators, rendering the core value proposition (legally admissible audit trail) undeliverable.

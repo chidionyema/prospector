@@ -1,0 +1,192 @@
+DRN-4038513
+The complaint
+Miss S complains that Barclays Bank UK PLC allowed a third party Credit Reference Agency 
+(CRA) to change her email address and they provided her with poor customer service.
+What happened
+Miss S says that when she rang Barclays to update her account to paperless 
+communication, the email address they held for her was incorrect as it had a letter missing. 
+She says that Barclays told her that a third party CRA gained access to Barclays system and 
+accessed her bank account and changed her email address. She says she was told this took 
+place on 7 January 2014. Miss S made a complaint to Barclays.
+Barclays upheld Miss S’s complaint in part, and they offered her £100 compensation. They 
+said the CRA cannot access their systems directly to update her details. While they share 
+information with the CRA, and vice versa, in line with some of their processes, they said 
+given the time that has elapsed since January 2014, they no longer have access to some of 
+the records which might have shed light on exactly how her e-mail address was updated. 
+Barclays said in some instances they do update details based on information from another 
+department within Barclays or from third parties, like CRA’s, with whom they have an 
+agreement with, and no error is made when they update information in line with their 
+processes. Miss S brought her complaint to our service. 
+Our investigator said he thought £100 compensation was fair for what happened. He said as 
+the amendment was over six years ago, Barclays have insufficient records to show why the 
+email address was changed or what it was previously. However, there’s no evidence the 
+email address was changed fraudulently. He said Barclays have confirmed the CRA are 
+unable to access their banking systems to make changes. 
+Miss S asked for an Ombudsman to review her complaint. She said she wanted the cost of 
+the calls to be refunded and she lost two days’ worth of work, which she wanted Barclays to 
+pay what she lost as a result of not being able to afford to travel to work due to their errors. 
+As my findings differed in some respects from our investigator’s, I issued a provisional 
+decision to give both parties the opportunity to consider things further. This is set out below:
+“I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Miss S has made a number of points to this service and I’ve considered and read everything 
+she’s said and sent us. But, in line with this service’s role as a quick and informal body I’ll be 
+focusing on the crux of her complaint in deciding what’s fair and reasonable here.
+I’ve listened to a number of calls about the conversations Miss S has had about this issue, 
+including the call where the email address issue is first discovered. On the call on 15 
+January 2022, Miss S talks about changing to paperless communication and the call handler 
+goes through some security details with her and asks for her email address. It is here that 
+they realise there is a different email address. Miss S says it must have been changed 
+
+recently and the call handler checks for her. The call handler says “when I’ve clicked on, it 
+just says it was last updated on the 7th of January 2014”, then “last updated source (name of 
+the CRA)”. Miss S asks if the CRA updated her email address and the call handler says “well 
+they say last updated source, they wouldn’t be able to update an email address”. The call 
+handler updates the email address to the correct address and Miss S asks her to carry out 
+an investigation into what happened. The call handler then registers Miss S for paperless 
+statements. 
+I’ve listened to another call which Miss S had on 22 February 2022. This is a short call where 
+the complaint handler introduces herself to Miss S and lets her know she will be investigating 
+the complaint. She says “I understand that it is very worrying. I’m not quite sure if they (the 
+CRA) have actually accessed our systems or if they have notified us of your email address 
+and we have updated our systems in 2014, I’m getting some clarity about how this was 
+actually done”. Miss S confirms she is happy for the complaint handler to continue to 
+investigate and tells her she is very grateful for her call. The complaint handler confirms she 
+will get back to her and it could be the next day, it could be the Friday, but it would be in and 
+around that timeframe. But no definitive time was agreed.
+On 11 March 2022, Miss S rings Barclays. She says she was expecting a call from the 
+complaint handler, but the complaint handler never rang her back. The call handler informs 
+Miss S that they have 56 days to resolve her complaint and she would add onto the existing 
+complaint that the complaint handler didn’t ring her back. The call handler did not provide 
+any comment on what happened regarding the change of the email address.
+On 29 March 2022, Miss S asks for an update for her complaint. The call handler explains 
+that they issued her a final response letter on 22 March 2022. Miss S said she wanted to put 
+in a complaint as the complaint handler didn’t ring her back. The call handler attempts to 
+transfer Miss S to the level two complaints team. But while she is on the phone, she receives 
+a call on her other line from a Barclays call handler.
+Although Miss S asks the new call handler to ring her back on her other number, the call 
+handler says Barclays were paying for the call. Miss S tells the other call handler she will let 
+him go as the call handler is paying for the call then she says “Barclays are going to pay for 
+all of my calls”, but the call handler had not confirmed they were going to pay for all of her 
+calls, he had said they were paying for that call. 
+I’ve listened to a call on 15 June 2022, where call costs are discussed from earlier in the 
+year. Miss S tells the call handler that the CRA changed her email address on the Barclays 
+systems, but the call handler tells Miss S that the CRA “can’t change your email address on 
+Barclays because they are nothing to do with Barclays” Miss S replies “I know, but Barclays 
+is the one that told me that, I’ve got their paperwork”. She tells the call handler she has 
+brought this to our service and the call handler informs her that he can’t discuss anything 
+else with it being with our service, and that “your correspondence will be with (our service), 
+not with Barclays”.
+On none of the calls I’ve been provided, does any call handler (including the original call 
+handler or the complaint handler) confirm that the CRA has accessed Barclays systems and 
+amended her email address. After considering all of the evidence here, I’m satisfied that the 
+CRA did not have access to Barclays systems and were able to change Miss S’s email 
+address. I know Miss S may be doubtful about this. But the evidence I’ve seen shows the 
+last updated source for her email address was the CRA (prior to it being changed to the 
+correct email address). I’m persuaded that this wording is important - “source”. As this 
+suggests the CRA were the source for the different email address.
+I’ve looked online at the terms and conditions of the account. These say under the “Credit 
+reference and fraud prevention agencies” section that Barclays “share information about you 
+and your accounts with credit reference agencies and fraud prevention agencies. They also 
+share information about you back to us, and with each other and other organisations. This 
+includes information about your financial history. We do this to make sure the information 
+you give us is correct. It’s also important for preventing crime, to recover debts, and to check 
+that the accounts and services you take from us are right for you.” 
+They also say “We’ll also continue to exchange information about you (and your accounts) 
+with credit reference agencies while you are our customer. The credit reference agencies 
+may in turn share your personal data with other organisations which may use it to make 
+decisions about you.”
+Based on the terms and conditions, Barclays and the CRA’s share information about 
+customer’s. This is not unusual. But here, on the balance of probabilities, I’m persuaded that 
+the CRA is likely to have shared the wrong email address with Barclays who had likely 
+thought that the email address they had for Miss S was incorrect and they updated the 
+system based on the source – the CRA’s information given to them.  
+It has since been confirmed to Miss S via her responses from Barclays and at least two call 
+handlers that the CRA’s do not have access to their systems. And I’ve seen no evidence that 
+the CRA has access to change things on Barclays systems. They can share information with 
+them, but they don’t appear to be able to change anything directly. I hope this gives Miss S 
+the reassurance that a CRA can’t amend Barclays systems directly and nothing untoward 
+happened here.
+But Barclays did let Miss S down with the complaint handler not calling her back when she 
+should have done. They also let her down by saying they would pay for at least one of her 
+calls, but they did not consider that she would have incurred roaming call costs as a result of 
+this. I have read everything that Miss S has said about the impact this had on her as her 
+increased phone bill did not leave her enough money to pay her expected bills and resulted 
+in her missing two days of work due to not being able to afford to travel to work. 
+I’ve considered that Miss S wants to be paid for loss of earnings. But for me to even consider 
+this, there were a number of items of evidence that I requested from Miss S to prove 
+Barclays were the sole reason of this and to see if she was able to mitigate the impact of 
+this. But Miss S was unable to provide these documents by the deadline issued and 
+although I offered to wait until the deadline to give her a chance to get these items, she 
+asked for me to progress her case as she said it didn’t make any sense to delay this matter 
+any further. So unfortunately I’m unable to consider this aspect of her complaint here for loss 
+of earnings due to Barclays call costs making her phone bill higher than expected and 
+having a knock on effect on other financial matters.
+But I have considered the roaming call costs. While Miss S has not been able to provide us 
+with an itemised bill, she has told us that these costs total £66.19. Barclays told Miss S that 
+they were paying for the phone call on 29 March 2022. But this was to the phone line she 
+asked not to be rung on. So it’s only fair that Barclays pay for these costs that they agreed 
+to. I asked Barclays if they considered that she would be charged a roaming fee while 
+abroad and they told me they had not. So on this occasion, they have agreed to pay for the 
+call costs that Miss S had said she incurred without any extra evidence. I’m satisfied that this 
+is fair as without an itemised phone bill I would be unable to award her the full £66.19 she 
+said she had for her costs. 
+Barclays have said that there was two unsuccessful attempts by the complaint handler to 
+ring Miss S on 1 and 11 March 2022. However, this was later than when she said she would 
+ring back Miss S. And there are no indication of these calls on the call log. While this may be 
+due to the call not connecting, it would be reasonable for the complaint handler to leave a 
+short message to let Miss S know she tried to give her a call. It is not clear what telephone 
+number these calls were attempted on either – whether these were calls to her overseas 
+telephone number, or to her UK number (which she could have incurred roaming charges if 
+she had been able to answer these calls). But Miss S is adamant that she had no missed 
+calls here. 
+It appears that she only spoke to the complaint handler who said she would ring her back 
+once. I know Miss S may dispute this, but there is no evidence to say they spoke more than 
+once. Miss S is unable to give us any dates of another call with the complaint handler, there 
+are no system or call notes or call recordings of any other call with the complaint handler and 
+Miss S has said to several call handlers she never received a call back from the complaint 
+handler. 
+Barclays have said that they originally offered her £100 for compensation. But they would 
+increase this to £175 for the distress and inconvenience she suffered as a result of letting 
+her down with not considering roaming charges and her not getting a phone call back when 
+she was told she would get one. I’m satisfied that £175 is fair for what happened here. In my 
+opinion it recognises the impact that the lack of phone call would have had on her. Miss S 
+was clearly distressed by this and she was inconvenienced by having to chase up Barclays 
+about this. In addition, she found out later that she incurred call costs despite asking the call 
+handler to ring her back on her overseas telephone line and him reassuring her that Barclays 
+were paying for the costs of that call, but they hadn’t considered the roaming charges, and 
+as such this had an impact on Miss S also. 
+So while I can’t agree that the CRA changed Barclays systems and there is no evidence that 
+this happened for the reasons I’ve already given, I’m satisfied that £175 for distress and 
+inconvenience is fair for what happened here. With the addition of the £66.19 for the phone 
+call costs that Barclays agreed to pay without evidence, then the total amount of 
+compensation that Barclays should pay Miss S is £241.19. So it follows I intend to ask 
+Barclays to put things right for Miss S.”
+I invited both parties to let me have any further submissions before I reached a final 
+decision. Miss S wanted to know why my provisional decision did not include the reason why 
+her evidence would not be able to be included by the deadline that I gave her to provide this 
+information. She said it seemed that I thought that she has or had no intention of putting 
+forward this evidence. Barclays said they had no further points to raise.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I must make it clear to Miss S that I am not of the opinion that she has or had no intention of 
+putting forward the evidence I asked her for before the deadline which was set. I am aware 
+that Miss S asked for this deadline to be extended to five/six months as she is currently 
+overseas, but I explained to her through our investigator the role that our service provides 
+and why I was unable to agree to her extension request.
+In summary, Miss S’ response hasn’t changed my view and my final decision and reasoning 
+remains the same as in my provisional decision. I know Miss S will be disappointed, but I 
+hope she understands my reasons. 
+Putting things right
+In my provisional decision I said I intend to uphold this complaint in part. I said I intend to ask 
+Barclays Bank UK PLC to pay Miss S a total of £175 for distress and inconvenience and 
+£66.19 for call costs. I’m still satisfied this is a fair outcome for the reasons given previously.
+My final decision
+I uphold this complaint in part. Barclays Bank UK PLC should pay Miss S a total of £175 for 
+distress and inconvenience and £66.19 for call costs.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Miss S to accept 
+or reject my decision before 3 May 2023.
+ 
+Gregory Sloanes
+Ombudsman

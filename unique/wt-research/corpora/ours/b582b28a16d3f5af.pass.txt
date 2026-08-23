@@ -1,0 +1,31 @@
+AI customs audits for Savannah port importers.
+
+An audit that reviews AI-generated HTS classification on port imports and flags errors before CBP issues a penalty.
+
+The Port of Savannah is the fourth-largest container port in the United States, and many importers now run AI tools to classify incoming cargo under the Harmonized Tariff Schedule. CBP audits under 19 USC § 1592 carry penalties of up to four times the duty loss for negligent misclassification and substantially more for fraud. The licensed customs broker or trade compliance officer at a Savannah importer doesn't have a way to spot which AI classifier is systematically misclassifying which HTS chapter.
+
+The service consumes the importer's AI classification output, runs it against CBP's CROSS ruling database and the importer's historical entry data, and delivers a pre-filing audit dossier flagging high-risk entries. Pricing is per shipment or per container bundle, with a retainer for importers running steady volume through Garden City or Ocean Terminal.
+
+This borrows from how IRS tax-prep software audits flag errors before the taxpayer files, applying that pre-submission review discipline to customs. The private dataset of which AI classifiers systematically fail which HTS chapters only an auditor running many importers' flows can build, because CBP's CROSS database is a static ruling library, not an error-rate-by-tool working set.
+
+Licensed customs broker or trade compliance officer at a Savannah port importer moving containers through the Port of Savannah or the Garden City terminal.
+
+CBP's 2024 customs broker reform tightened broker recordkeeping; AI HTS classifiers entered widespread use since 2023 and the 2025 de minimis changes sharply raise the cost of misclassification on the remaining entry lines.
+
+Multiple commercial products are actively marketed and sold for AI-powered HTS classification audits, including lgistics.ai which specifically offers 'AI-powered tariff audits that find misclassifications' with paid plans and existing customers managing $2M–$50M in annual customs value, plus USTradeStack and CodeHTS offering subscription and per-report pricing — demonstrating real buyer demand and willingness to pay RIGHT NOW.
+
+Passages show customs brokers charge $150–$800 per formal entry (e1dfec514698d353) and that nearly every commercial importer hires one (679685128cb4ce3c), so the payer clearly has budget well in excess of £49.99. Rising effective tariff rates (11.0% vs 2.4% in late 2024, per f48cae541577c494) and IEEPA-related refund activity (84764dad9fc95744) establish motive: misclassification costs are growing, making a low-cost audit tool trivially affordable and rationally purchased.
+
+The passages show multiple established routes to the buyer: the NCBFAA Annual Conference 2026 and AAEI's 105th Annual Conference gather trade compliance professionals; the IFFCBA of Savannah has cultivated broker relationships since 1966 specifically for the local Savannah trade community; and Tariffi already demonstrates a broker-partnership distribution model in this space. Together these confirm a low-friction route exists to reach licensed customs brokers and trade compliance officers at Savannah importers.
+
+The passages define 'customs business' under 19 USC § 1641 as involving transactions with CBP concerning classification and valuation, and confirm brokers must hold a CBP license, but none address whether a pre-filing AI classification audit service (which does not itself transact with CBP) constitutes 'customs business' requiring a license or is permissible as advisory work. The statute text is truncated and no passage rules on this specific activity.
+
+The passages confirm the pain is real and acute: CBP actively enforces 19 USC §1592 with penalties ranging from hundreds of thousands to millions of dollars per misclassified shipment (97fb337e354b6012), issued 2,121 penalties and collected $19.3 million in 2022 alone (3f26b4373a3bee79), and multiple vendors are actively building and benchmarking AI/LLM HTS classification tools precisely because misclassification is a critical cost-bearing bottleneck (6d1c2c1f1d8c0152, 8a793279bc709c69, 9b6351739847d7f1).
+
+Passages confirm the 2025 de minimis suspensions (EO 14256 for China, EO 14324 for all countries) and the One Big Beautiful Bill Act's permanent repeal are live and currently in force, with courts declining to restore the exemption. This makes the candidate's 'why now' anchor — that de minimis changes sharply raise the cost of misclassification — a current, active regulatory shift rather than a stale leftover. The passages do not address AI HTS classifier adoption directly, so confidence is moderated by that missing link.
+
+The passages show licensed customs brokers and trade compliance professionals in Savannah are active on LinkedIn: a BDO customs & international trade professional in the Savannah area (b314136bee9211d2), a retired licensed customs broker formerly with FedEx Trade Networks in Savannah (a5b45a72bea6aa24), and John S. James Co. actively posting a Licensed Customs Broker job in Savannah on LinkedIn (c2733943e1468645). This establishes an open, beginner-executable channel (LinkedIn outreach) to reach the target buyer.
+
+The candidate claims negligent misclassification penalties under 19 USC § 1592 reach four times duty loss, but passages [536f293e6a19683e] and [143c01ef7abb7463] state negligent penalties cap at twice duty loss, with four times applying to gross negligence — the candidate's core penalty claim is contradicted. Additionally, other key claims (Savannah being the fourth-largest US port, AI HTS classifier adoption, CROSS database, 2024 broker reform, 2025 de minimis changes) are not addressed by any passage.
+
+No passage shows the advisory pre-filing AI audit service is illegal or banned; multiple vendors (USTradeStack, CodeHTS, lgistics.ai, QuickCode, HTS Hero, Atlanto, Tariffi) already operate paid services in this adjacent space at price points ($29–$199 per report) that realistically clear a small-business margin. No single distributor controls 80%+ of the Savannah customs broker channel — the NCBFAA, AAEI, IFFCBA Savannah, and direct broker outreach all remain open routes, contradicting a structural monopoly.

@@ -1,0 +1,9 @@
+The Sublet Scorekeeper.
+
+An automated tool for Gen Z subletters to track, split, and document utility and rent payments across multiple flatmates in a single tenancy, generating legally valid payment records for deposit disputes.
+
+Gen Z workers in casualised gig roles frequently sublet rooms in shared flats to manage volatile income, creating messy payment chains and deposit disputes. Analogical to construction adjudication, this tool uses a fixed-fee, automated payment tracking and documentation service that forces accountability via landlord deposit schemes. The lens is analogical — transplanting the forced documentation and dispute mechanism from construction adjudication to the informal rental submarket.
+
+Gen Z workers (aged 18-27) in gig or freelance work who sublet a room in a shared flat and want to avoid losing their deposit or being short-changed by flatmates.
+
+Rising rent costs and gig economy growth mean more young people sublet; deposit protection schemes (e.g., TDS in UK) are underutilised because subletters lack formal documentation. Recent UK Renters' Reform Bill increases deposit rights, but no tool automates record-keeping for informal subtenancies.

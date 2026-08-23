@@ -1,0 +1,33 @@
+ChipYield, tells fabless startups why wafers fail.
+
+A tool for UK fabless semiconductor startups that reads the test data coming back from a foundry and pinpoints which design blocks are killing yield.
+
+A UK fabless chip startup sends a design to a foundry, waits three to six months, and gets back a wafer map plus a mountain of electrical test readings. Someone then has to work out why one chip in five is dead. Today that person is a contract yield engineer charging day rates, and they usually work from spreadsheets and a lot of institutional memory.
+
+This tool does that job with a model instead. It ingests the standard test file the foundry returns (the industry calls it STDF), lines it up against the chip's own layout and block hierarchy, and says in plain terms which block, which layer and which test step the failures cluster around. The output is a short brief the founder can send back to the foundry with a specific question, rather than a general complaint.
+
+This borrows the way aircraft engine makers read flight-recorder data to find which component is drifting before it breaks, and applies it to silicon test data that today just gets filed away.
+
+The wedge is proprietary data that compounds. Every design a customer runs through builds a library linking failure signatures to layout patterns and to specific foundry process nodes. A foundry sees its own process across many customers but is contractually walled off from customers' design internals. A design tools vendor sees the design but never the returned test data. Only a party sitting between the two sees both, and each new customer makes the signature library better for every other one.
+
+The UK has a real cluster to sell into: the government's National Semiconductor Strategy, published May 2023, commits up to £1bn and names design and compound semiconductors as the UK's strength, and Innovate UK funds design startups in Bristol, Cambridge and South Wales. These are venture-funded teams that can pay, and a lost tape-out costs them a funding round.
+
+This is the AI-native shape: a model does work a named human role, the contract yield analysis engineer, is paid day rates for today.
+
+The VP of Engineering or hardware founder at a UK fabless chip startup of 15 to 80 people, typically one that has raised a Series A and has one or two designs in production at TSMC, GlobalFoundries or UMC. They pay per design, per silicon revision.
+
+The UK National Semiconductor Strategy of May 2023 put up to £1bn behind UK chip design, and Innovate UK has been funding a wave of small fabless teams since. Those teams are now reaching first silicon at the same time as foundry slots are scarce and expensive, so a failed revision costs months they do not have.
+
+The passages describe analysing wafer maps and test data to find why chips fail as one of the most critical steps in chip manufacturing, and show several commercial companies (PDF Solutions, Synopsys, yieldHUB, yieldWerx) selling paid software to do it, so the underlying need is real and people pay for it today rather than it being given away free [96c1d5d1b3fd2afe][acad0a1841014eea][85cccd3222e119fa][1922925ccce16868][1e205bbaa05e7a93].
+
+The passages show that PDF Solutions sells yield-improvement software and describes itself as a leading provider, including an 'Exensio Fabless' product used by chipmaker Melexis, and that Siemens is a large industrial technology company — but nothing states how much of this market either holds, nor whether anyone serves small UK fabless startups analysing returned foundry test data per design [844e5e15c7582184, 039e7af0f3a4a5d9, 5e62d0d50b06358c, 9d090f487bca3551, 541b3cdfc1929537, 329bfd119ed3191c].
+
+The passages show UK fabless semiconductor startups are real, active and venture-funded — one Cambridge company, Cambridge GaN Devices, just raised a $32m Series C [d24a55ae3216787f] — and the sector is described as growing and attractive for design activity [937566374dee0416]. A company that has raised tens of millions can comfortably afford a one-off £149.99 purchase, and the passages also describe these startups as under immense pressure [db2d104e603be598], which is the motive to buy; no passage suggests these buyers are broke or unwilling to spend.
+
+The passages only offer a searchable database of Innovate UK-funded companies, unrelated design and arts award listings, a bare list of foundries, and notes about TSMC's partner-ecosystem event — none of which says how a seller reaches UK fabless chip startups, whether those founders can be signed up without a long enterprise sale, or that any of these venues admits a small new supplier.
+
+The passages that touch semiconductors only mention UK export controls on sensitive semiconductor companies and technologies and a technical note that certain SEM equipment accepting standard wafer carriers is not controlled [1422f6739d0ea7d4][0efd8c723f70c7c9][1672a46a00b671e3]; none of them says anything about whether analysing a chip's own test data for its owner is permitted or restricted, and the remaining passages are about Ethereum tooling, enterprise software and street videos [df079948d375d2dc][5cb94db4c6eb3c37][6d9a9df73dbdbdf2].
+
+The passages show that for fabless chip startups the tapeout is the single largest capital outlay before any revenue, and that hardware fixes are expensive because a fix means redoing design, verification, a new mask set, production test updates and sometimes a new package [39d70528329cea6e][11f58df39a4c3b61]; the passages also treat wafer yield loss as a quantity these firms actively model and project [c6aad168d0db527d].
+
+Nothing in the passages shows this work is barred: the only rules mentioned are UK export controls on sensitive semiconductor technologies and a note about which microscope equipment is not controlled, neither of which touches a company analysing its own chip's test data [1422f6739d0ea7d4][0efd8c723f70c7c9]. Several firms sell this kind of analysis software and one calls itself the leading provider, but no passage gives any provider's share of the market, and the buyers named have raised tens of millions, so nothing shows a single controller or costs that outrun what a customer could pay [039e7af0f3a4a5d9][1922925ccce16868][d24a55ae3216787f].

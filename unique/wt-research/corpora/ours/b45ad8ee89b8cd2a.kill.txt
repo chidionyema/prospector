@@ -1,0 +1,21 @@
+The Dockmaster's Tide Guide.
+
+A hyper-local, paid-subscription newsletter and video channel that predicts dock-level water depths 7 days ahead for small-boat marina operators and DIY dock owners on tidal inland waterways, using public river gauge data and a proprietary AI model trained on local siltation patterns.
+
+By applying a cross-sector analogical transfer of how surf forecasters monetize hyper-local wave predictions (e.g., Surfline) to a neglected niche—inland marina operators who lose revenue when boats can't dock due to unforecasted low water—a solo operator can build a paid content channel that solves a real, recurring operational pain. The persona, a manual tradesperson (marina operator/dockmaster), already pays for tide tables but finds them too broad, and loses £200-500 per dry-dock day.
+
+Marina operators on non-tidal but managed inland waterways (e.g., River Thames, Trent, Norfolk Broads) who manage 10-50 berths and lose income when boats cannot access docks due to unforecasted low water levels. Also DIY dock owners with private jetties.
+
+Climate change is causing more extreme low-flow events on managed rivers; public tide tables are optimized for coastal sea-going vessels, not shallow-draft inland boats. Meanwhile, cheap IoT water-level sensors and open gauge data have become available, but no one has packaged them into a predictive, local, paid product for this niche.
+
+The passage describes a 'Real-Time Boating Safety Platform' using NOAA data. It does not provide enough detail to determine if this platform directly addresses or commoditizes the candidate's specific value proposition of hyper-local, 7-day dock-level water depth predictions for inland waterways using proprietary AI trained on local siltation patterns.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+The passage describes 'SPADE for Ports and Marinas,' an AI-powered solution for water depth management that 'reduces costs, improves operations' for ports and marinas, indicating these entities have both the motive and implied budget to pay for solutions addressing water depth challenges.
+
+The passage describes "Dock.ninja", a platform providing "Localized water intelligence" with various features, implying an existing and executable digital distribution route for this type of hyper-local water information.
+
+The passage describes a local water intelligence service but provides no information about whether its operational margin is lawful or if it requires breaking any laws, terms, or falsifying measurements.
+
+The passage describes 'DockTides', a free AI-powered app that provides dock water depth forecasts. The existence of a free, AI-powered solution for this problem indicates that a free workaround dominates, refuting the claim that people are currently paying to solve this problem.

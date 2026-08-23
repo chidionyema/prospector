@@ -1,0 +1,23 @@
+The Commercial Lease Break Fee Negotiator.
+
+A productized service that audits expiring commercial leases for small retail tenants and negotiates with landlords to waive or reduce break penalties, charging a percentage of the savings.
+
+Analogical: Like car accident lawyers who take contingency fees from insurance settlements, this service applies the same 'no-win, no-fee' model to commercial lease break clauses, where small tenants face opaque penalty calculations and lack negotiation leverage against corporate landlords.
+
+A small independent retail store owner (e.g., cafe, boutique, barber) in the UK or US, leasing a single unit, facing a £5,000-£20,000 break penalty when closing or relocating. Payor is solvent because they are exiting a lease with cash from the business or personal savings.
+
+Post-pandemic retail churn is high; many small tenants signed 5-year leases in 2020-2021 and are now hitting break points. Landlords are under pressure to keep units filled, creating a negotiation window. Solo operator can leverage a proprietary database of recent local market rent comps and landlord portfolio occupancy data to craft leverage.
+
+The provided passage describes a service for auditing CAM and NNN lease overcharges, but does not address the commercial lease break fee negotiation service proposed in the candidate.
+
+The provided passage details a service focused on auditing CAM and NNN charges, which is distinct from the candidate's focus on negotiating commercial lease break fees. Therefore, it does not demonstrate that an incumbent is already addressing this specific need.
+
+The provided passage discusses a CAM/NNN lease audit service for SMB tenants but does not contain information regarding the solvency or willingness of small retail store owners to pay for commercial lease break fee negotiation services.
+
+The provided passage describes a service for CAM/NNN lease auditing rather than a commercial lease break fee negotiation service, and therefore does not address the distribution route for this specific candidate.
+
+The provided passage discusses auditing CAM and NNN overcharges in commercial leases, but does not address the legality of negotiating lease break fees.
+
+The provided passage discusses CAM (Common Area Maintenance) audits, not commercial lease break fee negotiations, and therefore does not offer evidence regarding the pain or market reality for the latter.
+
+The proposed service is redundant and poorly positioned due to existing incumbents in the 'productized lease services for SMBs' market. Companies like SaveOnLease and CAMAudit.io already successfully serve the target demographic (retail/SMB tenants) by productizing lease-related financial audits (3fbd0051fdb0b0de, f5db1d96b0a97b9e). These incumbents already possess the customer relationships and, critically, the existing lease data needed to potentially add break-fee negotiation as a feature. Trying to build a standalone, low-margin, high-adversarial-friction service around break-fee negotiation—which is far less formulaic than CAM/NNN audits—is strategically inferior to the established model of automating audit discovery and management, making the proposed business unviable as a standalone venture.

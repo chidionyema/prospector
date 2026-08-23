@@ -1,0 +1,574 @@
+{
+  "id": "f2ac7df9995c334e",
+  "title": "Gig Deactivation Reversal Dossier",
+  "oneLiner": "A productized service that builds a proven appeal pack for gig workers unjustly deactivated by platforms like Uber, DoorDash, or Instacart, using a proprietary dataset of successful appeal arguments and outcome patterns.",
+  "whoPays": "Gig worker aged 18-27 who has been deactivated and sees the service as a lifeline to restore their primary income source, paying from their remaining cash buffer (often $49, $99).",
+  "whyNow": "Growing gig workforce, increasing number of algorithmically-driven deactivations with limited human recourse, and a small but highly motivated body of workers who will pay for a better shot at reinstatement.",
+  "verifiedAt": "2026-08-15T15:36:08.421391+00:00",
+  "supported": 4,
+  "total": 6,
+  "sourceCount": 29,
+  "scores": {
+    "pain_acuity": 4,
+    "money_provability": 2,
+    "automatability": 4,
+    "distribution": 3,
+    "defensibility": 3,
+    "build_feasibility": 3
+  },
+  "premortem": {
+    "strongestAlternative": "Worker filing the appeal themselves using the platform's own internal review form.",
+    "whyDurable": "",
+    "sources": [
+      {
+        "url": "https://self-representation.org.uk/who-can-represent-you-at-an-employment-tribunal/",
+        "domain": "self-representation.org.uk",
+        "label": ""
+      },
+      {
+        "url": "https://www.ms-solicitors.co.uk/employee/employment-tribunal-services/",
+        "domain": "ms-solicitors.co.uk",
+        "label": ""
+      },
+      {
+        "url": "https://driversguild.org/deactivation/",
+        "domain": "driversguild.org",
+        "label": "Deactivation Representation, IDG"
+      },
+      {
+        "url": "https://www.acas.org.uk/",
+        "domain": "acas.org.uk",
+        "label": "Acas | Making working life better for everyone in Britain"
+      },
+      {
+        "url": "https://iwgb.org.uk/en/page/support-and-advice/",
+        "domain": "iwgb.org.uk",
+        "label": "Support and advice · IWGB"
+      }
+    ]
+  },
+  "adversarial": {
+    "killCase": "The passages contain no evidence that a third-party appeal-writing service for gig deactivations is banned by UK law or requires legal qualification; UK employment tribunals explicitly permit lay representatives, and no passage shows acquisition costs exceeding a £49-99 fee. No single provider controls 80%+ of UK deactivation-appeal distribution, the closest free alternatives (IDG is US-only, Acas offers general advice, IWGB legal help is union-gated) are fragmented and none cover the niche end-to-end.",
+    "decisive": false
+  },
+  "checks": [
+    {
+      "name": "Will the value last, or evaporate?",
+      "key": "value_durability",
+      "verdict": "supported",
+      "confidence": 0.74,
+      "rationale": "UK tribunal cases (Iqbal v Uber London, Hussein v Uber, Manjang v Uber Eats) demonstrate ongoing, contested deactivations within the UK gig economy, confirming the problem persists. US evidence that drivers 'rarely get reinstated' through internal appeals indicates platform processes remain opaque and unfavourable, sustaining demand for third-party advocacy. No UK-based free or commoditised incumbent appeal service is documented in the passages (IDG is US-based), so the value is not shown to be already absorbed.",
+      "sources": [
+        {
+          "url": "https://www.gov.uk/employment-tribunal-decisions/mr-s-iqbal-v-uber-london-ltd-3202211-slash-2024",
+          "domain": "gov.uk",
+          "label": "Mr S Iqbal v Uber London Ltd: 3202211/2024, GOV.UK"
+        },
+        {
+          "url": "https://www.gov.uk/employment-tribunal-decisions/mr-z-hussein-v-uber-6010938-slash-2024",
+          "domain": "gov.uk",
+          "label": "Mr Z Hussein v Uber: 6010938/2024, GOV.UK"
+        },
+        {
+          "url": "https://www.personneltoday.com/hr/uber-eats-settles-drivers-facial-recognition-discrimination-claim/",
+          "domain": "personneltoday.com",
+          "label": "Uber Eats settles driver's facial recognition discrimination claim"
+        },
+        {
+          "url": "https://www.yahoo.com/news/articles/taxi-workers-alliance-wants-more-223100835.html",
+          "domain": "yahoo.com",
+          "label": "Taxi Workers Alliance wants more protection for Uber, Lyft drivers who get booted from app"
+        },
+        {
+          "url": "https://driversguild.org/deactivation/",
+          "domain": "driversguild.org",
+          "label": "Deactivation Representation, IDG"
+        },
+        {
+          "url": "https://www.lni.wa.gov/news-events/article/23-26",
+          "domain": "lni.wa.gov",
+          "label": ""
+        }
+      ]
+    },
+    {
+      "name": "Have the big players already won?",
+      "key": "incumbency",
+      "verdict": "supported",
+      "confidence": 0.73,
+      "rationale": "No passage shows a dominant UK incumbent or funded rival productising gig-deactivation appeals. The platform's own internal review is described as barely functional and one-sided for drivers, while Acas is a broad free employment-advice service with no evidence it covers contractor-on-platform disputes, and IWGB legal help is gated behind union membership and not presented as a specialist appeal engine. The UK gig-deactivation appeal niche therefore appears open in these passages.",
+      "sources": [
+        {
+          "url": "https://www.metaintro.com/blog/gig-driver-deactivation-appeal-rights-2026",
+          "domain": "metaintro.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.acas.org.uk/",
+          "domain": "acas.org.uk",
+          "label": "Acas | Making working life better for everyone in Britain"
+        },
+        {
+          "url": "https://iwgb.org.uk/en/page/support-and-advice/",
+          "domain": "iwgb.org.uk",
+          "label": "Support and advice · IWGB"
+        },
+        {
+          "url": "https://www.acas.org.uk/advice",
+          "domain": "acas.org.uk",
+          "label": "Advice | Acas"
+        }
+      ]
+    },
+    {
+      "name": "Can the payer actually pay?",
+      "key": "payer_solvency",
+      "verdict": "unverifiable",
+      "confidence": 0.73,
+      "rationale": "The ASHE earnings tables contain only cookie consent screens with no actual wage data, and the remaining passages either describe generic financial-hardship concepts or US-specific retirement withdrawal rules. No passage provides the earnings or disposable income of UK gig workers aged 18-27, so affordability of a £49.99 one-time fee cannot be determined from this evidence.",
+      "sources": [
+        {
+          "url": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/adhocs/2511annualsurveyofhoursandearningsasheestimatesofgrossbasicweeklyandannualearningsforspecifiedoccupationsengland2023and2024",
+          "domain": "ons.gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/earningsandhoursworkedbyindustryandoccupationashetable29",
+          "domain": "ons.gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/adhocs/3139annualsurveyofhoursandearningsasheestimatesofgrossbasicweeklyandannualearningsforspecifiedoccupationsengland2024and2025",
+          "domain": "ons.gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.latitudefinancial.com.au/hardship-care/",
+          "domain": "latitudefinancial.com.au",
+          "label": ""
+        },
+        {
+          "url": "https://www.reachlink.com/advice/stress/what-gig-work-actually-does-to-your-sense-of-self/",
+          "domain": "reachlink.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.consumeraffairs.com/finance/hardship-loans.html",
+          "domain": "consumeraffairs.com",
+          "label": ""
+        }
+      ]
+    },
+    {
+      "name": "Is there a route to reach the market?",
+      "key": "distribution",
+      "verdict": "supported",
+      "confidence": 0.73,
+      "rationale": "The passages show existing high-traffic channels where deactivated UK gig workers already gather: Facebook groups with more than 100,000 subscribers trading Deliveroo/Uber Eats accounts, and an IWGB mobilisation reaching around 200 drivers protesting unfair dismissals. These demonstrate that a solo operator can reach a large, self-identified buyer pool through low-friction routes (social groups, union networks), and the existence of a live US deactivation-help phone service further confirms the channel is executable.",
+      "sources": [
+        {
+          "url": "https://liveapp.inews.co.uk/2024/03/15/inside-the-thriving-black-market-for-illicit-deliveroo-uber-eats-and-just-eat-drivers/content.html",
+          "domain": "liveapp.inews.co.uk",
+          "label": "Inside the thriving black market for illicit Deliveroo and Uber Eats drivers"
+        },
+        {
+          "url": "https://inews.co.uk/news/deliveroo-uber-eats-just-eat-illegal-worker-accounts-2956956",
+          "domain": "inews.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.independent.co.uk/news/business/uber-deliveroo-drivers-disdmissed-jobs-b1890628.html",
+          "domain": "independent.co.uk",
+          "label": "Uber and Deliveroo drivers protest over hundreds of ‘unfair’ dismissals | The Independent"
+        },
+        {
+          "url": "https://consumerescalationservices.com/consumer-insights/rideshare-delivery-app-deactivation-help",
+          "domain": "consumerescalationservices.com",
+          "label": "Rideshare or Delivery App Deactivation Help Guide | Consumer Escalation Services"
+        }
+      ]
+    },
+    {
+      "name": "Is there a legal landmine?",
+      "key": "legality",
+      "verdict": "unverifiable",
+      "confidence": 0.71,
+      "rationale": "The passages discuss UK employment tribunal representation rights, lay representatives, and wasted costs orders, but none address whether third-party appeal-writing services for gig platform deactivations are lawful. The gig economy context (Uber, DoorDash, Instacart) is not covered, and the passages do not establish whether such a service would breach platform terms or require legal qualification.",
+      "sources": [
+        {
+          "url": "https://www.ms-solicitors.co.uk/employee/employment-tribunal-services/",
+          "domain": "ms-solicitors.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://self-representation.org.uk/who-can-represent-you-at-an-employment-tribunal/",
+          "domain": "self-representation.org.uk",
+          "label": ""
+        },
+        {
+          "url": "https://workingfamilies.org.uk/articles/calculating-damages-and-compensation/",
+          "domain": "workingfamilies.org.uk",
+          "label": ""
+        },
+        {
+          "url": "https://assets.publishing.service.gov.uk/media/66d1a2e1bdecebe01a1833ab/Ms_Sheilla_Gomes_-v-_Guys_and_St_Thomas_NHS_Foundation_Trust__2303791-2022_18-Aug-2024_Wasted_Costs_Order_.pdf",
+          "domain": "assets.publishing.service.gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.bailii.org/uk/cases/UKET/2023/4103197_2022.pdf",
+          "domain": "bailii.org",
+          "label": ""
+        },
+        {
+          "url": "https://tribunalsdecisions.service.gov.uk/utiac/37543",
+          "domain": "tribunalsdecisions.service.gov.uk",
+          "label": "Tribunal decisions"
+        }
+      ]
+    },
+    {
+      "name": "Is the pain real, or imagined?",
+      "key": "pain_reality",
+      "verdict": "supported",
+      "confidence": 0.76,
+      "rationale": "The passages establish that platform deactivation is a real and acute problem: Uber Eats drivers have been locked out by facial-recognition checks, drivers have sued over automated deactivation in the Netherlands, and hundreds staged a London strike explicitly demanding 'reinstatement of unfairly deactivated drivers'.",
+      "sources": [
+        {
+          "url": "https://www.bbc.co.uk/news/technology-68655429",
+          "domain": "bbc.co.uk",
+          "label": "Payout for Uber Eats driver over face scan bias case, BBC News"
+        },
+        {
+          "url": "https://www.bbc.com/news/business-54698858",
+          "domain": "bbc.com",
+          "label": "Uber sued by drivers over ‘automated robo-firing'"
+        },
+        {
+          "url": "https://time.com/6104844/uber-facial-recognition-racist/",
+          "domain": "time.com",
+          "label": "Uber Drivers Say a 'Racist' Algorithm Is Putting Them Out of Work"
+        }
+      ]
+    }
+  ],
+  "sectionsTotal": 14,
+  "sectionsShown": 3,
+  "excerpt": [
+    {
+      "id": "executive-summary",
+      "title": "Where this starts",
+      "blocks": [
+        {
+          "type": "p",
+          "nodes": [
+            "The person already paying for this problem, in time if not in money:"
+          ]
+        },
+        {
+          "type": "callout",
+          "nodes": [
+            "Gig worker aged 18–27 who has been deactivated and sees the service as a lifeline to restore their primary income source, paying from their remaining cash buffer (often $49–$99)"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "They are not waiting for a product. They are working around it today, with whatever is to hand."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "What changed:"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Growing gig workforce, increasing number of algorithmically‑driven deactivations with limited human recourse, and a small but highly motivated body of workers who will pay for a better shot at reinstatement."
+          ]
+        },
+        {
+          "type": "hr"
+        },
+        {
+          "type": "h2",
+          "nodes": [
+            "What we found — 4 things that hold up"
+          ]
+        },
+        {
+          "type": "ul",
+          "items": [
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Will this still be worth money later?"
+                ]
+              },
+              " UK tribunal cases (Iqbal v Uber London, Hussein v Uber, Manjang v Uber Eats) demonstrate ongoing, contested deactivations within the UK gig economy, confirming the problem persists."
+            ],
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Is someone already doing this well?"
+                ]
+              },
+              " No passage shows a dominant UK incumbent or funded rival productising gig-deactivation appeals."
+            ],
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Can you actually reach the customer?"
+                ]
+              },
+              " Existing high-traffic channels where deactivated UK gig workers already gather: Facebook groups with more than 100,000 subscribers trading Deliveroo/Uber Eats accounts, and an IWGB mobilisation reaching around 200 drivers protesting unfair dismissals."
+            ],
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Is the problem real?"
+                ]
+              },
+              " Platform deactivation is a real and acute problem: Uber Eats drivers have been locked out by facial-recognition checks, drivers have sued over automated deactivation in the Netherlands, and hundreds staged a London strike explicitly demanding 'reinstatement of unfairly deactivated drivers'."
+            ]
+          ]
+        },
+        {
+          "type": "h2",
+          "nodes": [
+            "What we could not settle"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "The evidence points, but it does not close these. What we did find is under each one."
+          ]
+        },
+        {
+          "type": "ul",
+          "items": [
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Can the customer afford it?"
+                ]
+              },
+              " The ASHE earnings tables contain only cookie consent screens with no actual wage data, and the remaining passages either describe generic financial-hardship concepts or US-specific retirement withdrawal rules."
+            ],
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Is it legal?"
+                ]
+              },
+              " UK employment tribunal representation rights, lay representatives, and wasted costs orders, but none address whether third-party appeal-writing services for gig platform deactivations are lawful."
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "These are not omissions. Each one is argued at full strength further down, because the case against is the half that decides whether you spend a year on this."
+          ]
+        },
+        {
+          "type": "hr"
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Every claim in this pack names the page it came from. If one of them does not say what we say it says, that is a refund, not an argument."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "The page behind every claim is at the end, in ",
+            {
+              "tag": "strong",
+              "children": [
+                "Every check, in full"
+              ]
+            },
+            ". ",
+            {
+              "tag": "strong",
+              "children": [
+                "Your first fortnight"
+              ]
+            },
+            " is where to start."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the-offer",
+      "title": "What you would be selling",
+      "blocks": [
+        {
+          "type": "h2",
+          "nodes": [
+            "The bet"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Stated plainly, so you can disagree with it:"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Transplanting the structure of successful school admission appeals into the gig economy: a solo operator collects crowdsourced deactivation case data, identifies winning patterns, and converts a worker’s raw narrative into a legally persuasive subscriber‑ready dossier, charging a flat fee only if the appeal is filed."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Everything below is written on the assumption that the person named at the start of this pack is who you are selling to. If you cannot picture reaching them, that is the objection to raise now, not after the build."
+          ]
+        },
+        {
+          "type": "h2",
+          "nodes": [
+            "The shape of it"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "This is a service sold as a fixed package rather than by the hour. The market it was checked against is the UK."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "That shape decides more than it looks like it does. It sets who you have to convince, how long you wait to be paid, and what you are still doing in year two."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the-field",
+      "title": "The field: who is already there",
+      "blocks": [
+        {
+          "type": "p",
+          "nodes": [
+            "Somebody is already doing a version of this, and that is the useful finding. It means the problem is real enough that a business formed around it. It does not mean the field is closed, and it does not mean your version wins. Read who they are and decide which part of the job they are not doing."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "No passage shows a dominant UK incumbent or funded rival productising gig-deactivation appeals. The platform's own internal review is described as barely functional and one-sided for drivers, while Acas is a broad free employment-advice service with no evidence it covers contractor-on-platform disputes, and IWGB legal help is gated behind union membership and not presented as a specialist appeal engine. The UK gig-deactivation appeal niche therefore appears open in these passages."
+          ]
+        },
+        {
+          "type": "hr"
+        },
+        {
+          "type": "h2",
+          "nodes": [
+            "What we read, in their words"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Excerpts from the pages the search returned, each with its link and its date where the page carries one. Quoted rather than summarised: a summary of a competitor is a claim about a competitor, and nothing we retrieved supports one."
+          ]
+        },
+        {
+          "type": "source",
+          "host": "metaintro.com",
+          "year": "",
+          "label": "",
+          "url": "https://www.metaintro.com/blog/gig-driver-deactivation-appeal-rights-2026",
+          "quote": "Washington and New York give the strongest deactivation protections, while most states offer little. Save your earnings records and message screenshots now, before you ever get cut off. For thousands of Uber and Lyft drivers, a single app notification can end their income overnight."
+        },
+        {
+          "type": "source",
+          "host": "acas.org.uk",
+          "year": "",
+          "label": "established organisation",
+          "url": "https://www.acas.org.uk/",
+          "quote": "Making working life better for everyone in Britain Acas gives employees and employers free, impartial advice on workplace rights, rules and best practice. We also offer training and help to resolve disputes."
+        },
+        {
+          "type": "source",
+          "host": "iwgb.org.uk",
+          "year": "",
+          "label": "",
+          "url": "https://iwgb.org.uk/en/page/support-and-advice/",
+          "quote": "Support and advice Union members who joined more than two months ago can access legal support from the IWGB Legal Department. To open a case, please use our online Casework form. Please use this form in relation to issues with your work."
+        },
+        {
+          "type": "source",
+          "host": "acas.org.uk",
+          "year": "",
+          "label": "established organisation",
+          "url": "https://www.acas.org.uk/advice",
+          "quote": "Acas Acas's advice is for every worker and employer across England, Scotland and Wales. We advise on employment law and good practice. Pay and hours How to agree pay and working arrangements. Holiday and leave How workers can take time off."
+        }
+      ]
+    }
+  ],
+  "withheld": [
+    {
+      "title": "The numbers",
+      "blurb": "What it costs to run, what it has to charge, and the figure it breaks even at — with the assumptions listed separately so you can change ours for yours."
+    },
+    {
+      "title": "What would sink this",
+      "blurb": "The case against, at full strength: every check the evidence went against, every question the desk could not settle, and the searches we ran before giving up on it."
+    },
+    {
+      "title": "What you build",
+      "blurb": "The smallest thing worth charging for, specified — what it does, what it does not do, and what you can leave until it sells."
+    },
+    {
+      "title": "How the first customers find you",
+      "blurb": "Where the first ten customers come from, in order of how cheaply you can test each one."
+    },
+    {
+      "title": "How it runs once it works",
+      "blurb": "What a week looks like once it works: the recurring jobs, the ones to automate first, and the point at which it stops fitting around a day job."
+    },
+    {
+      "title": "Your first fortnight",
+      "blurb": "Fourteen days of specific work, sequenced so the cheapest thing that could kill the idea happens first."
+    },
+    {
+      "title": "The toolkit",
+      "blurb": "The questions to ask, drawn from the checks this pack could not close — plus a first outreach message and a one-page decision memo with a kill line on it."
+    },
+    {
+      "title": "Copy you can paste",
+      "blurb": "Copy you can paste: the listing, the pitch, the outreach — written only from claims that survived checking."
+    },
+    {
+      "title": "How to know in 30 days",
+      "blurb": "One test. The single thing that can come back false soonest, with what counts as a no decided before you start."
+    },
+    {
+      "title": "Everything we read, once",
+      "blurb": "Every source behind every claim, in one place, each one a link you can open."
+    },
+    {
+      "title": "Every check, in full",
+      "blurb": "The full record of every check: the queries we ran, the passages we read, the verdict, and the confidence we put on it."
+    }
+  ]
+}

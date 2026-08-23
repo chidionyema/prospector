@@ -1,0 +1,31 @@
+TeardownDesk, sells your closing shop's stock to sellers.
+
+For Shopify and Amazon sellers shutting up shop, we find another seller in your exact niche, agree a price for your stock and product listings, and take a cut.
+
+This is a broker for the last act of an online store. When a UK Shopify or Amazon seller decides to stop trading, they are left holding three things at once: physical stock sitting in a 3PL or in Amazon's fulfilment network, a set of product pages with real review history, and a customer email list. Today most of it goes to a pallet liquidator for pennies, or simply gets written off.
+
+We run the sale as a broker, not a marketplace. The seller tells us what they hold. We already know, from our own book of buyers, which sellers in that category are actively looking to widen their range. We approach three or four of them directly, agree a price, and handle the mechanics: an Amazon FBA-to-FBA ownership move, a Shopify product and review export, and a written buyer's list transfer that stands up under UK data protection rules. We charge 12% of the sale price, paid by the seller, with a £750 floor.
+
+The reason a broker beats a listing site here is that neither side wants to be public. A seller winding down does not want suppliers, staff or Amazon to know. A buyer scooping up a rival's catalogue does not want to advertise it. That secrecy is exactly what a marketplace cannot offer and a person on the phone can.
+
+The part that compounds is the buyer book. Every deal teaches us what a particular buyer will pay for a particular category of ageing stock, and what they refuse. After a few hundred conversations we can quote a seller a realistic number in a day, which nobody starting out can do. That record of who paid what, privately, is not published anywhere and cannot be scraped.
+
+This idea fuses two separate things happening at once. Company closures are a routine, dated event with a public paper trail. And Amazon's own long-term storage charges give any seller sitting on old stock a hard financial clock. Put those together and you can find a motivated seller before they have decided to just bin it.
+
+On shape, this commits to (B) TECH-VERTICAL: the ecosystem is Amazon Seller Central and Shopify, and the platform rules that hurt are Amazon's aged-inventory surcharge and monthly storage fees, which turn slow stock into a bill that grows every month a closing seller delays.
+
+The buyer role is the owner-operator of a UK online store, usually a sole director. The recurring trigger is the decision to close, which shows up publicly as a Companies House first Gazette notice for voluntary strike-off (form DS01), and privately as a seller quietly discounting everything. The deliverable is a completed sale: signed asset agreement, stock ownership moved, listings and reviews handed over, money split. The public source proving this is already paid for is Companies House: tens of thousands of small companies file for strike-off every year, and insolvency practitioners and liquidators already charge fees to dispose of exactly these assets, badly.
+
+Two people can run this. One works the phone and closes deals. One handles the transfer mechanics and the paperwork. Deal flow comes from Companies House strike-off notices, seller community groups, and the accountants who file those forms.
+
+UK-based Shopify and Amazon sellers who are winding down, typically one-person or family companies turning over £150,000 to £2m, who pay us 12% of what we sell their stock and listings for. Accountants and small insolvency practitioners refer them to us because disposing of e-commerce assets is not something they know how to do.
+
+Amazon's aged-inventory surcharges mean stock that sits still costs a seller money every single month, so the decision to exit has a running clock attached. At the same time, company strike-off filings are public at Companies House the moment a notice appears in the Gazette, which gives a small broker a dated, legal, free list of businesses in the exact week they are deciding what to do with their stock. Nobody is working that list for e-commerce assets.
+
+The passages describe Amazon's third-party seller market and the aggregators who buy up FBA brands, but they say nothing about UK sellers who are closing down, nor about anyone searching for or paying for help disposing of leftover stock and product listings [a3d618958e3b4a2b][f36b9ad25fec97bf]. The remaining passages cover Amazon's seller sign-up incentives and Canadian construction and startup listings, which have no bearing on the question [e584bb2b433a1898][5c9c9efa0168cfa7][c3b32fe1763d2c17][56efc519ddce2937].
+
+The passages only describe the UK's political geography and Amazon's promotional offers for new FBA sellers (free storage credits, signup incentives) [562cdca443c91f5d][1af2b0e0901998a3][82e1b37e09897969][22956c8636247e47][b9882cb38dc78864][dbebc09dc81f979c]; none say anything about sellers who are closing down, their finances, or what they spend on disposing of stock. There is therefore no evidence on whether a winding-down UK online store owner could and would pay £49.99 for this.
+
+The passages confirm only that Companies House registers and dissolves UK companies and publishes free company data, and that The Gazette carries official notices on insolvency and company law (73dee70fd9eed699, 9af0f3204004d19c, 375b7669b29f8bc5); none of them mention strike-off or dissolution notices being usable to identify and contact online sellers who are closing, nor any other way of reaching those owners.
+
+The passages confirm that UK data protection law covers business contact details and imposes rules on sending personal data to recipients outside the UK, which means a customer email list handover is regulated — but regulated is not prohibited, and nothing here says such a transfer cannot lawfully be done. No passage addresses whether Amazon permits transferring stock ownership or product listings between seller accounts; the only Amazon terms quoted concern stacking New Seller Incentive discounts, which is unrelated to selling on inventory or listings.

@@ -1,0 +1,23 @@
+CouncilTaxBand Anomaly Atlas – The Inherited Property Downband Index.
+
+A postcode-level UK data product that flags properties whose VOA council tax band is statistically incompatible with actual sold prices in the same street, weighted toward properties held 20+ years or inherited by retirees, with hit-rate scoring on past successful downband challenges.
+
+Friction: many UK retirees sit in council tax bands set in 1991 that bear no relation to current property values, especially in London, Surrey, Bristol and parts of Scotland. A widowed retiree in a 1991 Band E London flat now worth £650k is paying hundreds a year more than a comparable Band D neighbour who moved in 2019. The 2023 revaluation was postponed indefinitely, meaning the VOA will not fix these errors — the resident must appeal. Invert: the VOA is the duty-imposer for accurate bands; the MORE it defers revaluation, the larger the anomaly backlog grows, and the more valuable an independent anomaly-detection dataset becomes. The VOA structurally cannot publish an 'appeal this postcode' tool, because that would be a regulator actively encouraging appeals against itself. Form: a proprietary_data intelligence product with monthly updated hit-rate scoring per postcode, sold to retiree home occupiers and their adult children.
+
+UK retirees (65-80) in properties owned 20+ years or inherited from a spouse, particularly in metropolitan and South East postcodes where 1991 bands are most detached from current values. Many will be paying for the adult child (45-60) to run the check on their behalf.
+
+2023 England council tax revaluation postponed indefinitely; 2026 Scottish revaluation ongoing but creating new anomaly patterns; rising council tax bills against frozen incomes is a top retiree cost-of-living pressure; VOA's 'Check Your Band' service is a black-box estimator that does not score challenge probability.
+
+The passages only confirm that the VOA exists, holds ~26 million property records, and bands properties for Council Tax — none of them address whether an independent anomaly-detection dataset's value is durable, real, or already commoditised/evaporating. No passage affirms or negates the durability of the proposed value.
+
+The passages describe Royal Mail postage, a generic market-review annex, macro-economic factors, and VOA's own statistics/property-attribute data — none address whether any incumbent or funded rival offers postcode-level council-tax-band anomaly detection or appeal-probability scoring. With no passage affirming the space is open or naming a dominant rival, incumbency cannot be ruled on.
+
+None of the passages address whether UK retirees (65-80) have the budget or willingness to pay; they cover crisis-support data, postage collection, VOA statistical methodology, and generic property analytics, with no evidence on payer solvency.
+
+None of the passages describe a route to reach the buyers (UK retirees or their adult children) — they cover Royal Mail postage, an urban-retailing paper, ONS geography data, PAF address-data reselling, and VOA address storage, none of which is a self-serve channel or forcing mechanism to this audience.
+
+The passages describe only the VOA's own valuation constraints (e.g. it cannot re-band an improved property) and unrelated topics; none address whether building/selling a council-tax-band anomaly dataset or residents appealing their bands requires breaking any law or term. No passage affirms or negates the legality of the candidate's margin.
+
+Passage [14174964a51b9b4a] is only a forum question asking whether anyone has challenged a council tax band, which hints at interest but shows no acute pain, scale, or willingness to pay; the remaining passages describe VOA data files and an unrelated postage service. Nothing affirms a real, acute problem people are paying now to solve.
+
+No passage provides explicit evidence of any objective risk vector: legality passages only note the VOA's own valuation constraints (not a ban on third-party data products or resident appeals), no passage addresses customer acquisition cost versus lifetime revenue, and no single company is named as controlling 80%+ of any distribution channel. The VOA is a regulator/data-holder, not a distribution monopolist over this product.

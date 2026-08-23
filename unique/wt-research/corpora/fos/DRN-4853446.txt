@@ -1,0 +1,256 @@
+DRN-4853446
+The complaint
+Mrs G is unhappy that Lloyds Bank PLC (“Lloyds”) won’t reimburse her in full for money she 
+lost as part of a third-party scam.
+Mr G has been acting on Mrs G behalf but for simplicity, and as this is Mrs G’s bank account, 
+I have referred to Mrs G throughout this decision.
+What happened
+The circumstances that led to this complaint are well known to both parties, so I won’t repeat 
+them in detail here. But briefly Mrs G fell victim to a job scam. As part of the scam Mrs G 
+bought genuine cryptocurrency which she then sent on to the scammer. The last payment 
+went directly to the scammer’s account.
+Mrs G carried out a combination of debit card payments totalling around £3,637 and one 
+faster payment totalling £4,500. As part of the scam Mrs G also received three credits into 
+her account totalling £457.19. 
+Lloyds reviewed Mrs G’s complaint and said the debit card payments were completed by 
+Mrs G so can’t be considered as fraud. However, it accepted partial liability for the faster 
+payment and refunded 50% of it - so £2,250.
+Date Beneficiary Debit Credit Transaction Type
+11/1/23 Cryptocurrency B £37 Debit card
+12/1/23 Cryptocurrency B £87 Debit card
+12/1/23 Cryptocurrency B £128 Debit card
+12/1/23 Cryptocurrency B £102.00 credit
+12/1/23 Cryptocurrency B £123.44 credit
+13/1/23 Cryptocurrency B £86 Debit card
+13/1/23 Cryptocurrency B £68 Debit card
+15/1/23 Cryptocurrency B £101 Debit card
+16/1/23 Cryptocurrency B £30 Debit card
+16/1/23 X 5 declined trans Merchant blocked
+16/1/23 Cryptocurrency B £220 Debit card
+16/1/23 Cryptocurrency B £840 Debit card
+16/1/23 Cryptocurrency B £2,040 Debit card
+16/1/23 Cryptocurrency B £231.75 credit
+16/1/23 X 8 declined trans Lloyds blocked
+16/1/23 Payee A £4,500 Faster payment
+Our investigator considered Mrs G’s complaint. However, she didn’t uphold the complaint as 
+she didn’t think the card payments were unusual enough to have triggered any intervention 
+from Lloyds. She also considered it was fair for Lloyds to reduce a refund on the last 
+transaction by 50% on the basis that Mrs G didn’t have a reasonable basis for believing this 
+was a genuine job opportunity.
+
+Lloyds didn’t provide any further submissions. Mrs G provided further points for me to 
+consider. 
+She explained her judgement was impaired at the time and she was under significant 
+mental distress. The medications she was on impaired her ability to discern the 
+legitimacy of the job offer.
+She felt Lloyds should have intervened and the fact that it didn’t constitutes a failure 
+in its duty of care.
+She received credits back which became a strong basis for belief that the person was 
+legitimate.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I have considered Mrs G’s response to my provisional decision.
+I don’t require medical evidence of Mrs G’s condition. This is not something I have 
+questioned. And I have taken into account the reported effects of her mental health struggles 
+and how she says the medication she was taking impacted her, when reaching my decision. 
+For the reasons explained in my provisional decision it is only the last transaction here that is 
+covered by the Lending Standards Board’s Contingent Reimbursement Model (CRM) Code. 
+So, when considering vulnerability (something Mrs G only told Lloyds about when she 
+reported the scam) under the Code – I am only considering it in relation to the final 
+transaction. This is also the case for Mrs G’s reasonable basis for belief – this only applies to 
+the final transaction. 
+Lloyds has already accepted it didn’t do enough for the last transaction and refunded 50% of 
+the sum involved. But by the time this transaction took place there is evidence that Mrs G 
+was capable of doing more to protect herself. She did do some research on the company - 
+so was capable of doing more. And there are signs within the messages she had doubts. I 
+think there was more she might reasonably have done that would have led to the scam 
+being uncovered. I have thought very carefully about everything Mrs G has told us – but 
+overall, I’m not persuaded Mrs G was unable to protect herself against the particular scam 
+she fell victim to.
+I appreciate that Mrs G received some small credits back which reassured her this was a 
+legitimate opportunity. But by the time of the transaction in question, these small credits had 
+been disproportionate in relation to the large sums she was sending. By the time of the last 
+transaction, I think there were signs this wasn’t a legitimate opportunity and the deal 
+warranted further scrutiny. Paying disproportionate sums of money to an opportunity that 
+was supposed to be a job, in which Mrs G was paid very small credits, is something I think 
+she should have questioned. Indeed, she did question this with the scammer – as I outlined 
+in my provisional decision, before she made this last transaction.
+So I am not asking Lloyds to refund the other 50% of this transaction.
+In my provisional decision, I explained in detail – why I didn’t think the earlier transactions 
+(not covered by the CRM Code) were unusually high enough nor do I feel they showed a 
+pattern that suggested a heightened risk of financial harm from fraud. Banks can’t intervene 
+on every transaction. There is a balance to be struck between identifying payments that 
+could potentially be fraudulent and minimising disruption to legitimate payments. And, it’s not 
+unusual for consumers to make higher payments from time to time. Purchasing 
+cryptocurrency in itself is not a scam but rather these are genuine transactions for the 
+genuine purchase of cryptocurrency. 
+I did say in my provisional decision that I thought the last card payment was one that Lloyds 
+could have done more and warn of cryptocurrency investment scams, but this wasn’t the 
+scam Mrs G fell victim to – so I don’t think providing such a warning would have made a 
+difference in Mrs G proceeding with this payment.
+Overall, I see no reason to depart from the conclusions set out in my provisional decision. 
+For completeness, I have set this out below:
+I’m sorry to hear Mrs G was the victim of this cruel scam and I can understand why she 
+wants to do all she can to recover the money she has lost. She’s lost a lot of money. But that 
+alone doesn’t mean that Lloyds must reimburse her. It’s important to emphasise that I’m only 
+considering whether Lloyds, which had no involvement in the scam itself, should be held 
+responsible for what happened.
+In deciding what’s fair and reasonable, I’m required to take into account relevant law and 
+regulations; regulatory rules, guidance and standards; codes of practice; and, where 
+appropriate, what I consider to have been good industry practice at the time.
+Where the evidence is incomplete, inconclusive or contradictory, I reach my decision on the 
+balance of probabilities – in other words, on what I consider is most likely to have happened 
+in light of the available evidence and the wider circumstances.
+Lloyds is a signatory to the Lending Standards Board’s Contingent Reimbursement Model 
+(CRM) Code. But it only applies to the last transaction in this case. This is because the CRM 
+Code only applies to authorised push payments (APP) and a transfer of funds executed 
+across faster payments between GBP (British pound sterling) accounts in certain 
+circumstances. Card payments (which are pull payments) and payments to cryptocurrency 
+are therefore not covered by the CRM Code. Even though the payments aren’t covered by 
+the CRM Code, Lloyds has wider obligations outside of that.
+Transactions 1-9 by debit card
+In broad terms, the starting position in law is that Lloyds is expected to process payments 
+and withdrawals that a customer authorises it to make, in accordance with the terms and 
+conditions of the customer’s account. It’s not disputed that Mrs G made and authorised 
+these payments, although I accept that when she did so, she didn’t think her funds were at 
+risk. 
+As I’ve said above, even though the payments aren’t covered by the CRM Code, there are 
+circumstances, irrespective of the payment channel used, where it might be appropriate for 
+Lloyds to have taken additional steps, or made additional checks, or provided additional 
+warnings, before processing a payment to help protect its customers from the possibility of 
+financial harm from fraud. 
+So in this case, I need to decide whether Lloyds acted fairly and reasonably in its dealings 
+with Mrs G when she authorised the payments from her account or whether it could and 
+should have done more before processing them. 
+These transactions (purchasing cryptocurrency) of themselves are not a scam but rather 
+genuine transactions for the genuine purchase of cryptocurrency. The scam happened after 
+that via a cryptocurrency wallet in Mrs G’s own name she set up as part of the scam. 
+Buying cryptocurrency is a legitimate activity and the payments were made to a genuine 
+cryptocurrency exchange. The payments were also to an account in Mrs G’s own name. I 
+appreciate the loss happened from Mrs G’s cryptocurrency account, but Lloyds ought to 
+fairly and reasonably be alert to fraud and scams and these payments were part of a wider 
+scam, so I need to consider whether it ought to have done more when Mrs G tried to make 
+the payments. 
+I am aware that scams involving cryptocurrency had become increasingly prevalent and well 
+known to banks. But I think it was reasonable for Lloyds to take into account a range of 
+factors when deciding whether to intervene. I am mindful that banks can’t reasonably be 
+involved in every transaction. There is a balance to be struck between identifying payments 
+that could potentially be fraudulent and minimising disruption to legitimate payments. It’s not 
+unusual for consumers to make higher payments from time to time.
+The transactions were spread out over a few days and - whilst not insignificant to Mrs G - 
+were still relatively low in value. I appreciate they were going to a cryptocurrency provider, 
+but I don’t think the pattern of payments and the values were consistent with a heightened 
+risk of financial harm. So, in the overall circumstances, I don’t think Lloyds needed to do 
+anymore before it processed these payments.
+Transaction 10 – debit card
+That said the final debit card payment for £2,040 on 16 January 2023 was more than Mrs G 
+usually spent and was preceded by quite a lot of activity all very close together on the same 
+day. 
+However, even if I found at the point Mrs G made this last card payment, that Lloyds ought 
+to have recognised an elevated risk of the likelihood of a cryptocurrency transaction being 
+related to a fraud or scam - I’d only expect it to provide a tailored warning during the in-app 
+verification process that related to cryptocurrency investment scams. 
+But Mrs G wasn’t falling victim to a cryptocurrency investment scam – she was the victim of 
+a tasked based job scam – so I don’t think providing such a warning would have resonated 
+with the situation Mrs G found herself in. So even if Lloyds had provided such a warning, I 
+don’t think it would have made a difference with Mrs G proceeding with the payment. So I’m 
+not upholding this transaction either.
+ 
+Transaction 11
+Contrary to the investigator’s view, this transaction is covered by the CRM Code which 
+Lloyds has signed up to. The CRM Code requires firms to reimburse customers who have 
+been the victims of APP scams like this, in all but a limited number of circumstances. 
+A bank might decline a refund if it can be demonstrated that the customer made the payment 
+without having a reasonable basis for believing that:
+ the payee was the person the customer was expecting to pay; 
+ the payment was for genuine goods or services; and/or 
+ the person or business with whom they transacted was legitimate
+There are further exceptions within the CRM Code, but they do not apply in this case.
+The CRM Code also outlines the standards a firm is expected to meet.
+Did Lloyds meet its obligations under the CRM Code?
+Lloyds has already accepted it didn’t do enough for the last transaction - so I don’t need to 
+consider this point further. But that doesn’t necessarily mean Mrs G is entitled to a full refund 
+- as Lloyds has relied on one of the exceptions to reimbursement.
+Did Mrs G have a reasonable basis for belief?
+I need to consider not just whether Mrs G believed she was sending money for a task-based 
+job, but whether it was reasonable for her to do so.
+Mrs G initially told Lloyds she’d researched the company for whom she was working. But this 
+final transaction was different than the previous payments. She was no longer being asked 
+to make payments via the genuine cryptocurrency wallet and Mrs G said she was given an 
+explanation of why this was the case. Initially Mrs G was asked to make this final payment to 
+a business name – I will refer to as F. Mrs G told Lloyds she researched F but nothing came 
+up for them on the internet. The payment to F failed and she was then given an individual’s 
+personal bank account details to send the payment to. I think Mrs G reasonably ought to 
+have questioned all of this. And I think by the time Mrs G made this payment there were 
+signs that Mrs G had doubts herself about the legitimacy of the opportunity. Looking through 
+the chat messages in the run up to this payment Mrs G queries with the scammer:
+ 
+I don’t understand y I need to put more money
+Omg that’s a big amount….U have not credited my salary and asking for such a 
+amount
+If it is credit then y do I need to put money
+What’s happening…I can’t complete task 2.. Again again my account goes in 
+negative balance
+I think there were signs this wasn’t a legitimate opportunity and, certainly by the time of the 
+last transaction, the deal warranted further scrutiny. Paying money to an opportunity that 
+was supposed to be a job in which Mrs G would be paid is something I think she should 
+have questioned. And I think checking things further would likely have revealed this was a 
+scam. So I think Lloyds can fairly rely on this exception to reimbursement.
+My intention is not to further Mrs G’s distress where she’s already been the victim of a cruel 
+fraud. But merely to highlight that I do find Lloyds has been able to demonstrate it can 
+reasonably rely on an exception to reimbursement. 
+Vulnerability under the Code
+There are provisions under the code which might lead to a refund, even when a customer 
+doesn’t have a reasonable basis for belief. The relevant part of the Code, says: 
+A Customer is vulnerable to APP scams if it would not be reasonable to expect that 
+Customer to have protected themselves, at the time of becoming victim of an APP scam, 
+against that particular APP scam, to the extent of the impact they suffered. This should be 
+assessed on a case-by-case basis.
+From the information Mrs G has provided to both us and the bank, it’s clear that she was 
+experiencing a particularly difficult time in her personal life when she fell victim to the scam. 
+She’d had serious health struggles for a number of years. She says her condition affected 
+her decision making and the medication she was on made her sleepy.
+I’m sorry to hear of all Mrs G has been through. Not just in terms of this scam, but also 
+what’s happened to her at other times in her life. I’ve no doubt that Mrs G has been through 
+a lot and I don’t doubt that her mental health has suffered as a result. And the scam has 
+clearly impacted her further. I don’t question her mental health struggles and the impact it 
+has had. But I must consider whether there are vulnerabilities present to such an extent that 
+Mrs G was unable to take steps to identify the scam she fell victim to or to recognise steps 
+she might take to test the legitimacy of what she was being told by the fraudsters. To do so I 
+must consider the details of the scam, Mrs G’s actions throughout, and the wider 
+circumstances of what was happening in Mrs G’s life at the time. 
+I empathise with Mrs G and all she’s been through, but I don’t find it is unreasonable to 
+expect that she could have protected herself from the scam. There is evidence within the 
+circumstances and from what Mrs G has told us that suggest she was capable of taking 
+steps to protect herself from fraud and financial harm. She did do some research so was 
+capable of doing more. And there are signs within the messages she had doubts. I think 
+there was more she might reasonably have done that would have led to the scam being 
+uncovered and having thought very carefully about everything Mrs G has told us I’m not 
+persuaded that it would not be reasonable to expect Mrs G to have protected herself against 
+the particular scam she fell victim to. 
+Did Lloyds do enough to recover Mrs G’s funds?
+I’ve thought about whether Lloyds took reasonable steps to recover Mrs G’s funds once it 
+was made aware she was the victim of a scam. As the investigator explained all but the last 
+payment was transferred into an account in Mrs G’s name and to buy genuine 
+cryptocurrency - rather than directly to the scammer. So I am only considering whether it 
+could have reasonably recovered the funds Mrs G sent on the final payment.
+The payment was made at 17:09 on 16 January 2023. Mr G, on Mrs G’s behalf, reported the 
+scam to Lloyds at 18:41 on 16 January 2023. Lloyds reached out to the beneficiary bank at 
+20:55 - an hour after the APP reporting call ended but were told that no funds remain. This is 
+not unusual as scammers usually remove funds immediately. So, I don’t think Lloyds could 
+have done anymore to recover Mrs G’s funds.
+Given that Lloyds could have prevented the loss on the final transaction (but Mrs G should
+share in the responsibility for her loss) the refund (that Lloyds has already made) of 50% on
+the final transaction is fair and reasonable in this case and in line with what I would award in
+this case. So, I don’t find it needs to do anything further.
+I realise my decision will be a significant disappointment to Mrs G. I sympathise with her 
+circumstances, and I am sorry she has fallen victim to a scam and lost so much money. But I 
+think this is the fair and reasonable outcome taking everything into account.
+My final decision
+My final decision is that I do not uphold this complaint.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mrs G to accept or 
+reject my decision before 12 July 2024.
+ 
+Kathryn Milne
+Ombudsman

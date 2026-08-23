@@ -1,0 +1,23 @@
+Texas AEDT pre-interview notice generator for HR tech vendors.
+
+An AI service that turns an employer's job description and AI screening tool into a TWC Rule §805.1-compliant pre-interview notice, for HR tech vendors and Texas employers who need it.
+
+Texas Labor Code §21.0545 and TWC Rule §805.1 require any Texas employer using an automated employment decision tool (AEDT) to screen candidates to provide a written notice to each applicant before the tool is used. The notice must identify the tool, describe its criteria, and state whether it has a disparate impact. Non-compliance exposes the employer to TWC complaints, investigation, and penalties — and rejected applicants have a private right of action.
+
+The rule is live now, but most HR teams and their software vendors have no idea it exists. HR tech vendors who embed AI screening into their products (applicant tracking systems, assessment platforms, video interview tools) are the entity responsible for ensuring the notice goes out — yet they have no tool to generate it. They currently either skip it (illegal), copy-paste a generic clause (not Texas-specific, not TWC-compliant), or pay employment counsel $300–500 per client onboarding to draft one from scratch.
+
+This service takes three inputs — employer name, job title/description, and AI screening tool name and criteria — and produces a TWC Rule §805.1-compliant pre-interview notice ready to send. It also produces a consumer-facing privacy notice addendum required under TDPSA. A monthly subscription covers unlimited employer clients for the HR tech vendor; direct employers pay per notice or $299/month.
+
+The durable wedge is a template library built against TWC enforcement patterns and specifically keyed to the rule's exact language requirements — a competitor starting from scratch cannot replicate the cumulative pattern-matching without running the same enforcement edge-cases through the same analysis. The workflow is fully automatable with current AI tooling: structured input → prompt with rule text → jurisdiction-specific output.
+
+HR tech vendors (SaaS companies selling applicant tracking, screening, or assessment tools to Texas employers) and HR/compliance directors at Texas employers using AI in hiring decisions directly.
+
+TWC Rule §805.1 has been in force since August 2023. Texas employers using AEDTs are already legally required to send these notices today — the compliance obligation is not future-dated. The annual reporting requirement (separate form due March 31 each year) adds recurring revenue. As more HR tech vendors embed AI screening features, the buyer population grows.
+
+The passages discuss AEDT compliance obligations in NYC, federal contractor AI hiring notice requirements, and general EEOC enforcement, but none address Texas TWC Rule 805.1 specifically or show people actively searching for, discussing, or paying for Texas AEDT pre-interview notice generation. The evidence does not establish buyer intent for the specific Texas product.
+
+None of the provided passages mention Texas Labor Code §21.0545, TWC Rule §805.1, automated employment decision tools, or HR-tech compliance notices; the passages cover OFAC sanctions, Indian intelligence recruitment, a printer reset, a construction injunction, Ontario bike lanes, and a Texas Medicaid case — leaving the currency of the claimed regulation entirely unaddressed.
+
+The passages establish that LinkedIn outreach to HR directors/managers is a real, executable channel (e81f5091b71c26a6, aa5578dcc13118ce), that B2B email lists targeting HR directors who approve software investments exist (aa5578dcc13118ce), and that automation platforms like StaffingLeads enable personalized sequences immediately (ee9ef3c552e6d935). While LinkedIn enforces weekly caps (~100 connection requests, 50–70 DMs/day, 20–50 InMail credits/month) and its March 2026 'Authenticity Update' penalizes spam and external-link bait (e1eac46ca4321a3a, 2c3853a55c3880ea), organic outreach within…
+
+The passages establish that Texas has an Unauthorized Practice of Law statute prohibiting unlicensed law practice for economic gain, and that other jurisdictions may view AI-generated legal solutions as impermissible UPL, but none specifically address whether generating TWC Rule §805.1 AEDT compliance notices via AI for HR vendors constitutes UPL in Texas or falls within the Texas exemption referenced in the passages.

@@ -1,0 +1,21 @@
+Texas DIR cyber incident pack for Texas MSP agencies.
+
+For a fixed fee, hand a Texas state contractor the DIR-formatted incident pack before the seventy-two-hour clock runs out, and keep the retainer intact.
+
+Texas Government Code Section 2054.1125 (added by Senate Bill 1593 in 2021) and the Texas Department of Information Resources cybersecurity rules require state contractors to report qualifying cyber incidents to DIR within seventy-two hours of detection, in a written incident report that follows DIR's format. A managed-IT agency serving a Texas state contractor (a school district, a county clerk, a public hospital, a regional water authority) is the body that detects the incident and is expected to produce that report.
+
+Many Texas MSPs keep an incident response template written for HIPAA or for federal contractors, not for DIR. The deliverable that has to be produced is a Texas-specific incident notification packet: factual narrative, scope of impact, data classes affected, current mitigation status, and the DIR contact trail.
+
+The productized service is a flat-fee packet the MSP opens the moment the client phone rings at two in the morning: the MSP uploads indicators, a written summary, and the timeline; the packet is generated in DIR's required format with the agency contact fields pre-filled for DIR Cyber Incident Reporting. What compounds is the per-sector incident corpus, since every Texas school district, county clerk, public hospital, or water authority incident feeds the next MSP's report with section-level templates already written.
+
+Texas managed-IT services agency owners who serve Texas school districts, county clerks, public hospitals, or other state contractors; today they write Texas-format incident reports on the clock at $200 per hour while losing billable hours on retainer work.
+
+Texas SB 1593 has been enforced against state contractors since 2023. DIR publishes the seventy-two-hour incident reporting requirement and warns of contracting debarment for non-reporters, and active-attack incidents against Texas public-sector entities rose in 2025.
+
+The passages cover Texas history, geography, a Scottish band, the state government portal, and tourism; none mention DIR, cybersecurity incident reporting, managed service providers, or any purchasing behavior for such a service, so buyer intent cannot be assessed from this evidence.
+
+The passages cover Texas history, geography, a Scottish rock band, and Texas museums; none address Texas MSPs, DIR cyber incident reporting, SB 1593, or the budget and willingness of Texas state contractors to pay for a cyber incident pack.
+
+None of the passages address distribution channels, MSP communities, trade groups, or any route to reach Texas managed-IT agencies; they cover Texas geography, tourism, a Scottish band, and CompTIA certifications, none of which establish whether a low-friction route to the buyer exists.
+
+The passages contain only general information about Texas (its geography, history, and official website) and do not address Texas DIR cybersecurity incident reporting rules, Senate Bill 1593, or any legal mechanism that would determine whether producing DIR-format incident notification packets is lawful.

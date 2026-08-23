@@ -1,0 +1,11 @@
+The Tradesperson's Job Warrant Sticker.
+
+A solo operator sells per-job digital warranty stickers to UK plumbers and electricians, backing a £250 guarantee on work with an AI claims bot trained on 10,000+ trade disputes—converting more quotes by removing review risk.
+
+Tradespeople who quote 5–50 small jobs a month can close more bids by offering an instant third-party warranty. The underwriting engine uses proprietary dispute data and customer sentiment signals to auto-resolve 90% of claims within minutes, a profitability sweet spot large insurers can't touch for micro-transactions.
+
+Self-employed plumbers, heating engineers, and electricians in the UK who face intense review pressure on platforms like Checkatrade and MyBuilder, and who value trust signals more than the £5–10 cost per job.
+
+The UK CMA's 2024 crackdown on unfair home improvement contracts requires clear remedy offers, and platform algorithms now factor dispute rates into visibility. Solo traders need a low-cost compliance and trust tool that annual trade insurance (minimum £150/year) doesn't economically provide.
+
+The passages show the same trust cover is already available at no charge on the exact platform this product targets: Checkatrade gives homeowners a free guarantee when a tradesperson's work falls short of standards, alongside a vetting badge built on up to 12 identity, financial and qualification checks [0c7d69c1562d30c3, 056c02287cb9dc02]. Tradespeople are also already advised to issue their own written workmanship guarantee at no cost, and plumbers and electricians hand over Part P or Gas Safe certificates as a matter of course [d70ff390b36b4a04, a247331bccaa2a4a], so the paid sticker sells…

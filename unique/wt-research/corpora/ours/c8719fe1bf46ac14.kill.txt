@@ -1,0 +1,27 @@
+The SEND Tribunal Evidence Pack Generator.
+
+A micro-SaaS that auto-generates a structured evidence timeline and case summary from a parent's WhatsApp messages, school emails, and medical letters, formatted for the First-tier Tribunal (SEND).
+
+Parents of children with special needs are overwhelmed by the paperwork required for an EHC plan tribunal. They have the raw evidence but cannot quickly compile a coherent, chronologically ordered pack. A solo operator can build a simple web app where parents upload screenshots and PDFs; using OpenAI vision and structured prompting, the app extracts dates, people, and key issues, then outputs a PDF with an index and timeline.
+
+Parents preparing for a SEND tribunal who have already felt the system failing their child and are spending evenings fighting the council.
+
+SEND tribunal caseloads in England rose 50%+ in 2022-2024. Councils are overwhelmed, meaning parents must self-represent. The new online appeals system makes digital filing mandatory, but offers no tool to organise evidence.
+
+The provided passage discusses a WhatsApp management tool for Indian schools and contains no information regarding buyer intent for a SEND Tribunal evidence pack generator for parents in England.
+
+The provided passage discusses a school management ERP for Indian schools and does not contain any information relevant to the currency or market need for a SEND Tribunal Evidence Pack Generator in England.
+
+The provided passage discusses a school ERP tool in India and does not offer any information about a route to market for the proposed SEND Tribunal Evidence Pack Generator.
+
+The provided passage discusses a school management tool and contains no information regarding the legality or regulatory constraints of the SEND Tribunal Evidence Pack Generator.
+
+The provided passage describes a report generator for co-parenting legal disputes, which does not address or verify the specific factual claims regarding SEND tribunal caseloads or the EHC plan paperwork process.
+
+The provided passage discusses a school chat summarizer tool and does not contain information regarding the budget, motive, or solvency of parents preparing for a SEND tribunal to pay for an evidence generation tool.
+
+The provided passage describes an unrelated tool, Fazumi, for summarizing school chat messages and does not contain information regarding the distribution route for 'The SEND Tribunal Evidence Pack Generator'.
+
+The provided passage discusses a WhatsApp-based school management tool for Indian schools and does not address the pain points, demand, or willingness to pay for a SEND tribunal evidence pack generator.
+
+The proposed SEND Tribunal Evidence Pack Generator fails the deliverability test for a 'side_hustle' ambition tier. Unlike generic school chat summarization tools (source_id: f57fb8b1c14c5ef3, bfce9c84b137188d) that operate on low-stakes administrative data, SEND tribunal proceedings require the handling of highly sensitive medical and educational records. Processing this data under UK law mandates rigorous data protection (GDPR) and information security compliance that cannot be realistically achieved by a solo-operator micro-SaaS. Furthermore, unlike specialized attorney-grade platforms that provide structured, verifiable legal reporting (source_id: 8f1b96a7b6d111a4), an automated generator lacks the capability to guarantee the evidentiary weight, clinical accuracy, and integrity required for the First-tier Tribunal (SEND), rendering the promised outcome undeliverable for its intended purpose.

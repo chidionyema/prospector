@@ -1,0 +1,23 @@
+The Adapted Vehicle Lease Assumption Broker.
+
+A solo broker who enables a primary carer to transfer an unwanted adapted vehicle lease to another family needing one, negotiating penalty waivers with the lessor and earning a fee from the saved early‑termination costs.
+
+Invert the trapped lessee—instead of the carer eating the remaining lease payments when a family member’s condition changes or they can no longer drive, the broker finds a pre‑qualified assignee and convinces the leasing company to accept a substitution, preventing a default. The broker’s value compounds with a database of adapted‑vehicle specifications and lessor policies, making each transfer faster than the last.
+
+The incoming family pays a finder’s fee or the lessor pays a commission for retaining the lease on‑books.
+
+Waiting lists for new adapted vehicles have lengthened post‑supply‑chain, and more families are leasing rather than buying outright—making penalty‑free exit a pressing need.
+
+The passages only show specialist dealers who BUY/sell owned WAVs and describe the Motability lease scheme; none address whether brokering a lease assignment/novation between families is a durable, uncommoditised source of value, and a sell-to-dealer exit is a mere substitute, not a total-commodity refutation. No passage affirms the positive durability claim, so it cannot be marked supported.
+
+The passages show WAV suppliers, a Motability carer-info page, and one dealer (Ransome) that buys WAVs outright, but none address a broker that transfers/assigns an existing adapted-vehicle lease between families or negotiates lessor penalty waivers, so they neither affirm the space is open nor show an incumbent owning this specific need.
+
+None of the passages address whether the incoming family or the lessor has budget and motive to pay the broker's fee: the Ransome passage covers a lessor buying WAVs (not paying a transfer broker), the insolvency passage treats cars as realisable assets, and the Motability passage describes government-funded leasing without speaking to any broker commission.
+
+LeaseTrader.com operates an existing 'Take Over a Lease' channel where buyers actively search for and assume leases, and Ransome Mobility is an existing WAV-focused channel that sources adapted vehicles, showing an executable route to reach incoming families exists. Neither passage shows the route is blocked or expert-only.
+
+The passages only describe Motability carer/appointee/nominee roles and that the agreement is in the disabled person's name; none address whether transferring or assigning an adapted-vehicle lease to another family breaches any law or lease terms.
+
+The passages only describe how carers and disabled people obtain Motability lease vehicles; none address the claimed pain of being trapped in an adapted-vehicle lease, early-termination penalties, or anyone paying to transfer or exit a lease.
+
+The two load-bearing premises both fail to ground at zero confidence. pain_reality is unverifiable (conf 0.0): no passage evidences a 'trapped lessee' paying early-termination penalties or anyone seeking to transfer out of an adapted-vehicle lease; the carer sources [04abbcebffe718ca, 0fe79be0b76d86a7, 2fa07a08fcacbd63] only describe how carers acquire Motability vehicles, never a costly exit. payer_solvency is also unverifiable (conf 0.0): nothing shows the incoming family or the lessor has budget or motive to pay the broker a finder's fee or retention commission. Worse, the durability gate surfaces a live commodity substitute: specialist WAV dealers (Ransome [4afe19609332c199], Mobility Vehicle Specialists [dcacdfce02d02e5b], Fleximobility [c001a88435097240]) already offer carers a hassle-free, paid exit by BUYING the unwanted adapted vehicle outright, collapsing the very pain the broker monetises. The Motability structure compounds the legality doubt: the agreement is in the disabled person's name and the appointee is legally responsible [04abbcebffe718ca], so reassigning a government-allowance-funded lease to an unrelated family is unsupported and likely not permitted (legality unverifiable, conf 0.21). The only supported gate is distribution (conf 0.51) via generic platforms like LeaseTrader [8ea668af6746a13b], which simultaneously undercuts the 'exclusive channel' wedge. Net: no grounded pain, no grounded payer, an existing cheaper substitute, and a dubious legal basis.

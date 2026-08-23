@@ -1,0 +1,21 @@
+SAM 4845 AI risk assessment for AI startups.
+
+An AI tool that completes the California State Administrative Manual (SAM) 4845.5 AI Risk Assessment for AI startups bidding on California state contracts.
+
+California SAM 4845.5 (effective June 2024) requires every California state agency to complete an AI Risk Assessment before procuring AI, and every AI vendor seeking state contracts to disclose the same documentation. The deliverable is a 4-section assessment covering data sources, model risk, bias testing, and human oversight. The model does the work of AI consultants at Booz Allen, Deloitte, and Slalom who charge $400-700/hr per assessment, and the work of solo consultants hired via CDTech's procurement roster. AI startups need to produce one before every California state RFP. The tool ingests the startup's product and policy documents, generates the SAM 4845.5 assessment, and maintains it through the contract lifecycle. The deliverable is a state-submittable risk assessment plus a version-locked evidence pack.
+
+This widens from a single AI risk assessment to the full California state AI procurement cycle, including RFP identification, assessment prep, submission, and contract maintenance.
+
+The wedge is technical IP. The proprietary templates are derived from real California state RFPs and CDTech's published AI procurement guidance, and the model is trained on the structure of state-issued AI risk assessments. New copycats would need to build the SAM 4845.5 corpus from scratch. Trigger: every California state RFP. Buyer: CEO or Head of Policy at an AI startup pursuing California state procurement. Public source: California Department of Technology's SAM 4845.5 document at CDTech.ca.gov and listed public RFPs at caleprocure.ca.gov.
+
+The CEO or Head of Policy at an AI startup pursuing California state procurement (typically GovTech, healthcare AI, education AI, or public safety AI). They already hire ex-CDT consultants or AI risk consultants at $400-700/hr per assessment, or sign statements of work with Booz Allen, Deloitte, or Slalom.
+
+CDT mandated SAM 4845.5 for all state AI procurement since June 2024. California's state agencies have issued roughly 60+ AI RFPs in 2024-2025, and the SAM 4845.5 deliverable is now the gating step. AI startups raising seed or Series A increasingly need California state revenue to support their next round.
+
+The passages cover OpenAI/GPT safety testing, ChatGPT marketing, free browser games, and Freecycle; none mention California SAM 4845.5, California state AI procurement, AI startups bidding on state RFPs, or any evidence that these buyers currently pay $400-700/hr consultants to complete such assessments. The question of whether a real, acute pain exists in this specific procurement workflow is not addressed.
+
+The passages cover California geography, state history, and general government services (DMV, state parks, business licenses) but contain no information about SAM 4845.5, AI risk assessment requirements, California state AI procurement, AI startup budgets, or consulting rates — so the passages do not establish whether the payer can or will pay £79.99.
+
+The passages concern Johnson Controls building management software and general California geography/services and contain no information about California state AI procurement, SAM 4845.5, or any distribution route to AI startups bidding on state contracts.
+
+None of the passages address California SAM 4845.5, California state procurement law, terms of service governing AI-generated risk assessments, or any restriction that would make generating such assessments unlawful; the texts cover only the dictionary meaning of 'automated' and product pages for ChatGPT and Gemini, which provide no basis to assess legality.

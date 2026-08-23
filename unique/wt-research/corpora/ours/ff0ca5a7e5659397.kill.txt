@@ -1,0 +1,13 @@
+Gigflow City Arbitrage Index.
+
+A solo-operated data service that ranks UK cities by net take-home for gig delivery riders after platform fees and living costs, giving Gen‑Z a personalised relocation map to maximise earnings.
+
+Analogous to property market indices used by investors, a gig-market index compiles scraped platform fees, surge frequency, cost-of-living, and user‑submitted anonymised earnings to surface spatial arbitrage opportunities that workers cannot spot from platform dashboards alone. The moat builds with every new data contribution, creating a proprietary, self‑reinforcing dataset.
+
+Gen‑Z multi‑app delivery and rideshare workers (18‑27) who are already considering a move between UK cities to escape earnings stagnation and soaring rents.
+
+Post‑2020, Deliveroo and Uber Eats rider sign‑ups have surged while per‑order pay has dropped due to oversupply; simultaneously energy and rent prices have spiked. Gen‑Z are increasingly nomadic and data‑savvy, yet no tool gives them city‑level net‑income transparency. Scraping infrastructure and open cost‑of‑living APIs now make the index feasible for a solo operator.
+
+The passage describes a free 'open' UK delivery-rider earnings dataset built the same way the candidate claims as its moat (2,000+ rider accounts + ONS/HMRC/Statista), which signals commoditisation pressure, but it does not address the specific city-level net-take-home relocation comparator and does not show that value is totally commoditised to zero margin, so it neither affirms durability nor conclusively refutes it.
+
+The passage shows an existing 2026 'Net Pay Calculator Ranking' that already ranks cities by gig (DoorDash) net pay after expenses, which is the same need this candidate proposes to serve, so an incumbent already occupies the space. The candidate is UK-specific while the cited incumbent is US-based, but it is the same product category already being solved.

@@ -1,0 +1,23 @@
+RehabRide – The Medical Transport Empty-Leg Broker.
+
+A solo-operated service that books discounted non-emergency medical transport for carers by surfacing and matching providers' otherwise empty return trips, capturing a booking fee per ride.
+
+Carers routinely overpay for NEMT because providers’ empty return legs are a hidden, perishable asset no public marketplace aggregates. By building a manual, relationship‑based feed of empty‑leg availability, a solo broker can offer rides at 40‑60% below standard rates and skim a small fee—creating a win‑win that does not require any capital or fleet.
+
+The carer (or the care recipient's household) pays a flat booking fee of £5‑8 per successfully matched one‑way trip on top of the discounted fare; total outlay is still far below market.
+
+Post‑pandemic, NEMT providers face patchy demand and lean into yield management; carers are digitally connected via community groups and are more willing to try new access models; no aggregator yet focuses on the empty‑leg arbitrage for this niche.
+
+No passage addresses the durability of empty-leg arbitrage value in NEMT; they mention NEMT services and research but provide zero evidence on whether the empty-leg opportunity is real, commoditised, or evaporating.
+
+The passages do not address whether a dominant incumbent or funded rival exists in the empty-leg NEMT broker space; the sole mention of NEMT ([1baa8b0e9db20621]) only describes a generic market analysis step without identifying incumbents.
+
+The passages mention Oxford library catalogues, a truncated analysis of NEMT system savings, and a Star Wars film; none address the financial capacity or willingness of carers to pay for discounted empty-leg rides.
+
+The passages discuss an Oxford library catalogue and a Star Wars film; they have zero conceptual overlap with medical transport, carers, or distribution channels.
+
+None of the passages address the lawfulness of brokering non-emergency medical transport empty legs; the evidence concerns unrelated topics or merely mentions transport services without legal context.
+
+None of the passages mention non-emergency medical transport, carers, empty legs, or any related problem; they are about a library catalog and a Star Wars movie. Thus, they provide no evidence about whether carers are suffering or paying to solve the described problem.
+
+No evidence in retrieved passages indicates any of these risks; all checks were unverifiable due to irrelevant results (e.g., library catalog, Star Wars film).

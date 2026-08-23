@@ -1,0 +1,13 @@
+PondGuard – The Predictive Aquaculture Sentinel.
+
+A vertical IoT+AI tool for small-scale fish and shrimp farmers that ingests low-cost sensor data, predicts lethal oxygen crashes hours in advance, and dispatches actionable alerts to prevent catastrophic stock loss.
+
+Existing aquaculture monitoring tools are either industrial-grade and unaffordable or simple alarm boxes that beep after a threshold is breached. A first-principles rebuild treats pond dynamics as a tiny time-series forecasting problem, fusing dissolved-oxygen, temperature, and pH data with weather forecasts and stocking density. A solo operator can ship an app that connects to commodity sensors (e.g., Atlas Scientific) via a Raspberry Pi bridge, runs a lightweight predictive model, and alerts the farmer via SMS before the crash. The moat is the species- and region-specific prediction model that improves with each pond it monitors.
+
+Owner-operators of small to medium aquaculture operations (ponds or raceways, 1–10 employees) who face a 30–100% mortality risk from sudden water quality collapses.
+
+Aquaculture is one of the fastest-growing food sectors, yet smallholders are massively underserved by AgTech because the unit economics require a low-cost, self-install solution. Cheap single-board computers, cloud IoT hubs, and edge ML (TinyML) now allow a solo builder to deliver a predictive tool without needing a hardware venture.
+
+Passages [46126ac42dad5bea] and [ceba633090b0cb4b] affirm the underlying value is real and durable: shrimp farming faces longstanding unstable water conditions and limited monitoring access, and a player (AquaExchange) raised an $8M Series B building IoT+AI for it, showing the value is being captured, not evaporating. The competitors shown are full-stack funded platforms, not free first-party tools that remove all margin, so durability is not refuted.
+
+AquaExchange is a funded ($8M Series B) full-stack platform combining IoT devices and AI models for shrimp farming, and eFishery deploys smart sensors at fish/shrimp ponds, showing funded rivals already serve aquaculture IoT/AI monitoring; the space is not underserved.

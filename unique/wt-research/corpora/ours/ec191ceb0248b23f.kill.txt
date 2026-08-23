@@ -1,0 +1,29 @@
+SettlementScope — the self-represented divorcée's financial settlement proposal builder.
+
+A tool that shows you what a fair split of assets looks like under UK divorce law, built from thousands of real court outcomes, and turns your numbers into a judge‑ready financial proposal.
+
+When a marriage ends and neither side can afford a lawyer, most people walk into mediation with no idea what a court would give them. They guess. They get bullied. They leave money on the table.
+
+This tool lets you input your finances — house equity, pensions, savings, debts, incomes — and instantly see the range of outcomes judges actually award in cases like yours. The numbers come from a growing proprietary library of anonymised financial remedy orders obtained through Freedom of Information requests to family courts across England and Wales.
+
+It then generates a Form E‑compatible financial statement and a position paper you can take to mediation or a first hearing. You pay a fixed fee per household.
+
+The value compounds as more people use it, because every new case that is added (with consent) sharpens the predictions. No competitor can get that dataset, because it’s built through sustained FOI campaigns and manual parsing of scanned court orders — a legal but laborious moat a solo operator can own and defend with a small script once the data is digitised.
+
+A separating parent aged 35‑55 with a mortgage, some pension, and no budget for a solicitor. They need a number they can trust so they stop arguing and settle.
+
+The court backlogs are forcing more people into mediation, and the removal of legal aid has pushed the financially squeezed middle into self‑representation. HMCTS is piloting online financial remedy services, but they still require you to know what to ask for — and that knowledge gap is where the product lives.
+
+Passages show self-represented parties now make up most family cases and still struggle to turn their facts and papers into something the court can use, so the need for guidance on financial outcomes remains live. Existing divorce settlement calculators only offer a rough idea of finances, which does not show that a free or bundled tool has already taken all paid room for a judge-ready proposal product.
+
+The passages name related players—Amicable Divorce’s Financial Settlement Calculator, divorce financial settlement solicitors, and generic online calculators said to be too simplistic—but none say whether any one provider dominates this market or already covers self-represented divorcées with outcome-based settlement tools. They therefore never show that the space is open, nor that a clear market leader already solves this need well.
+
+The passages only describe solicitor financial-settlement services, fixed-fee divorce offerings, and free Citizens Advice; none say whether self-representing separating parents who cannot afford a solicitor have money or willingness to buy a fixed-fee proposal tool. What those operators charge or give away for free is not evidence that this buyer can and will pay.
+
+Passages show divorcing people already reach self-serve online help for money and property splits and for judging their finances before they act, plus an official online divorce application portal open to applicants themselves. That is a workable, low-friction path to the same buyers this tool would serve.
+
+Passages openly market divorce settlement calculators that let users estimate entitlements, set expectations, and prepare to negotiate asset division. That shows this kind of paid tool can operate as a normal commercial product without needing illegality.
+
+Judges, HMCTS staff and legal professionals were concerned that litigants in person could not access the same information as other parties, and LIPs appear in financial remedy proceedings, sometimes in terrible circumstances. That is a real, present disadvantage for self-represented divorcing parties who need settlement-relevant information.
+
+Passages show commercial divorce settlement calculators openly marketed to help users estimate entitlements and prepare to negotiate (cbcc084651e8881f, 7571ab174adcded1, c1741f9764435759), so nothing here shows the model is illegal or barred for third parties. They name several calculators, solicitor packages and free guides (a41006f8bd326ea1, 82a5092e2cf3b3da, d0257c26e0832acd, 87c556ee86aa545c) without stating that one firm controls most of the channel, and they never compare customer-acquisition cost to lifetime revenue for the target buyer (ab367861d0eae7cd, 7fb20a511fea27b8, d5b21bcb0dd578ee).

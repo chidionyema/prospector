@@ -1,0 +1,23 @@
+OutageMesh, real outage or dead device, for IoT alarms.
+
+An API that tells UK telecare, alarm and IoT device makers whether a silent device is really broken or just caught in a local phone-line or broadband outage.
+
+OutageMesh is an API and webhook feed that UK telecare, personal-alarm and smart-security companies plug into their device backend. When a device stops sending a signal, OutageMesh checks in real time whether that postcode is having a genuine phone-line or broadband outage, before the company's software decides to call a handler, send an engineer, or dial 999 on the customer's behalf.
+
+This matters right now because Openreach's copper phone-line switch-off, pushed back to January 2027, is moving telecare and alarm boxes onto broadband-dependent lines. Ofcom's rules for landline providers (General Condition C6) already force them to identify vulnerable, telecare-reliant customers and give them backup power, after several widely reported cases of elderly telecare users being cut off during the 'Digital Voice' migration and local power cuts. Every telecare and alarm company now carries legal and reputational risk if it cannot tell, within seconds, whether a lost signal is its own device fault or the network's problem.
+
+OutageMesh works by combining two things that normally live apart: live status data pulled and normalised from BT, Openreach, Virgin Media, Sky and the mobile networks' own outage pages, and anonymised heartbeat telemetry from every device that already routes through the API. The more devices in a postcode use OutageMesh, the faster and more precisely it can tell a single broken unit from a street-wide outage - each new customer sharpens the picture for every other customer nearby, the way a shared fraud-signal network gets better as more merchants join it.
+
+No single telecom operator will build this. Openreach's engineer portal only shows Openreach's own faults, BT's status page only shows BT, and Ofcom's Connected Nations report is an annual PDF, not a live per-postcode feed - and no operator has a commercial reason to surface a rival's outage alongside its own. That gap, plus the compounding cross-operator device telemetry nobody else is collecting, is what a copier reading public status pages cannot reproduce.
+
+Engineering leads and CTOs at UK telecare monitoring centres registered with TSA (the Technology Enabled Care Services Association), personal-alarm makers, and smart-security or IoT firms serving local authority and NHS contracts. They pay a monthly per-device API fee because a false emergency dispatch costs them real money and a missed real one costs them their contract.
+
+The Openreach PSTN switch-off (delayed to January 2027) is forcing telecare and alarm devices onto broadband lines just as Ofcom's General Condition C6 makes providers responsible for identifying and protecting landline-dependent vulnerable customers, after several public incidents where the Digital Voice migration cut off elderly telecare users during power cuts - so distinguishing a real device fault from a network outage has become a compliance and safety issue almost overnight.
+
+1.8 million customers rely on copper-connected telecare systems that may not work correctly once migrated to digital lines, and Digital Voice fails during power cuts unless a battery backup is installed, which is exactly the acute, safety-critical failure mode the candidate targets [67bb0e38b6c4e55f]. BT itself paused its Digital Voice rollout because storm-driven power cuts brought this telecare risk 'into sharper focus,' confirming operators already treat it as an urgent, real-world problem rather than a hypothetical one [32e9cfe62ef1ba7b][6b4a2c74fc06e577].
+
+The TSA passages describe airport security screening and have no connection to telecare payers or budgets. The telecare passages show council telecare budgets are strained enough to need a near-10% price rise to plug a shortfall, and mention funding programmes for digital telecare transition, but none say whether telecare monitoring centres, alarm makers or IoT firms have budget or motive to pay for an outage-detection API.
+
+The passages confirm TSA and telecare/TEC organizations exist in the UK, but none describe an API, developer channel, procurement process, or self-serve mechanism by which OutageMesh could reach telecare/alarm company engineering leads as buyers.
+
+The passages confirm the copper-to-digital switch-off timeline and that Openreach controls the physical network, and describe web scraping legality in general terms, but none states what data Openreach/BT/Virgin/Sky permit or forbid third parties to pull from their status pages, so whether OutageMesh's aggregation is lawful or a ToS breach is not addressed.

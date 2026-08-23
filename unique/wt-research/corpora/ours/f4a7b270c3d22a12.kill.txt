@@ -1,0 +1,23 @@
+Invoice Advance Direct – The Tradesperson's Micro Invoice Sale.
+
+A non-recourse invoice buying service that instantly pays 70% of an outstanding sub-£1000 invoice and bears all collection risk, powered by a proprietary database of debtor behaviour.
+
+Small tradespeople wait 30–90 days for payment on small jobs, creating acute cash‑flow pain. Incumbent invoice factoring demands high volume and long contracts, leaving micro invoices untouched. By borrowing the distressed‑debt buying model from special‑situations finance and scaling it down with automated underwriting, a solo operator can cherry‑pick creditworthy debtors and profit from the spread between the discounted purchase price and the collected amount. (Cross‑sector lens from distressed debt investing and accounts receivable factoring.).
+
+Self‑employed plumbers, electricians, carpenters and builders holding a single unpaid invoice under £1000 that they would rather sell than chase.
+
+Rising material costs and interest rates squeeze trades cash flow; late payment culture remains widespread; low‑cost digital payments and open banking enable instant verification and assignment of receivables.
+
+The passages offer generic definitions of invoice financing/factoring but do not address the durability, commoditisation, or evaporating nature of the micro‑invoice buying margin for tradespeople.
+
+The passages discuss general recourse vs. non-recourse factoring and market share but never mention micro invoices, tradespeople, or whether any incumbent specifically dominates or underserves that niche. No evidence addresses the incumbency claim.
+
+The passages define recourse and non-recourse factoring but provide no information about the solvency or willingness to pay of the small debtors who owe money to self-employed tradespeople, which is the actual revenue source.
+
+All passages explain invoice factoring concepts (recourse vs non-recourse, a case study) or define 'NON-', but none discuss how a service reaches self-employed tradespeople or any distribution channel for micro-invoice buying. Zero conceptual overlap with the route-to-buyer question.
+
+Passages discuss non‑recourse invoice factoring as a standard, legitimate financial service (90c5b2664e55e8d1, 10a9ef5717187781) with no mention of illegality, implying the margin is lawful.
+
+The passages describe invoice factoring types but provide no evidence that small tradespeople with sub-£1000 invoices are acutely suffering cash-flow pain or currently paying to solve it. No testimonial or behavioral data confirms the claimed pain.
+
+No objective risk vectors are present in the evidence: non-recourse invoice factoring is a standard, legal financial product, and no source identifies a single company with ≥80% channel control or unit economics that make customer acquisition unprofitable.

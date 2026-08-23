@@ -1,0 +1,19 @@
+ChargeBreak – find and fight the overcharges in your California hospital bill, for $29.
+
+A web app that uses hospital price transparency data to slash your out-of-pocket medical costs.
+
+Gen Z gig workers in California often face surprise hospital bills with no coverage to cushion the blow. Hospitals now post their full chargemaster prices online, but the data sits in unusable spreadsheets. ChargeBreak scrapes that data, matches it to your bill line by line, and drafts a formal dispute letter demanding the price be reduced to a fair cash rate. 
+
+It works like a procurement cost‑benchmarking tool transplanted to personal healthcare. Every charge is flagged if it exceeds a threshold, and the letter cites the hospital’s own numbers – a tactic vendors use against each other, now weaponised for patients. 
+
+The company compiles and normalises chargemasters from all California hospitals, adding cash‑price benchmarks from insurer transparency files. That dataset, refreshed weekly, is the moat: a new entrant would need to build the same pipeline from scratch. The tool is self‑serve, so one person can run it. 
+
+Growth comes from TikTok and Instagram content showing real bill reductions, plus partnerships with gig‑worker unions in Los Angeles and the Bay Area. Users pay $29 per bill, with a refund if the hospital doesn’t cut the total within 30 days.
+
+A Gen Z gig worker in California, typically uninsured or on a high‑deductible plan, who just received a surprise medical bill and has the budget authority to spend $29 to potentially save hundreds.
+
+The federal Hospital Price Transparency rule and California’s own laws (like SB‑24) force hospitals to publish their prices. But no consumer‑facing tool turns that data into easy bill reductions. Enforcement is ramping up, flooding the public domain with usable numbers for the first time.
+
+The passages show that US hospital price transparency rules are in force and require hospitals to publish comprehensive machine-readable files (JSON or CSV) containing negotiated rates and self-pay prices, with compliance being actively assessed [e63a08ca3ccaadbe, d7b950027b01dd02, 74349db0527a350a] — so the raw pricing data the product depends on genuinely exists and is being kept current through 2026. No passage describes a free or bundled consumer tool that already turns these bulk data files into a usable bill comparison, so nothing here shows the value has been taken away.
+
+The passages show several services already doing this work for patients: one venture-backed company, Goodbill, raised $3.4M specifically to tackle medical billing [6475cc5cb39ab7c4], another advertises finding errors in hospital bills and negotiating them down [d7bdfd8a7b35d41f], and Dollar For — a charity-rated nonprofit — gets hospital bills reduced or wiped for free and says it has cleared tens of millions of dollars [0892f29a7eb4b24b], alongside other free bill-forgiveness helpers [350da636355852c2, b617b2891afc4400]. A funded rival plus established free alternatives already serving patien

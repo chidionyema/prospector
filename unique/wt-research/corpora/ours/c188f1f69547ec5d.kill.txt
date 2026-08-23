@@ -1,0 +1,21 @@
+ScrubSwap, locker-based scrub laundering at hospital shift change.
+
+A locker collection point at the hospital that launders NHS scrub uniforms to infection-control standard between shifts, for nurses and healthcare assistants who currently wash them at home.
+
+Nurses and healthcare assistants are widely reported to be washing their own scrubs at home, ever since many NHS trusts scaled back on-site laundries to cut costs. The Royal College of Nursing raised this directly, warning that a domestic machine can't reliably hit the wash temperatures infection-control guidance calls for, and that staff end up carrying used scrubs on public transport and through their own kitchens.
+
+This borrows the swap-a-clean-one-for-a-dirty-one model that gyms and industrial workwear firms already run for kit and coveralls, but rebuilds it around a hospital shift change instead of a gym visit. A solo operator agrees a licence to occupy a small locked locker bank with the trust's estates team, sited by a staff entrance. A nurse drops a bagged scrub set into their locker at the end of a shift and picks up a laundered, sealed replacement set at the start of the next one. The wash itself runs to the temperature and separation rules in NHS infection prevention guidance, with a simple log of wash cycles kept in case the ward's infection-control lead ever asks.
+
+It holds up because the locker bank sits inside a secure staff-only area of the hospital. A generic dry-cleaner or laundry-pickup app has no relationship with the trust's estates and infection-control teams and no DBS-checked route to place equipment there, so they can't simply copy the drop point even if they wanted to compete on price. The trust itself has already shown, by withdrawing the service, that it doesn't want to run this in-house again — leaving a specific gap only someone willing to do the physical work locally can fill.
+
+Individual nurses, healthcare assistants and operating department practitioners at a specific hospital site, paying a personal monthly subscription (around £18–£25) out of their own household budget for convenience and peace of mind, the same way they'd pay for parking or a gym membership.
+
+Multiple NHS trusts pulled back central scrub laundering over the past few years as a cost-saving measure, and the Royal College of Nursing has publicly flagged staff washing scrubs at home as a live infection-control concern rather than a settled arrangement, keeping the problem visible and unresolved.
+
+The only demand-side data point is a generic figure for the worldwide on-demand laundry industry, which says nothing about nurses or hospital scrub laundering specifically; the forum-style passages about scrub policy and who pays for scrubs don't show anyone searching for or paying to have scrubs laundered at a hospital site.
+
+None of the passages address NHS trust laundry policy, RCN warnings about staff washing scrubs at home, or any 2025/2026 timeline for this specific problem — they cover phonk music charts, football pools, a scrubs apparel retailer, the generic NHS homepage, an IPTV repo, and a Tanzanian exam download page.
+
+The passages cover generic licence-to-occupy definitions and unrelated NHS procurement/construction frameworks, but none describe a channel a novice can use to reach nurses as paying buyers (e.g. advertising, staff comms, word of mouth at shift change) or confirm a beginner could secure a locker licence with a trust's estates team.
+
+None of the passages discuss any law, licensing rule, or contractual restriction bearing on operating a scrub-laundering locker service at an NHS site — they cover Malaysian Bumiputera contractor licences, a generic license-lookup portal, an NHS services homepage, a contractor pay dispute, and ambulance staff turnover.

@@ -1,0 +1,23 @@
+Adversarial Rental-Entry Dossier Service.
+
+An AI-powered, legal-first service that bundles irregular gig income into an application dossier specifically structured to leverage obscure local fair-housing and source-of-income laws, forcing small-landlords to accept the application.
+
+Small landlords are risk-averse to gig workers due to income opacity; a service that professionalizes the income verification by mapping it directly to specific local legal protections (broadening the scope from simple application to legal enforcement) overcomes the friction point where standard platforms fail. Using the 'broaden' lens, this takes a simple rental application and expands its value proposition to include legal leverage.
+
+Gen Z freelance workers (18-27) in high-density, strictly-regulated rental markets (e.g., Berlin, NYC).
+
+Local governments are increasingly legislating protections for non-traditional income, but these laws remain dormant because individual applicants lack the expertise to package applications to trigger them; this service turns those laws into a competitive advantage.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+No passages retrieved from any search query. Downgraded to unverifiable without firing the verdict LLM call.
+
+The proposed adversarial rental-entry service is fundamentally non-viable due to the misalignment between the product's adversarial nature and the landlord's risk-aversion. In high-demand rental markets where this service targets, landlords maintain significant leverage and will automatically reject applicants that introduce potential legal friction or adversarial signaling. The reliance on 'dormant' local laws to force landlord compliance is structurally weak, as small landlords prioritize tenant risk mitigation over navigating niche or untested regulations, leading to high rejection rates for any applicant utilizing this service. The absence of any supporting evidence across all investigated domains—including pain reality, distribution, and payer solvency—strongly suggests that this is a synthetic solution lacking market validation, and it fails to address the inherent supply-side resistance in the rental market.

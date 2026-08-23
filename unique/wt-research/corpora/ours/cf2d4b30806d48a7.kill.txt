@@ -1,0 +1,21 @@
+PA oil and gas filings for oilfield SaaS vendors.
+
+A connector that pulls production data from oilfield SaaS into PA DEP's eFACETS reporting and validates the produced-water manifest against Chapter 78a.
+
+PA's Department of Environmental Protection (DEP) eFACETS system is the filing portal for oil and gas operators in PA — production reports, waste manifests, and well integrity statements. PA Code Title 25, Chapter 78a (oil and gas) requires monthly production reports from every operator, plus a waste manifest for every load of produced water hauled to a PA DEP-permitted disposal facility. Oilfield SaaS vendors that want to serve PA operators must file into eFACETS in the format the portal accepts.
+
+Today, vendors either skip PA (the smallest-producing major shale state) or hand-key the eFACETS portal — eFACETS has a documented API but the schema is brittle, and the produced-water manifest cross-check against Chapter 78a disposal rules is manual. The free path is the eFACETS portal itself, which doesn't aggregate from the operator's production SaaS.
+
+This borrows the way logistics EDI standards (X12 856 ASN) normalize shipments across carriers, and applies it to PA's oil and gas produced water manifests. The tool ingests production data from the oilfield SaaS, validates it against PA's well-specific allowables, and files into eFACETS. It also generates the produced-water manifest against the haulier's PA DEP-registered disposal facility, and flags every load that exceeds the Chapter 78a concentration threshold. The oilfield SaaS pays per PA well per month. Why this holds: once the integration is in the operator's daily workflow, replacing it means re-validating every PA well in the eFACETS schema.
+
+VP of Product at an oilfield SaaS company serving PA operators.
+
+PA Chapter 78a revisions in 2023 tightened produced-water concentration thresholds; PA DEP is auditing operators more aggressively; eFACETS schema changes are breaking vendor integrations.
+
+Multiple passages show active commercial demand for PA oil and gas compliance/reporting tools: RegScan/IPAA launched a paid Marcellus compliance suite [0febdaa3fe5a64ea, e8a0f2fd437c91cf], Sentience Prime Cypher markets ongoing oil & gas regulatory compliance SaaS [9e9fef467c87d657], EQuIS serves shale gas sampling/compliance [c43f93a2d73ed2de], and Greasebook published April 2026 content marketing explicitly around PA DEP production-reporting pain with paper tickets and Excel [1d3b85dc6ecd9e6a].
+
+The passages establish that Pennsylvania has substantial Marcellus Shale natural gas production and active operators self-reporting production data, but none address oilfield SaaS vendors' budgets, pricing for connectors, or willingness to pay £49.99 for a PA-specific eFACETS filing tool — the payer (VP of Product at an oilfield SaaS company) is not discussed in any passage.
+
+No passage establishes a specific, low-friction route to reach VPs of Product at oilfield SaaS companies serving PA operators; the passages mention generic LinkedIn groups for product managers, oil and gas communities, and oilfield software professionals, but none describe a channel, marketplace, or forcing mechanism through which a PA-specific eFACETS/Chapter 78a compliance connector could be distributed to that exact buyer.
+
+The passages address PA Department of Revenue third-party e-file programs, voter registration APIs, PennDOT data feeds, and unrelated gaming/hardware topics; none discuss PA DEP, eFACETS, Chapter 78a, oil and gas reporting, or whether third-party connectors may lawfully file into eFACETS, so the legality question cannot be answered from this evidence.

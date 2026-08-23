@@ -1,0 +1,13 @@
+The Freelance Confidence Barometer.
+
+A monthly sentiment index and data report derived from a proprietary panel of 2,000+ creative freelancers, sold to gig platforms, policymakers, and freelancers as the definitive early‑signal of rate trends and demand shifts.
+
+Borrowing the 'consumer confidence index' model and applying it to the opaque freelance labour market creates a new data asset. Freelancers lack systematic market information to set rates; platforms and governments lack forward‑looking data. A solo can build a panel via AI‑driven outreach, synthesize responses with wage‑price data, and publish a proprietary index whose historical time‑series becomes increasingly valuable. The wedge is the unique panel and longitudinal dataset.
+
+Large freelance platforms (Fiverr, Upwork) licensing data for strategic planning (£2k‑£10k/year); academic and policy institutions; premium tier for freelancers at £10/month.
+
+Regulatory attention on platform work is spawning legislation (EU Platform Work Directive, UK employment‑status cases) that requires evidence on earnings and demand. Simultaneously, AI‑powered survey tools make it feasible for one person to run a high‑quality recurring operation, while remote work volatility makes the index more newsworthy than ever.
+
+The passage shows one insurance firm ran a free one-off AI-sentiment survey of UK creative freelancers, but it does not address whether a recurring proprietary rate/demand index retains durable value, nor is a single sporadic marketing survey a total commodity that removes all margin. Nothing in the passage affirms the value IS durable.
+
+Passage [e9bd32910a2800dc] shows Human Cloud already runs a continuous 'Freelance Market Pulse,' polling 200+ companies and freelancers across 50 countries to benchmark the freelance industry's sentiment and conditions, which is the same cross-market freelance index the candidate proposes. An incumbent is already serving this need.

@@ -1,0 +1,17 @@
+Prop 65 warning bundles for California DTC brand founders.
+
+A DTC founder adds a SKU; the tool emits a Proposition 65 warning label, chemical dossier and exposure memo, kept current as OEHHA updates its hazard list.
+
+California's Proposition 65, run by the Office of Environmental Health Hazard Assessment, requires consumer products sold in-state to carry a clear warning when they expose users to listed chemicals, and OEHHA's list grows every year. Every DTC brand — skincare, supplement, food, vape, small kitchen goods — that ships into California has to keep SKU chemistry, label compliance and litigation exposure in view on a recurring basis.
+
+Today the buyer hires a regulatory consultant at $300+ per hour or subscribes to enterprise compliance software like Assent or ComplianceMet, each built for global supply chains at $20,000+ per year. Neither of these tools produces the litigation-context warning recipes an indie DTC founder needs: the exact warning phrasings, fonts and citation patterns California Attorney General settlements have actually used, mapped to the founder's specific SKU.
+
+The tool widens the value chain from 'produce one warning label per SKU' into ongoing SKU-level chemical inventory tracking, exposure memo updates and litigation-context monitoring. The founder enters their SKU list and formula, the tool reads OEHHA's published chemical list, matches it against the formula and material database, and outputs the Prop 65 warning label, the exposure memo, and a list of recent California AG settlements where similar products triggered liability.
+
+The defensibility is proprietary data: the SKU × chemical × recent-litigation matrix compounds with each SKU added and each OEHHA list update, and the corpus of California AG settlement phrasing is not free. OEHHA in 2024 added titanium dioxide and quinoline to the Prop 65 list, with several additional chemicals publicly noticed for 2025; the AG's enforcement stream against DTC brands has been visibly active through 2024–2025, which is why an indie DTC founder without a regulatory team is searching for a tool today.
+
+Distribution is content-led SEO plus Indie Hackers and Beauty Independent community reach; an Assent or ComplianceMet cannot serve this buyer at their price point and information density without losing the enterprise contracts they sell today.
+
+Founder of a DTC brand selling consumer goods, supplements, cosmetics or small hardware into California — typically Seed to Series B with 1–50 SKUs.
+
+OEHHA added titanium dioxide and quinoline to the Prop 65 list in 2024 with additional chemicals publicly noticed for 2025, and the California AG's enforcement stream against DTC brands has been visibly active in 2024–2025.

@@ -1,0 +1,21 @@
+Code Warranty Insider.
+
+A bimonthly report that stress-tests popular APIs, cloud services, and open-source libraries, delivering reliability scores and hidden risk alerts to freelance developers.
+
+Freelance web developers are blamed when third-party services fail, but have no objective way to compare reliability before choosing a stack; an independent rating report saves them from costly project failures and client disputes. (lens: cross_sector – borrowing Consumer Reports model for developer infrastructure).
+
+freelance web developers and solo dev agencies.
+
+The explosion of API-first services and cyberattacks on supply chains has increased third-party failure risks, yet no independent body tests reliability from a developer's perspective.
+
+The passages describe uptime/status monitoring tools (StatusGator, Better Stack, Uptime Kuma, etc.), not third-party reliability rating reports for APIs, cloud services, or libraries aimed at freelance developers; they show a market for monitoring infrastructure exists but say nothing about whether independent comparative reliability scoring is durable or already commoditised.
+
+The passages show status-page aggregation (StatusGator) and API management platform comparison (Gartner) exist, but neither covers independent reliability testing/scoring of APIs and libraries for freelance developers — StatusGator aggregates self-reported status, not tested reliability scores, and Gartner's Magic Quadrant addresses enterprise API management software, not third-party service reliability ratings.
+
+The passages establish freelancer population size, tax rate, day rates, and a general 2024 sentiment decline, but none address whether freelancers currently budget for or would purchase a reliability/risk report — no data on willingness to pay for such a service.
+
+The newsletter passages only confirm that developer newsletters exist as a generic marketing channel, not that this specific paid bimonthly report can reach freelance developers cheaply; the subscription-fatigue passages (75% affected, 53% cancel/restart) suggest the opposite — that email/report channels are increasingly resistant to new entrants. The techUK bio has no bearing on distribution at all.
+
+The passages describe rate-limiting techniques and generic AWS/service Terms-of-Service references, but say nothing about a bimonthly reliability-rating report testing third-party APIs, nor about any legal restriction on publishing such benchmarks.
+
+Three passages concern dispute resolution and adjudication for construction/building-remediation contracts, unrelated to software developers or API reliability. The SaaS SLA/liability passages describe how vendor contracts limit liability but say nothing about freelance developers being blamed by clients, suffering losses, or paying for reliability comparisons today.

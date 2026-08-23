@@ -1,0 +1,23 @@
+The Client Blacklist Digest.
+
+A monthly paid report vetting potential clients’ payment practices and professionalism using anonymous freelancer tips and public data, giving creatives a risk score before they sign.
+
+Transplanting corporate credit‑rating intelligence into the informal gig economy where freelancers lack structured client due diligence, creating a defensive must‑have for anyone burned by non‑payment or scope creep.
+
+Freelance creatives (designers, writers, developers) vetting new clients, paying $15/month or $30 per one‑off report.
+
+Remote and cross‑border hiring explodes freelancer‑client anonymity; social media complaints show rising payment disputes but no structured, searchable early‑warning system exists.
+
+The late-payment statistics ([44102004ae9fc21c], [d065a24bb25b87cd], [c1e24106164fc087]) show the underlying pain (late/non-payment) is real, but none of them address whether a paid client-vetting/blacklist report itself holds durable value — the Glassdoor passages ([890211112897634e], [ad03c8bd859d8f4c], [ab92d174ac540d18]) concern a different product (employer/job reviews) and say nothing about client-risk reports for freelancers, so they neither confirm nor commoditise this offering.
+
+The evidence only surfaces generic advice content and broad reputation platforms — Freelancer.com's own in-platform TrustScore and Trustpilot's general business reviews — none of which is a freelancer-specific, cross-client risk score built from anonymous non-payment/scope-creep tips and public records. No passage shows one of these dominating this specific vetting niche.
+
+The passages establish freelancer rate ranges and total gig-economy market size, but none speak to freelancers' willingness or motive to spend $15–$30/month specifically on client-vetting reports; the insolvency-practitioner passages concern liquidating gig businesses, not client due diligence.
+
+The passages show only generic freelancer community/membership sites (IPSE) and unrelated scam-avoidance and moderation content; none describe a channel for distributing a client-risk-scoring report or a forcing mechanism that would get freelancers to buy it.
+
+The passages only confirm that UK defamation law and ICO-enforced data protection law exist as general frameworks; none states whether a client-vetting risk-score product using anonymous tips can lawfully be built and monetised, and none confirms a specific lawful mechanism (e.g. a credit-reference-agency-style exemption) that would let it operate.
+
+Freelancers face frequent late payments, are owed an average of £5431.03, and over a third resort to payday loans to cover the shortfall — showing the pain is real and acute enough that they take costly action, and the existence of court-recovery and invoice-chasing services confirms people actively try to solve it.
+
+No passage shows this specific business (a paid client-vetting/risk-score report for freelancers) is illegal, nor does any show one company holding a dominant share of this niche — the closest comparables (Glassdoor, Trustpilot, Freelancer.com's TrustScore) serve different purposes (employer/job reviews, general business reviews, in-platform ratings) and none is shown to control 80%+ of freelancer client-vetting. Unit economics can't be assessed either way: no passage states a customer-acquisition cost or a customer's total possible spend on this report.

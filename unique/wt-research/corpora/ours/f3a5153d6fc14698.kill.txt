@@ -1,0 +1,15 @@
+PipeCheck – The Lead-in-Pipes Home Water Audit Kit.
+
+A mail-in water test kit that builds a crowdsourced, street-level map of lead pipe risk, starting with anxious public sector homeowners in the UK.
+
+By aggregating citizen-sourced test results into a hyperlocal, anonymized dataset that reveals plumbing contamination patterns invisible to utilities, PipeCheck transforms a simple test kit into a defensible public health data asset — creating a moat no single-test lab can replicate.
+
+A UK public sector worker (teacher, nurse, council employee) living in a pre-1970 home, anxious about household lead exposure and willing to pay £49 for a validated, privacy‑preserving test that also contributes to neighbourhood‑level safety insights.
+
+The UK Environment Act’s legally binding lead pipe replacement target (2030) is forcing homeowners to proactively check their private pipework, while recent utility scandals (Thames Water, sewage dumping) have shattered trust in official water quality reports.
+
+Passages [a8f915f0404c1e46] and [f1319ea17f65871d] confirm lead pipes can leach lead into water, but none address whether this test-kit value is durable versus commoditised — no passage discusses competing lab kits, pricing pressure, or data-network defensibility. The conveyancing/flood-risk passages ([428f6541ab8f3b07], [1d2ab149a2462060], [87fe0f5ce3417b2e]) concern an unrelated property-transaction market and the DWI passage ([d502cdd4fa4ab83b]) only describes public tap water regulation, not private in-home testing economics.
+
+The passages show a well-regarded mail-in lab kit (Tap Score/SimpleLab) and generic lead test kits, but they frame testing around US EPA action levels with no mention of UK operations or market share, so they don't establish a dominant incumbent in the UK. None of the passages address the crowdsourced, street-level neighbourhood data aggregation that differentiates the candidate, leaving that core claim untested.
+
+The passages show public sector median gross pay of £807.67/week (~£3,500/month), which establishes general affordability but says nothing about discretionary spend, and none of the passages address whether this segment would allocate £49 to a water test kit specifically — the cost-of-living passages [40c91be5ee9492a2],[23daa720fdde9631] are generic index descriptions with no UK figures tying to this purchase, and CPI-adjusted real pay growth was only 0.4% [3606c95ff5dfd384], indicating squeezed discretionary budgets rather than confirmed willingness to spend on this item.

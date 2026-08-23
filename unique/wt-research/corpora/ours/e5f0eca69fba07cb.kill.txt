@@ -1,0 +1,13 @@
+PedalPro – The Workplace Bike Clinic.
+
+The operator arrives at school and hospital car parks with a mobile workshop, performing on‑the‑spot bike diagnosis, repair, and servicing while the owner is on shift, using AI‑powered computer vision to quote and fix in under 45 minutes.
+
+Public sector workers who cycle to work often delay essential maintenance because they can’t leave the bike at a shop during work hours. By physically setting up a pop‑up clinic in the staff car park and employing smartphone‑based AI diagnostics (frame‑scan, chain‑wear, brake‑pad depth), the operator drastically reduces the hassle. A digital service log stored per customer increases switching cost. (combine_signals: active travel boom + AI inspection + on‑demand mobile service).
+
+Public sector worker (pay‑per‑service visit, e.g., £25 basic tune, £60 full service).
+
+Post‑pandemic cycling commute numbers are at record highs in many UK cities, and the cost‑of‑living squeeze makes workers hold onto bikes longer, increasing repair demand. AI camera‑based diagnostic models have become accurate enough to spot wear items without a mechanic’s tactile inspection.
+
+Passages describe existing mobile bike repair services but do not indicate whether PedalPro's specific AI-diagnostic, workplace pop-up, and digital log value is durable or already commoditised. They are silent on durability.
+
+Multiple mobile bike repair services already operate (Velofix, a UK-wide specialist est. 2007, BikeDoctor with 6,000+ repairs), bringing service to the customer's location, which directly solves the public sector worker's need for on-site maintenance without leaving work.

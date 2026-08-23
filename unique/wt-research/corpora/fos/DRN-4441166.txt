@@ -1,0 +1,76 @@
+DRN-4441166
+Complaint
+Miss F is unhappy that Monzo Bank Ltd hasn’t reimbursed her after she fell victim to a scam.
+Background
+Miss F wanted to buy a slush machine and had been looking at second-hand models on a 
+popular online marketplace. She found one that was suitably priced and agreed to buy it. 
+She used her Monzo account to transfer £600 to the seller’s account on 12 May 2023. 
+Unfortunately, it turned out that she wasn’t dealing with a legitimate seller, but a scammer. 
+The seller stopped responding to her messages as soon as she’d sent the payment.
+When she realised she’d fallen victim to a scam, she notified Monzo. It looked into things but 
+it didn’t agree to refund the money she’d lost. It said “we believe you did not take reasonable 
+steps to check who you were paying and what for. Social media is not a legitimate selling 
+platform and you did not view the item prior to purchase.”
+Miss F was unhappy with the response she received from Monzo and so she referred her 
+complaint to this service. It was looked at by an Investigator who upheld it. The Investigator 
+considered the complaint under the terms of the Lending Standards Board’s Contingent 
+Reimbursement Model (“CRM”) Code and concluded that Miss F had made the purchase 
+with a reasonable basis for believing it was a legitimate sale.
+Monzo disagreed with the Investigator’s view. In summary, it argued that Miss F shouldn’t 
+have paid for the item without seeing it in person and that she’d not followed the advice 
+given to users of the online marketplace through which she made the purchase. Because 
+Monzo disagreed with the Investigator’s view, the complaint has been passed to me to 
+consider and come to a final decision. 
+Findings
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+In broad terms, the starting position at law is that a firm is expected to process payments 
+and withdrawals that a customer authorises, in accordance with the Payment Services 
+Regulations and the terms and conditions of the customer’s account. However, that isn’t the 
+end of the story. Monzo has agreed to follow the CRM Code. This code requires firms to 
+reimburse customers who have been the victim of authorised push payment (“APP”) scams, 
+like this one, in all but a limited number of circumstances. 
+Under the CRM Code, a firm may choose not to reimburse a customer if it can establish that:
+The customer ignored an effective warning in relation to the payment being made ; or
+The customer made the payment without a reasonable basis for believing that: the 
+payee was the person the customer was expecting to pay; the payment was for 
+genuine goods or services; and/or the person or business with whom they transacted 
+
+was legitimate. 1
+Monzo did display a warning during the payment process. However, it was presented in fairly 
+general terms and covered several different scam types. I don’t think it was sufficiently 
+specific or impactful to have affected Miss F’s decision making and so I don’t think the first of 
+these exceptions is applicable.
+In relation to the second exception, the Investigator concluded it didn’t apply and that it was 
+reasonable for Miss F to believe this was a legitimate purchase. I agree with that conclusion. 
+Monzo has argued that social media isn’t a valid selling platform. But the website she used 
+for this purchase is an extremely well recognised platform for the sale of (in particular) 
+second-hand goods, so I don’t agree that she was careless in using this particular platform.
+Monzo has also argued that she shouldn’t have bought the machine without viewing it in 
+person. But there are approximately 150 miles between Miss F’s home and the address 
+given by the seller. An inspection before purchase wouldn’t have been realistic in the 
+circumstances, even if we now know with the benefit of hindsight that it would’ve prevented 
+her from falling victim to the scam.
+While it’s not straightforward to work out an objective fair valuation, the price that she paid 
+appeared to be broadly in line with what one might expect. She says that there were similar 
+machines available online that were cheaper and more expensive and that is consistent with 
+the prices of second-hand slush machines listed on the platform today. 
+I’ve considered Monzo’s comments about whether Miss F followed the guidance offered to 
+users of the platform to protect themselves. However, for all of the reasons that I’ve 
+discussed above, I’m not persuaded that there were unambiguous red flags that ought 
+reasonably to have put her on notice that she needed to take a greater than normal level of 
+care. 
+Overall, I’m satisfied that Miss F made the payment with a reasonable basis for believing it 
+was in connection with a legitimate purchase and so Monzo ought to have reimbursed her 
+under the CRM Code.
+Final decision
+For the reasons I’ve explained above, I uphold this complaint. If Miss F accepts my decision, 
+Monzo Bank Ltd should pay her £600. It also needs to add 8% simple interest per annum to 
+this sum calculated to run from the date it declined her claim under the CRM until the date a 
+settlement is paid.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Miss F to accept or 
+reject my decision before 21 December 2023.
+ 
+James Kimmitt
+Ombudsman
+1 There are further exceptions within the CRM code, but they don’t apply in this case.

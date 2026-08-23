@@ -1,0 +1,25 @@
+GrantBuild Match — the broker that pairs council-funded home adaptation grants with contractors who get approved first time.
+
+A matching service for families arranging a council-funded home adaptation, connecting them with contractors whose quotes are already known to clear that specific council's approval on the first try.
+
+When a child or parent needs a wet room, stairlift or ramp fitted at home, the family applies for a Disabled Facilities Grant. Councils in England fund these under the Housing Grants, Construction and Regeneration Act 1996, capped at £30,000 per person since 2008 and unchanged since, with £36,000 in Wales. The family, usually the primary carer, has to find a contractor, get an occupational therapist's assessment, and submit a quote that matches the council's own technical schedule.
+
+Every council writes its own version of that schedule. A quote that sails through in one borough gets bounced back for revisions in the next, because the contractor priced or specified it the way their usual council likes, not the way this one does. Each round of revisions adds weeks, and the family is usually already living with the problem — carrying someone up stairs, or waiting to bring a child home from hospital. The free help that exists, through local Home Improvement Agencies such as those in the Foundations network, is commissioned council by council. Each agency knows its own patch and its own contractors, but nobody tracks which contractors' quotes clear which councils cleanly, because no single body works across all of them.
+
+That gap is the opening. A broker builds a record, job by job, of which contractors get their DFG quotes approved first time in which council area, and routes each new family to a contractor with a track record in their specific council. The contractor gets a faster-paying job with fewer redrafts; the family gets their adaptation done in weeks instead of months. As councils tighten budgets and scrutinise applications harder — which is the direction every English council is moving in — the gap between a contractor who knows the local rules and one who doesn't only widens, and so does the value of knowing which is which.
+
+The contractor pays a placement fee, a fixed sum or a small percentage of the job value, once a matched job is booked and the grant is confirmed. The family, who is often stretched thin financially, uses the matching service at no cost — the broker earns from the side of the transaction that has money and a reason to pay for fewer wasted quotes.
+
+The DFG cap in England has sat at £30,000 since 2008 while building costs have risen sharply, so councils are stretching thinner budgets across more applicants and applying stricter scrutiny to every quote before they'll release funds. That scrutiny is exactly what slows families down and creates the demand for contractors who already know how to get a quote through.
+
+The passages confirm DFGs exist, are capped at £30,000, and that Home Improvement Agencies operate locally, but none address whether contractors' first-time approval rates vary by council or whether any tracking of that variation is uncommoditised.
+
+The passages show Home Improvement Agencies operate locally, council by council, which is consistent with the claim of fragmentation, but they also describe HAIN as already giving local authorities a trusted list of vetted contractors for DFG delivery — without saying whether HAIN or anyone else tracks first-time approval rates across councils or dominates this niche.
+
+The passages describe DFG funding allocations, application steps, and a consultation on how government funds councils, plus a roadshow addressing local-authority pressure — none of them says whether contractors (the actual payer of the broker's placement fee) have the margin or motive to pay it, nor whether councils' funding pressure would leave room for that fee.
+
+Passages show an existing, executable applicant pathway to contractors and support: families go through an OT assessment and Adult Care Services, with free casework help from Home Improvement Agencies and Foundations' Regional Advisers who work with local authorities and contractors, giving a broker a channel to insert itself.
+
+The passages describe general UK introducer/commission-fee agreements and Bribery Act rules for business hospitality, but only [afd8f7f981ed30d8] addresses a sector-specific referral-fee restriction, and that is for solicitors, not construction contractors or council DFG processes; none of the passages say whether a contractor paying a placement fee to a matching broker for a council-funded home-adaptation job is lawful or breaches any procurement/anti-bribery rule specific to that context.
+
+The passages document real, acute delay in getting DFG adaptations completed — a 370-day average end-to-end wait in Wales in 2024/25, an Ombudsman finding a council ran an unlawful points-based waiting list, and Age UK reporting the need to inform applicants of waiting times — showing families are actively stuck without stairlifts, showers or other essential adaptations for months or years.

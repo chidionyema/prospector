@@ -1,0 +1,15 @@
+The Creator's Tool Stack Report.
+
+A quarterly, data-driven report that benchmarks creative tools through anonymized telemetry from thousands of freelance workflows, exposing which tools actually cause rework or client friction — not just features.
+
+Transplanting the Consumer Reports model, but with a wedge: a voluntary desktop plugin that anonymizes tool usage and error logs from freelancers, aggregating a real-world reliability dataset that traditional review sites can't replicate. Each report cycle deepens the moat as the dataset grows and resists snapshot copying.
+
+Freelance designers, writers, and developers paying an annual subscription for access to the report archive and the live comparison database.
+
+The collapse of the Adobe-Figma merger and the flood of AI-native challengers have shattered the creative tool monoculture, leaving freelancers desperate for unbiased, data-backed comparative intelligence; AI-assisted content generation lets a solo operator produce deep comparisons at scale.
+
+The sole passage discusses AI-driven displacement in freelance labor markets and says nothing about the durability of a creative-tool reliability benchmark report or whether such telemetry-based comparative value is real, commoditised, or evaporating.
+
+The passage describes Benly's ad-creative benchmarks (analyzing ad performance from the Meta Ad Library), not a service benchmarking creative-tool reliability via freelancer telemetry; it does not address whether an incumbent already serves the candidate's space.
+
+The only passage reports that freelance marketplace spend collapsed 79% since 2021, indicating the freelance economy that would fund these annual subscriptions is sharply contracting, which negates the claim that the payer segment has budget to pay.

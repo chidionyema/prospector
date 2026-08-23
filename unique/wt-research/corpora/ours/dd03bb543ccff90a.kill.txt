@@ -1,0 +1,23 @@
+The Kitchen Table Trust.
+
+A weekly podcast and paid companion playbook that reverse‑engineers ultra‑high‑net‑worth family office strategies into actionable, small‑scale tax and estate plans for middle‑class families.
+
+Analogous to Stratechery’s tech analysis model, a media property that demystifies the legal tax avoidance of the super‑rich for the squeezed middle can command a loyal subscription base from those priced out of private wealth advisors.
+
+Squeezed‑middle parents / adult children managing family assets between £500k and £2M.
+
+Soaring asset values drag more families into inheritance tax and CGT nets; HMRC enforcement tightens just as intergenerational wealth transfer becomes a live issue for the sandwich generation.
+
+None of the provided passages mention the candidate's offering or assess whether its value is real, durable, fabricated, or commoditised. They describe unrelated podcasts and a news aggregator.
+
+None of the provided passages discuss whether a dominant incumbent or funded rival already serves the squeezed middle with actionable reverse-engineered family office strategies.
+
+All passages describe U.S. couples in financial distress (spending >100% of income, high debt), but none address the candidate's target payer (UK 'squeezed middle' with £500k-£2M assets) or indicate whether that segment has budget and willingness to pay for a tax/estate planning media product.
+
+The passages discuss marketing to UHNW individuals ($30M+), not the candidate's target audience (£500k-£2M); they provide no information about distribution routes to the squeezed middle.
+
+The passages describe existing content (e.g., attorney Toby Mathis discussing family office strategies for non-rich) that mirrors the candidate's proposed tax and estate planning media, with no indication of illegality, and tax avoidance through loopholes is generally lawful.
+
+The passages describe existing wealth-related podcasts and newsletters but provide no evidence that the target audience of middle-class families is actively suffering or paying to solve this tax/estate planning problem.
+
+The core proposition—reverse-engineering family office strategies for mainstream families—is already freely available. A 2026 YouTube video by tax attorney Toby Mathis titled 'Steal The Family Office Playbook (Even If You’re Not Rich)' (source e42092404a5de440) delivers exactly this content at no cost, garnering 23K+ views, proving the information is commoditized. A paid subscription competitor, Wealth Matters 3.0 (source 42b732ec989cc32b), already offers 'institutional-grade wealth protection, tax strategy, and ownership frameworks' for business owners and investor families, indicating an established paid player. Meanwhile, profiles of asset-rich households (sources ed345b84eb215152, d596d6696e9de262, c9f9cc5b947cce2c) spending 102–179% of income and loaded with debt suggest the target £500k–£2M demographic may have negligible discretionary budget for a paid playbook. With a free substitute and an incumbent, and no evidence of unmet demand or payer solvency, this idea is dead on arrival.

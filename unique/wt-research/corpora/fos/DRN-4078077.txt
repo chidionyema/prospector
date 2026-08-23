@@ -1,0 +1,197 @@
+DRN-4078077
+The complaint
+Mr D complains that Shawbrook Bank Limited made errors in the transfer of his cash 
+Individual Savings Account (ISA) to a third party provider.
+What happened
+Mr D wanted to transfer his ISA to a third party, who I will refer to as Bank A. He spoke with 
+Bank A and asked them to confirm that they had requested the transfer from Shawbrook, 
+which they confirmed they did on 6 May 2022. But Shawbrook claimed they had not received 
+this, so Bank A said that they would resend the transfer request. As the process was taking 
+a long time to complete and interest rates improved with third parties, Mr D asked 
+Shawbrook to transfer his cash ISA to a different third party, which I will refer to as Bank B. 
+Mr D says that Shawbrook incorrectly told him that Bank B refused the payment, so they 
+made the decision to transfer his ISA to Bank A without his knowledge. Due to the funds 
+being transferred to Bank A, Mr D needed to close his Bank B ISA, as it was not used 
+despite the amount of time and effort he spent setting up the account. Mr D made a 
+complaint to Shawbrook. He said that as a result of the error, he received a lower interest 
+rate with Bank A than if they had correctly transferred his money to Bank B. Mr D says he 
+was promised a call back from Shawbrook but this didn’t happen. 
+Shawbrook partially upheld Mr D’s complaint. They said that they didn’t receive a transfer 
+request until 26 May 2022 from Bank A. They said that from their records, they could see Mr 
+D contacted them via secure message on 28 May 2022 to request the cancellation of his ISA 
+transfer to Bank A as he had found a new provider offering a more attractive interest rate. 
+But due to an administrative error, when his message was reviewed on 2 June 2022, the 
+appropriate action was not completed in full. As they received a payment request from Bank 
+A (which Shawbrook says this indicated the transfer wasn’t cancelled on Bank A’s system 
+either), the request from Bank A was honoured with his funds being transferred to them on 8 
+June 2022, which meant that when Bank B requested the payment on 9 June 2022, the 
+transfer couldn’t be processed to Bank B.
+Shawbrook said that due to a system issue, there was a temporary delay with secure 
+messages being uploaded to customer profiles, so when Mr D received a notification email 
+informing him that he received a new secure message, the relevant message had not yet 
+been added to his profile. They said all secure messages were successfully added to his 
+profile on 27 May 2022. 
+Shawbrook said they did attempt to call Mr D on 24 May 2022, and the call went to his 
+voicemail, but they acknowledged they should have left him a message. They also said they 
+could have done more on the phone calls they had with Mr D as they could have recognised 
+there were two transfer requests open and they could have clarified with Mr D where he 
+wanted his money to be transferred. They also apologised for giving him conflicting 
+information via secure message on 9 June 2022, by telling him the correct information his 
+ISA had been transferred to Bank A, then telling him later on the incorrect information that 
+the funds had been transferred to Bank B. Shawbrook offered Mr D £100 compensation for 
+the errors. Mr D brought his complaint to our service. 
+
+Our investigator upheld Mr D’s complaint. He said that while Shawbrook weren’t at fault for 
+the initial transfer delays, they failed to act on Mr D’s cancellation request – which led to his 
+funds being sent to the wrong provider. He was told incorrect information and lost interest. 
+Due to the several mistakes and failings by Shawbrook, he thought the compensation should 
+be £150.
+Mr D asked for an Ombudsman to review his complaint. He made a number of points. In 
+summary, he said he thought more compensation should be offered (nearer to £300). He 
+said Shawbrook’s original response to his complaint didn’t cover off all of his complaint 
+points and Shawbrook ignored his additional points of complaint in July and August 2022, 
+which caused him more stress and took extra time to write to them.
+As my findings differed in some respects from our investigator’s, I issued a provisional 
+decision to give both parties the opportunity to consider things further. This is set out below:
+“I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Mr D has made a number of points to this service and I’ve considered and read everything 
+he’s said and sent us. But, in line with this service’s role as a quick and informal body I’ll be 
+focusing on the crux of his complaint in deciding what’s fair and reasonable here.
+I must explain to Mr D that complaint handling by a business isn’t a regulated activity and as 
+such, the issues he’s raised that relate directly to how Shawbrook have investigated his 
+complaint, such as deciding when they believe a complaint is resolved do not come under 
+my powers to consider. Although he has said Shawbrook ignored his additional points of 
+complaint in July and August 2022, which caused him more stress and took extra time 
+writing to them, he was given the rights to our service on his final response letter dated 19 
+July 2022, so he did not need to spend any extra time communicating with Shawbrook 
+directly after 19 July 2022. 
+I’ve looked at Shawbrook’s internal systems to see when they received the transfer request 
+from Bank A. I know Mr D has said he instructed Bank A to request the funds early May, but 
+there is no record of this on Shawbrook’s systems, so I can’t say that they have been at fault 
+for the initial delay. I know Mr D sent Shawbrook information from Bank A dated 5 May 2022 
+that they had submitted a request, but there is no evidence Shawbrook received this. Their 
+internal system shows that the request was first received by Shawbrook on 26 May 2022 at 
+14:29pm. Shawbrook would have 15 working days to process the transfer. 
+I’ve considered what has happened once the transfer request was made from Bank A and 
+received by Shawbrook. I’ve requested Mr D’s secure messages with Shawbrook over this 
+timeframe. I can see that he sent Shawbrook a message to cancel the transfer request from 
+Bank A on 28 May 2022 due to interest rates increasing elsewhere. He tells them that he 
+“will submit a request through the new provider”. So here, Mr D gave them a clear instruction 
+and also explained that a new request would be forthcoming. He also ended the message by 
+asking Shawbrook to “please confirm that the request has been cancelled”. But Shawbrook 
+did not cancel the request and they didn’t confirm that this had been cancelled. 
+Shawbrook’s internal system shows that they received a new ISA transfer request on 31 
+May 2022. It appears this is the request from Bank B. Mr D was sent a secure message this 
+date informing him that his transfer request had been accepted. This prompted Mr D to give 
+Shawbrook a phone call to find out where his ISA was being transferred to. I’ve listened to 
+the call and the call handler tells Mr D that it was being transferred to Bank B, but this was 
+incorrect. So the call handler had set an expectation here to Mr D that his ISA was being 
+transferred to the provider that he wanted it to be transferred to. But the call handler did not 
+realise there was two open ISA transfer requests, which could have prevented a lot of errors 
+if they had realised this and cancelled the request to Bank A which should have already 
+been cancelled.
+Shawbrook sent Mr D another secure message on 8 June 2022 to confirm they had 
+transferred his funds to his new provider, but they didn’t say who this was to. Mr D 
+messaged them the following day to find out where they were transferred to, and they replied 
+with the correct answer of Bank A. But this would have been distressing for Mr D to find out 
+that they had sent the funds to Bank A instead of Bank B who offered the higher interest rate 
+– especially after he had given clear instructions for the transfer to Bank A to be cancelled. 
+But he would have suffered more inconvenience to find out why the funds weren’t sent to 
+Bank B as instructed. 
+Shawbrook sent Mr D another secure message to say his funds had been sent to Bank B, 
+which was incorrect. Mr D then checked his Bank B ISA and saw no funds which would have 
+been distressing for him. Then he was inconvenienced to find out after back and forth 
+messages that his funds were actually transferred to Bank A, against his wishes. Mr D was 
+later incorrectly told that Bank B rejected his transfer, but this was incorrect. The reason that 
+his transfer to Bank B was unsuccessful was because his funds had already been 
+transferred to Bank A. 
+I’ve also considered what happened regarding the call back Mr D was promised. I can see 
+from Shawbrook’s system notes that a call handler attempted to call Mr D on 24 May 2022. 
+The system note is timestamped at 17:33pm, so it appears they did attempt to call Mr D, but 
+they were unable to be connected with him. Shawbrook did send Mr D a secure message 
+about this, but due to system issues on Shawbrook’s end, Mr D would not have received this 
+until a few days after the attempted call as this issue was only rectified on 27 May 2022. This 
+would have been frustrating for Mr D. As a result of no voicemail being left and the system 
+issues regarding the secure messages, this inconvenienced him as he rung back the 
+following day to find out why nobody rang him. The call handler was not aware of any 
+technical issue with secure messages, which led to more inconvenience by Mr D being 
+asked to check his documents also. It was clear from the call Mr D’s frustration at receiving 
+an email to say there was a new message for him, but when he logged onto his messages 
+there were no new messages in his inbox. 
+I’ve considered what is a fair outcome for Mr D’s complaint. I’m satisfied that Shawbrook 
+cost Mr D the opportunity to receive a higher interest rate from Bank B when they transferred 
+his ISA to Bank A. Mr D has provided us with a screenshot to show that his fixed rate ISA 
+with Bank A earns 1.65% interest. Our investigator asked Mr D for information about the 
+interest rate from Bank B for the account he opened. As Mr D could not recall this, our 
+investigator rang Bank B for this information. I’ve listened to this call recording and the call 
+handler confirms that the interest rate during the timeframe was 1.75% on the account, so 
+Mr D received 0.1% less interest with Bank A where his funds were incorrectly transferred to. 
+Shawbrook have 15 working days to complete a transfer, so I can’t say that the funds would 
+have been attracting the interest from Bank B for the full year once the account was opened. 
+And Mr D had already opened the account with Bank B in anticipation of receiving the funds 
+from Shawbrook which would not be receiving interest before the funds were transferred into 
+the account. In addition, there is no guarantee that Mr D would hold all of the funds in the 
+account for the year – and the maturity date is not for another few months so there are 
+factors which would mean it would be likely that Mr D would not have received interest on 
+the transferred funds for a full 365 day period.
+To try to ensure fairness to both sides, I asked Shawbrook to calculate 0.1% difference in 
+the transferred balance. But I also didn’t think it was fair for no interest to be paid on the first 
+15 working days as Shawbrook may have transferred the funds quicker than this time period 
+if they had gotten things right first time. So Shawbrook have calculated interest on 350 days 
+(if working days were used then it would have been 344 days interest for the calculation). 
+This equates to Mr D losing out on £10.17 interest on the transferred balance as a result of 
+Shawbrook’s errors which would have been tax free as it was in an ISA. So I’m satisfied that 
+they should pay Mr D this money on top of any award for distress and inconvenience. 
+Shawbrook offered £100 compensation. Our investigator recommended a total of £150 
+compensation. But I’m not persuaded that this recognises the impact of all of the errors 
+made. I say this because there were numerous errors made over a period of weeks. Mr D 
+was given incorrect or conflicting information several times, which resulted in him having to 
+ring or message Shawbrook to find out the correct answer, only to be sometimes given the 
+wrong answer again, which would have been distressing for Mr D. This also meant he was 
+inconvenienced having to spend more time getting to the bottom of what happened. Not only 
+did he have to face system issues with the secure messaging, (although this was only for a 
+few days), it appeared to Mr D that nobody rang him back like they said they would, then he 
+didn’t receive his secure messages until days later. It would have been frustrating to receive 
+emails about new secure messages only to find out there were no messages.
+Mr D would have been distressed after giving his clear instruction to cancel the ISA transfer 
+to Bank A. He asked for confirmation of this, but this didn’t happen. He explained he would 
+be submitting a request from a new provider, but Shawbrook still made a transfer to the old 
+provider at a lower interest rate to Mr D. So Mr D in effect had wasted his time opening up 
+Bank B’s ISA and then he was inconvenienced by having to close this down when 
+Shawbrook incorrectly transferred his ISA to Bank A. When he was told his ISA was 
+transferred to Bank B it would have been distressing for him to view this account and see 
+that no funds had been credited to his account, and this would have been preventable if the 
+chat agent didn’t give him the wrong information. 
+I’m persuaded that an extra £125 compensation should be paid to Mr D to total £225 
+compensation for distress and inconvenience. This added to the lost interest of £10.17 would 
+result in £235.17 in total being paid for the events that happened here, which I’m persuaded 
+is fair. I know this may disappoint Mr D as he was wanting closer to £300 compensation. But 
+compensation is a discretionary remedy that we sometimes award if we feel that a business 
+has acted wrongfully and therefore caused distress and inconvenience to their customer 
+over and above that which naturally flows from the event. When we recommend 
+compensation, it is often modest and within our established guidelines. So it follows I intend 
+to ask Shawbrook to put things right for Mr D.” 
+I invited both parties to let me have any further submissions before I reached a final 
+decision. Both parties accepted my provisional decision. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+As neither party have provided me with any further information to consider, then my decision 
+and reasoning remains the same as in my provisional decision.
+Putting things right
+In my provisional decision I said I intend to uphold this complaint. I said I intend to ask 
+Shawbrook Bank Limited to pay Mr D a total of £225 compensation (minus any 
+compensation they have already paid him) for distress and inconvenience. They should also 
+pay him an extra £10.17 in interest which would have been tax free as being part of an ISA. 
+I’m still satisfied this is a fair outcome for the reasons given previously.
+My final decision
+I uphold this complaint. Shawbrook Bank Limited should pay Mr D a total of £225 
+compensation (minus any compensation they have already paid him) for distress and 
+inconvenience. They should also pay him an extra £10.17 in interest which would have been 
+tax free as being part of an ISA. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr D to accept or 
+reject my decision before 11 May 2023.
+ 
+Gregory Sloanes
+Ombudsman

@@ -1,0 +1,110 @@
+DRN-5383223 
+ 
+ 
+The complaint 
+ 
+Mr and Mrs A complain that HSBC UK Bank Plc (“HSBC”) won’t refund money they lost to 
+an investment scam. 
+ 
+Mr and Mrs A are being represented by a claims management company. 
+  
+What happened 
+Between August 2021 and March 2022, Mr and Mrs A made eight card payments totalling 
+just over £25,000 to a cryptocurrency provider from their joint HSBC account. The payments 
+were made in connection with an investment opportunity that Mr and Mrs A were introduced 
+to by people they met through a shared community who had already been investing for 
+around a year by that point. Mr and Mrs A received six returns totalling just shy of £4,550 
+from their investment – the bulk of this was in March 2022. But then the returns stopped. 
+Mr and Mrs A contacted HSBC in late 2024 and made a scam claim for the funds lost. 
+ 
+HSBC declined to refund the payments and said it considered the matter to be a private civil 
+dispute. In response to our request for its complaint file, the bank acknowledged that Mr and 
+Mrs A could have been scammed given the publication of regulator warnings about the firm 
+involved. But if didn’t think any intervention would have stopped them given the returns 
+received.  
+ 
+Our investigator thought that HSBC should have provided a scam warning by the time the 
+third payment was authorised. But they were satisfied that Mr and Mrs A would have still 
+wanted to go ahead with the payment. The investigator noted that a simple internet search at 
+the time would have brought up a scam warning published by the Financial Conduct 
+Authority (FCA) from nearly two years prior. So, if Mr and Mrs A had researched the firm 
+online as they claimed, the warning would have been visible. The investigator also noted that 
+the instant messaging correspondence with the people that introduced them to the 
+investment showed Mr A had questioned them about a warning he’d seen about the firm on 
+its Trustpilot page. He accepted the response and decided to go ahead without carrying out 
+any independent research.  
+ 
+Mr and Mrs A didn’t agree and asked for the matter to be reviewed by an ombudsman.  
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+I’d like to start by thanking all parties for their patience while awaiting an ombudsman’s 
+decision. 
+ 
+At this point, it’s accepted that Mr and Mrs A were victims of a scam. It’s very unfortunate 
+that they have lost money. But HSBC doesn’t automatically become liable to reimburse 
+them. 
+ 
+
+ 
+ 
+Under regulations and in accordance with general banking terms and conditions, banks 
+should execute an authorised payment instruction without undue delay. The starting position 
+is that liability for an authorised payment rests with the payer, even where they are duped 
+into making that payment. There’s no dispute that Mr and Mrs A made the payments, and so 
+they are authorised. 
+ 
+But in accordance with the law, regulations and good industry practice, a bank should be on 
+the look-out for and protect its customers against the risk of fraud and scams so far as is 
+reasonably possible. If it fails to act on information which ought reasonably to alert it to 
+potential fraud or financial crime, it might be liable for losses incurred by its customer as a 
+result. 
+ 
+I’ve reviewed Mr and Mrs A’s account activity and the payments they made to the scam. 
+I don’t consider the first two payments suspicious to the point that HSBC ought to have taken 
+additional steps before processing them. Having reviewed their response to the 
+investigator’s assessment, it seems Mr and Mrs A agree. By the time they authorised the 
+next payment, the bank ought to have recognised that it carried a heightened risk of financial 
+harm from fraud. This is because a pattern of increased activity on cryptocurrency spending 
+had emerged. I accept that at the time of this payment, HSBC may not yet have had a 
+warning specific to cryptocurrency investment scams. But it ought to have provided a scam 
+warning about investment scams in general, tackling some of the key features, which had 
+similarities to investment scams involving cryptocurrency. 
+ 
+Had it done so, I’m not persuaded that it would have prevented Mr and Mrs A’s loss. This is 
+because, on balance, I don’t think they would have carried out independent research into the 
+firm in question. I say this because when Mr A first noticed warnings on Trustpilot, he 
+contacted the people from his community who had introduced the investment opportunity. 
+Mr A’s message suggests he’d read customer reviews, not just Trustpilot’s review of the firm. 
+There were several reviews which said the firm was operating a scam. Some reviews also 
+referred to warnings published by regulators, including the one published by the FCA. It 
+seems to me that Mr and Mrs A trusted people from their shared community despite 
+awareness of this information. Having reviewed the available information, on the balance of 
+probabilities, I’m not persuaded that the bank’s warning to check the FCA Register would 
+have led them to take a different course of action. In other words, I think it’s more likely than 
+not that they would have sought reassurances from the people in their shared community. 
+I think it’s also worth adding that Mr and Mrs A would likely have felt reassured that they 
+hadn’t been contacted out of the blue or promised unrealistically high returns.   
+ 
+Recovery wise, as the payments were made using a debit card, given the time between the 
+payments and when the scam was reported, Mr and Mrs A would have been outside the 
+time limits to make a chargeback claim. Even if the time limit was complied with, the 
+merchant they paid (the cryptocurrency exchange) did provide the service, i.e., provision of 
+cryptocurrency in exchange for fiat funds. So, recovery is unlikely to have been successful. 
+ 
+In conclusion, while Mr and Mrs A have undoubtedly been the victim of a cruel scam, I’m not 
+persuaded that any failure on HSBC’s part is the proximate cause for their loss. I fully 
+acknowledge that they have lost a lot of money. But having considered the matter very 
+carefully, for the reasons given, it wouldn’t be fair of me to hold the bank responsible this. 
+ 
+My final decision 
+For the reasons given, my final decision is that I don’t uphold this complaint. 
+ 
+ 
+ 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr A and Mrs A to 
+accept or reject my decision before 22 October 2025. 
+   
+Gagandeep Singh 
+Ombudsman

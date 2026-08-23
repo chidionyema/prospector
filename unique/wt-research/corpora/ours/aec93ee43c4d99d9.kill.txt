@@ -1,0 +1,27 @@
+CAPPS release tests for Texas integration firms.
+
+Test invoice and payroll connections before each Texas Comptroller CAPPS release, then return a patch, test results and rollback plan.
+
+CAPPS release tests are a productized service for the owner of a small Texas software agency that serves state payment and payroll clients. It commits to the technology-vertical model, option B. A new CAPPS schema, migration window, or client onboarding starts the work. The team turns that change into a versioned test pack, exercises the agency's real invoice, payroll, and accounting mappings, and returns a reviewed patch, failures, and rollback steps. The service sells the decision and work product, not access to a portal.
+
+Texas Government Code Chapter 2102, the Texas Comptroller's CAPPS materials, and the Centralized Master Bidders List are the public sources. The buyer already pays developers and systems integrators to interpret state releases and repair private connections. Texas Workforce Commission data confirms computer systems architects and software developers are paid roles.
+
+The accumulating advantage is a rule-to-test generator plus approved mappings, past failures, and repairs. Once those test files sit beside each release, changing providers means rebuilding the release history. A new provider starts without those approved mappings and past repairs. A founding team can acquire agencies with a free impact note on every public CAPPS release. The first paid replay comes through public CMBL and state-contractor channels, followed by a standing per-release plan.
+
+It fails when a release changes documentation only or when an agency has no private mapping to test.
+
+The owner of a small Texas integration firm that maintains invoice, payroll, or accounting connections for state clients pays a fixed fee in U.S. dollars for each affected CAPPS release. That owner already funds a developer or systems integrator to interpret the release and repair client mappings.
+
+The Texas Comptroller of Public Accounts publishes CAPPS changes, while the state keeps vendor opportunities public through the Centralized Master Bidders List. Each schema or migration-window change forces private software to match a new common system, so this is recurring funded work rather than a one-time setup.
+
+No passage addresses CAPPS, Texas Comptroller releases, state payroll/invoice integrations, or the durability of a release-testing service; the texts cover Texas history, a state map, and an unrelated Scottish band named Texas.
+
+The passages cover general Texas geography, tourism, and an unrelated Scottish rock band; none mention CAPPS, the Texas Comptroller's release process, integration firms, or any incumbent offering release-test services, so the question of whether the space is underserved cannot be ruled from this evidence.
+
+The passages cover Texas tourism and the Texas.gov portal generally but never mention CAPPS, state payment or payroll systems, integration firms, or any evidence that a buyer already funds developers to maintain those connections.
+
+The passages describe Texas state government structure, tourism, and a band's discography; none address CAPPS, the Texas Comptroller, integration firms, or any distribution channel to reach such buyers.
+
+None of the passages address CAPPS, state procurement rules, Texas Government Code Chapter 2102, or any legal restriction on private firms offering release-testing services for state systems; the provided text covers only general Texas history and tourism, so the legality question cannot be ruled on.
+
+The passages address 1830s Texas political history, a Texas geographic map, and a Scottish rock band called Texas; none mention CAPPS, the Texas Comptroller, state software integrations, or any pain point related to release testing.

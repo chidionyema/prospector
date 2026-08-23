@@ -1,0 +1,23 @@
+BenchCover, on-call understudies who already know your startup's ops.
+
+A bench of pre-briefed fractional operators who can step into a UK startup's finance or ops seat within 48 hours, kept current with quarterly shadow sessions.
+
+Most UK seed-stage startups run finance, payroll and investor reporting through a single person — often the founder or one hire. When that person is off sick, burns out, or resigns without notice, board packs stop, PAYE RTI submissions to HMRC slip, and investor updates go dark right when lenders or EIS/SEIS investors are watching most closely.
+
+This borrows the way UK veterinary and GP practices cover unplanned absence: locum networks such as Vets Now or NASGP keep vets and doctors on a roster who can walk into an unfamiliar practice and function immediately, because the practice's systems are standardised enough for a stranger to pick up. Startups aren't standardised in that way, so a generic locum can't just walk in cold.
+
+BenchCover solves that by pairing each client with a named understudy — a semi-retired or portfolio CFO, People lead or ops generalist — who does a paid two-hour shadow session with the company every quarter: sees the cap table, the payroll run, the board pack template, the tools stack. If the primary person is suddenly out, that understudy can take the seat within 48 hours because they've already sat in the room three times before, not because they're generically competent.
+
+The team of 4-8 people runs the shadow-session scheduling, keeps the roster of vetted operators, and handles the handover briefing when an incident hits — a service business, not a platform, sized to be operated by a small team without a war chest.
+
+Seed-to-Series-A startup founder-operators who have no HR or finance department yet, paying a modest quarterly retainer (roughly £250-£600 a quarter for the shadow sessions) plus a day rate if the understudy is actually activated. Some venture funds pay the retainer directly across their portfolio as a risk-reduction line item, the way they already pay for key person insurance premiums.
+
+Post-2023-24 downturn, seed-stage teams are leaner than before and often carry zero redundancy in finance or ops roles, so founder and ops burnout translates directly into missed HMRC payroll deadlines and late investor reporting. Term sheets increasingly ask about key-person contingency, but key person insurance only pays out cash after a death or critical illness — it does nothing to keep RTI submissions or board reporting running the week someone is simply signed off sick or quits without notice.
+
+Most passages are unrelated business-listing noise (Yelp tools, a coffee-shop review, a Melbourne FL directory), and the two interim-management mentions are just generic overseas agency listings (Netherlands, Moscow/Saint Petersburg) with no data on search volume, forum demand, or people actively paying for a pre-briefed quarterly-shadow-session understudy model.
+
+The passages discuss overall UK seed/AI funding volumes and generic runway/burn-rate definitions, none of which speak to whether an individual seed-stage founder-operator would have £49.99 in discretionary budget for a quarterly ops-cover retainer.
+
+Multiple fractional-CFO providers (FD Capital, iFD) advertise direct call-in/quote channels with rates and availability in days, showing founders can reach this exact talent pool through an existing, low-friction commercial channel.
+
+The passages only describe HMRC's PAYE Online service and unrelated pages (legislation archive, eVisas); none address whether a third-party understudy accessing a client's payroll/HMRC systems or acting as a stand-in on RTI submissions is lawful or permitted under PAYE terms.

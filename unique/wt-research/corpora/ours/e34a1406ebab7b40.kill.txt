@@ -1,0 +1,23 @@
+ScrapVantage – The Solo Carer’s Car Cash‑Out Negotiator.
+
+We force salvage yards into a blind auction for the carer’s old vehicle, using proprietary component‑level valuation data to extract up to 40 % more than any single yard would offer, with zero effort from the carer.
+
+Carers often end up with non‑running vehicles that swallow space and mental energy. Traditional scrap services price‑take because they control the information. By pitting multiple specialist salvage yards against each other with a standardised data‑rich request and a short‑duration silent auction, we capture the true part‑out value, charging a success fee only on the uplift above the typical scrap‑it‑now price.
+
+Primary carer – pays a fixed 30 % of the dollar amount we achieve above the benchmark ‘instant scrap quote’, paid out of the sale proceeds.
+
+Supply‑chain disruption has made used parts a goldmine; salvage yards are desperate for inventory. Carers’ finances are strained, and a neglected vehicle is dormant cash. No product gives a solo operator the ability to auction one end‑of‑life car to a nationwide network – the pain is acute and the timing is perfect.
+
+Passages describe salvage industry trends (LKQ, direct buy, AI grading) but do not address whether the broker's value is real, durable, or evaporating.
+
+Passages establish Copart as a dominant salvage auction marketplace but do not indicate whether it serves individual carers with non‐running vehicles or if the space is therefore underserved for this specific segment. The incumbency question is not directly addressed.
+
+The passages discuss insurance salvage valuation, AI part grading for salvage operators, and changes in salvage auctions, but none address the financial situation, budget, or payment willingness of carers.
+
+The provided passages discuss salvage auctions, LKQ's business, and direct buy channels in the automotive recycling industry, but none address the distribution route for a carer-facing blind auction service like ScrapVantage.
+
+The passage defines vehicle dismantlers and registration requirements but does not address whether the candidate's brokering/auction service would be lawful or require breaking any law.
+
+The passages describe tools for salvage auction buyers and dismantlers (Copart, LotPulse, Claim Genius) but do not mention carers, non-running vehicle sellers, or any service that extracts higher scrap prices for such sellers. No evidence shows that carers are suffering or paying for a solution to this specific problem.
+
+The assembled evidence fails to substantiate any of the core assumptions behind ScrapVantage. First, there is no sign that the alleged pain is real: the passages describe sophisticated tools for salvage buyers (LotPulse, GeniusRECYCLE) and dominant auction platforms (Copart) but contain zero mentions of carers struggling to offload non‑running vehicles or any demand for a carer‑specific auction service (0d7c36513b1d36d4, 5e7627cfdfbcadfb, 9d13fcd647cd2914). Second, the incumbency check reveals that Copart already runs a highly efficient, globally scaled marketplace with network effects and direct‑buy channels, making it extremely difficult for a niche broker to attract salvage yards away from existing liquidity (997164e1fba7f3f2, ca1aea3956deb42d, dc7ef5de69edb772, 12de452776ddf105). Third, the claimed technical moat evaporates upon inspection: AI‑powered part grading and damage assessment are already commoditised by platforms like Claim Genius and LKQ, so the 'proprietary component‑level valuation' is not a durable wedge (40c58fefb67f57c7, 9d13fcd647cd2914). Fourth, the legality check flags that operating a salvage pool requires state registration, and failure to comply is a crime – a regulatory risk entirely unaddressed by the candidate (39316acce76964ab). Fifth, there is no evidence of a viable distribution channel to reach carers, nor any data on their willingness or ability to pay a 30% uplift fee. Finally, the monetisation model is untested and likely too weak: a single‑car auction broker charging a success fee on an already thin margin offers little incentive for yards to adopt a new process. In sum, the evidence overwhelmingly suggests that the problem is unproven, the market is controlled by powerful incumbents, the technology is not special, and the path to customers is non‑existent. The idea is not worth building.

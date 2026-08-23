@@ -1,0 +1,13 @@
+Pension Death Benefit Nomination Atlas – The Retiree's Dispute Database.
+
+A searchable report series and dataset that analyses UK Pensions Ombudsman and court rulings where pension trustees ignored member nominations, giving retiring DC scheme members evidence to craft airtight expressions of wish and challenge unfair decisions, using a proprietary library of successful and failed wording patterns.
+
+Pension death benefit disputes are rising as trust‑based schemes retain broad discretion. The Pensions Regulator and ombudsman publish only summaries, not a granular case corpus revealing which wording failed and which succeeded. A solo operator can compile this jurisprudence into a searchable, practice‑oriented database, enabling members to craft ‘litigation‑proof’ nominations. The regulator cannot and will not teach members how to structurally bypass trustee discretion.
+
+Retirees with substantial DC pots (often grandparents wanting to pass wealth to grandchildren) and their professional advisors (pension consultants, later‑life planners).
+
+The shift to DC pensions means millions are making beneficiary nominations; 2023 saw record FOS complaints about death benefit distribution, and high‑profile cases (Brewster, 2017) exposed arbitrary trustee behaviour. DC pots now average £50k+, making disputes high‑stakes, yet no accessible, practice‑oriented database exists outside expensive legal subscriptions—a gap perfectly sized for a solo data product.
+
+The passage shows a commercial product that lets users analyze thousands of Pensions Ombudsman determinations, indicating a real, ongoing need for such case-law analysis—the value is not fabricated.
+
+The passage describes a product with 6600+ searchable TPO determinations, enabling analysis of complaint patterns and precedents, directly matching the candidate's proposed database. This shows the space is not underserved.

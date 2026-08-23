@@ -1,0 +1,23 @@
+ErgoCraft – The Creative's Workspace Sculpting Service.
+
+A mobile ergonomic consultancy that uses iPhone LiDAR scanning and AI design simulation to physically arrange a freelancer's home workspace, then installs recommended equipment—turning painful WFH setups into precision productivity environments.
+
+Merging the permanence of remote creative work with the democratization of LiDAR sensors and generative AI for interior modeling, a solo operator can deliver high-accuracy, physically executed ergonomic reconfigurations that freelancers desperately need but cannot achieve through free online self-help guides or generic digital tools.
+
+Full-time freelancer creatives (graphic designers, UX/UI designers, developers, writers) suffering from back pain, eye strain, or disorganization in their home offices, who value their health and output enough to pay for a one-time expert intervention.
+
+Post-pandemic, home office ergonomics are a chronic issue; iPhone Pro LiDAR enables centimeter-accurate spatial scanning; AI can now generate photorealistic layout mockups in seconds; no incumbent has packaged these into a done-for-you physical service.
+
+Passage b584d339ef56291e states that a LiDAR-based digital twin 'delivers true ergonomic value' over generic tools, confirming the underlying measurement and simulation approach is effective and not a fabricated or commoditised gimmick. No passage suggests this value is evaporating.
+
+None of the passages describe an incumbent that provides the specific done-for-you ergonomic reconfiguration service for home freelancers. Morgan Maxwell is a corporate-focused consultancy using AI ergonomics software, but it does not offer on-site LiDAR scanning and physical installation for individual creatives. The other passages are merely tools (LiDAR scanner app, architecture design app) without integrated ergonomic expertise or installation. Thus, the space appears underserved.
+
+No passage addresses whether full-time freelancer creatives have budget and willingness to pay for a one-time ergonomic intervention. Mentions of commercial services elsewhere do not confirm this specific segment's solvency.
+
+The passages discuss ergonomic tools and consulting services but do not address whether a low-friction distribution route to the buyer exists for the candidate's service.
+
+The provided passages discuss digital human modelling in industrial settings and interior designer licensing requirements, none of which address the legality of offering an ergonomic workspace arrangement service using LiDAR and AI.
+
+Passages discuss digital twin for home office ergonomics and an industrial DHM scoping service, but provide no evidence that freelancer creatives are currently suffering and paying for an on-site physical ergonomic reconfiguration service.
+
+Critical business model assumptions remain unverified based on the evidence gathered. Payer solvency: no passage confirms freelance creatives have budget or willingness to pay (sources b584d339ef56291e, ebe928a2e0c63649, 8885483fbeaadd86 discuss ergonomic tools but not freelancer spending). Distribution: no evidence of a low-friction customer acquisition channel (sources b584d339ef56291e, 2699fff2b8d666ff, b7ac073b109ebe0c fail to address market access). Pain reality: freelancer suffering is not substantiated as a real problem driving payment for physical reconfiguration (sources b584d339ef56291e, ebe928a2e0c63649 mention digital twins and industrial DHM, not home office pain). Legality: potential interior design regulations untested (sources ebe928a2e0c63649, 862d507aa9f2fe15, bce49a2034a397c1 show licensing requirements, but not applied to this service). Value durability is only weakly supported (b584d339ef56291e, confidence 0.275). Without evidence for these pillars, the idea lacks a viable foundation and is not worth building.

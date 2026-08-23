@@ -1,0 +1,23 @@
+CharityBill – The Hospital Financial Aid Application Service.
+
+For uninsured or underinsured gig workers facing a hospital bill, a solo operator identifies eligibility under the maze of charity care programs and files the application package, collecting a flat fee only if the bill is reduced or waived.
+
+Scholarship application advisors help students unlock opaque financial aid; applying that model to U.S. hospital charity care (underutilized by the very patients who need it) lets a solo built a proprietary decision tree of each system’s unwritten approval criteria and then submits optimized applications on behalf of overwhelmed patients.
+
+A 25‑year‑old delivery courier who just received a $3,000 emergency‑room bill with no insurance, paying $149 from their limited savings because the expected return is a 60–90% write‑off.
+
+Medical debt is the leading cause of bankruptcy among young adults; recent regulatory pressure requires hospitals to make charity care policies clearer, but the application process remains convoluted and under‑advertised, creating a gap a micro‑service can exploit.
+
+Passages detail gig worker insurance gaps and medical bill struggles but do not mention or evaluate the durability of a hospital charity care application service's value.
+
+The passages describe individuals struggling with medical bills but do not mention any incumbent service or competitor, making it impossible to verify whether the space is underserved.
+
+The passages describe financial hardship and medical debt among gig workers but do not indicate whether such individuals would have the $149 budget or willingness to pay for a charity care application service.
+
+The passages describe specific individuals with medical bills but provide no information about any channel, platform, or route that would allow a third-party service to reach such buyers. They do not confirm or refute the existence of a low-friction distribution path.
+
+None of the provided passages discuss the legality of a hospital financial aid application service; they cover a patient's hospital bill, Medicaid eligibility, and health insurance for gig workers, so the question is not addressed.
+
+Passages describe individuals suffering from large medical bills but provide no evidence that anyone pays for a service to solve it.
+
+The provided evidence documents the financial hardship of uninsured gig workers with hospital bills (source_ids: 207eaaddd69f188c, 322e85bb351ba24a, e636d2a535f47748, e856f7b9b22f0c6a). However, none of the passages show any awareness, demand, or willingness to pay for a $149 application service. The articles describe reliance on free assistance: social workers, Medicaid enrollment help, and self-filing of hospital financial aid forms. No incumbent service is mentioned, but the absence of any reference to a paid advocacy service in these detailed stories suggests that the target market does not perceive the value proposition or that distribution is extremely difficult. The pain is real, but the evidence does not validate a business case—there is no signal that the identified payer would exchange limited savings for this service when free alternatives exist and patients are already overwhelmed.

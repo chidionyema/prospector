@@ -1,0 +1,23 @@
+RxPenalty Rescue – The Gen Z NHS Prescription Fine Appeal Kit.
+
+We fight NHS prescription penalty charges by checking hidden eligibility and lodging professionally‑argued appeals, converting fines into refunds for a flat service fee.
+
+Many 18‑27 year‑olds on variable incomes are legally entitled to free NHS prescriptions (low‑income scheme, certain benefits, age‑based exemptions, maternity exemptions, etc.) but are unaware or fail to claim in time and get fined up to £100+; a productised appeal service that digs out the overlooked exemption and cold‑leads the NHSBSA with statutory arguments can overturn the penalty where self‑appeals fail.
+
+Gen Z workers who have received an NHS Prescription Penalty Charge Notice, particularly those in casual/gig work who slip through exemption checks.
+
+NHS prescription charges have risen 3.5% in 2024, penalty enforcement is automated and aggressive, and awareness campaigns about exemptions are inadequate; every penalty is a painful lump sum for a cash‑volatile cohort.
+
+The passages describe NHS penalty charge notices and a planned pre-PCN challenge stage, but they do not address whether the value of an appeal service is durable, fabricated, or evaporating; the evidence does not speak to durability.
+
+Passages describe penalty charge processes and NHS policy but say nothing about any incumbent solving penalty appeals, dominant or otherwise. No evidence on incumbency.
+
+The passages describe the penalty charge notice system and free appeal options, but provide no information about the payer’s financial ability or willingness to pay for a third‑party appeal service.
+
+Passages [0e95d866eaf3dec7] and [041448e014dddb9f] show NHS Penalty Charge Notices are automatically issued by computer algorithms and sent directly to people who incorrectly claim free prescriptions, meaning the buyer (PCN recipient) is identified and reachable at the exact moment of pain — a forcing mechanism that creates a self-identifying, addressable audience for the appeal service.
+
+Passages [323c3e4e75291caa] and [de4320c7e5bd0dd4] confirm an enquiry/response process exists for PCNs caused by genuine, common exemption mistakes, so helping a patient surface a valid overlooked exemption and respond is a legitimate lawful contest of the fine — not falsification. No passage describes any statute or term prohibiting a third party from assisting with such an appeal.
+
+Passage 3c3fcd05c294dbef provides direct testimony of a person whose evidence was rejected while trying to challenge a penalty, showing real frustration and a failed self-appeal — clear evidence of an acute pain point.
+
+No critical risks identified: legality is supported, distribution is feasible, and no evidence of impossible unit economics or dominant monopoly.

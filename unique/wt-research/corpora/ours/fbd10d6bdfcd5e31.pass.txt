@@ -1,0 +1,23 @@
+Life insurance broker for elderly owners and caregivers.
+
+A fixed-fee transaction broker that shops a primary carer’s parent’s life insurance policy to a network of vetted buyers and secures the best cash price.
+
+Primary carers of elderly parents often hold life insurance policies that are no longer needed or affordable. Selling the policy for cash (a life settlement) can unlock funds for care, but the market is a tangled mess of phone calls and opaque offers. PolicyCash steps in as a skilled broker. The carer uploads the policy details once, our system solicits binding offers from a wide network of institutional buyers, and we present only the top offer, ensuring full transparency. The carer pays nothing upfront; we take a flat 5% of the final sale price only when the deal closes. All paperwork is handled digitally, and the entire process is audited by state insurance regulators. This borrows the model of real estate agencies, where the agent’s incentive is aligned with getting the best price.
+
+The primary carer—or the policy owner—pays from the settlement proceeds at closing. They feel the acute pain of time poverty and financial pressure, and a life insurance policy can be a hidden asset they never knew they could monetise.
+
+The US life settlement market is over $15 billion annually and growing as baby boomers age. Yet most transactions happen through high-commission brokers. With new state-level transparency regulations (like California’s SB 984 requiring clear disclosures) and the rise of digital aggregation, there’s a window to build a carer-centric platform that undercuts incumbents and uses data to compound its advantage.
+
+Passages show life settlements still pay owners more than cash surrender and that brokers unlock more value than surrendering or contacting buyers alone, with high commissions still charged in a fragmented brokerage market. That means the paid intermediary role has not been wiped out by a free or bundled alternative.
+
+One passage calls small-face life settlements underserved because investors struggle to underwrite them, which does not say whether any broker or platform already dominates shopping policies for primary carers. The caregiver and long-term-care settlement guides describe the use case but name no market leader or funded rival capturing that segment, and the remaining passages are generic niche advice with no bearing on this market.
+
+Family caregivers spend about $7,200 a year out of pocket and 90% give financial support, so they have strong reason to unlock cash for care; a life settlement pays the seller immediately, and settlements are already pitched as a way to fund care, so a success fee taken from those proceeds is payable.
+
+The passages say life settlements exist and selling a policy can be highly complex, and otherwise discuss buying new life cover or general state insurance rules. None of them describe an existing, easy way for a broker to reach primary carers or policy sellers.
+
+The passages cover insurance producer licensing, surplus-lines licensing and penalties, group-life conversion, and claims-settlement model rules, but none say whether brokering a life-insurance policy sale to cash buyers for a success fee is allowed or banned. They therefore never speak to whether that fee can be earned without breaking law or terms.
+
+Passages describe seniors holding life insurance they no longer need or can afford amid rising healthcare costs, and they present selling that policy (a life settlement or viatical settlement) as a way to get cash—including for private in-home caregivers. Active settlement providers market helping people unlock that payout, which shows a real need people already act on, not a hypothetical nice-to-have.
+
+The passages describe life settlements as an existing, regulated way to sell a policy for cash, with brokers still earning commissions in a fragmented field of small firms, and they never say third-party brokering is banned. They also never show that winning one customer costs more than any fee that customer could ever pay, or that one named firm controls most of how sellers reach buyers.

@@ -1,0 +1,23 @@
+SundownSight – spot the hidden patterns behind dementia behaviours before they happen.
+
+A phone tool for dementia carers that logs daily episodes and blends them with local weather, light levels, and routine data to predict and reduce sundowning outbursts.
+
+A mobile app that turns a carer’s daily notes into a behaviour map. The carer taps in what happened (agitation, wandering, confusion) and what the person ate, did, and was exposed to. The app automatically pulls local sunset time, weather, and indoor light readings from the phone’s ambient sensor. It then finds which combinations tend to trigger difficult days and shows the carer a simple forecast: this evening is high risk unless you try a different routine.
+
+Primary carers looking after someone with mid‑stage or later dementia, typically spending out of their own pocket. They pay a monthly subscription of around £6 for the premium version that includes the prediction engine and shareable weekly reports for the GP or memory clinic.
+
+Dementia diagnoses are rising fast across the UK, and the NHS Long Term Plan asks family carers to take on more non‑pharmacological management. At the same time, phone sensors and cheap API weather data are now good enough to give a personal micro‑climate. Carers are also more comfortable with self‑tracking apps, and we can piggyback on that behaviour without asking them to learn a complex medical tool.
+
+Passages state that sundowning is a real dementia-linked agitation driven by fading light and other physical triggers, and that carers face related nighttime problems. That affirms a lasting, non-fabricated basis for a tool that maps behaviours against light and routine rather than a need that has already vanished.
+
+None of the passages name a market-leading or well-funded product that already delivers carer-facing sundowning forecasts from logged behaviours plus weather and light, nor do they state that this niche is empty of such a rival. They only define sundowning, note a research framework, cite UCLA educational videos, and report overall dementia-care app market growth, which does not settle whether any one player already owns this need.
+
+The survey findings show dementia carers under severe strain (four in five at crisis; nearly three quarters often feel they cannot continue), which speaks to motive but not to money. Nothing in the passages states that unpaid primary carers have spare budget or actually pay for apps or similar tools.
+
+The passages note carers exist and that people with dementia may see a GP or memory clinic, but none describe how a paid phone app would reach those carers—no self-serve path, referral channel, marketplace, or other executable route to buyers. US prevalence and prevention research also say nothing about acquiring UK carers as customers.
+
+The passages only say MHRA regulates UK medical devices and is updating certification and CE-mark recognition rules; they never say whether a carer behaviour-forecasting phone app is a regulated device, needs certification, or can earn its subscription only by breaking law or terms. One passage is unrelated gaming content and adds nothing.
+
+Passages state sundowning is common in dementia and brings evening agitation, anger, sadness, confusion, and paranoia, and that carers encounter it and seek mitigation help. That is a real, present hardship for dementia carers, not a hypothetical or nice-to-have concern.
+
+The passages say the MHRA oversees UK medical devices and that dementia-care apps are a growing category, but they never state that a carer behaviour-forecasting phone app is illegal or that third parties are barred from offering it. They also never name one firm that owns most of how carers are reached, and they never compare what it costs to win a paying carer with what that carer could ever spend.

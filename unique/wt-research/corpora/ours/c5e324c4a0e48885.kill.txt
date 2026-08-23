@@ -1,0 +1,29 @@
+Freight Lane Handback — the tool that tells a startup which shipping quotes to hand back to the forwarder, before you accept them.
+
+A desk tool for hardware and consumer-goods founders importing into the UK, showing which freight quotes hide charges you can refuse, based on the quotes other founders actually paid.
+
+A founder importing a first production run gets a freight quote as one number. Underneath it sit a dozen separate charges. Some are real costs. Some are pure margin the forwarder adds because a first-time importer never asks.
+
+This tool takes the quote you were emailed, pulls it apart line by line, and tells you which lines to push back on. It gives you the sentence to send. Not advice in general terms — the actual wording, and what the same line cost other founders on the same route last quarter.
+
+The idea borrows from how car buyers stopped overpaying. Dealers priced by what each buyer would tolerate, until a shared record of what people actually paid killed the spread. Freight is at that same stage. The published tariff and the paid price are different numbers, and only the forwarder sees both.
+
+Why it holds: every quote a user uploads adds to a record of real paid rates, by route, by forwarder, by container type, by month. That record cannot be bought. Forwarders will not publish it. Public indices like Drewry and Freightos publish headline sea rates, but the money for a small importer is not in the sea leg — it is in terminal handling, customs entry fees, deferment charges, demurrage and the flat 'documentation' lines. Those are quoted privately and never indexed.
+
+UK specifics make it real. Since full customs controls came in, every import needs a customs declaration, and forwarders charge per entry — often per commodity code line, which founders do not know to question. HMRC's postponed VAT accounting lets you account for import VAT on your return rather than paying it at the border, but many forwarders still quote as though you are paying cash and charge a fee to advance it. That single line is often worth more than the tool costs for a year.
+
+A founder pays because the pain is now and the number is large. A £40,000 first production run can carry £6,000 of landed charges, and a third of that is negotiable. The tool sells itself at the moment the quote lands in the inbox.
+
+Growth comes from the quote itself. Every analysis is a shareable page a founder forwards to their co-founder, their investor, and the four other founders in their accelerator cohort importing the same month. Accelerators and hardware communities distribute it because it saves their portfolio real cash.
+
+UK founders of hardware, cosmetics, food, apparel and consumer-goods startups importing their first few production runs — typically shipping between one and twenty containers or air consignments a year, with no in-house logistics hire.
+
+Full UK customs controls on imports have been phased in since Brexit, so every consignment now needs a declaration and forwarders charge per entry. The Border Target Operating Model added further checks on food and plant products from 2024. Meanwhile Red Sea disruption from late 2023 pushed surcharges onto quotes that many small importers accepted without question. First-time importers face a charge structure that did not exist for them five years ago, and nobody has taught them how to read it.
+
+The passages show that freight forwarder invoices bundle many separate service charges [8d21979e69f930d4] and that 'hidden costs' and 'expensive surprises' in shipping are a recognised, actively addressed concern — with published 2025 guides explaining how customs declaration and inspection fees are calculated and how to avoid such surprises [6761118101084d36, 60fc02a4446a3b99]. That commercial guidance content exists on exactly this topic indicates shippers really are losing money to charges they do not understand, though no passage states what UK importers currently pay to solve it.
+
+The passages only cover UK geography and constitutional structure, a list of India-based consumer-goods companies, funding totals for a tracked set of CPG startups, and an unrelated video-game guide — none of which say anything about UK founders importing goods, their spending on freight or customs tooling, or their ability to afford a £79 one-off purchase. The Seedtable passage shows some consumer-goods startups are funded, but it is not about the UK and does not describe the buyers this pack targets or what they spend.
+
+The passages describe US-based hardware accelerator cohorts in Ithaca and at Humanmade, and generic instructional material on running Google Ads for freight keywords, but none shows a route by which this tool would reach UK founders importing their first production run. Nothing here says these accelerators would distribute such a tool, nor that UK first-time importers search for or can be reached at the moment a freight quote arrives.
+
+The passages describe postponed VAT accounting as an officially introduced UK mechanism that any VAT-registered importer may elect simply by flagging it on the customs declaration, so advising a founder to use it and to refuse a forwarder's cash-advance fee relies on a legitimate government scheme rather than any evasion or misstatement [7506849f77d3815f, ee502eb538f5e93c, 3d497e0493ed2c51].

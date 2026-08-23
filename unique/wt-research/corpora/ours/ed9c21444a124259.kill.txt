@@ -1,0 +1,23 @@
+Adjudication Recovery Fund – The Subbie’s Contingent Payback Engine.
+
+A solo-run no-win-no-fee service that enforces unpaid UK construction adjudication awards for small subcontractors, taking a % only when cash lands, built on a proprietary dataset of enforcement outcomes and an AI document factory.
+
+Small subcontractors routinely win adjudication but lack the legal time or front money to enforce the award, leaving cash on the table. Litigation funding exists for big claims but never for sub-£20k disputes. Applying a contingent micro-funding model (cross-sector from large commercial litigation) to this niche unlocks a solvent payer who receives nothing otherwise.
+
+Sole-trader or micro-SME subcontractors in UK construction (plumbers, electricians, joiners) holding an unenforced adjudication award between £2,000 and £20,000.
+
+Construction insolvencies are at a 10-year high, making immediate cash recovery existential; adjudication usage is rising post-pandemic; yet enforcement still requires separate legal steps that small firms avoid. A solo with AI can fill the gap at zero upfront cost to the subcontractor.
+
+None of the passages address whether the value of contingent enforcement of construction adjudication awards is real, durable, or commoditised; they are either irrelevant or describe generic aspects of adjudication without mentioning market conditions for enforcement services.
+
+All passages discuss unrelated topics (U.S. legislation, awards, payroll tax, trade reform, offshore work); none mention UK construction adjudication enforcement or any incumbent, so the incumbency claim is unverifiable.
+
+The passages show UK adjudication enforcement exists but offer no evidence that small subcontractors (payers) would pay a contingent fee for sub-£20k awards, nor that they have the means or motive to do so.
+
+The passages discuss adjudication enforcement and the existence of subcontractors as potential customers, but none describe any specific route, channel, or mechanism by which a service provider could reach those buyers. Therefore, the question of a low-friction distribution route is not addressed.
+
+The passages discuss construction compliance, gig economy definitions, adjudication process, enforcement limitations in insolvency with cross-claims, and defence tips; none state or imply that contingent-fee enforcement of adjudication awards is illegal or requires law-breaking.
+
+No passage addresses whether small subcontractors suffer or pay to enforce adjudication awards; the closest is a procedural note about challenging awards, which does not demonstrate acute pain.
+
+No evidence shows illegality, a monopoly player, or customer acquisition cost exceeding lifetime value. The risks are not grounded in the provided passages.

@@ -1,0 +1,13 @@
+The Care Claim Arbitrator.
+
+A solo-operated, AI‑augmented appeal service that overturns local authority care funding decisions on behalf of carers, taking a share of the additional budget secured, and building a proprietary database of assessor biases and winning arguments.
+
+Local authority care assessments systematically under‑value need because the assessor's own tool is a budget‑containment instrument. Primary carers lack the time, legal knowledge, and adversarial stamina to fight back. A solo operator inverts this power dynamic by offering a high‑stakes, no‑win‑no‑fee appeal service that uses AI to match case details to statutory guidance and a compounding dataset of what works against specific councils and assessors. Every successful appeal feeds the dataset, making the service increasingly effective and impossible for a free charity or the local authority to replicate.
+
+Adult children caregivers for elderly parents in England, paying a contingency fee directly from the increased care package once funding is unlocked.
+
+Council insolvencies (Birmingham, Nottingham) and the tightening of Care Act assessments have created a widening gap between assessed need and allocated funding. Meanwhile, carers are now highly networked in Facebook groups, providing a viral distribution channel. GPT‑4‑class models enable a solo operator to parse care plans, financial assessments, and local policies at near‑zero marginal cost, generating tailored legal arguments that would otherwise require a solicitor.
+
+The passages show adult social care is a large, contested spending area for English councils — now over 40% of all local authority service spending — and that reforms to how people pay for care were shelved in July 2024, so the funding pressure driving disputed decisions persists [74604e6f713bc401, a331abbb06879603]. A free complaints body does exist and does overturn council decisions, including an upheld social care case [14fe4513bf60a7a9, eaf3377435e8fce3, 1bb72d504d55748f], which confirms wrong decisions are real and reversible; the passages do not show that free route absorbing all the va
+
+The passages show this need is already served from both directions: commercial community care solicitors advertise advice on challenging social care funding decisions [7ae3e9570bfd608e][7e403ef53d8a04e1][4309b17f472500bb], and free legal services already cover the same ground, including Access Social Care's free legal advice network [445ecde60250649e][139d36c4771daeb8] and a free self-serve tool offering a chatbot, videos and downloadable letter templates specifically for appealing care assessment decisions [d0e1c4a6bdb188ae]. A free, tailored appeal-letter tool aimed at exactly this buyer and

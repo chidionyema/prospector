@@ -1,0 +1,195 @@
+DRN-4998622 
+ 
+ 
+The complaint 
+ 
+Mrs D complains that Metro Bank PLC won’t refund her the money she lost after she fell 
+victim to an Authorised Push Payment (‘APP’) scam. 
+ 
+What happened 
+The background to this complaint is well-known to both parties, so I won’t repeat it in detail 
+here. But in summary, I understand it to be as follows. 
+ 
+In or around October 2023, Mrs D was attempting to arrange a visa sponsorship and work 
+for a family member. Mrs D’s family member provided her with a contact, who she got in 
+touch with and was added to a group on a well-known messaging service. 
+ 
+Mrs D was told that it would cost £11,500 to get a job with guaranteed sponsorship, with an 
+upfront cost of 80%, with the remainder to be paid on receipt of the visa sponsorship – Mrs D 
+was told the sponsorship should arrive within three weeks. Mrs D added that she contacted 
+a couple of other people, who were in the same group, to verify the person who she was 
+dealing with. 
+ 
+Believing everything to be genuine, Mrs D went ahead and sent £8,900, made up of four 
+payments from her Metro account totalling £4,900 (listed below) With the remainder being 
+sent from an account she held with another bank, to account details that she was provided 
+with. But unknown to her at the time, Mrs D was dealing with fraudsters and had sent her 
+money to accounts the fraudsters controlled; 
+ 
+1. 5 October 2023  £1,000 
+2. 7 October 2023  £2,000 
+3. 7 October 2023  £850 
+4. 10 October 2023  £1,050 
+ 
+Mrs D realised she’d been scammed when she didn’t receive the visa sponsorship, didn’t 
+receive a refund that she requested and contact with the fraudsters ceased. 
+ 
+Mrs D raised the matter with Metro. Metro is a signatory to the Lending Standards Board’s 
+Contingent Reimbursement Model (the CRM Code). This means Metro has made a 
+commitment to reimburse customers who are victims of authorised push payment scams 
+except in limited circumstances. 
+ 
+Metro looked into Mrs D’s complaint and upheld it in part. In summary, Metro thought it could 
+have done more to advise Mrs D about fraud and scams, so considered it was at least 
+partially liable for Mrs D’s loss. It tried to recover Mrs D’s money from the beneficiary banks 
+(the banks to which the money was sent), but unfortunately it was unable to recover any of 
+the money that was lost. 
+ 
+However, one of the beneficiary banks (the one that received the payment for £850) also 
+thought it held some responsibility for the loss. In view of all of this Metro thought it should 
+refund Mrs D £2,591.67 (made up of 50% of payments 1,2,4 in the table and c.66% of 
+
+ 
+ 
+payment 3, due to sharing some liability for this payment with the beneficiary bank). 
+ 
+Unhappy with Metro’s response, Mrs D brought her complaint to this service. One of our 
+Investigator’s looked into things, but didn’t think the complaint should be upheld. In summary 
+this was because she thought there was enough going on that Mrs D ought to have had 
+some concerns about the transactions she was making. So she didn’t think Metro needed to 
+do any more than it already had. 
+ 
+Mrs D didn’t agree with our Investigator’s view. As agreement couldn’t be reached, the 
+complaint has been passed to me for a final decision. 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint. 
+In deciding what’s fair and reasonable in all the circumstances of a complaint, I’m required to 
+take into account relevant: law and regulations; regulators’ rules, guidance and standards; 
+codes of practice; and, where appropriate, what I consider to be good industry practice at the 
+time. 
+ 
+To begin with, Metro has a primary obligation to carry out the payment instructions its 
+customers give it. As a starting point, a customer will therefore be assumed to be liable for 
+payments they have instructed to be made. There is no dispute that Mrs D authorised these 
+payments, albeit having been deceived into believing she was sending them for the purpose 
+of obtaining visas. On the face of it, she is therefore liable for the resultant losses. 
+ 
+However, of particular relevance here, the CRM Code says that the victim of an APP scam 
+such as this should be reimbursed unless the bank is able to establish that one (or more) of 
+the limited exceptions to reimbursement can be applied. 
+ 
+Under the CRM Code, a bank may choose not to reimburse a customer if it can establish 
+that*: 
+ 
+- The customer ignored what the CRM Code refers to as an “Effective Warning” by 
+failing to take appropriate action in response to such an effective warning 
+ 
+- The customer made payments without having a reasonable basis for believing that: 
+the payee was the person the Customer was expecting to pay; the payment was for 
+genuine goods or services; and/or the person or business with whom they transacted 
+was legitimate 
+ 
+*Further exceptions outlined in the CRM Code do not apply to this case 
+ 
+Metro hasn’t disputed that the additional protections of the CRM Code should apply here. 
+Under the terms of the CRM Code, the bank has reimbursed Mrs D half of three of the 
+payments and two thirds of the other payment that she sent from its account. Metro accepts 
+partial fault, but it considers Mrs D must also share responsibility for the loss. 
+ 
+Metro has acknowledged that it didn’t provide an effective warning, so what remains for me 
+to determine is whether that is a fair outcome or if, on the contrary, Metro can fairly be 
+required to repay the remaining balance, due to Mrs D not having a reasonable basis for 
+belief when making the payments, or for any other reason. 
+ 
+Did Mrs D have a reasonable basis of belief? 
+ 
+ 
+ 
+The CRM Code won’t always require a firm to refund payments in full. In particular, it says a 
+firm can choose not to fully reimburse APP scam losses where the firm can establish that the 
+customer made the transactions without having a reasonable basis for believing what they 
+did - including that they were paying for a legitimate service. Metro seeks to rely on that 
+here. 
+ 
+When considering if Metro has treated Mrs D fairly in line with the CRM Code, I therefore 
+must consider whether Mrs D made the payments without having a reasonable basis for 
+believing this was for legitimate purposes. 
+ 
+I have carefully considered everything Mrs D has submitted, as well as the evidence 
+submitted by the bank. Based on everything I’ve seen and been told; I’m not satisfied Mrs D 
+did have a reasonable basis for belief. I think there were a number of concerning factors 
+here that ought to have made Mrs D cautious and led her to complete more extensive 
+research before making the payments she did. 
+ 
+I say this because; 
+ 
+- Mrs D has said she found from a professional social media platform that the 
+individual she was dealing with worked for a company. But having researched this 
+company, it doesn’t appear that the nature of its business relates to the provision of 
+immigration/visa/sponsorship advice. Alongside this, it doesn’t appear that Mrs D has 
+carried out any research to confirm the firm/or individual she was dealing with were 
+either qualified or regulated to provide such services. 
+ 
+- While I understand Mrs D has said she was dealing with an individual. When 
+considering the formal nature of the service being paid for, the receipt of visa 
+sponsorship and employment, I think it is questionable as to why she was paying 
+accounts held by multiple individuals, rather than to a firm that was clearly identifiable 
+as offering these services. 
+ 
+- From the evidence I’ve seen, Mrs D doesn’t appear to have been provided with, nor 
+asked for, any documentation from the fraudster, regarding the individual she was 
+dealing with, nor regarding the actual job/visa/payments she was making. Given the 
+official nature of the service being provided, I think it would have been reasonable to 
+have expected such documentation to be forthcoming. 
+ 
+- Alongside this, I don’t think a legitimate employer or recruitment agent would ask for 
+large sums of money upfront.  
+ 
+- As well as this I don’t think it’s typical for a legitimate firm/individual, particularly given 
+the formal nature of the service requested here, to communicate through an informal 
+messaging service. 
+ 
+- Finally, I think the suggestion that the process of receiving a job and visa 
+sponsorship could be completed within three weeks, considering how long I 
+understand these things to typically take on average, was ambitious to the point of 
+being too good to be true. 
+ 
+I can understand how in isolation any one of these things may not have prevented Mrs D 
+from proceeding. But when taken collectively, I think there was enough going on here that 
+Mrs D ought to have acted far more cautiously than she did and should have had significant 
+concerns about the transactions she was making. Overall, I find that Mrs D ought to have 
+done more to verify that the person she was dealing with was actually able to offer her a 
+ 
+ 
+legitimate certificate of sponsorship. 
+ 
+Recovery 
+ 
+Finally, I have considered whether Metro did all it could to try and recover the money Mrs D 
+lost. Metro was limited in terms of what it could do here; it could only ask the beneficiary 
+banks to return any money that remained in the recipients’ accounts. It needed to make 
+enquiries quickly for the best chance of recovery. It is common for fraudsters to withdraw or 
+move the money on as quickly as possible, which sadly was the case here, with the 
+beneficiary banks confirming that no funds remained. One of the banks, as mentioned 
+above, did share some liability for the loss. Overall, I don’t think Metro missed an opportunity 
+to recover any of the money Mrs D sadly lost. 
+ 
+All things considered, I don’t find that Metro is liable to refund Mrs D any more than it has 
+already offered to, under the terms of the CRM Code. In saying this, I want to stress that I 
+am very sorry to hear about what happened to Mrs D and I am sorry she has lost out here. 
+She was the victim of a cruel scam designed to defraud her of her money. I appreciate that 
+she’s lost a significant amount because of what happened. 
+ 
+But I can only look at what Metro was and is required to do and I’m not persuaded that Metro 
+is required to refund her the full amount of her loss under the CRM Code and what it has 
+already offered is fair and reasonable in the circumstances of this case. Nor that the bank 
+was at fault in making the payments Mrs D had instructed it to make or for any other reason. 
+ 
+My final decision 
+My final decision is that I don’t uphold this complaint against Metro Bank PLC. 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mrs D to accept or 
+reject my decision before 15 May 2025. 
+   
+Stephen Wise 
+Ombudsman

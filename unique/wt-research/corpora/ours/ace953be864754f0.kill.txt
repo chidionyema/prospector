@@ -1,0 +1,23 @@
+The Care Fee Financial Assessment Transparency Index.
+
+A solo‑built data engine that reverse‑engineers local authority care‑home means‑testing decisions via FOI, exposing exactly when councils disregard assets, apply notional capital, or set top‑up thresholds—so families can structure their finances before the assessment hits.
+
+invert: As council budgets shrink and charging becomes more aggressive, a solo can systematically FOI every English local authority under adult social care legislation, aggregate their unpublished financial assessment outcomes and outlier cases, and sell the resulting adversarial playbook—the council can publish a charging policy but cannot provide a tool to defeat its own revenue‑raising logic.
+
+A retiree who owns a home or savings and is planning to enter residential care, or their adult child acting under a lasting power of attorney.
+
+The Fair Cost of Care initiative (2022) forced councils to publish some rate data, but the means‑test black box remains; with council bankruptcies rising, hidden capital rules are being applied more harshly, creating a desperate need for asymmetric information.
+
+None of the passages discuss care fee financial assessments, local authority means-testing, FOI data, or the candidate's data engine; they are entirely about library catalogues, coding opinions, and a Star Wars film. Thus, they provide no evidence on the claim's durability.
+
+The passages discuss an Oxford library catalogue, a data ETL engine, a Star Wars film, and general business advice about underserved segments — none address incumbents or rivals in the care fee financial assessment space.
+
+No passage addresses retiree finances, care costs, or willingness to pay for means-testing intelligence; all sources are irrelevant.
+
+None of the provided passages mention the candidate, its target audience (retirees/adult children), or any distribution channel for care fee data. The generic statement about user acquisition is not linked to this specific business and does not demonstrate an actual route exists.
+
+None of the provided passages address the legality of FOI-based data aggregation or selling care fee analysis; they concern a library catalogue, pilot training, a film plot, and a crowdfunding framework — all entirely irrelevant to the question.
+
+None of the passages address care fee assessments, means-testing, or any related pain; they are entirely about library catalogues, AI, Star Wars, and forensic interviews.
+
+No evidence of any risk vectors; all retrieved passages are unrelated to the candidate's care-fee assessment business, and no explicit evidence exists for regulatory, unit-economic, or monopoly conditions.

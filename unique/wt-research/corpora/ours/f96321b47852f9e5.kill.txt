@@ -1,0 +1,29 @@
+FailShare, tells chip startups whose foundry step broke.
+
+A paid data service that shows fabless hardware startups how their wafer test failures compare with everyone else's at the same foundry node, so they know whether to fix their design or push back on the fab.
+
+A hardware operations manager at a small fabless chip company gets a wafer test report back and cannot tell one thing: is this our design, or is it the fab having a bad week? The foundry will not say. TSMC, GlobalFoundries and Samsung Foundry all publish process yield claims to investors but never share per-lot defect patterns across customers, because every customer contract forbids it.
+
+FailShare turns that silence into a business. Small fabless firms send us their anonymised wafer maps and electrical test summaries — the standard files their test house already produces. In return they get a quarterly read: at this node, at this fab, at this time, defects clustered at wafer edge ran 3x normal, and eleven other customers saw it too. Nobody sees anybody's design. Everyone sees the shape of the fab's month.
+
+This flips the usual direction of information. The foundry is the party with power, and it holds the comparison data because it sits in the middle. It structurally cannot ever publish that comparison, because doing so would arm its own customers in price and credit negotiations against it, and would breach the confidentiality clauses it wrote itself. The more aggressively foundries push yield risk onto customers, the more valuable an independent pool becomes.
+
+This is an AI-native shape in one narrow place: a model reads wafer map images and classifies defect signatures — edge ring, scratch, centre blob, random — which is work a yield engineer is paid roughly $130,000 a year to do by eye. We do not replace the engineer. We do the comparison across companies that no single engineer can ever see.
+
+The pool compounds. Year one you have twenty companies and a thin read. Year three you have two hundred and you can date a fab's process excursion to the week. A late copier starts at zero and cannot buy the history.
+
+We would base this in Austin, Texas, near the design community around Samsung Austin Semiconductor and the Texas Instruments ecosystem, and start with the companies who already meet at the same industry test conferences.
+
+Selling is a per-seat data subscription, roughly $2,400 a month, sold to the VP of Operations or Director of Test Engineering — a named budget holder who already buys test floor tooling.
+
+Operations and test engineering directors at US fabless semiconductor companies with 30 to 400 staff — the firms that buy wafers from a foundry but own no fab. Concentrated in Austin, Texas and San Jose, California. They already pay for test floor analytics software, so the budget line exists.
+
+US semiconductor design startups have multiplied since the CHIPS and Science Act of 2022 put federal money into domestic capacity, and Commerce Department award announcements name dozens of new fab and packaging sites. Meanwhile advanced node capacity is tight, so small customers get the worst slots and the least explanation. SEC filings from foundry customers increasingly disclose yield-related cost overruns as a risk factor, which means finance leaders inside these companies are now asking operations to prove where the loss came from.
+
+The passages show fabless chip companies are an existing paying market for wafer-yield analytics: PDF Solutions sells its Exensio platform to fabless companies (among IDMs and foundries) on software licenses and subscriptions, with management pushing subscription mix and usage-based pricing tied to wafer starts, and demand for factory analytics and yield acceleration described as strong [3a3643a7b5d40f16][47bb79e0043391a2][f868cf0d3d9fbb81].
+
+The passages cover semiconductor industry aggregates — AI chip revenue forecasts [cdfd06e0d5d3a349], AI chips as a third of 2025 sales [e92a86d929d305b6], CHIPS-related funding to TSMC and Samsung [6b5fb9c77d7b7704], and a list of chip startups [035c970f8a5a40b5] — but none of them says anything about what small fabless companies spend on test or yield data, or whether such a buyer would part with a one-off £79.99.
+
+The passages establish only that large semiconductor trade events exist (SEMICON West is described as a premier event for semiconductor professionals, and SEMICON Taiwan as drawing 1,200 exhibitors), plus generic advice about what conference sponsorship packages include; none of them says anything about reaching operations or test-engineering leaders at small US fabless chip companies, and the SEMICON Taiwan passage concerns Taiwan, not the US.
+
+The passages only describe what a silicon wafer is and how it is fabricated [980cbe6ba31d1194, eca813c30ca5ef34, 2fdaaad9a012cbba], plus an unrelated dessert biscuit [3ab301b432879bce], an LLM hosting product [85ef4c21a797d647], and a generic Justice Department website notice [ce093e572aa6e3cd]. Nothing here addresses whether pooling anonymised wafer test data across foundry customers would breach confidentiality terms, antitrust rules, or any other law, so the lawfulness of the business cannot be judged either way.

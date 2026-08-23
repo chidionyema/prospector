@@ -1,0 +1,212 @@
+DRN-4348040
+The complaint
+Mrs B and Mr B complain that HSBC UK Bank Plc (HSBC) wouldn’t refund money they lost 
+in a scam.
+What happened
+What Mrs B and Mr B say:
+Mrs B and Mr B are represented by a third-party firm of solicitors, but I will refer to them as 
+the complainants.
+Mr B took some money out of his pension fund to invest for his retirement. He had previously 
+invested in another company which turned out to be a scam. Mr B researched the best way 
+to invest online and in newspapers.
+In August 2017, Mr B was cold called by someone purporting to be an employee (who I will 
+call ‘A’) of an investment firm (which I will call ‘C’). Mr B says the person (‘A’) may have got 
+his contact details from his online research – he had submitted inquiries on online forms.
+A explained he would email Mr B with examples of investment opportunities and the returns 
+he could expect. A said Mr B could grow an investment of £20,000 to £26,000 in three years. 
+He sent Mr B illustrations. A stayed in contact with Mr B and built a rapport with him. Mr B 
+said A was polite and not pushy. Mr B said he looked at the investment company’s (C) 
+website and it seemed genuine. A said Mr B could log onto the website to see his investment 
+and track its performance every six months.
+A sent Mr B an invoice for £20,000 and he went to a branch of HSBC and made a payment 
+for £20,000 on 8 December 2017.
+Mr B stopped receiving updates and became suspicious. He went to London in December 
+2019 to visit C’s offices but found it didn’t exist. He then realised he was the victim of a 
+scam.
+Mr B says that when he made the payment, he wasn’t provided with any warnings or asked 
+any questions by staff. HSBC didn’t ask him why he was making the payment, or if he knew 
+the business he was paying. He says HSBC should’ve asked him more questions, and if 
+they had, the scam would’ve been uncovered and he wouldn’t have made the payment. He 
+says HSBC should refund the money.
+Mr B reported the scam to HSBC in August 2020. 
+What HSBC say:
+In their final response in August 2022, HSBC said they processed the payment in 
+accordance with Mr B’s instructions. Given the passage of time since the payment, they 
+didn’t approach the recipient bank as there wasn’t any chance of getting the money back.
+Our investigation so far:
+
+Mrs B and Mr B brought their complaint to us in August 2022. Our investigator said HSBC 
+should refund £20,000 plus interest at a rate of 8% per annum simple. She looked at 
+HSBC’s operating instructions that were in place at the time. Although these didn’t include 
+significant questioning, she said HSBC should still protect customers and question unusual 
+transactions. Because this was a high value payment, done in branch, there was an 
+opportunity for HSBC to do that. Had they done so, she said HSBC would’ve realised this 
+was a high-risk investment. HSBC could then have provided information on scams and 
+advised Mr B that it might not be legitimate. She noted also that Mr B was cold called. She 
+didn’t think the promised returns of £6,000 over three years was unrealistic.
+HSBC didn’t agree. They said:
+They questioned why the payment was made to an account in another name other 
+than the investment company.
+The documents provided by A about C should’ve been independently verified.
+They couldn’t see why Mr B took between December 2019 (when he realised he had 
+been scammed) and August 2020 to contact HSBC. HSBC said a reasonable person 
+would’ve reported it straight away.
+There seems to be a genuine investment company operating with the same name.
+The returns were too good to be true. The scammer’s documents promised between 
+21% and 44%, which was very high.
+The branch procedures in place at the time said HSBC should only ask about the 
+purpose of the payment – and the branch must have done that. 
+The standards required of banks at the time of the payment were less rigorous than 
+later. They were only required to ask about the purpose of the payment – the 
+standard of inquiries they were required to make in December 2017 were less than 
+they were later.
+Even if HSBC’s staff had asked about the payment, it was likely that Mr B would’ve 
+gone ahead. They noted Mr B had been impressed by the professionalism of the 
+brochures provided, and he had carried out research; and there weren’t any 
+published warnings about C. A return wasn’t expected for 12 months. So – it wasn’t 
+clear what warnings HSBC could’ve given him about the payment anyway.
+There was a large cheque payment of £45,000 on 27 November 2017, so the 
+payment in question wasn’t out of line with that.
+Mr B shouldn’t receive any interest on the money – as he would likely have made an 
+investment in another high-risk scheme (as he did in July 2018). And it didn’t seem fair he 
+should receive five years’ worth of interest – when he didn’t bring his complaint forward until 
+late 2022.
+Because HSBC didn’t agree, the complaint came to me (as ombudsman) to look at and I 
+issued a provisional decision which said:
+In broad terms, the starting position in law is that a bank is expected to process payments 
+and withdrawals that a customer authorises it to make, in accordance with the terms and 
+conditions of the customer’s account. In December 2017, there were some circumstances 
+where a bank should have taken additional steps before processing a payment to help 
+protect customers from the possibility of financial harm. For example, there were some 
+guidelines which should have been followed when older or vulnerable customers asked to 
+make unusually large cash withdrawals or where someone appeared to be telling them what 
+to do.
+In recent years, there has been an increase in sophisticated fraud and scams, leading to 
+greater expectations of banks in terms of its role in preventing fraud. This started with a 
+super complaint in September 2016. For example, the British Standards Institute’s 
+‘Protecting Customers from financial harm as a result of fraud or financial abuse – Code of 
+Practice’ was published in October 2017. This recognised that banks should look to identify 
+and help prevent transactions – particularly unusual or out of character transactions - that 
+could involve fraud or be the result of a scam. 
+It was later – that the expectations of banks were increased: with the Banking Protocol in 
+2018; and the Financial Conduct Authority’s Banking Conduct of Business Sourcebook S 
+5.1.10A (R) (since 13 January 2018) & 5.1.10B (G) (since 19 December 2018).
+And the Contingent Reimbursement Model (CRM) Code, effective from 28 May 2019, was 
+set up to provide protection for customers who fall victim to Authorised Push Payment (APP) 
+scams, and also to reduce the occurrence of APP fraud.
+Bearing all of this in mind, I need to decide whether HSBC acted fairly and reasonably in its 
+dealings with Mrs B and Mr B when Mr B requested the payment, based on the expectations 
+of banks in 2017. I also need to consider whether HSBC did all that it ought to have done 
+when Mr B reported that the payments were fraudulent. Having done so, I’m not persuaded 
+HSBC should refund Mrs B and Mr B the amount they lost. 
+The British Standards Institution (BSI) code came into existence in October 2017 – just 
+before the scam payment in question. So that’s relevant – as it was the main guidance in 
+operation for banks at the time. This code of practice gives broad recommendations for how 
+banks can protect customers from fraud and financial abuse, and it explains how to 
+recognise consumers who might be at risk. It includes the following activities as examples of 
+what might indicate fraud (I list the relevant ones in the context of this case):
+A sudden increase in spending
+A withdrawal or payment for a large amount 
+A payment or series of payments to a new payee
+I looked at HSBC’s operating instructions in place at the time – December 2017.  They ask 
+staff to ask the purpose of the payment, establish the customer’s identity, ensure there are 
+sufficient funds to make the payment, and ensure there’s no possibility of money laundering. 
+Those instructions are much different to HSBC’s obligations later. They do not, for example, 
+require staff to ask open questions about a payment, or where the customers got the payee 
+details from, how they were contacted, what the investment is for and its prospects, and 
+what research was done. Those questions were mandated later.
+So in summary, the obligations of HSBC regarding whether a payment was part of a scam, 
+or not, were far less than they were later on.
+I looked at Mrs B and Mr B’s account. 
+Apart from day to day living expenses, there were some other large payments as follows:
+February 2017: £5,004.49 – cheque
+March 2017: £2,320 – cheque
+March 2017 - £2,250 – cheque
+April 2017 : £3,000 – cheque
+June 2017: £2,000 – cash
+June 2017 : £2,000 – cash
+July 2017:  £2,000 – cheque
+August 2017: £2,000 – cheque
+October 2017: £2,000 – cash
+November 2017 : £5,000 - bill payment
+November 2017: £45,000 – cheque
+I think it’s reasonable to say that there were regular and fairly large payments from the 
+account – although I accept not as large as the payment made in respect of the scam.
+There was then a large credit for £150,090 on 20 November 2017 – which I assume was the 
+withdrawal from Mr B’s pension fund. There was then a cheque payment of £45,000 on 27 
+November 2017. We asked Mr B what this was – and it was payment to a savings account. 
+This cheque payment was just a few days before the payment in question. So I think it’s 
+reasonable to say that on balance, the scam payment wasn’t out of character with Mrs B and 
+Mr B’s normal account activity. And this, added to the expectations of HSBC at the time, 
+means that I don’t think it’s reasonable to say that HSBC’s staff should’ve questioned it.
+I’ve then gone onto to consider – what might have happened had HSBC’s staff asked Mr B 
+questions – and I’m persuaded that he would’ve gone ahead anyway. I say that because:
+In his testimony, he said he was impressed by the information given to him by A 
+about C.
+He had looked at the website and said it appeared genuine.
+He had established a rapport with A and seemed convinced the investment was 
+genuine.
+The returns offered by the investment seemed (to me) to be reasonable – a return on 
+an equity investment of circa 30% over three years, although high, wasn’t out of the 
+question.
+Mr B had researched the market and was looking to make investments.
+Mr B had experience of other investments in the past – he says he lost money on 
+another scammed investment – so he must have been convinced that C’s was a 
+good one.
+I noted that he made several other investments before and after the scam payment. 
+He invested £20,000 in July 2018 (and made another complaint to HSBC that that 
+was also a scam). He made payments to savings accounts of £45,000, £30,000 and 
+£20,000 in November 2017 and December 2017. So it seems reasonable to say that 
+Mr B was planning to make several investments or savings account transfers, of 
+which this was one. 
+So on balance, I think that even if HSBC questioned him about the payment, it’s likely 
+that he would’ve gone ahead anyway.
+Recovery:
+When a scam is reported, we expect firms to contact the recipient bank to try to recover the 
+money. HSBC said that as the scam took place in December 2017, and Mrs B and Mr B 
+reported it to them much later - in August 2020 - there was very little chance of recovering 
+any money, and therefore they took no action. I think that’s a reasonable thing for HSBC to 
+have done. Our experience with scams is that money is removed within hours, or even 
+minutes of it being credited to the bank account.
+Mr B has lost a lot of money and it was part of his retirement fund, so I appreciate the impact 
+it has had on him and his wife. He will therefore be disappointed by my provisional decision, 
+but I’m not intending to ask HSBC to do anything here.
+Responses to the provisional decision:
+HSBC made no further comments, but Mrs B and Mr B’s representatives did. They said:
+1. The investigator said HSBC should refund the money and HSBC were at fault.
+2. HSBC should’ve been aware of emerging types of scams at the time of the payment 
+on question.
+3. They said that a one-off payment of £45,00 didn’t mean the scam payment wasn’t 
+unusual, and questions should’ve been asked of Mrs B and Mr B. Had this 
+happened, Mr B would’ve done more research, uncovered the scam and not made 
+the payment.
+I now need to consider these further comments and make a final decision.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Taking each point:
+1. It is our process that if either party to a complaint disagree with the investigators’ 
+view, then the complaint is passed to an ombudsman to look at and make a decision. 
+That decision is based on everything being looked at afresh and independently of the 
+investigator – and that’s what I’ve done here. I think Mrs B and Mr B’s representative 
+will be aware of that.
+2. It is the case that there were fewer obligations on all banks to identify potential scam 
+payments at the time – in December 2017. I’ve set that out in the provisional 
+decision.
+3. I set out the other large payments made by Mrs B and Mr B – and as I said, they 
+were of lower value than the payment of £20,000. But – particularly given the lower 
+obligations of banks at the time, I believe HSBC acted reasonably in not stopping the 
+payment. 
+I also set out in the provision decision – that I I’m persuaded that even if HSBC had 
+questioned the payment, Mrs B and Mr B would’ve gone ahead anyway. I also noted 
+that Mr B had between August 2017 (when he was first contacted) and December 
+2017 (when the payment was made) – to carry out research into the company – 
+which was a reasonable amount of time to make an informed view on the scheme.
+Therefore, my final decision is in line with the provisional decision.
+My final decision
+I do not uphold this complaint.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mrs B and Mr B to 
+accept or reject my decision before 11 October 2023.
+ 
+Martin Lord
+Ombudsman

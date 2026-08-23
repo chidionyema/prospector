@@ -1,0 +1,21 @@
+Founder Split, buys out a leaving co-founder's shares fast.
+
+A fixed-fee service that helps UK startup founders buy out a departing co-founder's shares cleanly, before it wrecks their next funding round.
+
+When a co-founder leaves a UK startup early, most shareholders' agreements have a 'good leaver / bad leaver' clause, but almost nobody has a repeatable process for working out what percentage of shares the leaver actually keeps, how the vesting cliff applies, and how to paper it correctly. Founder Split is a fixed-fee service that runs that negotiation for the remaining founders and handles the filings: the SH01 and SH06 forms at Companies House, a deed of variation to the shareholders' agreement, and board minutes recording the transfer, working with a panel solicitor only for the final sign-off where a reserved legal activity is genuinely needed.
+
+This borrows the way family mediators run a fixed-fee, disclosure-led settlement process for divorcing couples — structured sessions, a standard financial disclosure form, a settlement template — and applies it to two or three co-founders untangling who keeps what when one of them walks away. Instead of each side instructing separate lawyers at three or four hundred pounds an hour who treat the split as a one-off dispute, Founder Split runs a single structured process for a flat fee, typically £3,000 to £6,000, split however the founders agree.
+
+The moat is a settlement benchmark that compounds with every deal: real outcomes on equity retained by tenure, how unvested EMI options were treated, IP assignment carve-outs, and use of Business Asset Disposal Relief. No single startup law firm sees enough of these to build that picture, because each handles maybe one or two a year and doesn't systematically record outcomes across clients. A generalist lawyer or a template tool like SeedLegals only produces the paperwork once terms are already agreed; they don't have the cross-deal data to tell a founder what a normal outcome looks like, which is the actual leverage point in the negotiation.
+
+The remaining startup founder or founders, usually paying from the company's own bank account, because unresolved cap table disputes are one of the most common reasons investors pause or walk away from a funding round during due diligence.
+
+UK founder break-ups have become more common since the 2022–2023 slowdown in venture funding stretched runways and increased disputes over unequal contribution between co-founders. At the same time, the Economic Crime and Corporate Transparency Act 2023 is phasing in identity verification and stricter record-keeping for Companies House filings, so messy or undocumented share transfers are now more likely to be flagged the next time a startup tries to file accounts or close a round.
+
+The passages confirm founder equity disputes exist and are common, but none shows people actively searching for or paying for a fixed-fee mediation/filing service to resolve a leaver's share split — only forum-style discussion and unrelated career anecdotes appear.
+
+The passages describe the UK's constitutional structure and geography, with no mention of startup founders, funding, cap tables, or ability to pay any fee. Nothing here shows whether the payer has budget or motive to pay.
+
+The passages show SeedLegals provides free founder agreements and will help cancel or transfer unvested shares, but none describe a self-serve process, forcing mechanism, or existing channel through which Founder Split itself could reach paying founders; the accelerator passages are unrelated to distribution for this candidate.
+
+The passages address unregulated legal services and DMCC Act compliance in the abstract, plus unrelated content about a Polish clothing retailer called 'Reserved'; none discuss whether Founder Split's specific activities (running negotiations, filing SH01/SH06 forms, drafting deeds of variation, or partnering with a panel solicitor for reserved activities) are lawful or require regulation.

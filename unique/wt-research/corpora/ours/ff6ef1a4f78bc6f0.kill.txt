@@ -1,0 +1,13 @@
+The Padel Court Referee Booking Engine.
+
+A vertical SaaS for padel clubs that replaces the ad-hoc, manual process of booking referees for tournaments and league matches with an automated scheduling, payment, and dispute resolution system.
+
+Analogous to how 'OpenTable' automated restaurant reservations and 'Mindbody' automated fitness class bookings, padel clubs (a rapidly growing sport) rely on WhatsApp groups and spreadsheets to find and pay referees for matches. This is a friction point for club managers who waste hours coordinating, and for referees who want a reliable way to find paid gigs. The solo operator builds a simple booking engine with a referee directory, automated scheduling, payment processing (taking a % cut), and integrated ratings. Distribution is owned via direct outreach to the top 100 padel clubs in a single country (e.g., Spain, Argentina) using a free trial.
+
+Padel club managers (who have budget for tournament operations and need to fill referee slots reliably).
+
+Padel is the fastest-growing sport globally, with club numbers exploding. The referee market is fragmented and informal, creating a clear pain point as clubs scale and need structured competition.
+
+The LTA's 2026 Referee and Organiser Guide shows that padel competitions in the UK are run as an ongoing, formally regulated activity across tournament grades 1-5 plus senior and junior events, with venues, organisers and referees as standing roles [50685a89416248a7][ce099f5776191e9e][8fdbe16160667a55], so the underlying need to match referees to sanctioned matches is real and recurring rather than invented. No passage describes a free, bundled or already-dominant tool that handles this assignment work and would leave nothing to charge for.
+
+The passages show that padel club software in the UK is already concentrated: Playtomic is described as the dominant choice used by most UK clubs, with its rating system the de facto national standard, and four to five platforms cover virtually every UK padel court [16b8d6d65a83f24a][bbfb9ff039023a29][7d8458fa737c8b79]. The passages also state that referee assignment and payment software already exists as a product category for leagues, clubs and tournaments, and that tournament software already covers padel [2c09ca6532a9a768][cfd96f076e688435][08b60192bb012953], so this is not an empty space

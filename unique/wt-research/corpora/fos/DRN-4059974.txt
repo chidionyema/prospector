@@ -1,0 +1,167 @@
+DRN-4059974
+The complaint
+A company, which I’ll refer to as S, complains that Lloyds Bank PLC mis-sold a fixed rate 
+loan and unfairly required the company to deposit a large sum of money to release security.
+What happened
+S brings this complaint alongside complaints by two other companies, which I’ll refer to as L 
+and T. The three companies are connected by common ownership and management. 
+Through their representative, they submitted a single initial complaint narrative to the bank, 
+with good reason, as the events involved in each are closely related. That approach has 
+been followed throughout the course of the complaint, including its consideration by this 
+service. Formally I’m also issuing separate decisions for L’s and T’s complaints, with the 
+same findings as this decision and differing only in detailed wording where appropriate.
+S, L and T (which I’ll also refer to as “the companies”) took out five fixed rate business loans 
+between 2013 and 2016 for their property businesses. The loans were as follows: for S, a 
+loan of £700,000 in 2013; for L, loans of £375,000 and £165,000 in 2014; and for T, loans of 
+£512,000 and £700,000 in 2016. The fixed rate period was 15 years for three of the loans 
+and 25 years for the other two.
+The companies complained to the bank that the fixed rate loans had been mis-sold. In 
+summary, the companies complained as follows:
+The companies’ director was advised to take out fixed rate loans, but was not told 
+that significant break costs could be incurred at early repayment (even partial 
+repayment) of the loans during the fixed-rate period.
+The director was also advised by Lloyds to create nominee companies S, L and T 
+before taking out the loans. This meant he lost various regulatory protections.
+The fixed rate loans are essentially analogous to interest rate hedging products such 
+as swaps – indeed the method of calculating break costs is the same. Interest rate 
+swaps are subject to strict regulation and require the bank to advise the director 
+properly on the risks involved. The director had no previous experience with swaps.
+After the sale of a property held by S in 2019, Lloyds required S to keep £190,000 on 
+deposit with the bank. So S lost out on use of these funds.
+Lloyds reviewed the companies’ complaints but concluded it hadn’t done anything
+wrong. The bank said that fixed rate loans were not regulated interest rate hedging products, 
+and it had not provided advice – nor was it required to do so. It also said sufficient 
+information had been given to the companies about the potential break costs.
+Unhappy with the bank’s response, the companies referred their complaints to this service. 
+Having considered the arguments and evidence, our investigator didn’t recommend that the 
+complaints should be upheld. In summary, he gave these reasons:
+
+The fixed rate loans are not interest rate swaps, nor are they regulated products of 
+any kind. They are unregulated business loans. It therefore wouldn’t be reasonable 
+hold Lloyds to the standards expected for regulated products.
+The investigator was satisfied that no advice was given by the bank. Each loan 
+agreement was signed by the director confirming he had received no advice from 
+Lloyds.
+The investigator thought the information provided by the bank was clear and not 
+misleading. He thought the information was sufficient to make the companies aware 
+that break costs would apply if the loans were repaid early during the fixed period, 
+and that, depending on market conditions, these costs could be substantial. He also 
+thought Lloyds made it clear that break costs would be triggered even by partial 
+repayments.
+The bank gave examples of potential break costs for a variety of scenarios. Taking 
+the relative size of the lending into account, the investigator though the bank’s 
+indication of break costs in the examples seemed fairly comparable to the break 
+costs quoted by Lloyds in 2019.
+There was no evidence to suggest the companies told Lloyds they had any intention 
+of breaking the loan agreements early. The documentation suggests the companies 
+viewed the loans as funding for long term investments.
+The investigator wasn’t persuaded that the companies were set up as a result of 
+advice from Lloyds. In his view, Companies House records indicated that the director 
+sees the benefits of such arrangements.
+Lloyds said that its requirement to keep £190,000 on deposit to allow the sale of a 
+property was a matter of security. The bank explained that when it first learnt of S’s 
+intention to sell, contracts had already been exchanged, with completion approaching 
+in a matter of days. The investigator thought it reasonable that Lloyds would be 
+interested in any change in the properties over which it held security. He didn’t think 
+Lloyds was obliged to release its security, but nevertheless the bank agreed to do so, 
+on the provision that cash was deposited instead – a sum that was less than the sale 
+price of the property. The investigator didn’t think Lloyds did anything wrong here. 
+Rather, he thought that, given the short notice provided of the impending sale, the 
+bank’s approach enabled S to continue with the sale promptly.
+The investigator pointed out that the interest rate environment has changed since the 
+companies made their complaints in 2021, and if the fixed rates were broken now, 
+the companies would receive a break gain, rather than having to pay a break cost.
+The companies didn’t agree with the investigator’s conclusions. Their director made the 
+following points, in summary:
+An important part of the companies’ complaint is that Lloyds wasn’t willing to accept a 
+partial loan repayment with a partial break cost payment – it wouldn’t accept a 
+reduction unless the whole loan was terminated. In doing so, the bank unfairly used 
+the provision in the loan agreement that stated “you may not make an early 
+repayment on part of the loan unless the bank agrees.” This was all in the small print. 
+The break cost quoted in relation to S’s property sale in 2019 was for the whole loan. 
+The bank should have expected that the companies would make some property 
+sales over the long period of the loans. Every long-term property investor sells and 
+reinvests on occasion. By definition, the sale of one property out of many will always 
+require a partial payment. The loans were mis-sold as unsuitable for the companies’ 
+needs.
+As a result, the companies’ trade was stifled. It wasn’t worthwhile making any sales, 
+so the companies couldn’t reinvest or gear up. 
+The fixed rate loans share many characteristics with interest rate swaps, which is 
+evidence that they are in reality swaps masquerading as loans.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I’m sorry to disappoint the companies’ director, but I’ve reached the same conclusions as the 
+investigator. 
+I fully understand the companies’ arguments that fixed rate loans and swaps have some 
+characteristics in common. Notably they both have the underlying purpose of controlling 
+customers’ future interest costs, and both carry the risk of substantial costs for early exit, 
+depending partly on market conditions. But the fact remains that fixed rate business loans 
+are not regulated products. They are not subject to the advice and suitability rules which 
+apply to interest rate hedging products such as interest rate swaps. I therefore agree with 
+the investigator that I can’t reasonably expect the bank to have complied with those rules 
+when selling the fixed rate loans to the companies.
+I’ve seen no evidence that Lloyds provided advice or recommendations at the time of the 
+loan sales. The loan agreements contained a statement by which the customers 
+acknowledged that they hadn’t received or relied on any advice from the bank. This 
+statement was just above the customer signature. I’m therefore satisfied that the sales of the 
+loans weren’t subject to the rules for regulated advice. That means the bank wasn’t required 
+to provide advice, and nor was it required to ensure that the products sold were suitable for 
+the customers’ needs – or even to make an assessment of those needs. It was up to the 
+companies to decide whether the fixed rate loans offered by the bank met their requirements 
+and fitted with their business model.
+Having said that, I would expect the bank to have provided the companies with appropriate 
+information to make an informed decision. In particular, I would expect the bank to alert the 
+companies to the risk of incurring break costs, and of the potential scale of those costs. 
+Having looked at the sales information and the loan agreements, I agree with the 
+investigator that Lloyds provided sufficient information about the fixed rate loans, including 
+the break cost risks, in order for the companies to make an informed choice about entering 
+the agreements. 
+The companies’ director says that even though the warnings about break costs may have 
+been adequate for repayment of the whole loan, there was no warning that a desire to make 
+a partial repayment could trigger a break of the whole loan. He argues that this comes about 
+as a result of the combination of the contract provisions that break costs could be triggered 
+by any early repayment, however small, and that partial early repayment can only be made 
+with the bank’s consent. 
+I’m satisfied that the sales information made clear that partial repayment would be a break 
+event which could lead to substantial break costs. In the 2013 sales information stated “A 
+‘Break Cost’ is the name given to the cost that would be incurred by you if at some time 
+during the period of the Fixed Rate Loan there were to be a ‘Break Event,’ e.g. if you want to 
+make a payment otherwise than in accordance with the Fixed Rate Loan agreement. This is 
+typically a - partial or full - early repayment of the loan, but could also be any change to the 
+agreed payment schedule. …Depending on market conditions at the time of the Break 
+Event, the Break Costs calculated could result in a substantial amount being due from 
+you…” The bank used similar wording in the sales information for all the companies’ loans. I 
+think this was enough to alert the companies that partial repayment carried a risk, which was 
+set out in further detail in the agreement terms and conditions. The terms and conditions 
+stated clearly that partial early repayment can be made only with the bank’s agreement. The 
+companies’ director says he did not notice that clause in the agreements. But given that the 
+major risks of the product (notably the risk of partial repayment resulting in substantial break 
+costs) were set out in the sales documents, I can’t reasonably say that any other related 
+provisions in the terms and conditions should be set aside if they were not read.
+I don’t think the bank was unfair to have contract terms that gave it discretion over whether it 
+would accept partial repayments with proportionate break costs. The terms were clear and I 
+would regard offering such terms as a matter of the bank’s legitimate commercial discretion, 
+and I wouldn’t interfere with that. As the bank had given the warnings that I described above, 
+and then it provided the full terms and conditions, I think the companies had been 
+adequately informed about the risks.
+In short, I don’t find that Lloyds failed to provide adequate information about the loans, nor 
+do I find that the bank unfairly enticed the companies into loan agreements that they would 
+otherwise have rejected.
+In the event, no break costs have been charged on any of the loans. The companies did 
+manage to sell some properties without breaking the loans, because of the strength of their 
+assets and success in negotiating with the bank over the security held. The £190,000 to be 
+kept on deposit was part of those revised security arrangements. I agree with the 
+investigator that the bank showed some flexibility that helped the property sales to go 
+through. I don’t think the bank acted unfairly regarding the security it held for the loans.
+It’s my understanding that in the current interest rate environment, breaking the fixed rate 
+loans would be likely to result in the companies receiving a break gain rather than paying a 
+break cost. If the companies regard the fixed rate agreements as a constraint on their 
+business, they can contact Lloyds to request up-to-date figures for ending the agreements.
+My final decision
+My final decision is that I don’t uphold this complaint.
+Under the rules of the Financial Ombudsman Service, I’m required to ask S to accept or 
+reject my decision before 19 June 2023.
+ 
+Colin Brown
+Ombudsman

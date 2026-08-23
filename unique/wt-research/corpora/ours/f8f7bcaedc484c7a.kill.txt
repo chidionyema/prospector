@@ -1,0 +1,21 @@
+AsbestosAware — the tradie's pre-job tool that files your asbestos enquiry and writes the HSE-defensible audit trail.
+
+A tradie's pre-job tool that posts a written asbestos enquiry to the duty-holder, stores the response or the silence, and produces the dated audit trail HSE expects when it investigates.
+
+AsbestosAware is the tradie's pre-job paperwork. You type in the address and the job, and the tool posts or emails a written enquiry to whoever owns or manages the building, asking for the asbestos register under regulation 4 of the Control of Asbestos Regulations 2012. The enquiry is logged with date and channel. The duty-holder's reply (or the absence of one) is timestamped. Anything suspicious you photograph on site is added to the file. When HSE turns up, you hand them one PDF showing what you asked, what you were told, and what you found.
+
+Why it works: most tradies never ask, because no one ever made them. After the Grenfell Inquiry, HSE's asbestos enforcement increasingly names smaller commercial premises and refurbishment work. Construction remains one of the larger sources of mesothelioma deaths in Britain (HSE statistics). Most duty-holders have never had a proper survey done. The tradie who asked and was ignored sits in a very different place from the tradie who didn't ask.
+
+Why it lasts: the audit trail is yours, in your trading name. Each job adds evidence. Switching tools means losing it. Over 18 months you have a multi-year, dated record of every duty-holder you wrote to, what they replied, and what they didn't. That history is the part that compounds, year on year, and the part free tools cannot replicate.
+
+Why the free version falls short: HSE publishes guidance for duty-holders plus a generic enquiry template, but the regulator can't ship a template written to pressure the duty-holder, and they can't log per-job responses for the tradie. Trade bodies publish risk-assessment packs for construction-phase safety, but those cover generic site risk, not CAR 2012 compliance. A solicitor can draft a per-job letter at £200-300 an hour, which a sole tradie will not absorb.
+
+How it reaches them: the tradie searches 'asbestos register request' the evening before a job, finds the free HSE page, then this. Trade wholesalers (Plumb Centre, City Plumbing, Edmundson, Rexel, Selco) hand out a card at the trade counter. CITB-approved refresher courses are the in-room moment, with a one-month trial card stapled to the attendance sheet. A partnership with BESA reaches member firms for their employed engineers as well.
+
+The sole-trader plumber, gas fitter, electrician, kitchen fitter or builder who works in buildings built before 2000. They pay £9.99 a month or £79 a year from the business account, often at the point they realise the next job needs the paperwork.
+
+HSE's asbestos enforcement has shifted toward smaller commercial premises and refurbishment work since the Grenfell Inquiry. Construction remains one of the larger industry sources of mesothelioma deaths in Britain (HSE statistics). Most duty-holders have never had a proper survey done. The tradie has no protection, and no free way to ask.
+
+The passages confirm that regulation 4 of the Control of Asbestos Regulations 2012 places a live legal duty on owners, occupiers and maintainers of non-domestic premises built before 2000 to identify, assess and manage asbestos [e8d4ca1da2433f58, baeadeb771ec27a9, 60a239960a01fe6d], and that asbestos is still physically present in over 1.5 million UK buildings including workplaces, schools and hospitals [d83f976f3f4c2dcc]. The underlying problem therefore still exists and the legal hook the product hangs on is still in force; the only proposal to centralise this information is described as a f
+
+One passage describes an existing UK product that is cloud-based asbestos register software for duty-holders, explicitly built around the Control of Asbestos Regulations 2012 and HSE guidance (HSG264/HSG227), which records evidence and exports audit-ready PDFs for inspections — the same regulation, the same asbestos evidence file, and the same PDF output this candidate proposes [32f776178a7a317d, 4f4296262f46dc0d]. The general construction and safety apps in the other passages are not asbestos tools (one passage says asbestos workflows there need configuration rather than being built in), so t

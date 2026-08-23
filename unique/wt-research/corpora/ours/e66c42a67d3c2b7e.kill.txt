@@ -1,0 +1,23 @@
+CareAsk Architect.
+
+A tool that drafts a carer's assessment request letter under the Care Act 2014, using a proprietary database of successful requests to articulate burnout risk and secure respite or support services specific to the local authority's provision.
+
+Carers are unaware of what support they can legally demand and how to phrase requests to avoid boilerplate rejections; a data‑driven generator that matches personal circumstances against historic local approval patterns can convert carer strain into funded respite.
+
+Primary carers of adults seeking a Carer's Assessment from their English local authority, paying a one-off fee (£35–£55).
+
+Care Act duties are increasingly cash‑strapped, councils are pushing back on non‑standard requests, and FOI data on carer assessments is now practically extractable by a single operator using off‑the‑shelf tools.
+
+None of the provided passages address whether the candidate's value (proprietary database, hyper-local intelligence) is real and durable; they merely confirm the existence of Carers UK resources and the Care Act 2014 regulatory framework.
+
+The passages show that charities provide template letters for Care Act requests, but they do not address whether these solutions solve the problem well or leave the space underserved.
+
+Passages describe the existence of carer's assessments and template letters, but provide no information about carers' budgets or willingness to pay for a tool.
+
+The passages exclusively detail what a carer's assessment is and the support it can recommend, offering no evidence of any distribution channel for a letter-drafting tool.
+
+The passages describe the lawful statutory carer's assessment process under the Care Act 2014 and offer guidance on it; nothing suggests that a tool drafting personalised request letters using FOI data is illegal or requires breaking any law or terms.
+
+Passages show free template letters and guides exist, but none directly indicate that carers are currently paying to solve this problem; the claim that it is acute enough for a paid tool is unaddressed.
+
+Multiple trusted charities provide free, ready-to-use template letters and comprehensive guides for requesting a carer's assessment under the Care Act 2014 (source_ids: 046d40abb21f7bb4, 3c733a150f1fc88b, 0df908a0e1a29d8f). These resources are widely accessible and specifically designed to help carers navigate the process without cost. There is no evidence that carers are failing to get assessments due to poorly worded requests, nor that a paid database of 'successful wording' exists or is effective. The candidate's value proposition is unproven, and the pain point appears adequately addressed by existing free solutions. Combined with the inability to verify payer willingness, distribution feasibility, or durable differentiation, the idea is not worth building.

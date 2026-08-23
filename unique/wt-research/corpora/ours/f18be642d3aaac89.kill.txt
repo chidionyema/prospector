@@ -1,0 +1,21 @@
+Online Safety Act gap analysis for UK platform ops managers.
+
+We fuse Ofcom's Online Safety Act enforcement register, ASA rulings and the platform's own audit logs into a weekly risk register that shows where its risk assessment is weakest.
+
+A weekly risk register for UK platform ops managers that fuses Ofcom's Online Safety Act enforcement register, ASA rulings and the platform's own audit logs, ranking each platform risk (illegal harms, priority offences, children's access) by the gap between what Ofcom has enforced elsewhere and what the platform controls show.
+
+An ops manager at a UK platform with user-generated content (a dating app, forum, classifieds site, comments section) has to maintain the illegal harms risk assessment that the Online Safety Act 2023 requires. Ofcom publishes enforcement actions continuously, ASA publishes rulings on harmful content, and the platform's own moderation logs show what it actually catches. The ops manager has to read all three and figure out which gaps will draw Ofcom's attention next. The buyer is the ops manager at a UK platform with 10-100 staff; the deliverable is a weekly risk register with one job per gap.
+
+This widens the data the ops manager reads from a single register to the full set of public data feeds plus the platform's own logs. The lasting advantage is the dataset: the cross-referenced Ofcom enforcement + ASA rulings + platform moderation pattern grows with each new enforcement action and cannot be replicated by a competitor who only sees one of the three streams. Ofcom's own register is free but a regulator cannot take a commercial side, and cannot fuse the platform's private audit log with its own enforcement register. The closest commercial incumbent is a GRC suite (OneTrust, TrustArc) which has none of the platform-specific content data.
+
+Ops managers at UK platforms with user-generated content and 10-100 staff: dating apps, forums, classifieds sites, social media startups, comment-hosting news sites. Budget sits in the trust and safety line.
+
+The Online Safety Act's illegal harms duties came into force in March 2025, with Ofcom's first notices following. Each notice changes what platforms have to assess. The first wave of enforcement is creating the case law that an ops manager needs to read every week.
+
+The passages show a live Online Safety Act compliance ecosystem with paid services like Yoti and OneID® consulting large platforms on age assurance, and Ofcom providing free risk assessment guidance and a digital toolkit, but none of the passages address demand specifically for a weekly gap-analysis risk register that fuses Ofcom enforcement, ASA rulings, and platform audit logs, nor show platforms of 10–100 staff actively seeking or paying for this exact deliverable.
+
+None of the passages address UK platform ops managers, their compliance budgets, or their willingness to pay for an Online Safety Act risk register; the provided texts cover HR software, a transcription app, a Russian game store, and general UK geography facts, none of which speak to the buyer's solvency or purchasing motive.
+
+No passage addresses distribution routes to UK platform ops managers or the Online Safety Act buyer; the only T&S-adjacent passage (c5122fd2310e3568) describes an ANZ community, not a UK channel.
+
+Ofcom's website terms state that its material 'may be reproduced free of charge in any format or medium' unless marked as otherwise restricted [1aa288ff86ceb011], and nothing in the passages suggests aggregating public Ofcom enforcement data, ASA rulings, or a platform's own audit logs into a commercial risk register breaches any law or terms. The passages show Ofcom is a public body subject to Freedom of Information [7505f27e56679f9b] whose content is largely open for reuse, with no restriction on commercial aggregation identified.

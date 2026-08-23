@@ -1,0 +1,237 @@
+DRN-4249207
+The complaint
+Mr T complains that Lloyds Bank PLC refuses to refund the money he lost to an investment 
+scam. 
+What happened
+Mr T came across an advertisement online for a binary options company I’ll call ‘D’, he said 
+their website looked professional and they had a lot of positive reviews, so he filled out an 
+online form. A representative of D called Mr T and explained how the investment worked and 
+that they would guide and advise him on what to do. Mr T was provided with a trading 
+platform and from November 2016 to January 2017, Mr T made four payments totalling 
+£4,400 to D.
+When Mr T tried to withdraw his profits, D’s representative asked him to pay more money 
+into the account. Mr T realised it was a scam and didn’t pay them anymore money. Mr T 
+contacted Lloyds to assist with recovering his money in 2018 but it advised that he was out 
+of time for it to process any chargeback claims. 
+Mr T formally complained to Lloyds in October 2022. The bank declined to refund Mr T, so 
+he referred his complaint to this service. One of our Investigators looked into things and felt 
+Lloyds ought to have been alert to D potentially operating as a scam because of a regulator 
+warning published by the International Organization of Securities Commissions (IOSCO). He 
+suggested that Lloyds refund the disputed payments together with interest.
+Mr T accepted but Lloyds did not. It said in summary;
+It does not consider itself an international bank and nearly all of its retail business is 
+conducted within the UK. 
+It does not have the skills to assess the quality of each regulator around the world. 
+Alerts issued by IOSCO are not vetted by IOSCO and it’s not realistic for it to vet 
+each issuing organisation.
+It can only ‘see’ the information about the merchant entity as provided by the card 
+scheme. 
+It takes fraud prevention very seriously and uses a wide and deep range of data to 
+inform how it protects its customers and it continuously updates the information it has 
+where there are known concerns about a particular destination or merchant, relying 
+upon trusted information sources. 
+The Payment Services Regulations (PSR) 2009 mean it was legally required to 
+honour Mr T’s authorised payment instructions, had it not honoured the payment 
+reaching D by the next business day, it would have failed to fulfil Mr T’s mandate.
+The PSR allows for refunds in certain circumstances, but only where certain criteria 
+are met.
+Mr T was contacted by D and after a few conversations, without any evidence of any 
+due diligence or receiving any documentation, he took what they said at face value. 
+He could have done more to protect himself. 
+
+It notes the good and poor industry practice examples provided within the FSA 
+Consultation paper from 2012 but they do not carry forward any further note that 
+IOSCO alerts must be used as a source of information. The guidance advises the 
+guide should be applied in a risk-based, proportionate way, which includes taking into 
+account the size, nature and complexity of a firm when deciding whether a certain 
+example of good or poor practice is appropriate to its business. 
+The BSI Code of Practice was launched after the Relevant Period and so should not 
+be applied in this case. 
+It does not believe there was sufficient information to provide the level of detail 
+needed to categorically have altered Mr T’s decision making. Its normal course would 
+be to direct the customer to the FCA’s website; however, there was no warning 
+against D. 
+The complaint was therefore referred to me for determination. 
+I wrote to Lloyds acknowledging its points of contention and in summary I explained;
+The FSA’s thematic review, Banks defences against investment fraud, published in 
+2012 (‘the 2012 paper’), continued to be referenced as good practice by the FCA 
+over the years. 
+The FCA, as well as IOSCO’s warning lists are good sources of credible alerts for 
+potential investment scammers – according to Lloyds’ regulator. It was at its 
+discretion whether it chooses to use information contained within these lists and I 
+thought one month from the date of publication provided sufficient time for firms (like 
+Lloyds) to update its own internal systems. 
+This was a sophisticated scam and D was not licenced (as required) by the UK’s 
+Gambling Commission, nor were they licensed or regulated elsewhere. 
+Visa fundamentally changed its approach to chargeback when it came to 
+unauthorised/unregulated binary options merchants to account for the global rise in 
+binary options scams. Lloyds would have had more information about the general 
+operation of this type of scam than the average consumer, particularly as it would 
+have received complaints from customers repeating the same descriptions of the 
+operation of these scammers. 
+Interest should be applied from the date of the payments rather than Mr T’s scam 
+report. 
+Lloyds replied and repeated some of its earlier comments. I’ll summarise any new points it 
+raised below:
+Whilst it appreciates the thematic review was referenced on 13 December 2018, the 
+reference to IOSCO warnings isn’t drawn out specifically as examples of good or bad 
+industry practice in any further publications from the initial review. It believes the 
+substance of my judgement which relies on this is limited and doesn’t reflect a fair 
+and reasonable conclusion and carries an unfair balance influenced with the benefit 
+of hindsight. 
+Due to companies having very similar names there is a heightened risk of mis-
+identification, when you type in the name of D on Mr T’s statement, numerous entries 
+are highlighted which adds to the complexity of identifying incorrect companies 
+making it harder to provide warnings.
+In a recent Supreme Court judgement the court highlighted the bank’s strict 
+obligation to honour authorised transactions. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so, I uphold this complaint and I’ll explain why. 
+Lloyds is aware of our general position on a PSP’s safeguarding and due-diligence duties to 
+protect customers from the risk of financial harm due to fraud. We have published many 
+decisions on our website setting out these principles and quoting the relevant rules and 
+regulations. It is unnecessary to rehearse them again here in detail.
+In broad terms, the starting position at law is that a bank is expected to process payments 
+and withdrawals that a customer authorises it to make, in accordance with the PSR (in this 
+case the 2009 regulations) and the terms and conditions of the customer’s account. That 
+was the case from November 2016 to January 2017, and remains so now. I want to stress 
+that I am aware of the case Lloyds has directed me to. And notwithstanding what the court 
+decided, we have a duty to resolve complaints based on what we think is fair and reasonable 
+in all the circumstances of the case, taking into account not just the law and I have taken this 
+into account when deciding what is fair and reasonable in this case. In addition:
+Regulated firms like Lloyds are also required to conduct its ‘business with due skill, 
+care and diligence’ (FCA Principle for Business 2) and to ‘pay due regard to the 
+interests of its customers’ (Principle 6).
+Firms also have a longstanding regulatory duty ‘to take reasonable care to establish 
+and maintain effective systems and controls for compliance with applicable 
+requirements and standards under the regulatory system and for countering the risk 
+that the firm might be used to further financial crime’ (SYSC 3.2.6R, which has 
+applied since 2001). And over the years, the FSA and its successor the FCA have 
+published a series of papers setting out non-exhaustive examples of good and poor 
+practice found when reviewing measures taken by banks to counter financial crime: 
+oThe 2012 paper sets out such non-exhaustive examples. And I am satisfied 
+that the findings of this thematic review and SYSC 3.2.6R are of relevance to 
+both sending and receiving banks. For example, the 2012 paper considered 
+banks’ efforts to counter fraud where both the customer is the fraudster and 
+also where the customer is the victim, in light of the regulatory obligation to 
+counter the risk that regulated firms might be used to further financial crime, 
+including fraud. 
+oThe FSA also explained in the 2012 paper that whilst it focused on investment 
+fraud it was of some relevance to other types of fraud as well. Specifically, it 
+said
+ “we have a regulatory remit to tackle investment fraud, which has prompted 
+our particular interest in this area, although the lessons of this report can be 
+applied to banks’ handling of other types of fraud and criminal conduct 
+affecting their customers”. 
+Further, the FCA issued a press release (16 March 2021) ahead of their prosecution of 
+another bank for alleged failure to exercise due diligence with regard to the requirements of 
+regulations 8(1), 8(3) and 14(1) of the Money Laundering Regulations 2007 between 11 
+November 2011 and 19 October 2016: 
+“These regulations require the firm to determine, conduct and demonstrate risk sensitive 
+due diligence and ongoing monitoring of its relationships with its customers for the 
+purposes of preventing money laundering.” 
+It seems clear from this that standards of due diligence and good industry practice have 
+existed for a long time – including at the time of the disputed events in our case here. Taking 
+all of these things into account, I consider that at the time of the payments in 2016/2017, 
+Lloyds should fairly and reasonably have: 
+monitored accounts – and any payments made or received – in order to counter 
+various risks, including anti-money laundering, countering the financing of terrorism, 
+and preventing fraud and scams; 
+maintained systems to look out for unusual and uncharacteristic transactions, or 
+other indicators that its customers were at risk of fraud (amongst other things), 
+particularly given the increase in sophisticated fraud and scams in recent years, 
+which banks are generally more familiar with than the average customer;
+taken additional steps or made additional checks in some circumstances – 
+irrespective of the payment channel used – before processing a payment; or in some 
+cases, to have declined to make a payment altogether in order to help protect 
+customers from the possibility of financial harm from fraud.
+The 2012 paper indicated—that it was good industry practice for firms to build up an updated 
+watch-list of types of scams and potential perpetrators; and regularly to share “timely and 
+detailed intelligence” with other banks, UK and overseas regulators, the police, etc. Whilst 
+the regulator gave no specific timings, it is not unreasonable in my view to expect a large 
+bank to update its watch-list and communicate internally to staff within, say, one month of an 
+alert being posted by the FCA or IOSCO. In my judgment, such alerts should automatically 
+trigger alarm-bells—and lead to the payment being paused—pending further enquiries (and 
+a possible scam warning) to the payer.
+I’ve taken on board Lloyds comments about not considering itself an international bank. But 
+I’ve also taken into account that it advertises itself in the following way; ‘Since 1765, we have 
+been providing expert support and guidance to households, businesses and communities of 
+Britain. Our expertise and understanding are built on this experience, providing financial 
+confidence and peace of mind for our customers of every generation’. And so, based on 
+Lloyds’ size and establishment, I don’t think it’s unreasonable for me to suggest that the 
+2012 paper ought to have been relevant to it at the material time. 
+To be clear, I don’t think Lloyds should have been trawling through each regulator’s warning 
+lists in every possible jurisdiction. But I do think the FSA (as it was when the 2012 paper was 
+published) highlighted that its own warning list, as well as IOSCO’s were good sources of 
+credible data to assist banks with account monitoring and I agree. 
+There was a regulator warning published about D on IOSCO’s Investor Alert Portal dating 
+back to July 2016 – which is more than a month prior to Mr T’s first payment to them. The 
+name of D appears in a number of different formats on the IOSCO alert but I’m satisfied the 
+name on the alert matches the name that appears on Mr T’s statement. I also carried out a 
+search of Mr T’s statement with details of the warning and it only brought up the payments to 
+D, rather than multiple payments as described by Lloyds. I’m satisfied Mr T’s initial payment 
+should have triggered Lloyds’s fraud detection systems because of this. 
+Therefore, it would have been reasonable for Lloyds to have properly questioned Mr T 
+before processing the payment to satisfy itself that all was well.
+If Lloyds had fulfilled its duties by asking suitably probing questions, there is no reason to 
+doubt that Mr T would have explained what he was doing. In such circumstances, whilst the 
+bank had no duty to protect him from a bad bargain or give investment advice, it could have 
+explained to him the very high risks of getting involved with unregulated and unlicensed 
+binary options dealers. It could have also explained its own customer experiences with 
+unregulated and unlicensed high-risk investment traders in that customers would often be 
+prevented from withdrawing available balances. After all, at that time, there was information 
+in the public domain—which a bank ought to have known even if a lay consumer ought not—
+about the very high risks associated with binary options trading, including many warnings of 
+potential fraud (e.g. Action Fraud’s June and August 2016 warnings and the European 
+Securities and Markets Authority’s July 2016 warning; and so forth). 
+I’ve further noted that binary options fraud was an international problem, not just restricted to 
+the UK. And UK customers were being targeted by unregulated and unlicensed companies 
+mainly based overseas and this information is available within the public domain – and was 
+at the material time. 
+Taking all of this into account, I am satisfied Lloyds ought fairly and reasonably to have 
+intervened by calling Mr T to ask some questions about the nature and purpose of the first 
+payment before agreeing to process it. 
+If Lloyds had asked Mr T what the payment was for and the basic surrounding context, it is 
+likely he would have fully explained what he was doing and that everything had been done 
+over the phone and online with D’s representatives. Lloyds did not need to know for certain 
+whether Mr T was dealing with a fraudulent high risk investment trader or investing in a 
+legitimate (albeit highly speculative) product; reasonable grounds for suspicion are enough 
+to trigger a bank’s obligations under the various regulations and principles of good practice. I 
+consider there were such grounds here and, therefore, that Lloyds ought reasonably to have 
+provided a scam warning in light of all the information then known to financial professionals 
+about the risks associated with unregulated binary options dealers. 
+If Lloyds had given a warning, I believe that Mr T would have paused and looked more 
+closely into D before proceeding. There is no evidence that he was willing to take high risks 
+or had a history of speculative investments or gambling. It seems more probable that he 
+would have made further enquiries into whether or not D were regulated in the UK or abroad. 
+He could have discovered they were not and the various regulatory warnings about the risk 
+of unregulated investment scams (see above). In other words, I am satisfied that a warning 
+from his trusted bank would probably have exposed D’s smoke and mirrors, causing him not 
+to ‘invest’ and preventing any losses.
+Even if he had not worked out that this was a scam, it is likely that a warning would have 
+alerted him to the common issues arising in relation to binary options and unregulated high 
+risk investment dealers, which in turn would have revealed the truth behind his supposed 
+representative’s (mis)representations — i.e. that they were not licensed or regulated UK 
+investments but highly-risky bets more akin to a wager in which the broker must lose if he is 
+to win. So, before Mr T’s payments were actually processed, he would probably have 
+stopped in his tracks. But for Lloyds’s failure to act on clear triggers of potential fraud or 
+financial harm, Mr T would probably have not lost any money. 
+In the circumstances, I do not think it would be fair to reduce compensation on the basis that 
+Mr T should share blame for what happened. This was a sophisticated scam and I don’t 
+think Mr T could have reasonably been aware (unless prompted by his bank) that he was 
+dealing with a scammer. 
+My final decision
+For the reasons set out above, I uphold this complaint and require Lloyds Bank PLC to:
+1. Refund all the payments made to D totalling £4,400.
+ 
+2. Pay interest to Mr T on the above sums, at an annual rate of 8% simple, from the 
+respective dates of loss, to the date of settlement. If Lloyds is required to deduct tax 
+from the interest it should send Mr T a tax deduction certificate so she can claim it 
+back from HMRC if appropriate.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr T to accept or 
+reject my decision before 27 October 2023.
+ 
+Dolores Njemanze
+Ombudsman

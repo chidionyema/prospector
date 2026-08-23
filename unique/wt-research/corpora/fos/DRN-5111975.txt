@@ -1,0 +1,302 @@
+DRN-5111975 
+ 
+ 
+The complaint 
+ 
+Mr C complains that Northern Trust Global Services SE failed to meet its responsibilities as 
+depositary of the Woodford Equity Income Fund (WEIF).  
+What happened 
+Mr C invested just under £35,000 in the WEIF via his stocks and shares ISA, between 
+October 2014 and December 2014. Mr C also held units in a multi-manager fund which itself 
+had some exposure to the WEIF.  
+Mr C remained invested in the WEIF when it was suspended in June 2019. Shortly after its 
+suspension, the Authorised Corporate Director (ACD) of the fund Link Fund Solutions 
+decided that it wouldn’t be reopened. As the fund’s assets were sold, small payments were 
+released to investors who had direct holdings in the WEIF at suspension – no other 
+redemptions or other disposals of units in the WEIF were allowed.  
+In early 2024 a Scheme of Arrangement was agreed between investors and the ACD which 
+allowed payments to be made to investors and the fund to be wound up. I understand some 
+if not all of these payments have now been made – however these payments would only 
+have covered Mr C’s direct investment in the WEIF, not his investment in a fund that itself 
+invested in it.  
+Regulatory investigations  
+The Financial Conduct Authority (FCA) issued a Final Notice to Link on April 11, 2024. The 
+notice required Link to pay restitution of £298,403,919 to the WEIF for the benefit of current 
+unitholders. The FCA said this amount (which was the same amount as the Scheme of 
+Arrangement above) reflected losses suffered due to Link not complying with the FCA’s 
+Principles for Businesses, specifically Principle 2 (skill, care, and diligence) and Principle 6 
+(fair treatment of customers). 
+The FCA found that Link failed to manage the liquidity of the WEIF appropriately, leading to 
+its suspension in June 2019. This suspension prevented investors from redeeming their 
+investments, resulting in significant losses. The FCA found that Link did not act with due 
+skill, care, and diligence in its role as the ACD of the WEIF. Link’s failure to manage liquidity 
+and supervise the investment manager, Woodford Investment Management Limited, 
+contributed to the fund’s suspension. The FCA concluded that the suspension of the WEIF 
+and subsequent liquidation meant that investors received significantly less than the value of 
+their investments at the time of suspension. The FCA did not comment or make findings 
+alluding to other potentially responsible parties (apart from Woodford himself) and so the role 
+of the depositary, Northern Trust, was not examined.  
+Background to the complaint 
+Mr C complained to Northern Trust in March 2024. In his complaint Mr C said he had only 
+recently discovered the role that Northern Trust played in the management of the Woodford 
+Fund – and he complained that in its capacity as depositary for the fund, Northern Trust had 
+
+ 
+ 
+“failed to exercise” its responsibilities, leading to significant financial losses to himself.  
+Mr C said that as the depositary, it was Northern Trust’s “responsibility to keep the 
+authorised corporate director (ACD), Link, in check”. He said that the “fund governance 
+handbook clearly states the depositary must ensure ACDs and fund managers are sticking 
+to the rules in areas like unit pricing, dealing, borrowing restrictions and portfolio”. Mr C 
+complained that Northern Trust had failed to do this. He complained that Northern Trust had 
+also “failed to challenge the build-up of illiquid holdings in Woodford’s fund, which breached 
+the 10 per cent limit on unquoted stocks and which at one point it reached 18 per cent”.  
+Mr C complained that Northern Trust had “failed to adequately oversee [Link] who were the 
+authorised corporate director for Woodford Investment Management (WIM) and so 
+negligently permitted a number of violations by Link and by WIM”.  
+Mr C said that his complaint was “not about investment loss caused by market movements 
+or the underperformance of an agreed strategy 
+One of our investigators looked into Mr C’s complaint. He gave a detailed analysis and 
+assessment, referencing the FCA’s Final Notice. In summary: 
+• Northern Trust identified breaches in WEIF’s exposure to unlisted assets and took 
+steps to ensure compliance by liaising with Link and WIM. It encouraged actions to 
+prevent future breaches and reported these to the FCA. 
+• Northern Trust attended meetings about WEIF’s liquidity profile. Link and WIM 
+monitored liquidity daily, attributing issues partly to prolonged investor disinvestment. 
+The FCA found that selling liquid assets to meet redemptions increased exposure to 
+illiquid ones. 
+• The failure to adopt vertical slicing when meeting redemption requests exacerbated 
+liquidity risks. Northern Trust’s remit did not include intervening in investment 
+decisions. 
+• Northern Trust continued to ensure WEIF’s exposure to unquoted assets was 
+appropriate. It noted no concerns about meeting redemption requests but did not 
+discuss vertical slicing. 
+• Northern Trust’s oversight duties included ensuring Link and WIM monitored liquidity. 
+It reviewed Link’s processes and was satisfied with the stress testing procedures in 
+place. 
+• Northern Trust ensured Link had a rationale for using FVP. It relied on Link’s 
+judgment regarding the valuation of illiquid assets and was not required to replicate 
+stress testing. 
+ 
+ 
+The investigator also summarised the evidence provided to the service as part of his 
+investigation: 
+• Evidence that Northern Trust examined the triggers for Link to review FVP and its 
+ongoing oversight. Asset prices subject to FVP were reviewed every six months, 
+regardless of the third-party company involved. 
+ 
+ 
+• The review was considered robust. The FCA did not find FVP use caused WEIF’s 
+collapse but noted it disguised liquidity deterioration. Northern Trust saw no 
+increased risk from FVP use if stress testing was deemed adequate. 
+• From May 2018 to June 2019, Northern Trust continued addressing nominal 
+breaches of holding limits. It participated in liquidity discussions but did not ask Link 
+to revisit stress testing after April. 
+• WEIF’s liquidity management was inconsistent. Link and WIM had differing views on 
+liquidity limits and rebalancing needs. Link’s analysis showed fluctuating liquidity 
+assessments, with WIM disputing Link’s findings. 
+• Northern Trust could have enhanced oversight by verifying stress testing applicability 
+but guidelines did not specify how often it needed to carry out these checks. It likely 
+would have received similar confirmations as in April. 
+• Northern Trust met its obligations as depositary. It ensured stress testing was in 
+place and did not need to challenge FVP use or undertake independent analysis. 
+Investment decisions were outside its remit. 
+• Northern Trust’s responsibilities were limited to ensuring prescribed processes like 
+stress testing were in place. It were not responsible for re-performing Link’s role. 
+The investigator therefore concluded that Mr C’s complaint about Northern Trust’s actions 
+shouldn’t be upheld. He said the evidence showed that Northern Trust and Link had 
+separate agreements for depositary and administration functions, and no evidence 
+suggested this had contributed to WEIF’s mismanagement. He said that Northern Trust had 
+no role in stock selection or investment decisions, which were made by WIM – and that poor 
+stock selection would have led to fund failure regardless of Northern Trust’s actions.  
+In relation to illiquid assets, he said that WEIF had been an all-equity fund investing in 
+emerging companies, and listing illiquid assets was not inconsistent with the rules or the 
+Prospectus. Until June 2019, following the redemption request of a large institutional 
+investor, Northern Trust had ensured the fund could meet redemption requests. But Northern 
+Trust was not responsible for monitoring professional investor withdrawals or their reasons 
+for withdrawing and had acted fairly and reasonably in attempting to ensure the fund’s risks 
+were managed.  
+The investigator acknowledged the impact of the suspension on Mr C’s investment and the 
+losses this consequently caused him, but he concluded that Northern Trust was not 
+responsible for the fund’s mismanagement. The investigator said the evidence showed 
+Northern Trust had met its obligations with reasonable care and therefore had discharged its 
+duties appropriately. 
+Mr C and Northern Trust provided comments in response to the assessment.  
+ 
+Mr C’s comments 
+Mr C provided detailed comments in response to the investigator’s assessment. He 
+confirmed that the loss of around £37,000 which he had claimed only related to his direct 
+investment in the WEIF – and was quantified after the payments he’d received out of the 
+WEIF (including capital distributions and Scheme of Arrangement payments).  
+ 
+ 
+Mr C said that the investigator had focused too much on the FCA’s findings – he said the 
+FCA were “widely discredited” and the Scheme of Arrangement was voted by “only a small 
+minority of those eligible to vote”, yet the FCA “claimed it was a majority”. Mr C said that 
+debates had been had in Parliament about the FCA’s fitness for purpose and he provided 
+links to a call for evidence on the FCA’s performance.  
+Mr C didn’t agree it was right to place any weight on the FCA’s investigation and findings on 
+Link’s role in the collapse of the WEIF and said that the investigator had given Northern 
+Trust too much leeway and the benefit of the doubt. He said the “overriding issue” was that 
+Northern Trust had “failed to ensure that Link were doing their job” – he agreed it wasn’t 
+Northern Trust’s role to do Link’s job, but it had failed to monitor and oversee Link.  
+Mr C said that it was clear Northern Trust had failed in certain respects, including ensuring 
+the liquidity stress testing was fit for purpose and, in particular, asking Link to revisit it after 
+April 2018. Mr C said that the investigator acknowledged that Northern Trust didn’t ask Link 
+to do this because it had “satisfied itself” that stress testing was in place after April 2018 – 
+but that wasn’t good enough.  
+Mr C also didn’t agree with the investor’s conclusions about what he might’ve done had the 
+fund not been suspended. He said it wasn’t possible to know – but the point is he may have 
+been able to sell his holdings and avoided some of his loss had the fund not been 
+suspended.  
+Mr C said that the investigator had continued to rely on the “discredited FCA analysis to 
+focus on liquidity and ignore the other responsibilities” of Northern Trust and other aspects of 
+his complaint, as depositaries ensuring that ACDs and fund managers stick to the rules in 
+relation to unit pricing, dealing and borrowing restrictions. He said Northern Trust had 
+allowed Link to make “purportedly untruthful claims about the fund, misrepresenting WEIF as 
+a relatively safe, low risk income fund, when this was clearly not the case”. He said this 
+showed Northern Trust had failed to ensure the mandate was adhered to, including 
+“inappropriate asset allocation, allowing over-investing in illiquid unregulated shares, early-
+stage business that consumer cash rather than pay dividends” and relying on “subjective 
+valuation methods” for its holdings.  
+Mr C said that Northern Trust was responsible for ensuring that the ACD and fund manager 
+carried out their functions correctly, truthfully and accurately but it didn’t do this and should 
+be held responsible.  
+Northern Trust’s comments 
+Northern Trust agreed with the investigator’s assessment. It said that Northern Trust met its 
+regulatory duties and was not responsible for re-performing the role of Link. It argued that 
+any different view would require expanding Northern Trust’s regulatory duties or relying on 
+hindsight, which it said wouldn’t be fair and reasonable.  
+Northern Trust said it did not breach its oversight duties and it fully complied with legal and 
+regulatory obligations. It said it was not responsible for any financial losses, loss of 
+investment opportunities, or distress suffered by Mr C.  
+As agreement couldn’t be reached, the case was passed to me to decide. 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+ 
+ 
+reasonable in the circumstances of this complaint. 
+I’d like to take this opportunity to confirm that I’ve read and considered all of Mr C’s detailed 
+submissions – including those during the investigation and in response to the investigator’s 
+assessment, which is what I’ve summarised above. The purpose of my decision is to focus 
+on the key issues in the complaint and so this is what I’ve done.  
+In reviewing all the evidence available to me, including the investigator’s detailed 
+assessment of Mr C’s complaint, I’m satisfied that it wouldn’t be fair and reasonable to 
+conclude that Northern Trust caused or contributed to Mr C’s losses, or that it didn’t comply 
+with the relevant rules.  
+In the UK, the rules governing how depositaries discharged their functions in relation to a 
+fund and an authorised corporate director (ACD) between 2014 and 2019 were primarily 
+outlined in the FCA Handbook, specifically under the COLL (Collective Investment Schemes 
+Sourcebook) and FUND (Investment Funds Sourcebook) sections. 
+The investigator has already quoted the relevant rules, so I won’t replicate them here. But in 
+short, Northern Trust was responsible for monitoring the fund's cash flows, ensuring the 
+proper valuation of assets, and verifying that the fund's investments were in line with its 
+stated objectives. It had to ensure the safekeeping of the fund's assets, which involved 
+holding the assets in custody or verifying the ownership of assets held by third parties as 
+well as monitoring the fund's cash flows, ensuring that all payments made by investors were 
+received and that all cash transactions were accurately recorded. 
+However, the fund management and especially the stock selection aspects of the 
+management of the fund were the ACD’s responsibility.  
+I make this point early on because I think that most, if not all, of Mr C’s comments are in fact 
+about how the fund itself was managed and how good or poor the individual stock selections 
+and market calls Woodford made were. But Northern Trust’s role wasn’t to second guess 
+those calls or to question the specific stocks that Woodford was choosing to invest in. It 
+monitored how consistent Woodford’s strategy was in relation to the Prospectus, but it 
+wasn’t its role to step in and influence or shape the actual management of the fund – that 
+was Link’s role which it had delegated to Woodford. On this, I think it’s important to say that 
+I’m not persuaded the WEIF was ever described as a “low-risk” fund – I’m satisfied it was 
+always clear that this was an equity fund which would also hold illiquid assets and where the 
+manager had a broad discretion over what to invest in. Northern Trust monitored those 
+investment decisions – but I’ve seen insufficient evidence that it had opportunities to identify 
+investment decisions made by the ACD which were inconsistent with the WEIF’s prospectus 
+or mandate.  
+The evidence I’ve seen shows that Northern Trust was taking an active role in relation to its 
+duties, reporting to the FCA the breaches it was aware of where necessary. I’ve seen 
+evidence of certain breaches which Northern Trust picked up on, reported and monitored 
+until remedial action was taken – and this information was shared with the regulator. This 
+occurred in relation to minor administrative breaches as well as the few occasions when the 
+fund held more than 10% in unlisted stock. It’s clear to me that as part of discharging its role, 
+it closely monitored what was happening in relation to the makeup of the fund, took action 
+when certain parameters were breached and reported them appropriately.  
+Given that remedial action was taken on each occasion within a short period of time and that 
+it closely engaged with the regulator, I’m not persuaded Northern Trust needed to do 
+anything more than it did.  
+ 
+ 
+Understandably, one of Mr C’s key concerns is liquidity management – but it’s clear to me 
+that here too, Northern Trust was doing what it was required to do.  
+It was stress testing the mechanisms Link had in place and insisting on regular updates and 
+reporting. I’ve seen evidence of regular meetings at an appropriate level and the outcome of 
+those meetings was shared with the regulator.  
+But I agree with the investigator that it wasn’t Northern Trust’s role to essentially re-perform 
+the functions which were Link’s responsibility. With hindsight it may be possible to identify 
+areas where Northern Trust could’ve taken alternative actions – but that isn’t my role. I’m not 
+deciding the matter based on what I would’ve done as a depositary with the benefit of 
+hindsight.  
+Instead, I’m considering whether Northern Trust’s actions, at the time and in light of the rules 
+and obligations it was required to follow, were fair and reasonable.  
+In relation to the liquidity of the WEIF, Northern Trust was there to ensure that a process was 
+in place to monitor the fund’s liquidity and take action where necessary or if it had concerns 
+– but its role was necessarily one of oversight. And in my view, some of the issues that 
+occurred within the WEIF were fundamentally related to Woodford’s investment decisions 
+and how poorly some of those decisions turned out to be. I’m not persuaded it would be fair 
+and reasonable to be critical of the way Northern Trust discharged its role with the benefit of 
+knowing the outcome of those investment decisions – information which Northern Trust did 
+not have at the time.  
+On this note, I have taken into account the FCA’s Final Notice against Link and the findings it 
+made. I understand that Mr C does not give the FCA’s report much weight and doesn’t 
+consider it persuasive. However, I’m satisfied that the FCA’s view of what caused the 
+suspension and liquidation of the WEIF is a relevant consideration and one that I ought to 
+take account of.  
+The reason I consider it relevant is because in my view, it clearly identifies Link’s lack of due 
+skill, care, and diligence in managing the fund’s liquidity and overseeing WIM. And it 
+concluded that it was these failings that led to significant investor losses. Link’s failure to 
+manage liquidity appropriately, supervise the investment manager effectively, and ensure a 
+prudent spread of risk was ultimately the reason why the fund failed and needed to be 
+liquidated. I’m not persuaded, given the evidence available to me, that Northern Trust ought 
+to be held “complicit” in these failings merely by virtue of its role as depositary – when it was 
+in fact doing everything that was required of it in the circumstances and it had limited, if any, 
+responsibility for the actions that led to the failings identified by the FCA.  
+The investigator obtained evidence of industry standards which showed that Northern Trust 
+was discharging its role in line with those. Ultimately, Northern Trust’s role included taking 
+reasonable care that Link had procedures in place that were compliant with the applicable 
+rules around liquidity management. This included ensuring that periodic monitoring was 
+undertaken, which I can see Northern Trust had in place. The evidence suggests that it was 
+not Northern Trust’s responsibility to ensure that all checks undertaken by or on behalf of 
+Link were compliant, but to ensure there were robust processes in place for those checks to 
+be carried out appropriately. I agree this role needed to be more than merely perfunctory, but 
+it did not extend to carrying out Link’s responsibilities itself.   
+As part of the good practice outlined by the FCA from its liquidity monitoring visits, liquidity 
+monitoring needed to be performed separately by the depositary – and I can see that 
+Northern Trust did this.  
+ 
+ 
+I’ve given very careful consideration to Mr C’s points, but I’m not persuaded there are areas 
+where Northern Trust failed in its role. At the time the fund was being managed, Northern 
+Trust was fulfilling the obligations imposed on it. It was testing Link’s liquidity monitoring and 
+requiring Link to periodically report to it. It was clearly engaging with the regulator where 
+relevant and questioning key areas of the fund’s management, for example around the 
+valuation of less liquid assets and around breaches of fund limits.  
+I can see that it was also monitoring both the level of illiquid assets, as well as those that 
+technically were not considered part of that cohort because they were due to be listed in the 
+next 12 months (in other words, assets that did not technically make up the 10% limit on 
+illiquid holdings, even though they were not yet listed). Here too, however, it was reliant on 
+both WIM and Link in their assessment of the individual firms they were deciding to invest in 
+and who were announcing their upcoming listing. This wasn’t something Northern Trust was 
+responsible for second guessing or carrying out due diligence on – that would’ve been 
+reperforming Link’s role. Fundamentally, it was Link’s responsibility to ensure that WIM’s 
+investment decisions, particularly in relation to how it managed the illiquid part of the fund, 
+were consistent with the mandate and reasonable – including having oversight of the due 
+diligence WIM had done on individual firms.  
+I fully sympathise and understand Mr C’s position and why he has made his complaint 
+against Northern Trust.  
+But in the particular circumstances of this case, I’m satisfied that Northern Trust discharged 
+its responsibilities as depositary and was not responsible for the WEIF’s suspension and 
+liquidation.  
+My final decision 
+My decision is that I don’t uphold Mr C’s complaint.  
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr C to accept or 
+reject my decision before 17 July 2025. 
+   
+Alessandro Pulzone 
+Ombudsman

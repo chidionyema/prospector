@@ -1,0 +1,23 @@
+RespiteSwap – The Carer-to-Carer Pre‑Booked Slot Exchange.
+
+A text-based service that lets primary carers buy and sell unused respite care slots (day centre places, private care hours) directly with each other, with the broker holding payments in escrow and taking a 12% cut.
+
+Carers routinely lose money when they cancel pre‑paid care slots (illness, appointments) because providers don’t offer refunds. A secondary market where verified carers can trade these slots turns wasted capacity into a liquid asset, while the broker earns a fee on each matched transfer—all run from a phone number via WhatsApp.
+
+Both parties: the seller receives the buyer’s payment minus a 12% broker fee; the buyer pays slightly more than the seller’s asking price (the spread is the broker’s margin).
+
+The normalisation of micro‑communities on WhatsApp/Telegram for sensitive exchanges (parent groups, patient forums) provides a trust‑based infrastructure that didn’t exist five years ago; AI can now auto‑match availability, vet users, and handle escrow with a simple Stripe flow, making a solo broker feasible.
+
+The passages do not address the durability or reality of value in a carer-to-carer respite slot exchange; one mentions care only to note a lack of research on risk perception, which is irrelevant.
+
+None of the passages mention any existing marketplace, dominant player, or funded rival for trading unused respite care slots; the one passage referencing carers discusses general support models, not a slot exchange.
+
+No passage addresses carers, respite care budgets, or willingness to pay for slot exchanges; they discuss unrelated topics like online notepads, messaging, and font conversion.
+
+Passages describe a notepad, data from local authorities, a generic messaging app, and a carers' service collaboration, none of which demonstrate a low-friction route to buyers of respite care slots. They lack any mention of a channel that would reach primary carers for slot exchange.
+
+No passage addresses the lawfulness of trading respite care slots, escrow, or payment processing; the PRA statement is mentioned without specifics, and other passages are irrelevant. Legality cannot be determined from the provided texts.
+
+Passages do not address whether carers lose money on cancelled pre-paid care slots or pay to solve that problem; the only relevant passage mentions low weekly payment but not cancellation losses.
+
+No evidence in the provided passages supports any critical risk vector. Legality, unit economics, and monopoly are not substantiated by the retrieved sources.

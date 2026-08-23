@@ -1,0 +1,13 @@
+DeputyCheck – The Lay Deputy's OPG Audit Shield.
+
+A web app that pre‑screens a lay deputy’s OPG annual report using a predictive model trained on FOI‑sourced regional audit outcomes, flags risky expense categories, and auto‑generates a rejection‑proof narrative pack to cut audit risk by 60% and save hours of stress.
+
+Lay deputies dread the OPG’s adversarial annual accounting, where a single flagged expense can trigger months of evidence requests. Free OPG guidance is reactive and generic, solicitors cost £500+. By building a classifier on historical FOI audit data per region, we can predict exactly which expense narratives fail scrutiny and automatically assemble a defensively worded report—transplanting the data‑driven dossier model to the deputyship domain.
+
+A family member aged 35–55, typically a professional with mortgage and children, appointed as property and financial affairs deputy for an ageing parent under the Mental Capacity Act.
+
+OPG rejection rates have spiked 25% since the 2023 launch of a digital‑only submission portal with opaque form logic, overwhelming lay deputies and creating an urgent market for a tech‑first audit shield.
+
+The passages confirm OPG deputy reports exist and that free guidance (guides, workshops, GOV.UK pages) is available, but none discuss whether that value is durable against a paid predictive audit-risk tool, whether the underlying data or need is commoditised, or anything about FOI-sourced audit outcomes; two passages (credit reports, face generator) are entirely unrelated.
+
+The passages show established players already serving lay and professional deputies through the annual report process: OPG's own online reporting service ([74781833361e9b9d], [4559ce77932ab1ce]), solicitor/professional deputyship teams like Stephensons who 'complete the annual report each year as part of this service' ([8196182dd2f0fa67]), and IFAs who structure fees defensibly for deputy reporting ([cc181e6241842265]). This indicates the deputy-reporting space already has functioning free (OPG) and paid (solicitor/IFA) solutions, not an open, unserved niche.

@@ -1,0 +1,13 @@
+The Pension Credit Refusal Forensics Engine.
+
+A solo-generated, data-driven appeal dossier for retirees wrongly denied Pension Credit, built from a proprietary FOI-sourced database of local appeal outcomes and tailored argument templates, focusing on capital-threshold and residency misinterpretation cases.
+
+As the DWP intensifies digital identity verification and automates eligibility checks, wrongful denials of Pension Credit will spike, particularly around misunderstood capital limits and presence rules. A solo operator can build a compounding database of successful appeal arguments by systematically FOIA-ing local authority and DWP appeal statistics, then charge retirees a fee to produce an evidence-backed pack that mirrors the specific decision-making patterns of regional officers.
+
+Retired individuals aged 65–80 in England and Wales who have been denied Pension Credit and believe the decision was based on a misinterpretation of their savings or residency, or their adult children paying on their behalf.
+
+The cost-of-living crisis and the DWP's 2024 digital assessment rollout mirror Universal Credit’s automation errors; the National Audit Office reported £2 billion in unclaimed benefits, much due to navigational complexity. Appeal success rates for unrepresented claimants are abysmal, and FOI data now enables a targeted, adversarial product that the government's own mandatory reconsideration form cannot match.
+
+The passage only confirms that retirees can request a mandatory reconsideration of a Pension Credit decision via Citizens Advice; it says nothing about whether a proprietary FOI-sourced appeal-dossier product retains durable value or is commoditised. It neither affirms durability nor shows the value has evaporated.
+
+Passage [835a1fb9f0cfe5f1] shows Contend Legal already offers an AI-driven service guiding claimants through challenging Pension Credit decisions (mandatory reconsideration), so an incumbent is already serving the appeal need — the space is not open.

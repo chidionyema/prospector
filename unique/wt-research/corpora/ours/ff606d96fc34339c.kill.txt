@@ -1,0 +1,23 @@
+Eviction Aegis – The Renter's Section 21 Defense & Compensation Kit.
+
+A web-based service that transforms a tenant's circumstances into a legally structured challenge pack against unlawful eviction, including tailored letter, evidence checklist, and local court outcome statistics, for a flat fee.
+
+Analogical transfer from The School Appeal Dossier Engine (parental appeals) to housing disputes, turning a confusing legal process into a guided, data-backed kit that any young renter can use.
+
+Gen Z renters (18-27) in private tenancies facing a Section 21 notice or deposit dispute, directly, at a one-off £79 fee.
+
+England is strengthening renter protections (Renters Reform Bill), but enforcement relies on tenants knowing their rights; many young renters lack legal literacy and can't afford solicitors.
+
+The passages describe free AI legal tools for tenants, but all are US-specific; they do not address the UK rental market, Section 21 notices, or the durability of a personalized, localized defense kit in England.
+
+Passages show UK tenant document drafting tools like TenantDefender exist, but no evidence indicates whether they are dominant incumbents solving the specific Section 21 defense need well; the claim remains unverifiable.
+
+None of the passages address the budget or willingness of UK Gen Z renters to pay a £79 fee for eviction defense kits; they describe free US-focused tools and a lower-cost UK document service, neither proving nor disproving the target payer's solvency.
+
+The passages describe similar document-generation tools but do not discuss distribution channels, market reach, or any specific low-friction route for the candidate's proposed service.
+
+The passage describing TenantDefender shows a similar AI document drafting tool offered legally as 'not legal advice', but it does not explicitly confirm that the candidate's personalized, adversarial challenge pack with local outcome statistics would be lawful. None of the passages address the legality of such a service.
+
+TenantDefender shows UK tenants paying from £9 for AI document drafting to address housing disputes, confirming that the problem is real, acute, and customers are already paying to solve it.
+
+Eviction Aegis is not worth building. The UK tenant document-drafting market already has direct, cheaper competitors like TenantDefender (source 54c136f9d96446cf), which offers AI-generated professional letters for as little as £9 per document—undercutting the proposed £79 flat fee by an order of magnitude. This competitor proves tenants will pay, but the candidate fails to show why they would pay nearly 9x more for a personalized pack, especially when the core differentiators (local tribunal outcome data) are easily replicable via FOI requests and offer no durable moat. Meanwhile, free AI legal tools for tenants, albeit US-focused, demonstrate the rapid commoditization of this category (aafda7027fa56a19, 15867661099013f2, 0cb88aeee53ebe89); similar free UK offerings are likely to emerge. The service also faces significant legal risk: offering ‘adversarial advocacy’ could cross into unauthorized legal practice, while TenantDefender explicitly disclaims legal advice (54c136f9d96446cf), showing the regulatory sensitivity. Distribution to Gen Z renters is unproven, and no evidence suggests this segment will pay a premium when free, trusted charities like Shelter and Citizens Advice already provide Section 21 templates. Without a defensible wedge, a clear path to customers, or proof of willingness to pay at scale, the idea is dead on arrival.

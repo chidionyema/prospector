@@ -1,0 +1,39 @@
+SOC2 Evidence Drift, catches broken proof before audit.
+
+A tool for startup founders in a SOC 2 Type II observation window that spots the day a control's evidence stops being produced, not the day the auditor finds out.
+
+A SOC 2 Type II report covers a period, usually three to twelve months. The auditor does not test your controls today. They test whether each control operated continuously across every day of that window. Most founders learn a control broke on the day the auditor samples it, months later, when nothing can be fixed retroactively.
+
+This tool watches the evidence itself, not the policy. It connects read-only to GitHub, AWS CloudTrail, Google Workspace and your ticketing tool. Then it learns the normal rhythm of each control. Access reviews land quarterly. Pull requests carry a second approver. Backup restore tests happen monthly. Vulnerability scans run weekly. When a rhythm stops, you get told within days, with the exact date range that will show up as a gap.
+
+This borrows the way factory equipment monitoring works. Nobody waits for a machine to fail. They watch for the vibration changing and fix it during a planned stop. A control gap found on day 12 of a 365-day window is a two-hour fix. The same gap found in month eleven means restarting the observation period, which pushes an enterprise deal by a quarter.
+
+It commits to shape (C), selling to technology companies. The buyer is the founder or head of engineering at a UK software company between 15 and 80 people, who has been sent a security questionnaire by a large customer and told a SOC 2 report is required to sign. The recurring trigger is the monthly moment the observation window advances and either accumulates clean evidence or quietly accumulates a gap.
+
+The deliverable is a monthly gap report plus alerts, priced around £180 a month. It sits alongside the compliance platform, not against it.
+
+The hard part it owns is the timeline of what actually happened inside one company's systems, day by day, reconstructed from logs the customer already has but never reads chronologically. That record compounds. By month nine it can show an auditor a continuous evidence trail nobody could rebuild after the fact. Ripping the tool out means losing the only chronological record of the window you are being judged on.
+
+The public source proving this pain is already paid for is the AICPA's own SSAE 18 and Trust Services Criteria guidance, which states that a Type II opinion covers operating effectiveness throughout a specified period. UK firms selling into regulated buyers meet the same requirement, and the National Cyber Security Centre's Cyber Essentials Plus scheme runs on the same annual evidence logic. Firms already pay auditors five figures for the opinion, and pay again when a gap forces the window to restart.
+
+Founders and heads of engineering at UK software companies of roughly 15 to 80 people, part-way through a SOC 2 Type II observation window, who have an enterprise contract waiting on the report.
+
+Enterprise and public-sector buyers in the UK increasingly demand SOC 2 or ISO 27001 evidence before signing, and compliance platforms have made starting an observation window cheap and common. Far more small firms are now mid-window than ever before, and none of them have a way to see a gap forming while there is still time to fix it.
+
+The passages show an active market of people working on SOC 2 for startups right now: a readiness checklist aimed at startups covering the documents auditors expect and timelines, guidance on choosing Type 1 to avoid waiting months for an observation period, and a UK consultancy already selling SOC 2 Type 1 and Type 2 readiness, audit preparation and ongoing support as a paid service line (checked 07-08-2026).
+
+One passage is timestamped to the middle of 2026 and asks where a company's security compliance efforts stand, and others describe buyers demanding an ISO 27001 certificate and deals being paused over it, so compliance pressure is discussed as a present concern. But none of the passages say anything about SOC 2 Type II observation windows, evidence produced continuously over a period, gaps forming mid-window, or whether that specific need is rising, flat, or already served right now.
+
+The passages describe marketplaces where software can be listed and sold (AWS Marketplace, Atlassian Marketplace) and mention Vanta being reviewed on AWS Marketplace for SOC 2 evidence work, but none of them shows a route a newcomer could use to reach UK software founders mid-observation-window — the AWS financing passage is US-only, and the Atlassian partner listing is for Atlassian app extensions, not compliance monitoring tools [a6572891c6044661][c312b595cbf6c8e2][bf5549f5b5bd05ce].
+
+The passages describe how read-only AWS access roles work for third-party scanning tools (least-privilege roles, cross-account trust, external IDs), which is consistent with the tool's stated read-only connections, but none of them say anything about SOC 2 audit evidence, the terms of service of GitHub, Google Workspace or ticketing tools, or any rule against a third party reconstructing an evidence timeline. Nothing here shows the business would have to break a law or a contract, and nothing here shows it would not.
+
+The pitch's central factual claim — that a SOC 2 Type II report judges whether controls worked across a whole period rather than on one day — is stated directly in a retrievable public source: 'SOC 2 Type II: Evaluates the operational effectiveness of those controls over a period (usually 6–12 months)' [fc2a324945525dd3], and the related SSAE 18 attestation standard the pitch names is likewise publicly described and demonstrably used by real firms [af4a52a850311816, 846d96661f556a7c, fc020006315cdadd].
+
+The passages only describe the UK's geography, political structure, and aggregate venture funding totals; none of them say anything about what small UK software companies spend on security compliance, audit preparation, or tools of any kind. Nothing here shows whether these firms would pay a one-off £29.99, so the buyer's willingness and ability to pay cannot be judged from this evidence.
+
+The passages describe what Vanta and Drata sell and that both connect to customer systems for continuous control monitoring, but they say nothing about how a new tool would reach UK software founders mid-audit-window — no mention of self-serve signup, a marketplace or partner channel, security questionnaires forcing a purchase, or any route this candidate could use. The one channel hint present (Vanta working with audit firms, 31d00dfe64d90147) is Vanta's own channel, not one open to this product.
+
+The passages describe what SOC 2 reports are and advertise compliance tools that continuously collect evidence and monitor controls (Vanta, an AWS-focused offering, and a product with a dedicated compliance manager), but none say that companies suffer from evidence gaps discovered late, that observation windows get restarted, or that anyone pays to prevent that. They also do not describe UK software firms of 15–80 people or what such firms spend on this problem today.
+
+Nothing in the passages says any law or platform rule bans a third party from reading a customer's own logs; the AWS material actually describes read-only access roles being granted to outside scanning tools as a normal setup [ac5fb24f39a9a3cb, b1b31250147b4f89, 983c803772221785]. Vanta and Drata are both named as active sellers of continuous control monitoring, which shows a contested market rather than one provider holding most of it [39a2742fc547ef87, 568c4f728886c76e, 2b0ce2483e7b75b6], and the passages give no customer-acquisition cost figure at all, so nothing here shows the cost of winning a buyer outrunning what that buyer would pay.

@@ -1,0 +1,23 @@
+AdaptAid Broker – Custom Assistive Tech Broker for Carers.
+
+A solo operator sources bespoke low-tech disability aids (custom grips, mounts, sensory tools) from a vetted network of micro-manufacturers, managing the specification and quality process for time-pressed carers and adding a markup on each completed order.
+
+Primary carers of disabled children frequently need one-off, highly customized everyday devices that mass-market products can't match, but lack the time, technical vocabulary, and supplier contacts to commission them themselves. By absorbing the discovery, translation, and quality-assurance work, the broker converts a fragmented, high-friction need into a single transaction.
+
+Primary carer (direct payment, with the markup built into the final price of the fabricated item).
+
+Proliferation of local 3D-printing services and accessible maker communities has made on-demand, low-volume fabrication cheap and fast, but carers have no gatekeeper to turn a napkin sketch into a safe, usable end product. Online carer forums constantly surface 'hacks' that beg to be productized, yet no one currently links the two sides commercially.
+
+The passages confirm that low-tech assistive technology is a recognized, customizable category and that carers already seek DIY solutions, proving the need is real. Free community platforms exist, but they lack the broker's specification, translation, and accountability functions, so the value is not fully commoditised.
+
+The passages describe the overall disability or assistive technology market (size, segments, product categories) and make generic statements about investment potential, but none address whether a dominant incumbent already solves the specific niche of bespoke low-tech aid brokerage for carers. The market overviews are irrelevant to the incumbency question for this precise channel.
+
+No passage provides evidence that primary carers have budget and are willing to pay a broker's markup. The texts mention DIY, volunteer-made, and nonprofit-provided solutions (60db8ece, ba32f99b3668ceaf, 340f4d727a4781af), but none address direct payment behavior or disposable income of carers.
+
+A platform exists where individuals can request custom assistive devices, providing a direct channel to reach carers seeking tailored solutions.
+
+Passages describe AT devices and laws promoting access, but do not mention whether the specific brokering service with a markup is lawful or violates any law/terms; no evidence of illegality or explicit affirmation of legality.
+
+Passages describe general assistive technology products and DIY approaches but do not address whether primary carers of disabled children frequently need one-off custom devices and are currently suffering or paying to solve the problem.
+
+No explicit evidence of illegality, impossible unit economics, or a single incumbent controlling 80%+ of the distribution channel was found.

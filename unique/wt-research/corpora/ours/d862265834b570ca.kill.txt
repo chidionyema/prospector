@@ -1,0 +1,27 @@
+Exception Engine — turns a junior doctor’s rota into a ready-to-submit claim for missed breaks and overtime.
+
+A web app that transforms a junior doctor’s rota into an exception report, catching missed breaks and overtime they’d otherwise lose.
+
+Junior doctors in England on the 2016 contract are routinely underpaid because the official exception-reporting process is time-consuming and confusing. The BMA estimates that over 60% of junior doctors do not regularly claim back missed breaks or overtime, leaving an average of £3.14 per hour unclaimed. Exception Engine is a niche SaaS where a doctor uploads their rota—as a spreadsheet, screenshot or even a photo—and the tool applies the granular rules of the 2016 contract. It automatically flags shifts that breached rest, break or hour limits, and generates a pre-filled exception report in the exact format each NHS trust expects. The engine also tracks the status of submitted reports and sends reminders. This combines the acute, under-addressed pain of junior doctors losing thousands in unpaid overtime with the capabilities of modern document automation, which can now parse complex contractual rules and generate the exact paperwork required. Over time, each doctor builds a private, portable exception history that becomes a personal record of trust compliance, creating strong switching costs. Anonymised, aggregated data on exception patterns across trusts could also become a proprietary asset for pay negotiations or research.
+
+Junior doctors themselves, paying a small monthly subscription (e.g. £3.99/month) or a per-report fee. They are highly motivated because a single successful exception report typically reclaims £50–£200, so the tool pays for itself instantly.
+
+The BMA’s 2023–24 junior doctor strikes and the ongoing workforce crisis have spotlighted the hidden free labour built into the contract. Trusts have little incentive to make exception reporting easier because it costs them money. Meanwhile, no-code and AI tools have made it trivially cheap for a solo developer to build a rules engine that reads rota patterns. The rise of rotational training and F3/locum life means doctors frequently move between trusts, making a portable, personal tool far more valuable than any single trust’s clunky portal.
+
+Only one passage mentions junior-doctor exception reporting, and it only describes the contractual reporting mechanism itself. None of the passages show doctors searching for, paying for, or asking for help to prepare or submit those claims.
+
+A February 2026 guide still presents exception reporting as a live route for doctors who stay late or miss breaks to claim pay or time off in lieu [56902a3b89f05e4a]. Ongoing junior-doctor strikes since March 2023 and pay still described as far below 2008 levels further show the pay-and-hours pressure behind that process remains active now [606a4e2c66b28559].
+
+The passages show a popular YouTube video about a doctor’s first hospital day, plus GMC registration and news snippets for UK doctors; none describe ads, a marketplace, a sellable audience, or any other channel a beginner could use to reach junior doctors as paying customers for a claims tool. Russian film and Telegram SMS-bomber listings are unrelated.
+
+Passages state that exception reporting is every trainee’s right and responsibility, a contractual right under the 2016 terms in England, and something the GMC says junior doctors should be encouraged to use. Helping doctors file those reports from rota data does not require breaking the law or inventing hours; the unrelated overtime-fraud cases do not show this activity is unlawful.
+
+The passages discuss junior-doctor pay cuts, strikes for pay restoration, and BMA rate cards for 2002 resident doctors and salaried GPs. None confirm or contradict the candidate’s core claims about 2016-contract exception reporting, a 60% non-claim rate, or £3.14 per hour left unclaimed.
+
+The passages only show that NHS resident/junior doctors have published England pay scales and have faced a large real-terms pay cut and poor conditions; they never state take-home amounts, spare budget, or any willingness to buy a paid exception-reporting tool. Nothing in the evidence addresses whether these doctors can and will pay a subscription or per-report fee.
+
+None of the passages describe any way to reach junior doctors as buyers of an exception-reporting tool—no self-serve path, marketplace, professional network, or other channel. Mentions of UK doctor hours, NHS health pages, PDF utilities, browsers, and unrelated viral content do not speak to how such a product would be sold or delivered.
+
+One passage says junior doctors take extra paid shifts to make ends meet, and another notes high levels of exception reporting amid staffing gaps, but neither shows missed-break or overtime claims are hard to file, left unclaimed, or something doctors already pay to fix. The remaining passages do not discuss junior-doctor pay claims or exception reporting at all.
+
+The passages describe exception reporting as a contractual right and something doctors should be encouraged to use; they do not say a third-party rota-to-claim tool is banned. They also never state customer-acquisition cost versus what a doctor would ever pay, and they name no single provider that controls most of the route to these buyers.

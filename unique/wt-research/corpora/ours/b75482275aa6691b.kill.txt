@@ -1,0 +1,23 @@
+Retirement Village Quality Watch.
+
+An annual data report and rating system that scores UK retirement villages on care quality, financial stability, and resident satisfaction, using FOI-sourced inspection data and exclusive resident surveys, to help retirees and their families avoid underperforming facilities.
+
+Invert: the regulator (CQC) increases transparency by publishing inspection reports, but the data is raw, not comparative, and they can't provide forward-looking assessments. We compile and enrich with our own survey data to create a proprietary scoring model that improves with each update.
+
+Retirees (or their adult children) evaluating long-term living options, with budget authority over expensive care decisions.
+
+Aging population, growing retirement village sector, and CQC data more accessible digitally, but consumers are overwhelmed by fragmented information.
+
+Passages discuss UK retirement housing market size and NHS costs but provide no evidence on whether the candidate's proprietary rating system's value is durable, commoditized, or fabricated. They are conceptually adjacent but lack direct relevance to the data model or competitive threats.
+
+No passage mentions any incumbent, rating system, or competitor for UK retirement village quality ratings; the provided excerpts discuss industry market research, a dictionary definition, market maturity, and geographic breakdowns, all irrelevant to the incumbency question.
+
+Passages mention financial strain among some pensioners and those unable to afford social care, but they do not directly address whether the target segment (retirees/adult children evaluating expensive care) can and will pay for an annual data report. No passage confirms or refutes payer solvency.
+
+All passages discuss retirement housing market data and definitions, but none address distribution channels for a ratings report to buyers. No evidence provided.
+
+EAC Data licenses retirement housing data, demonstrating a lawful data intelligence market in this sector; no passage suggests restrictions on FOI data usage or rating system creation.
+
+The passages discuss general benefits and demand for retirement villages, but none mention an acute problem with selecting underperforming facilities or that people pay for a rating system to solve this. No testimonial or evidence of current paying behavior.
+
+No evidence of critical regulatory blockers, impossible unit economics, or an incumbent monopoly. The legality check confirms data licensing is permitted in the UK retirement housing sector.

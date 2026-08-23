@@ -1,0 +1,19 @@
+The Concrete Colour-Match Service.
+
+A solo operator with a spectrophotometer and a mobile mixing rig provides on-site colour-matched concrete patching for paving contractors, charging a premium per patch to eliminate the 'ugly grey scar' that costs them rework or lost client referrals.
+
+Concrete colourants are cheap and available, but matching is still a craft skill. No one offers a mobile, service-based solution. The solo operator can build a colour database from local suppliers over time, creating a data moat.
+
+The only passage is a product spec sheet for a portable spectrophotometer; it says nothing about whether colour-matched concrete patching is a real, durable, non-commoditised value for paving contractors.
+
+The cited passage is an instrument vendor (HunterLab-UK) describing the colour-mismatch pain in concrete field-trial batching; it does not address whether any incumbent or funded rival offers the candidate's specific mobile, on-site colour-matched patching service for paving contractors. It neither confirms an open space nor names an incumbent owning this need.
+
+The passage describes the pain of colour mismatches (delays, idle workers, recasting, reputational cost) but says nothing about whether the paying segment has the budget or willingness to pay a premium for a colour-match service; it addresses pain, not solvency.
+
+The passage is generic concrete-business startup marketing that mentions 'getting your first 10 clients' but describes no specific low-friction route, forcing mechanism, or existing channel to reach the paying buyer (paving contractors). It does not address the distribution question.
+
+The passage only describes inspection and calibration requirements for mobile mixer paving plants; it says nothing about the legality of a mobile colour-matched concrete patching service or whether its margin requires breaking any law or falsifying measurements.
+
+The passage confirms site-mixed cement color is a 'significant challenge,' but frames it as a problem for cement manufacturers measuring batches, not paving contractors paying to fix patch 'scars'; it shows no one suffering acutely or paying to solve this need now.
+
+Every one of the six gates returned `unverifiable` with zero grounded support, which under source-or-die and verdict-from-retrieval-only is itself the kill: nothing about this idea could be confirmed from any fetched passage. Worse, the retrieved evidence actively undercuts the thesis. pain_reality: the only on-point source (96e9e9a660d63198, HunterLab) frames concrete colour variance as a QA problem for cement manufacturers measuring batches, not paving contractors paying to erase patch 'scars' — the supposed sufferer/payer never appears. incumbency + payer_solvency: the single passage (621c2af2052f6421) describes colour-mismatch pain in field-trial batching but names no contractor willing to pay a premium and confirms no open service lane — it is vendor content selling spectrophotometers, evidence of an instrument market, not a service market. distribution: the closest source (1356f94ee53919ea) is generic 'start a concrete business' marketing with no low-friction route to paving contractors. value_durability and legality grounded on nothing relevant (a Chinese spectrophotometer spec sheet 66dad779c20f90f8 and an Iowa DOT mixer-calibration memo 31afcc67000f6632). The 'data moat' from a local colour database is an unsupported assertion in the hypothesis, not evidence. With no grounded payer, no demonstrated acute pain in the target segment, no distribution mechanism, and no confirmed open lane, the idea cannot clear a single hard gate. Publish-on-PASS is impossible; this is a KILL.

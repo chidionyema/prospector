@@ -1,0 +1,11 @@
+ErgoTune – The Remote Public Sector Worker's Home Office Tune-Up.
+
+A subscription-based mobile service that performs quarterly ergonomic assessments and micro-adjustments to a public sector worker's home office, using an AI posture app and a van stocked with interchangeable lumbar supports, monitor risers, and anti-fatigue mats—building a proprietary dataset on musculoskeletal risk in remote government workforces.
+
+Public sector desk workers moved to hybrid/WFH lack employer-sponsored ergonomic support and are experiencing back pain; they will pay a recurring fee for a done-for-you physical tune-up that an AI-driven checklist can guide, while the operator compounds a dataset of home-office injury predictors that insurers will buy.
+
+Local authority planners, civil servants, or NHS admin staff working from home, using their own disposable income.
+
+Permanent hybrid-work policies in the public sector and the normalisation of gig-economy doorstep services mean a solo with a van can take market share from absent employer health-and-safety departments, leaning on cheap depth-sensing cameras for posture analysis.
+
+The passages show UK employers are legally obliged to protect home-working staff from computer-workstation risks and to carry out these assessments, so the premise that home workers face an absent employer and must fund this themselves does not hold [87f15db06656e9bd, 6790726bd512ef66, f974d1381af8d77a]. On top of that, at least three UK providers already give the assessment away free online, including for remote workers, so the recurring assessment element has no price left to charge [32a6a97f5490e2af, e80cd071f2c1aa53, 9c8c7cd029e84c80]; the passages say nothing about paid physical…

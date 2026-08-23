@@ -1,0 +1,33 @@
+RateWatch Redress — proves your mortgage lender should have offered you a better deal, and builds the claim for you.
+
+A self-serve tool for homeowners rolling off a cheap fixed mortgage that checks whether their lender broke its new duty to treat them fairly, then builds the compensation claim.
+
+Millions of UK homeowners who fixed their mortgage rate in 2019-2021 are now rolling onto today's far higher rates. Many lenders quietly let existing customers drift onto the expensive standard variable rate instead of offering the cheaper deal they were giving other customers, including brand new ones, on that exact same day.
+
+Since the FCA's Consumer Duty came into force, lenders have a specific duty to actively deliver fair value to existing customers, not just make better deals available if someone happens to ask. Most homeowners have no way to prove what deal they should have been offered on the day their fix ended, so the duty goes unenforced in practice.
+
+RateWatch Redress asks the homeowner for their mortgage details and the date their fixed rate ended, then checks its own growing record of what each major lender was actually offering new and existing customers around that date. It shows the pound gap between what the customer got and what a fair deal that day would have cost, drafts a Consumer Duty complaint letter, and, if the lender doesn't pay within eight weeks, prepares the Financial Ombudsman Service referral with the evidence attached.
+
+The record gets better with every customer: people upload screenshots of the actual rate-switching options their banking app showed them that week, building a per-lender, per-date archive that isn't published anywhere else. Neither the FCA nor the Financial Ombudsman Service can build this themselves. The FCA writes and polices the fair-value rule but, as the regulator, can't gather lender-specific evidence to help one customer's claim against a named firm. MoneyHelper gives free generic guidance but holds no product-level data and has no reason to build a case against a specific lender.
+
+The squeezed-middle homeowner: a professional aged 35-55 coming off a fixed mortgage rate taken out before rates rose, feeling the jump in their monthly payment against a budget already stretched by school fees or childcare, often deciding jointly with a partner. They pay a small fixed fee for the report checking whether they have a case, then a percentage of whatever the lender or the Ombudsman actually pays out, so there's little cost upfront while money is tight.
+
+The Bank of England base rate rose from 0.1% in December 2021 to a peak of 5.25% in 2023, so homeowners who fixed at 1-2% are rolling onto far higher rates right through 2024-2026 as their deals end. The FCA's Consumer Duty took effect for open products on 31 July 2023 and for closed products on 31 July 2024, creating for the first time an enforceable duty for lenders to deliver fair value to existing customers, and the FCA has since flagged mortgage loyalty-penalty practices as a supervisory priority.
+
+The passages document a related but distinct problem — 'mortgage prisoners' trapped on expensive SVRs by structural inability to remortgage, plus generic finance sites and a rate calculator — none show people searching for or paying to build a Consumer Duty fair-value claim against their lender. No search demand, existing paid claims service, or forum activity specific to this redress route is evidenced.
+
+Arrears are low and falling (lowest since Q2 2023, down to 92,100 with a further 5% drop forecast), showing the broader mortgage-holding population is still managing to pay rather than being insolvent, while the rate shock itself is large enough (up to 4.08 points, some homeowners moving from under 2% to over 6%) that a one-off £49 fee is trivial against the 'thousands of pounds a year' at stake.
+
+These passages address claims management company regulation and cold-calling bans, not any self-serve channel through which a mortgage-rate homeowner would find or use this product; there is no mention of mortgage brokers, banking apps, comparison sites, or any acquisition route for this candidate.
+
+The passages address FCA/CMC enforcement and warn that using a claims management company can cost 30%+ in fees, but say nothing about whether a self-serve tool building Consumer Duty complaints and FOS referrals itself needs authorisation or otherwise breaches any law.
+
+Passages show concrete, large-scale financial pain: 1.8 million UK fixed-rate mortgages expiring in 2025 with average payments up 31%, a documented £209/month jump for one borrower, and 750,000 more holders coming off low fixed deals into higher rates. This is a safe deduction that homeowners are suffering acute, quantified payment shocks right now, which is the pain the candidate targets.
+
+Two passages dated mid-2026 show Consumer Duty and mortgage fair-value rules are still an active FCA focus right now, not a lapsed rule, and two others confirm mortgage affordability and rate dynamics remain a live issue into 2026 with newly drawn mortgage rates ticking up again despite base rate cuts.
+
+The passages show mortgage/reclaiming discussion forums exist and that financial promotions by unauthorised persons require FCA approval or an exemption, but none says whether this candidate's promotion falls under that restriction or how a beginner would lawfully post there.
+
+The passages only confirm the Consumer Duty's closed-book implementation date of 31 July 2024; none address whether lenders let existing customers roll onto the standard variable rate instead of a comparable deal, or whether any per-lender, per-date rate archive is buildable.
+
+No passage shows this specific claims-building tool is illegal, needs FCA/claims-management authorisation, or is barred from any promotion channel — the legality and distribution checks both came back unverifiable rather than showing a ban. No passage gives a customer-acquisition cost or a single distributor controlling the market, so neither the economics nor the monopoly condition is evidenced either.

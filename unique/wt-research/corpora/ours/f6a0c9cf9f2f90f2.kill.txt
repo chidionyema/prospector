@@ -1,0 +1,23 @@
+MerchantFee Autopsy – The Retailer’s Card Processing Overcharge Audit Tool.
+
+A vertical tool that analyzes monthly merchant statements for independent retail shops, uncovers hidden rate creep, misapplied interchange categories, and phantom fees, then produces a retrospective audit report and a negotiation-ready letter to recoup overpayments.
+
+Independent retailers accept card processing fees as fixed costs because statements are deliberately opaque. By decompiling fee components using only the PDF statement and comparing against optimal interchange tables, a solo operator can convert pattern recognition into a high-value recovery engine. The tool builds a proprietary dataset of actual interchange fee application patterns across similar retail categories, enabling granular detection of ‘level downgrade’ anomalies that individual merchants can’t see.
+
+Owner-managers of independent brick-and-mortar retail stores (clothing, hardware, gifts) with 2–10 employees, processing $100k–$1M annually in card transactions.
+
+Visa/MC interchange tables saw 2023 updates, and processors are aggressively moving merchants to opaque cost-plus pricing without disclosure. Regulatory push for transparency lags, creating a window where a private, adversarial audit tool can deliver immediate cash recovery while contactless volume surges.
+
+The passages define vertical financial analysis and make a generic statement about durable moats from data, workflow depth, and regulatory complexity. None address the durability of a merchant fee audit tool or the specific market conditions, so the claim is unverifiable.
+
+None of the passages mention merchant fee audit tools, incumbents, or competitors in this space. They discuss general vertical analysis, a dictionary definition, and localization buyers – all irrelevant.
+
+No passage discusses the budget, financial resources, or willingness of independent retailers to pay for a card processing fee audit tool. The passages define vertical analysis or mention UK retail companies in an unrelated context, providing no evidence on payer solvency.
+
+The passages discuss localization buyers, vertical integration definitions, ISV payment integration, and merchant vertical differences; none describe a distribution channel or route to the candidate's target buyer.
+
+Passages discuss EU competition law and vertical agreements but do not address the legality of analyzing merchant statements, finding hidden fees, or producing negotiation letters. No information on lawfulness or terms of service.
+
+None of the passages discuss retailer card processing fees, merchant statement opacity, or any pain related to fee recovery; thus the claim cannot be evaluated.
+
+No evidence found for critical regulatory blocker, impossible unit economics, or incumbent monopoly. All checked claims were unverifiable due to lack of relevant information.

@@ -1,0 +1,23 @@
+The Probate Property Clear-Out Service.
+
+A solo-operated service for primary carers who inherit a deceased relative's home: you handle the entire contents clearance, sorting, donation, sale, and rubbish removal, taking a fixed percentage of net proceeds from sold items plus a flat clearance fee.
+
+Primary carers (especially those caring for elderly parents) often inherit cluttered homes they cannot physically or emotionally clear. Estate agents, house clearance firms, and auction houses each own one step but none will coordinate the whole messy chain for a single point-of-contact, percentage-based payout. By inverting the 'I am selling my stuff' model to 'someone else manages the entire exit for a cut', you create a low-capital, high-trust service that only works when the carer is time-poor and overwhelmed.
+
+A primary carer (often a daughter or son) who has just inherited a deceased parent's house and needs it cleared for sale. They are solvent from the estate's eventual sale but time-poor and emotionally drained.
+
+The UK has a record number of probate cases (aging population), house clearance is a fragmented local market with no dominant national player, and primary carers are increasingly vocal about the hidden 'second job' of managing a deceased relative's belongings. The trend toward decluttering and minimalism means there is a ready market for vintage/secondhand goods via eBay, Vinted, and local auction houses.
+
+The passage discusses whether inheriting a home is financially and personally worthwhile for caregivers, and the possibility of parents needing to sell or take a reverse mortgage. It does not provide information directly addressing the durability, commoditization, or evaporation of the value proposition for a probate property clear-out service.
+
+The passage title explicitly states how independent estate sale companies and liquidation solopreneurs build client bases 'Without MaxSold Marketplace and EverythingButTheHouse Online Auction Competition', indicating the space is open for independent operators.
+
+The passage describes the emotional and practical burden on solo executors, supporting the 'motive' aspect of the payer (avoiding stress, delay, and cost). However, it does not provide any information regarding the payer's financial solvency or budget to pay for the service.
+
+The passage describes the service provided and its target audience but does not mention any low-friction routes for distribution or how the service reaches the buyer.
+
+The provided passage introduces the question of whether a house can be legally emptied before probate in the UK but does not contain the specific legal guidelines or rules that would allow for a verdict on the legality of the proposed service.
+
+The passage highlights the 'personal and financial costs' for family caregivers inheriting a home, indicating a real and acute problem (suffering) associated with the process.
+
+The idea faces critical challenges in three fundamental areas: payer solvency, distribution, and legality. Firstly, while the pain of the primary carer is acknowledged, there is no evidence to support that these individuals have the financial solvency or a dedicated budget to pay for a comprehensive service encompassing sorting, donation, sale, and rubbish removal (source_id: ed4782f699ecfcdd). Secondly, the mechanism for acquiring customers is entirely unproven; there are no identified low-friction or cost-effective distribution channels to reach this specific, distressed demographic at their time of need (source_id: 1c588abe0cd71c6f). Lastly, and most critically, the legality of performing property clearance services before probate is granted is unclear, and the potential consequences of errors are described as "serious." Operating under such legal ambiguity poses a significant, potentially fatal, risk to the business model (source_id: c535ed5ba4fa4688).

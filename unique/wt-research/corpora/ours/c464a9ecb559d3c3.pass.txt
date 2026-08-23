@@ -1,0 +1,29 @@
+Illegal tow and storage fee refund service for drivers.
+
+A flat-fee service that assembles a city-specific evidence packet and demand letter forcing tow companies to refund fees never legally owed.
+
+In cities like Los Angeles, predatory towing targets gig workers who double‑park for a three‑minute delivery and return to find their car gone. California Vehicle Code §22658 limits when a private property tow is legal, but tow yards often ignore the rules and charge $500 or more for release. TowBack operates like a medical billing advocate for tow disputes: the client uploads photos, GPS timelines from their gig app, and the tow receipt, and the service generates a demand letter citing the exact municipal ordinance violated, backed with a ready‑to‑file small‑claims complaint if the tow company refuses. The analogical transfer is from the world of hospital overcharge appeals, where an expert combing a dense billing code wins back cash the patient never knew they could claim.
+
+A solo operator can build proprietary data on tow company violation histories, local parking enforcement patterns, and small‑claims judges’ tendencies by scraping city consumer‑affairs databases and tracking client outcomes. This dataset becomes a compounding asset that improves success rates over time—a newcomer cannot easily replicate years of localized claim intelligence.
+
+The wedge is proprietary data and a measure of switching cost: once a gig worker uses TowBack and recovers $700, they are likely to return and recommend it to their peers. Distribution is zero‑cost via posts in rideshare subreddits, TikTok videos showing real refund checks, and partnerships with gig‑worker advocacy groups.
+
+Commodity free alternative: the city’s parking enforcement or consumer protection division offers a complaint form. But those agencies are swamped and rarely pursue individual refunds; they may issue fines to the tow company but not recover the driver’s money.
+
+Gen Z gig workers—especially rideshare drivers, delivery bikers, and couriers—who have been towed or booted illegally while working in dense city cores.
+
+Post‑pandemic, the number of gig delivery vehicles on the road has skyrocketed, and towing complaints in cities like Los Angeles, San Francisco, and Austin have surged. Some municipalities are tightening towing regulations (e.g., California AB 2515 strengthened protections against predatory towing), creating a fresh wave of enforceable refund rights that most workers don’t know how to claim. A simple, fixed‑fee demand‑letter service that translates legal protections into cash puts money back in the pockets of the most vulnerable road users.
+
+The passages show ongoing predatory and unreasonable towing charges in California, with Vehicle Code and rate-cap rules that create concrete overcharge and dispute rights into 2026. Drivers often learn those protections only after a tow, so paid help turning that legal gap into a refund still has real, lasting value that free complaint tips have not wiped out.
+
+None of the passages name or describe any company or funded product that already recovers illegal tow or storage fees for drivers, nor do they show that no such provider leads the market. They cover insurance claims, tax refunds, paying tow fees up front, legislative crackdowns, a Los Angeles tow yard listing, and scam warnings—none of which speak to who, if anyone, already sells this refund service.
+
+The passages cover Los Angeles housing listings, World Cup hosting, free county mediation and tax prep, lawyer referral contacts, and rent rules, but none state whether gig workers who were towed can or will pay a fixed fee for refund help. Nothing in them speaks to that group’s budget or willingness to pay.
+
+Passages show active ride-share driver gathering places—union and Lyft subreddits plus Uber/rideshare forums—where drivers already discuss problems and complaints. That is an existing, low-friction path to reach gig drivers who would buy a tow-refund service.
+
+California court pages describe people writing demand letters to ask for money before small claims, and one State Bar notice concerns an unlicensed immigration practice; none of that says whether a paid service may sell ordinance-cited demand letters and ready-to-file tow-refund complaints. The passages therefore never settle whether TowBack’s fee can be earned without unauthorized practice or other legal breach.
+
+Passages describe Los Angeles-area bandit and predatory towing that illegally took over 140 cars from more than 100 drivers, pressured motorists into costly unexpected fees, and extorted money from crash victims and stranded drivers. That shows a real, widespread money-and-vehicle harm people are already suffering, not a mild inconvenience.
+
+The passages describe California demand-letter self-help and an unrelated State Bar crackdown on unlicensed immigration work, but never say a paid tow-refund demand-letter service is illegal or banned. They also never name any firm that controls most of this channel, and they never compare what it costs to win one customer with how much that customer could ever pay.

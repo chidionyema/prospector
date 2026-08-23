@@ -1,0 +1,314 @@
+DRN-4804168 
+ 
+ 
+The complaint 
+ 
+Mr J complains that Cofunds Limited (Cofunds) caused avoidable delays to the sale of his 
+investments, leading to a financial loss.  
+What happened 
+Mr J had funds invested with Cofunds. In July 2023 he wanted to withdraw his funds and 
+transfer them to another platform, so he could make timely investments. He said Cofunds 
+told him it would take ten days for the process to complete. 
+Cofunds received Mr J’s withdrawal request on 27 July 2023. The withdrawal proceeds were 
+to be sent to Mr J’s Self-Invested Personal Pension (SIPP) provider, which I’ll refer to as 
+provider M, for onward investment through an investment business I’ll refer to as business H.  
+Mr J wanted to purchase Gilts and invest in a Private Debt fund at, or before, the end of 
+August 2023. The Debt fund was only tradeable at each month end. 
+On 9 August 2023, Mr J asked provider M to check with Cofunds about his closure request. 
+Provider M asked Cofunds for an update on 14 August 2023. And on 16 August 2023, 
+provider M emailed Mr J to tell him that Cofunds had confirmed that the closure was still 
+being processed and would be paid shortly. But it couldn’t give him a timescale for how long 
+this would take. 
+On 21 August 2023, Mr J asked provider M to chase Cofunds again about his closure 
+request. He felt it was well behind its own ten-day target. He said:  
+“We need the money next 48 hours if we are to stand a chance of making an end of month 
+transaction on new investments.” 
+On 21 August 2023, Cofunds said it couldn’t verify the Trust signatures provided. It asked for 
+an updated signatory list. These were provided the same day.  
+On 22 August 2023, Cofunds said the assets were disinvested.  
+On 23 August 2023, provider M emailed Mr J to tell him that Cofunds had confirmed that the 
+closure instruction would be processed that day, as the final due diligence checks had been 
+carried out. It said that it would then take ten business days for the money to reach the SIPP 
+account. 
+On 31 August 2023, Cofunds transferred £313,503.19 to provider M. 
+Mr J emailed provider M on 31 August 2023. He said that if the Cofunds money arrived that 
+day, he wanted to invest £110K in the Debt fund. 
+I understand that Mr J missed the August 2023 trade deadline due to the delayed transfer of 
+funds. Mr J then instructed provider M to retain £1,000 of the transferred funds to cover 
+ongoing fees. And to forward the remaining £312,503.19 to business H. It received the funds 
+on 4 September 2023. 
+
+ 
+ 
+Mr J then asked business H to invest £110,000 in the Debt fund at the next available trading 
+date – the end of September 2023. He also asked it to invest £200,000 in Gilts. The 
+remaining funds of just over £2,500 were to remain on account as cash and earn interest. 
+Unhappy with the delays Cofunds had caused, Mr J complained to it on 19 October 2023. 
+He said what should’ve taken ten days had taken over a month. And that this had caused a 
+number of losses, which Mr J wanted Cofunds to make good. These were: 
+• Losses due to slow selling of units in a falling market. Mr J felt these amounted to 
+£6,674.51.  
+• Losses on the Gilt investment, which Mr J felt he should’ve been able to make in 
+August 2023, but which he hadn’t been able to make until 6 September 2023. He felt 
+this amounted to £622.25. 
+• Losses on his investment in the Debt fund which he felt amounted to £662.10. 
+• Lost interest on the reduced portfolio value due to the slow selling of units in a falling 
+market. Mr J felt this should attract interest at a rate of 5%. He felt the value of this 
+loss currently stood at £61.26 on 19 October 2023. But noted that it was increasing 
+daily until the settlement of his claim. 
+Mr J therefore felt that Cofunds should make good a total loss of £8,020 plus.  
+Mr J brought his complaint to this service in January 2024.  
+Cofunds acknowledged that it had caused delays which had led to a financial loss for Mr J. It 
+asked business H to calculate what the financial losses on Mr J’s investments were. 
+Cofunds issued a final response letter accepting it had caused delays. It felt that the 
+payment of funds to provider M should’ve taken place on 18 August 2023, rather than 31 
+August 2023. And if that had been the case, the transfer value should’ve been £5,185 
+higher. This meant that £318,688.19 should’ve been transferred, rather than £313,503.19. 
+Cofunds asked business H to calculate the loss based on the funds being transferred to 
+provider M on 18 August 2023, rather than 31 August 2023. And with the subsequent Gilt 
+and Debt fund investments then completed commensurately earlier. After allowing for 
+onward transmission from provider M to business H, Cofunds said that the notional 
+investment date for the Gilts would’ve been 22 August 2023, and the Debt fund would’ve 
+been 31 August 2023. Business H calculated that the loss due to the late purchase of the 
+Gilts was £569.29. And that the loss due to the late purchase of the Debt fund was £696.27.  
+Cofunds said that the overall investment loss caused by its delays was £6,450.56. It said 
+that as it used the most current prices available when looking at the investment loss, it 
+wouldn’t also make an interest payment. It offered Mr J this amount to resolve the financial 
+loss complaint. It also offered him £250 for the distress and inconvenience it’d caused.  
+I understand that Mr J agreed to accept the initial loss identified, so £6,450 was paid into his 
+SIPP in March 2024. I also understand that a contribution fee of £70 was deducted from the 
+SIPP. 
+Cofunds told this service that it acknowledged it’d caused a delay. It said that it hadn’t been 
+able to progress Mr J’s withdrawal request because the signatories on the withdrawal form 
+didn’t match with the signatory list it already held on file. But it said that its internal query 
+about this shouldn’t have taken as long as it did.  
+ 
+ 
+Cofunds provided a timeline about what should’ve happened, based on its service level 
+agreement (SLA) for each stage: 
+27/7/2023 - Received request (SLA 2WD) 
+31/7/2023 - Due Diligence and raise query re signature list. Signature list received back 
+same day. 
+7/8/2023 - Full Due diligence complete (SLA 5WD) 
+9/8/2023 - Sales (SLA 2WD) 
+16/8/2023 Sale proceeds (actual time taken 22.08.23 to 29.08.23 - SLA 5WD) 
+18/8/2023 - Payment (SLA 2WD) 
+Mr J told this service that he thought the redress Cofunds had paid him was less than it 
+should be. He felt that the redress hadn’t compensated him for the fact that his money hadn’t 
+been invested for some time. Mr J also said that there were some extra SIPP costs due to 
+the increased number of transactions in his SIPP caused by the delay. He said this was £70. 
+And that there’d be another £70 fee if further compensation were paid into his SIPP.  
+Mr J also didn’t agree that the £250 Cofunds had offered him for the inconvenience it’d 
+caused was sufficient. He said he’d had lots of hassle and extra work. He felt it should pay 
+him at least £2,500. 
+Our investigator told Cofunds that it didn’t appear to have considered that the additional sum 
+of £5,185 should also have been transferred earlier. He said that the investment loss on this 
+additional sum hadn’t yet been considered. He also noted that Cofunds should refund the 
+£70 cost Mr J had incurred. Cofunds agreed with these points.  
+Mr J told this service that if he’d transferred around £317K from provider M to business H, 
+rather than £312K, he would’ve invested slightly more in the Debt fund. He provided 
+evidence showing that he would’ve invested more. And explained that he never keeps much 
+cash in his business H account.  
+After his discussions with both Mr J and Cofunds, our investigator felt that Cofunds should 
+calculate the redress based on Mr J having invested £115K in the Debt fund, rather than 
+£110K. Cofunds agreed to carry out loss calculations on this basis.  
+Our investigator issued his view on the complaint on 21 April 2024. He was satisfied that the 
+proposed timeline of events put forward by Cofunds was reasonable. And therefore felt that 
+the funds should’ve been sent to provider M on 18 August 2023 but for the delays. He 
+considered that Mr J would’ve invested £5K more of his (larger) transferred funds into the 
+Debt fund. He said this was because this would’ve left around £2,500 in cash, as Mr J had 
+actually done.  
+Our investigator said that Cofunds had agreed to recalculate the loss on the basis he’d 
+outlined. He set out how Cofunds should calculate the loss. He also felt that the £250 
+compensation Cofunds had offered Mr J for the distress and inconvenience the matter had 
+caused him was fair.  
+Mr J didn’t agree with our investigator. He wanted to check the outcome of the loss 
+calculations before he accepted them to see if they were fair. He also still didn’t think that 
+£250 was reasonable compensation for the hassle the situation had caused.  
+ 
+ 
+Our investigator said that he’d asked Cofunds to provide Mr J with details of the calculation 
+in a clear, simple format. He noted that the goal was that the loss calculation put Mr J back, 
+as close as possible, to the position he would’ve been in but for the delay.  
+Our investigator still felt that the £250 compensation Cofunds had offered for the 
+inconvenience was fair. 
+Mr J didn’t agree that the £250 compensation was fair. He said it had taken more than seven 
+months to sort this out. He said he’d been caused a lot of hassle and extra work. He also 
+noted that his other outstanding issues were: 
+• “The adjustment of the value of the compensation payment seeing how it was paid so 
+many months after the event and I lost the value of that investment over that time 
+period.” – Mr J proposed a calculation that he felt would be fair.  
+• He said he’d invested £6K, not £5K, in the debt fund after Cofunds had made a 
+compensation payment. He said he’d historically been fully invested and that he very 
+rarely carried any significant cash. 
+• He wanted the initial compensation payment amount to be checked.  
+As agreement couldn’t be reached, the complaint has come to me for a review.  
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+in the circumstances of this complaint. 
+Having done so, I agree with our investigator that the compensation Cofunds has agreed to 
+pay Mr J for the delays it caused is fair under the circumstances of this complaint. I know this 
+will be disappointing. I’ll explain the reasons for my decision. 
+Where a business has made an offer to settle a complaint – as Cofunds has done – what I 
+have to decide is whether, in all the circumstances, that offer is fair and reasonable.  
+In this case, Cofunds has acknowledged that it caused a delay which led to a financial loss. 
+It’s offered to put Mr J back as close as possible to the position he would’ve been in but for 
+the delay. And offered him £250 compensation for the inconvenience caused.  
+I first considered whether the settlement offer is fair. 
+Is the settlement offer fair? 
+In order to decide whether the settlement offer is fair, I first needed to consider whether I 
+agreed with Cofunds’ proposed timeline for what should’ve happened. I included the timeline 
+in the background section of this decision, so I won’t repeat it here. 
+Mr J considers that his withdrawal should’ve been possible well within the ten days he said 
+Cofunds told him it would take.  
+Cofunds has explained that it should’ve taken two working days after receiving the 
+withdrawal instruction to refer it to its Due Diligence team. It said that team then had five 
+working days to complete this review. Cofunds said it then allowed two further working days 
+for the investment sales to be placed and priced. 
+ 
+ 
+Cofunds said that after this, it then waits for the sale proceeds from the customer’s chosen 
+fund managers. It said that in Mr J’s case this took five working days. It then allocates the 
+funds to the customer’s account and transfers it within two working days.  
+On the basis outlined, Cofunds said that it should’ve priced Mr J’s investment sales on 9 
+August 2023. And it should’ve then been able to make payment on 18 August 2023. 
+I’ve carefully considered the timeline Cofunds has based these dates on. After doing so, I 
+agree with our investigator that it is broadly reasonable. Therefore I’m satisfied that the 
+investment sales should’ve taken place on 9 August 2023. In reality, the sales took place on 
+22 August 2023. 
+I acknowledge that Mr J would like the initial compensation amount to be checked. Our 
+investigator has explained that this service isn’t able to do that for him. I can see that Mr J 
+felt that his initial loss was £6,674.51 rather than £5,185. He based his calculation on the 
+fund values at 27 July 2023 – when his withdrawal instruction was sent to Cofunds - and 22 
+August 2023 when the assets were actually sold.  
+While I understand why Mr J feels that his assets could’ve been sold on the day that he put 
+in his instruction, I can’t fairly agree. As I noted above, I don’t consider that the timeline 
+Cofunds has put forward is unreasonable. Therefore, I’m satisfied that the correct dates to 
+use for the initial loss comparison are 9 August 2023 and 22 August 2023.  
+While I agree with our investigator that this service can’t provide a full checking service, 
+given Mr J’s desire to confirm the initial compensation payment, I’ve provided some 
+additional information about why I consider that the £5,185 loss Cofunds calculated is 
+correct.  
+The evidence shows that the sales should’ve been made on 9 August 2023. But that they 
+were actually carried out on 22 August 2023.  
+Cofunds has provided this service with its calculation of the £5,185 loss. This shows that Mr 
+J’s three investments would’ve been sold at a total of £318,688.19 if the sale had taken 
+place when it should’ve on 9 August 2023. It also shows that the actual sale proceeds of the 
+three investments when they were sold on 22 August 2023 was £313,503.19. 
+ 
+Investment Actual value at 
+22/8/23 (£) 
+Notional value at 
+9/8/23 (£) 
+Gain/(Loss) (£) 
+CT Univ 57,348.71 58,696.82 (1,348.11) 
+Jupiter Merlin 53,927.54 55,147.82 (1,220.28) 
+Trojan 202,226.94 204,843.55 (2,616.61) 
+ 313,503.19 318,688.19 (5,185.00) 
+ 
+As I’m satisfied that the calculation has been carried out comparing values at the two dates I 
+would’ve suggested, I’m satisfied that the calculation is reasonable.  
+I haven’t however been able to check the investments themselves were correct. But I would 
+ 
+ 
+expect Cofunds to provide further detail on this when it completes the loss calculation I’m 
+going to recommend. I would also expect Mr J to know whether or not these funds are the 
+correct ones.  
+I can also see that Mr J feels that the proposed redress calculation doesn’t allow for the fact 
+that the compensation payment he’s already received was paid so many months after the 
+event that he lost the value of that investment over that period. He thinks a different 
+calculation should be carried out than the one suggested to put this right. But I don’t agree.  
+I say this because I’m satisfied that the redress our investigator has outlined ensures that the 
+fair value will be calculated up to the date of my final decision. Therefore it will allow for the 
+number of units Mr J should’ve purchased and the investment return he should’ve achieved 
+but for the avoidable delays. If the loss calculation based on this fair value shows that loss is 
+greater than the financial redress Cofunds has already paid Mr J, it will be required to pay 
+him additional compensation.  
+In essence, I’m satisfied that the calculation proposed by our investigator fairly and 
+reasonably covers any lost investment value. 
+I’ve also considered Mr J’s point that he invested a further £6K, rather than the £5K 
+assumed in our investigator’s view, in the Debt fund after receiving his compensation 
+payment.  
+I can see that Cofunds has already paid Mr J some compensation. I understand that it made 
+a compensation payment of £6,450 to Mr J earlier this year. Mr J told this service that he 
+invested £6K of this compensation payment into the debt fund in March 2024. 
+This is clearly £1K more than the £5K our investigator’s view was based on. However, I’m 
+persuaded that our investigator’s proposed redress on this point is fair and reasonable. 
+I say this because although Mr J invested most of the transferred funds in September 2023, 
+he decided to leave a little over £2,500 in his provider H account as cash. Our investigator’s 
+proposed redress assumes that Mr J would’ve left the same amount in his cash account if 
+there’d been no delays. I’m satisfied that this is fair, and that any other level of redress would 
+require the benefit of hindsight. 
+I finally considered the compensation Cofunds has offered Mr J for the inconvenience it has 
+caused. I don’t know whether the £250 offered has yet been paid.  
+Mr J said the delays had caused lots of hassle and extra work. He thinks the correct amount 
+of compensation for this inconvenience is at least £2,500. 
+I can see that it took Cofunds some time to complete its final response to the complaint. I 
+can understand that this would’ve been frustrating to Mr J. However, I can also see that 
+Cofunds acknowledged it was responsible for the delays and has tried to work with the other 
+involved parties to ensure that Mr J is put back into the position he should now be in.  
+I consider that the issue at the heart of this complaint has taken a reasonable effort to sort 
+out. But I’m satisfied that the £250 Cofunds has offered Mr J in respect of this effort is 
+reasonable under the circumstances. And is in line with what I would’ve otherwise 
+recommended. 
+Overall, and after considering all of Mr J’s additional points about the financial redress 
+proposed, I’m satisfied that it is fair and reasonable. And that it aims to put Mr J back into the 
+position he would’ve otherwise been in but for the delay.  
+ 
+ 
+Putting things right 
+My aim in awarding fair compensation is to put Mr J back into the position he would likely 
+have been in, had it not been for the avoidable delays Cofunds caused. I think this would 
+have meant he invested £115K in the Debt fund on 31 August 2023 and £200K in Gilts on 22 
+August 2023.  
+What Cofunds must do 
+To compensate Mr J fairly Cofunds must: 
+• Establish the notional value at the date of my final decision of the business H account 
+had the funds (£318,688) been transferred to provider M on 18 August 2023, then 
+£317,688 forwarded to business H to invest £200K in Gilts and £115K in the Debt 
+fund. This is the fair value. 
+Any additional sum paid into the business H account should be added to the fair 
+value calculation from the point in time when it was actually paid in. 
+Any withdrawal from the business H account should be deducted from the fair value 
+calculation at the point it was actually paid so it ceases to accrue any return in the 
+calculation from that point on. If there is a large number of regular payments, to keep 
+calculations simpler, I’ll accept if Cofunds total all those payments and deduct that 
+figure at the end to determine the fair value instead of deducting periodically. 
+• Compare the fair value with the actual value, less the redress sum already paid by 
+Cofunds. This will establish any additional loss over and above the redress already 
+paid.  
+• Mr J has also incurred a £70 contribution charge when the initial redress was paid 
+into his pension plan. I understand that a further £70 contribution charge will be 
+deducted if additional redress is to be paid into his pension plan - so a further £140 
+will need to be added to any new redress due to cover these charges. 
+• If there is a loss, the compensation amount should if possible be paid into Mr J’s 
+pension plan. The payment should allow for the effect of charges and any available 
+tax relief. The compensation shouldn’t be paid into the pension plan if it would conflict 
+with any existing protection or allowance. 
+• If a payment into the pension isn’t possible or has protection or allowance 
+implications, it should be paid directly to Mr J as a lump sum after making a notional 
+reduction to allow for future income tax that would otherwise have been paid. 
+• If Mr J has remaining tax-free cash entitlement, 25% of the loss would be tax-free 
+and 75% would have been taxed according to his likely income tax rate in retirement 
+– presumed to be 20%. So making a notional reduction of 15% overall from the loss 
+adequately reflects this. 
+• Provide the details of the calculation to Mr J in a clear, simple format. 
+• If Cofunds hasn’t already paid the £250 it offered Mr J for the distress and 
+inconvenience caused, it must pay this to him directly. 
+If payment of compensation is not made within 28 days of Cofunds receiving Mr J’s 
+acceptance of my final decision, interest must be added to the compensation at the rate of 
+ 
+ 
+8% per year simple from the date of my final decision to the date of payment. 
+Income tax may be payable on any interest paid. If Cofunds deducts income tax from the 
+interest, it should tell Mr J how much has been taken off. Cofunds should give Mr J a tax 
+deduction certificate in respect of interest if he asks for one, so he can reclaim the tax on 
+interest from HMRC if appropriate. 
+My final decision 
+For the reasons set out above, I uphold Mr J’s complaint. Cofunds Limited must take the 
+action detailed in “Putting things right” above.  
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr J to accept or 
+reject my decision before 10 September 2024. 
+   
+Jo Occleshaw 
+Ombudsman

@@ -1,0 +1,33 @@
+ASA-compliant AI ad review for UK paid social agencies.
+
+A fixed-fee pre-flight review of every AI-made ad creative against the CAP Code and the ASA's published AI guidance, for UK paid social agencies.
+
+UK paid social agencies ship thousands of AI-made Meta and TikTok creatives a month for clients. The Advertising Standards Authority tightened its published AI guidance in 2024, and the CAP Code already requires AI ads to be identifiable as such. ASA adjudications are public, and the agency is named alongside the client when an ad is pulled. Today a junior brand-safety executive (typically £25-30k) eyeballs each creative before it goes live.
+
+A fixed-fee pre-flight review of every AI-made creative would replace most of that reviewer's day. The service scores each creative against the published CAP Code clauses and the ASA AI guidance, flags the issues, and produces a one-page per-creative compliance receipt the agency can attach to its client bill as billable QA, turning a cost centre into margin. £X per creative, with a monthly cap for high-volume accounts.
+
+This commits to Shape A (AI-NATIVE): the model does work a junior brand-safety reviewer at a UK paid social agency is paid for today. The durable asset is the proprietary dataset built up across hundreds of agencies and thousands of creatives: which specific CAP clauses actually trigger against AI-made ads, which ad networks reject first, and which creative patterns correlate with subsequent ASA investigation. An in-house reviewer at one agency only ever sees their own work; the service compounds across the UK paid social agency market, which sits in a small number of specialist shops.
+
+UK paid social agency owners with 5-30 staff, typically billing £30-200k/month in Meta or TikTok ad spend management. The agency owner pays because the receipt becomes a billable deliverable they can pass to clients as compliance QA.
+
+The ASA published tightened AI ad guidance in 2024. Meta and TikTok now enforce AI disclosure in their own ad reviews. ASA adjudications against AI-made ads have begun appearing in the public register, and agencies are increasingly named alongside clients when an ad is pulled.
+
+The passages confirm the ASA/CAP Code exists (c67b9f13585db5cf), that the ASA scrutinises post-production techniques (5fac486acc0d24e0), and that AI ad-creation tools are on the market (dc36bde8e8ee0fc5), but none establish that UK paid social agencies are currently paying for pre-flight AI-creative compliance review or that the pain is acute enough to drive spend today; the other passages concern unrelated ASA topics (withdrawn 2014 trademark mail ruling, food rules, paid-search trademark monitoring).
+
+No passage addresses whether UK paid social agency owners with 5-30 staff have budget or motive to pay for an ASA-compliance pre-flight review service; the provided texts cover UK demographics, a social-scheduling product, general agency margin concepts, and a UGC ad service, none of which evidence the target payer's willingness or ability to pay.
+
+The passages confirm UK paid social agencies exist and are findable through identifiable channels: agency service pages (Meta, TikTok, LinkedIn Ads offerings in [0e849dd6ba30f076], [ceb7d3aeceb1cd5d]) and a B2B directory listing over 4,400 agencies on DesignRush ([bfe2d82cbd527fb4]). This establishes a route to the buyer via direct outreach, industry directories, and platforms where agency owners are already discoverable and receptive to vendor pitches. Remaining passages are unrelated to distribution.
+
+The passages describe lawful ASA/CAP Code compliance review and clearance advice as an established activity ([7110d0d26cfcde3b]) and confirm the CAP Code applies to AI-generated ads ([f02ad9dcdbe71ea6]). Nothing in the passages suggests providing pre-flight compliance reviews requires breaking any law, ToS, or falsifying data.
+
+No passage addresses UK advertising regulation, the Advertising Standards Authority, the CAP Code, AI ad compliance, or paid social agencies — the snippets cover US military history, a medical society (American Society of Anesthesiologists), aviation test guides, YouTube algorithm tips, and disposable email/phone services, none of which speak to whether the proposed compliance-review value is real or durable.
+
+No passage identifies any existing provider of ASA/CAP-Code pre-flight compliance review for AI-made creatives at UK paid social agencies, so there is no evidence on whether the space is dominated or underserved; the Capterra listing mentions generic compliance AI tools but does not name any incumbent in this specific niche.
+
+Passage [d44d07e167ba01ae] directly addresses AI-generated advertising under the CAP Code, confirming that AI ad content is a current regulatory concern requiring substantiation and pre-publication verification, which supports that this is a live, active regulatory area rather than a stale leftover.
+
+None of the passages address UK paid social agencies, ASA/CAP Code compliance, or buyer intent for AI-creative pre-flight review services. The closest passage (9143c668112067ce) describes a compliance tool for the US cannabis industry, which is a different market, vertical, and regulatory framework, and provides no evidence of UK agency demand.
+
+The passages confirm the core factual foundation: the ASA is the UK regulator applying CAP-written codes (45c22b00683a2e3b), the ASA ran a 2024 event on AI and advertising regulation and published guidance clarifying how rules apply to generative AI and deepfakes (02ec0b66502e7521), the CAP Code is the operative rulebook (7448bbc3bf609914), and public AI-related adjudications exist such as the EverAI Ltd ruling on paid social (45c22b00683a2e3b). No passage contradicts these claims, though finer details (Meta/TikTok enforcement specifics, agency-naming practice) are not directly addressed.
+
+No passage shows the proposed pre-flight ASA/CAP compliance review service is illegal; multiple sources confirm third-party 'clearance advice' for the CAP Code is an established legal activity (7110d0d26cfcde3b, f02ad9dcdbe71ea6). No passage provides CAC or LTV data showing customer acquisition cost exceeds lifetime revenue, and no single company is identified as controlling 80%+ of this niche — the incumbency check found no direct competitor at all, let alone a dominant one.

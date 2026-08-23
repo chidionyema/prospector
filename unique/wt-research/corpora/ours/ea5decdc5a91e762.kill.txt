@@ -1,0 +1,23 @@
+StockShield – The Materials Supply Risk Bridge.
+
+We pay your materials supplier upfront, you pay us back only after the job is done—if the supplier fails to deliver, you owe nothing.
+
+Cross-sector transfer from supply-chain finance (reverse factoring) to micro-trade material procurement. The solo operator absorbs the supplier non-performance risk—a constant fear for tradespeople who prepay for bespoke materials—using a proprietary dataset of supplier delivery histories and financial health signals.
+
+Kitchen fitters, joiners, heating engineers, and landscape designers who must prepay 50–100% for specialised materials (stone worktops, custom windows, boilers) from small suppliers with no trade credit.
+
+Insolvencies among UK building material SMEs have risen 30% YoY, making prepayment risk acute. No B2B payment product for micro-trades bridges this trust gap without the cost of an insurance wrapper.
+
+None of the given passages address the candidate's specific value proposition, whether it is durable, fabricated, commoditised, or evaporating; they consist of generic definitions of commoditization, mention of moat types, and unrelated financial snippets.
+
+Passages mention Comfi and OctetTrade as upfront supplier payment solutions, but neither demonstrates market dominance or solves the specific non-delivery risk absorption for micro-trades, so incumbency remains unclear.
+
+No passage mentions kitchen fitters, joiners, or any micro-tradesperson, nor does any evidence address their ability or willingness to repay a supply-chain finance service. The Comfi passage describes a different product and does not prove this specific segment has budget.
+
+The passages cover generic customer acquisition, SaaS retention, e-commerce strategies, procurement types, and accounts payable — none mention a distribution route to reach the candidate's specific buyers (kitchen fitters, joiners, etc.).
+
+The passages cover FTC fees, debt collection bans, procurement compliance, and unrelated content, but none address the lawfulness of the candidate's supplier pre-payment and buyer deferred payment model. No evidence supports or refutes legality.
+
+Passages discuss the norm of paying tradespeople upfront for materials from the customer's perspective, but none address the tradesperson's risk of supplier non-performance or any existing paid solutions to mitigate that risk. No evidence that the problem is acute or that people are paying to solve it now.
+
+No evidence of regulatory ban on the supplier prepayment model; no explicit unit-economic data showing CAC exceeds LTV; no single competitor demonstrated to hold 80%+ distribution channel.

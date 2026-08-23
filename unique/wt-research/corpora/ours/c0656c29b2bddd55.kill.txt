@@ -1,0 +1,13 @@
+HeatSeek – The Home Thermal Detective by Post.
+
+A thermal‑imaging camera shipped to your door for a weekend, paired with an AI‑powered video analysis that spots draughts, missing insulation, and cold bridges, culminating in a personalised, prioritised home‑upgrade action report with estimated savings.
+
+combine_signals: The home energy crisis meets the ‘try‑before‑you‑buy’ rental model popularised by clothing‑as‑a‑service; a public sector worker can avoid a £500 energy survey and a salesy surveyor by doing it themselves with a guided kit. The solo operator owns a single high‑res FLIR camera, and AI does the diagnosis—scaling beyond one‑on‑one consultancy.
+
+Home‑owning public sector workers (nurses, police officers, civil servants) in the UK who are stressed by rising energy bills and want a low‑cost, impartial audit.
+
+Energy price cap rises and government incentivised retrofitting, yet most people can’t afford a professional thermal survey (£250‑£500).
+
+Passages [b7a36e51bfd78a70], [e8d457fcd8b61fcb] and [24b3b03807efd876] show thermal-imaging heat-loss surveys are an established paid service that finds missing insulation, draughts and cold spots, so the underlying value is real, not fabricated. The FLIR One passages show a cheap smartphone camera exists, but it is a paid hardware purchase and no passage shows it interprets the images or produces a retrofit plan, so it does not remove all margin from a guided rental-plus-diagnosis service.
+
+The passages show the candidate's core rental mechanic is already served by a passage-stated market leader — HSS, 'the UK's leading tool & equipment hire company' with national delivery, and Speedy Hire, which rents professional thermal cameras 'at a fraction of the cost' of buying — while multiple firms (in London and beyond) already sell homeowner thermal heat-loss surveys that locate missing insulation and air leaks in all home types.

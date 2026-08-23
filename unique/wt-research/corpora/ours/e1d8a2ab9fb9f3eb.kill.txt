@@ -1,0 +1,23 @@
+Scope Slip, the tradesperson job-sheet pad for freelancers.
+
+A printed duplicate-carbon pad, like the job sheets builders use, that gets UK freelance creatives instant client sign-off on extra work before they do it for free.
+
+Strip the problem back to the raw moment it happens: a client messages a freelance designer, writer or developer mid-project and asks for 'just one more small thing'. There is no contract to hand, no software to open, and saying no feels awkward. So the work gets done, unpaid, and this is exactly how feast turns to famine.
+
+Tradespeople solved this decades ago with a physical object, not a tool: the carbon-copy job sheet. A plumber writes the extra job on a duplicate pad, the customer signs on the spot, one copy stays with the customer and one goes in the plumber's invoice pile. No app, no login, no chasing later. This borrows that exact object and reprints it for creative freelancers: a pocket-sized duplicate pad with lines for 'agreed scope', 'extra requested', a day-rate or fixed-fee box, and a signature line, styled for design, copywriting, video-editing and dev work instead of boiler repairs.
+
+The product itself is a printed pad — sourced from a UK short-run NCR/carbonless printer, sold in packs of 50 sets through a Shopify store, Etsy and freelancer-focused Instagram/TikTok, with different template variants per discipline (a video editor's pad has 'extra revision round' and 'rush turnaround' boxes; a developer's has 'extra feature' and 'change of scope' boxes). One person designs the templates, orders print runs, holds a small stock box, and ships. Repeat purchase comes from freelancers who use one pad per few months and reorder, plus new client acquisition seeing it used in a coffee-shop meeting.
+
+This is a genuinely commodity object — anyone can order carbonless pads from a print shop. The honest angle here is not a moat; it is that nobody has cut the templates for this specific job yet, and the psychological trick (paper, signed on the spot, in front of the client) works precisely because it isn't another app the client has to open.
+
+Freelance designers, copywriters, video editors, developers and consultants working directly with clients in the UK — people who currently either eat unpaid scope creep or have an awkward 'let me send you an updated quote' conversation by email days later. They buy a £18-£24 pack of 50 duplicate sets, the same impulse-spend bracket as a course or a nice notebook.
+
+Freelance and self-employed client work in the UK increasingly happens over fast, informal channels — WhatsApp, Slack, DMs — where scope creep slips in as a casual ask rather than a formal request, and freelancers report on forums like r/freelance and freelance Facebook groups that chasing payment for 'small extras' after the fact rarely works. The behaviour is old; what's new is how much creative work now happens over these instant channels with no natural pause point to renegotiate scope, which is exactly the gap a signed-in-the-room paper slip fills.
+
+The scope-creep articles show freelancers want to prevent/reverse scope creep via contract clauses and conversations, not that anyone is searching for or paying for a physical carbon-copy job-sheet pad; the bonsai passages have zero conceptual overlap with the claim.
+
+The passages show generic freelance-market activity (slight rise in UK self-employed numbers, freelance job boards, a hiring guide) but none address whether awkward mid-project scope-creep asks over informal channels like WhatsApp/Slack are a live, current phenomenon right now versus a stale trend.
+
+Etsy offers a documented beginner setup path connecting sellers directly to buyers, and Shopify has ready-made stationery/paper-goods themes built for small sellers moving 30-50 items, both of which are open channels a novice could use to list a printed pad. The saturation warnings in the other passages concern digital products specifically, not physical stationery, so they do not block this route.
+
+The passages discuss general contract-enforceability doctrine (consideration/deeds, e-signatures, online contract types) and unrelated consumer-electronics marketing, but none address whether printing and selling carbonless job-sheet pads breaches any law or terms of service.

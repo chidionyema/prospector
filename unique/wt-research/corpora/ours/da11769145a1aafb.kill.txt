@@ -1,0 +1,23 @@
+The UC Income Navigator for Gig Workers.
+
+A done‑with‑you service that combines FOI‑sourced DWP internal assessment guidance with a proprietary income‑smoothing method to generate an optimised monthly reporting plan and evidence bundle for Universal Credit claimants with volatile gig earnings.
+
+Analogous to flight delay compensation claim kits that decode opaque airline rules, this ‘benefits claim architect’ transplants the paid‑compliance‑assist model to the Universal Credit system—using hidden DWP decision‑making criteria to stabilise awards and avoid overpayment traps that routine ‘official’ advice fails to address.
+
+Gen Z gig workers who rely on Universal Credit to top up volatile earnings and who have experienced unexpected payment fluctuations, sanctions, or overpayment recovery demands due to the self‑employment reporting regime.
+
+Universal Credit now covers a large share of gig workers, yet its rigid Real Time Information and Minimum Income Floor rules clash with unpredictable gig income; calls to helplines soar, but tailored strategic advice for self‑reporting is virtually absent outside expensive specialist advice.
+
+The passages contain dictionary definitions and an unrelated policy statement; none touch on Universal Credit gig worker reporting, FOI-sourced guidance, or the durability of the proposed service's value.
+
+No passage addresses incumbents in gig worker benefits optimisation; the only welfare-related text (source 2cc55f) merely notes challenges without mentioning any specific service, dominant player, or rival.
+
+Passages define 'done', mention DWP recovery from benefits, and a generic ROI calculation; none address gig workers' ability or willingness to pay for a Universal Credit advisory service.
+
+The passages contain dictionary definitions of 'DONE' and fragments about sensitivity analysis and the old benefits regime; none address how the candidate service would reach Gen Z gig workers or any distribution channel.
+
+None of the passages mention the candidate's service, benefits optimization, advice, or any law/regulation relevant to the margin. They discuss DWP's evidence-compelling powers for fraud investigations, which do not address the legality of providing optimized reporting plans.
+
+Passages define 'done' and discuss DWP data accuracy/fraud investigation limits; none address gig worker Universal Credit reporting pain or willingness to pay.
+
+No passages provide explicit evidence of any of the three risk vectors; all risks are absent.

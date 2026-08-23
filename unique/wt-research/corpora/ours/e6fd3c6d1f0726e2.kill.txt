@@ -1,0 +1,23 @@
+SprayWindow — the spray-day planner that proves to Red Tractor your pesticide timing was legal.
+
+A phone tool for UK arable and horticulture growers that turns the label rules and the weather into a go/no-go spray decision, and files the record an auditor will accept.
+
+A grower with 200 to 800 acres decides most mornings whether to spray. The wrong call costs money twice: a wasted tank mix, or a failed farm assurance audit that shuts a buyer's door.
+
+The rules are scattered. Each product's approval on the HSE pesticides register carries its own maximum dose, minimum interval between applications, harvest interval, buffer zone next to water, and wind and temperature limits. Red Tractor's Combinable Crops and Fresh Produce standards then demand a written record for every application, signed off by someone holding a City & Guilds NPTC certificate, kept for at least two years. Water companies add their own catchment restrictions on metaldehyde and now on flufenacet and other actives showing up in raw water tests.
+
+SprayWindow puts the field, the crop, the product and the local forecast together and answers one question: can I spray this, on this field, in the next six hours, and stay inside every rule that binds me. If yes, it logs the decision with the weather it was based on. If no, it says which rule blocks it and when the window reopens.
+
+This borrows the way airlines run a dispatch check before every departure. A pilot does not read the manual each flight; a system checks the aircraft, the route and the weather against the rule set and issues a release. The release is also the record. Farm spraying has the same structure and none of the tooling.
+
+The part that compounds is the outcome data. Every logged spray carries the field, the product, the dose, the growth stage, the exact weather at the nozzle, and later the yield off that field. After three seasons across a few thousand fields, the tool knows which application windows actually worked and which ones a grower regretted, at a granularity no manufacturer or agronomist has. That drives the real upsell: not compliance, but timing advice that raises yield.
+
+Start with one crop group and one region, sold through independent agronomists who already visit these farms fortnightly and are paid per farm. They need a way to show value between visits; the tool is their leave-behind. Price it per hectare per year, in the £2 to £4 range, which sits below the cost of a single wasted pass.
+
+Owner-operators of UK arable and field-vegetable farms between roughly 200 and 1,500 acres, who hold their own spray certificate and do the spraying themselves, and who must pass a Red Tractor audit to sell to a supermarket packer or a grain merchant. Sold with independent agronomists as the channel.
+
+Approvals are being withdrawn faster than growers can track. The loss of actives across the last few seasons means many growers are working with a shrinking, unfamiliar product list where the old rules of thumb no longer apply. Water companies are running catchment schemes that add restrictions above and beyond the HSE label. Red Tractor audits have tightened record-keeping checks after the 2023 review of the scheme. And cheap local weather data is now good enough to say what the wind was doing on one field at 6am.
+
+The passages only show that UK pesticide approvals expire and are withdrawn on published dates (methoxyfenozide lapsing 31 March 2026 with no renewal filed, and a public list of expiry dates and which substances are supported for renewal), which describes churn in the rules growers must follow but says nothing about whether growers will pay for a tool that turns those rules plus weather into a spray decision and audit record.
+
+The passages show established UK players already serving this exact grower-agronomist workflow: Contour describes itself as the UK's leading agronomy company with 300+ independent consultants advising on daily crop management per field [19c20a29d1e9c0c3], Gatekeeper is a crop recording system already in routine use between growers and their agronomists [6eaed93681d87fae], another product already records spray inputs against a farm map [e1727f36ad44ebf1], and venture-backed KisanHub stores exactly the joined series the candidate claims is proprietary — weather, variety, planting dates and…

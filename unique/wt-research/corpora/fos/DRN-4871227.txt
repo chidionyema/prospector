@@ -1,0 +1,213 @@
+DRN-4871227
+The complaint
+Mr M is complaining that Admiral Financial Services Limited trading as Admiral Money 
+(Admiral) lent to him irresponsibly by providing him with a personal loan.
+What happened
+In January 2023, Admiral approved Mr M’s application for a £5,000 loan to consolidate his 
+debts. The loan required Mr M to make 30 monthly repayments of around £224. Mr M has 
+been making his payments on time but complained to Admiral in May 2023 saying they 
+shouldn’t have lent to him. He said it was clear from his credit history that he was unlikely to 
+use the loan for its stated purpose of debt consolidation and instead would likely use the 
+money to fund his gambling addiction.
+Admiral responded, saying they’d carried out appropriate checks before lending to Mr M. 
+They said they’d automatically verified Mr M’s stated income and reviewed his credit file 
+before deciding to lend to him. They’d estimated his expenditure and calculated his monthly 
+disposable income was around £2,230. So they said the repayments were easily affordable 
+and didn’t uphold Mr M’s complaint.
+Mr M wasn’t happy with Admiral’s response so brought his complaint to our service, saying 
+his recent increases in debt should have prompted Admiral to carry out additional checks. 
+He noted that although the stated purpose of his two previous loans was for debt 
+consolidation, it would have been clear to Admiral that that wasn’t what had happened. Had 
+they reviewed his bank statements they would have noticed that his debts were being used 
+to trade contracts for difference (CFDs) online. Mr M said Admiral should have realised he 
+was spending compulsively and therefore shouldn’t have lent to him. 
+One of our investigators looked into Mr M’s complaint and upheld it. In summary, her view 
+was that Admiral hadn’t done proportionate checks before lending to Mr M and if they had, 
+they’d have realised it wouldn’t be responsible to lend to him. She said Admiral shouldn’t 
+charge Mr M any interest or charges and should recalculate the amount he owed on that 
+basis.
+Admiral disagreed. They said they’d done enough checks, taking into account the low loan 
+value and Mr M’s low debt-to-income ratio. They added that they could see from Mr M’s 
+bank statements obtained when investigating the complaint that he had used their loan to 
+consolidate a credit card and his overdraft as he’d intended. And they could see he’d 
+withdrawn significant funds from his investments after taking out their loan – they felt an 
+ombudsman should take this into consideration.
+Mr M also asked for an ombudsman’s decision. He said in the circumstances his outstanding 
+balance with Admiral should be written off and all the payments he’d made should be 
+refunded. And he said he thought Admiral should compensate him for the distress their 
+irresponsible lending had caused him. He said he’d experienced significant distress, worry, 
+sleepless nights and self-hatred as a result of the lending.
+
+I issued a provisional decision on 5 June 2024. In that I said I wasn’t inclined to uphold 
+Mr M’s complaint, explaining as follows:
+“What’s required of lenders?
+The Financial Conduct Authority (FCA) sets out in a part of its handbook known as CONC 
+what lenders must do when deciding whether or not to lend to a consumer, or when 
+increasing the amount they lend to a consumer. In summary, a firm must consider a 
+customer’s ability to make repayments under the agreement without having to borrow 
+further to meet repayments or default on other obligations, and without the repayments 
+having a significant adverse impact on the customer’s financial situation. 
+CONC says a firm must carry out checks which are proportionate to the individual 
+circumstances of each case. 
+Did Admiral carry out proportionate checks?
+Admiral checked Mr M’s income using an automated income verification tool provided by 
+one of the credit reference agencies. This type of income check is specifically listed in 
+CONC as being acceptable. Whilst Mr M’s told us he thinks Admiral should have been 
+aware that his income wasn’t guaranteed as he was a contractor, his loan application 
+simply states that he was employed full-time, so I can’t say they should have been aware 
+of this.
+Admiral verified Mr M’s income at over £4,100 per month and carried out an affordability 
+assessment using the figure Mr M had given them for his monthly rent (£350), payments 
+to creditors from his credit report (£596) and statistical data to estimate his pension 
+contributions (£207) and other living expenses (£694). CONC allows businesses to use 
+statistical data to estimate a customer’s non-discretionary expenditure unless they have 
+reasonable cause to suspect that the data might not be reasonably representative in the 
+customer’s specific situation. 
+I haven’t seen any reason that Admiral might have thought Mr M’s non-discretionary 
+expenditure might significantly differ from statistical data. His credit report shows he’d not 
+defaulted on any accounts or missed any payments to creditors. Although he had debts 
+totalling around £16,000, they were all being well-managed, with no indicators of any 
+difficulties. And with annual income of £72,000, I wouldn’t expect this amount of debt to 
+have caused any concern. In addition, Admiral calculated Mr M would have disposable 
+income of over £2,000 per month after taking into account the repayments on their loan. 
+So there was a lot of headroom. 
+Mr M’s view is that Admiral should have been aware he’d previously applied for debt 
+consolidation loans and then not used them for their stated purpose. But these loans 
+weren’t from Admiral and a credit report doesn’t show the purpose of a loan. Mr M also 
+says Admiral should have been aware that he’d been declined finance by other providers. 
+But the credit report says there had been three searches in the six months prior to his 
+application – which matches the number of credit agreements which had started in the 
+same timeframe. So I can’t say Admiral should have been aware Mr M had been declined 
+finance. 
+The credit report did show that Mr M had taken out two credit cards and a loan within the 
+three months prior to his application to Admiral. These totalled around £9,000 so made up 
+over half of his total debt. I’m inclined to say this ought to have prompted Admiral to ask 
+Mr M why his debt had increased so much in a short space of time. But I don’t think this 
+would have changed the outcome. On balance I think it’s highly unlikely Mr M would have 
+disclosed that he was spending compulsively. And I don’t think this increase in debt alone 
+meant Admiral ought to have obtained Mr M’s bank statements – there were no other 
+indicators of financial difficulty and all the other checks Admiral did suggested that the 
+loan was easily affordable. 
+Did Admiral make a fair lending decision?
+Having decided that Admiral carried out proportionate checks, I have to consider whether 
+their decision to lend to Mr M was fair. 
+As I’ve set out above, Admiral determined that Mr M’s disposable income after making 
+repayments against this loan would be over £2,000 per month. That takes into account all 
+payments to creditors, rent, pension contributions and living expenses.
+Looking at Mr M’s spending on credit commitments, it appears Admiral estimated this at 
+3% of the balance on his credit cards and overdrafts. However a repayment of 3% per 
+month doesn’t generally allow a consumer to pay a debt within a reasonable timeframe – 
+instead I’m inclined to say Admiral should have used at least 5% of all credit card and 
+overdraft balances at the time of lending. Adding on Mr M’s existing loan repayments 
+increases his monthly payments to creditors from the £596 Admiral estimated to £747.  
+I’m inclined to say Admiral made reasonable assumptions about Mr M’s other 
+expenditure. So, whilst Admiral perhaps ought to have used a higher figure for his 
+payments to creditors, this would only have reduced Mr M’s disposable income by about 
+£150 per month and would still have left Mr M with a substantial amount for discretionary 
+and emergency expenditure. So I’m satisfied Admiral acted fairly in deciding to lend to 
+Mr M.
+Mr M’s told us a lot about his spending habits and the impact this has had on him. I’m 
+very sorry to hear of this. But it doesn’t change my opinion. In summary I think Admiral 
+carried out proportionate checks in the circumstances and made a fair decision to lend to 
+Mr M.”
+Admiral didn’t comment on my provisional decision. Mr M provided lengthy submissions 
+disagreeing with my view. I have read his submissions carefully. Some of Mr M’s point relate 
+to the marketing of the loan by Admiral and the third-party platform on which he applied. Mr 
+M hasn’t raised these points previously and the majority relate to the actions of a third-party. 
+For both reasons, I’ve not included those below and won’t address them in this decision. In 
+summary, Mr M’s relevant points are as follows:
+Reasonable and proportionate checks
+He disagrees with my subjective assumption that it’s highly unlikely he would have 
+disclosed his compulsive spending if Admiral had questioned the rapid increase in his 
+debt. He insists he would have disclosed this.
+He’s a professional young man and wouldn’t have lied or withheld information from 
+Admiral. His addiction meant he couldn’t resist the temptation of a loan that was 
+advertised to him as 100% chance of success, but he’d have been honest if they’d 
+probed further.
+He reiterated that he works as a contractor so his income isn’t guaranteed. At the 
+time of the loan, he had six months left on his contract but the loan was for 30 
+months – this was a long time in the context of Mr M’s circumstances so Admiral’s 
+checks needed to be more thorough.
+Admiral didn’t take any steps to verify the accuracy of the information collected by a 
+third-party broker. If they had, they’d have found the information wasn’t entirely 
+accurate. The broker showed “other income” of £29,000 – Mr M has no idea of the 
+source of this but has never had this income. 
+Overall, he didn’t think Admiral had carried out a proper creditworthiness assessment 
+– he said they hadn’t obtained enough information and had failed to verify the 
+accuracy of the information they did obtain. He felt I should focus on Admiral’s failure 
+to ask a very important question that is likely to have led to a very different outcome, 
+rather than relying on a subjective assumption. 
+If Admiral had conducted proportionate checks they would have realised that the 
+proceeds of the loan would have been used for gambling.
+He asked that I explain why my approach to his case differed so much from one of 
+the case studies on our website.
+What happened after the loan was approved
+Although he had used the loan to clear his overdraft and credit card balances, these 
+both grew back to their pre-loan levels within three weeks of the loan.
+Although he withdrew funds from his investment account, he redeposited them within 
+weeks. 
+Although Mr M’s earnings suggested the loan was easily affordable, the vast majority 
+of the repayments were made from his overdraft, which was maxed out throughout 
+his gambling addiction. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so, I’ve not been persuaded to change my mind. I’ll explain why.
+What happened after the loan was approved
+The last three of the bullet points I’ve set out above relate to Mr M’s finances after Admiral 
+had approved the loan. Although I noted in the introduction to my provisional decision that 
+Admiral had said an ombudsman should take these things into consideration, I didn’t factor 
+them in when arriving at my provisional decision and don’t intend to in my final decision. My 
+role in this complaint is to decide whether or not Admiral should have lent to Mr M. To do 
+that I need to focus on the information that was available to Admiral at the time, not what 
+happened after the lending decision had been made.
+Reasonable and proportionate checks
+As I set out in my provisional decision, Admiral automatically verified Mr M’s income and 
+reviewed his credit file. They didn’t factor in the £29,000 “other income” that Mr M referred to 
+in his submissions, and they determined the loan was affordable without it. So I haven’t 
+looked into why that figure was included in the application from the broker – it’s irrelevant to 
+Admiral’s lending decision.
+Mr M says the fact that he was a contractor should have led Admiral to do more thorough 
+checks. But I can’t say Admiral should have been aware of this – there was nothing on the 
+loan application that told them Mr M was a contractor – instead it said he was employed full-
+time. 
+Mr M’s referenced one of our case studies in his submissions. It’s important to note that 
+each case is decided on the individual facts and circumstances of the case. The case study 
+that Mr M’s referenced is one about a consumer applying to her own bank for various loans. 
+In that example, the bank had access to the consumer’s bank statements and therefore 
+detailed information about her spending habits. CONC requires a business to take into 
+account any information of which it should be aware. But it doesn’t require a business to 
+obtain bank statements as a matter of course – that wouldn’t usually be reasonable or 
+proportionate. So the key difference is that I can’t say Admiral should have obtained Mr M’s 
+bank statements or otherwise automatically been aware of his spending habits.
+Mr M stated repeatedly in his submissions that he would not have lied to Admiral or withheld 
+information from them if they’d asked why his debt had increased so much in the three 
+months prior to his application. I would like to reassure Mr M that I didn’t intend to question 
+his integrity, honesty or ethics. I still think it would have been better if Admiral had asked 
+Mr M about the increase in his debts. But I remain persuaded this wouldn’t have changed 
+the outcome. I’ll explain why as I realise this is a significant point of contention. 
+Given how affordable the loan appeared to be, I don’t think Admiral would have needed to 
+investigate the increase in debt in any detail – Mr M could have provided a bland answer, 
+perhaps even selecting from a set of options, and this would likely have been enough to 
+satisfy Admiral’s obligations.
+When asked about the purpose of this, and previous loans, Mr M said at the time they were 
+to consolidate existing debts. But Mr M’s told us in his submissions that he applied for the 
+loan to fund his addiction. And Mr M has also stated in his submissions that he was “at the 
+height of his gambling addiction…[so] clearly not thinking rationally”. I appreciate how 
+difficult this must have been, but this lack of rational thinking is why I don’t think Mr M would 
+have disclosed his compulsive spending – the addiction would have meant he’d likely have 
+done what was necessary to fuel it. 
+I appreciate that this is a finely balanced judgment and it’ll be disappointing and upsetting for 
+Mr M. But in the context of what Admiral knew of Mr M’s income and likely outgoings, the 
+question simply wouldn’t have been that important to them. I remain of the view that it’s very 
+unlikely Mr M would have readily disclosed his addiction.
+In summary, I remain satisfied Admiral’s checks were broadly proportionate. Whilst they 
+perhaps should have done more, I don’t think this would have changed the outcome and 
+they’d still have been able to fairly decide to lend to Mr M.
+My final decision
+As I’ve explained above, I’m not upholding Mr M’s complaint.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr M to accept or 
+reject my decision before 23 July 2024.
+ 
+Clare King
+Ombudsman

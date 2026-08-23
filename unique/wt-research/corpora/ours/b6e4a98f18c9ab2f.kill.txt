@@ -1,0 +1,17 @@
+DirectPay Ledger – the app that turns your care direct payment receipts into council‑perfect reports, so you can spend energy caring, not accounting.
+
+A mobile app for UK carers that tracks direct payments, snaps receipts, and builds a report your council will accept first time.
+
+Thousands of carers in the UK receive direct payments from their local council to buy care and support. Each council demands a different set of reports, receipts, and logs – often as a paper bundle or a clunky spreadsheet. Carers live in fear of an audit and having to repay money they have already spent. This tool rebuilds the whole process from the carer's phone. It photographs a receipt, figures out which budget line it belongs to, and instantly adds it to a running ledger. When the council asks for a return, the carer taps one button and gets a PDF packaged exactly the way their council expects, with every line cross‑referenced. The underlying engine maps the reporting requirements of every adult social services department in England (152 of them, each with their own template), kept current by a small team monitoring publication portals. That dataset is the durable core: a rival would need to rebuild it from scratch, and the council templates change yearly. Once a carer’s history is inside, the switching cost is high, because moving means recreating the formatted report for a different template from a shoebox of paper receipts.
+
+A family carer receiving a direct payment (typically £50–300 a week), paying about £4 a month from the management cost allowance that most councils include in the payment. They pay because a clean return protects them from a clawback demand that could run into thousands.
+
+The Health and Care Act 2022 is pushing more personal budgets and direct payments into adult social care. Councils are digitising their own systems but cannot force every carer onto them, and they cannot build a cross‑council receipt tool that directly serves the carer (their duty is to the taxpayer, not the payee). The market of self‑employed personal assistants is also growing, generating more receipts to track. Cheap open banking and OCR APIs now make receipt‑to‑ledger automation viable for a niche app.
+
+The passages only describe that UK carers can receive Carer’s Allowance and that councils may offer direct payments or personal budgets after assessment. They never show anyone searching for, asking about, or already paying for receipt tracking, audit-ready returns, or similar reporting help.
+
+Passages confirm UK carers receive council Direct Payments for arranging care and that spend is restricted, but none say carers have spare budget, a management allowance, or willingness to pay for a reporting app. Ability and motive to pay this product are not addressed.
+
+The passages establish that UK direct-payment recipients and carers exist and how they obtain payments via local authorities or gov.uk, but they never describe any way a third-party receipt or reporting app would reach those people. Existence of the payer group is not evidence of a self-serve, forced, or other executable sales channel.
+
+The passages only describe what a direct payment is, who may manage one, and when a local authority can refuse one; unrelated snippets mention third-party invoice receipting, tax bank pay, and receipt printers. None say whether a carer-facing receipt-tracking and council-report app is permitted, banned, or dependent on breaking law or terms.

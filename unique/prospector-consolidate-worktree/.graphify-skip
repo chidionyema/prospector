@@ -1,0 +1,3 @@
+Not a project: a git worktree with 0 tracked files and no commits of its own. Its .git is a
+FILE, not a directory, so `graphify hook install` fails here with NotADirectoryError. Graphing
+it would duplicate the parent repo's graph. Spec S1 opt-out — remove this file to re-enrol.

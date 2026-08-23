@@ -1,0 +1,23 @@
+The Freelancer's Rate Radar.
+
+A daily intelligence brief that scrapes, normalizes, and forecasts creative freelance rates across 12 disciplines, giving independent solos the same pricing power as agencies.
+
+Digital freelance markets are intentionally opaque, letting platforms capture the spread between what clients pay and what workers earn. By building a proprietary, cross-platform index that improves with every data point (including user-contributed real rates), we create a reflexive pricing signal that becomes more accurate and more defensible with scale—a Morningstar for the gig economy where the platform incumbents cannot follow because it would cannibalize their fee structures.
+
+Self-employed designers, developers, writers, and videographers who earn $50k+ and pay $19/mo for premium historical charts, negotiation playbooks, and early alerts on rate shifts in their niche.
+
+The combination of post-pandemic remote normalization, IR35/1099 shifts, and inflation-driven cost pressures creates an urgent need for transparent rate benchmarks. Simultaneously, no-code scraping tools (Apify, Airtable) and AI summarization make a solo operator capable of maintaining a multi-source intelligence pipeline that five years ago required a data team. Platform lock-in is high, but worker dissatisfaction with opaque pricing has never been louder.
+
+The single passage discusses AI commoditising average creative OUTPUT, but says nothing about the durability of a cross-platform freelance RATE-intelligence/data product, which is the candidate's actual value. No passage addresses whether that pricing-index value is real, durable, or already commoditised.
+
+The only passage describes 'Meridian', a zero-traction (0 stars/forks/watchers) general news-briefing tool, which neither addresses the freelance-rate-intelligence space nor establishes a dominant or funded incumbent serving it. No passage speaks to incumbency in this market.
+
+The only on-topic passage [24776e7d50496e10] reports that over half of creative freelancers face rising stress as budgets tighten and unpaid work grows, which signals pain but does NOT affirm that the segment has discretionary budget to pay $19/mo; if anything it points to tightening finances, so solvency is not established.
+
+The passage is a competitor's freelancer rates report page (YunoJuno account signup) and says nothing about a low-friction distribution route to reach the candidate's freelancer buyers.
+
+The single passage is a worker-intelligence newsletter describing platform deactivations and pay drops; it says nothing about whether scraping/compiling cross-platform rate data is lawful or breaches any platform's terms.
+
+The passage [91e63bf044a4e51c] reports that freelancer day-rate benchmarks and hiring trends exist as a topic of interest in 2026, but it does not address whether rate opacity is an acute problem freelancers are suffering from or paying to solve. It says nothing about willingness to pay for rate intelligence.
+
+The candidate's entire thesis rests on one claim: that a proprietary, cross-platform freelance rate index is a defensible data moat because incumbent platforms 'cannot follow without cannibalizing their fee structures.' The gathered evidence directly refutes that premise. YunoJuno, a funded market-leading freelancer platform (named 'highest designated Leader in Everest Group's FEMS PEAK Matrix 2026'), already publishes a free, comprehensive cross-discipline rate benchmark drawing on 182,000+ contractor/booking/skills data points across UK day rates and US hourly rates, segmented by discipline, experience and region (source 3efa5d80965fa0b3). That free report is already being syndicated and editorialized by third parties like Freelance Informer (source 91e63bf044a4e51c), meaning the exact 'rate intelligence across disciplines' value proposition is in-market, free, larger-scale, and platform-published. The data moat is not durable and the 'incumbents cannot capture this' wedge is false on its face. Compounding this, the payer-solvency evidence cuts against the $19/mo subscription: more than half of creative freelancers report rising stress as budgets tighten and unpaid work grows (source 24776e7d50496e10), so the target segment is contracting discretionary spend, not adding paid intelligence subscriptions. A $19/mo premium tier of templated charts/scripts sits as a thin, scrapeable wrapper above a free incumbent benchmark sold to a financially squeezed audience. No passage establishes durable value, acute willingness-to-pay, or a defensible position; the on-point evidence that does exist points the other way.

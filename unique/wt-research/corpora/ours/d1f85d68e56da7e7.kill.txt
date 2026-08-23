@@ -1,0 +1,21 @@
+AccrueBack — The Casual Worker's Unpaid Holiday Pay Recovery Pack.
+
+A fixed-fee productized service that turns a zero-hours or agency worker's messy payslips into a fully quantified unpaid-holiday-pay demand pack — accrual ledger, statutory calculation, employer demand letter, ACAS early-conciliation form and tribunal-ready schedule of loss — across ALL their casual jobs at once.
+
+Lens: broaden. Instead of the consensus shape (a per-employer dispute tool), widen to the worker's whole casualised value chain: a Gen Z worker typically stacks 2-4 income sources (staffing-agency shifts, hospitality zero-hours, event work, app gigs reclassified as workers post-Uber v Aslam), and EACH accrues 12.07% statutory holiday pay that is chronically unpaid or rolled up unlawfully. The daily friction is concrete: they see gross pay per shift but have no idea thousands of pounds of accrued leave exists, and no single employer view ever reveals it. The productized service ingests payslips/rotas from every source, computes the accrual under the post-Harpur-Trust and 2024 Employment Rights (Amendment) rules per engagement type, and ships a done-for-you recovery pack per employer plus one consolidated 'what you're owed' ledger. Priced as a small fixed fee per pack (£35) plus an optional uplift on recovered sums — sized for a tight monthly budget because the pack pays for itself on the first recovered week of leave. Solo-operable: payslip parsing, quantum calculation and letter generation are fully automatable; the operator's judgment is only in edge-case classification. The moat compounds: every case adds to a proprietary dataset of which agencies and hospitality groups settle, at what percentage, after which escalation step — making each subsequent pack's demand letter calibrated in a way no fresh copier or DIY worker can match.
+
+18-27 year-old casualised workers in the UK stacking zero-hours hospitality shifts, staffing-agency work and gig-app jobs — specifically those with 12+ months of payslips and no payslip line item for holiday pay; they pay the fixed pack fee from their own pocket because the recoverable sum (typically £400-£2,500) dwarfs it.
+
+The Harpur Trust v Brazel ruling and the January 2024 Employment Rights (Amendment) Regulations rewrote holiday-pay accrual for irregular-hours workers, and the incoming Employment Rights Bill's enforcement push means agencies are settling pre-tribunal rather than defending; meanwhile worker-status rulings keep pulling more gig platforms into the accrual net — so the pool of quantifiable, collectable claims is growing exactly as employers' appetite to fight them shrinks.
+
+The passages confirm the Harpur Trust v Brazel ruling and its historic underpayment claim, but say nothing about whether that value is still open now, is already commoditised by free tools, or is evaporating under the April 2024 rolled-up-pay rule changes cited in the candidate; three passages are irrelevant metal-fabrication/dictionary results.
+
+A free instant government-adjacent calculator ([301f812377664876]) already handles zero-hours, part-time, and mid-year starters, and Acas ([69a5a882e3690f47]) provides free advice and dispute resolution — together these are exactly the free incumbents the candidate's own commodity premortem names, showing the core calculation and conciliation functions are already served.
+
+The passages describe zero-hours workers' income instability and pay gaps but say nothing about their ability or willingness to spend £49 out of pocket on this specific pack.
+
+These passages are generic TikTok product/help pages (login, DMs, ads manager, age restrictions) with no mention of holiday-pay content, this audience, or any recovery-pack distribution route.
+
+The passages only describe the FCA's general role, scale, and its public firm register — none address whether AccrueBack's specific holiday-pay recovery service falls inside or outside the CMC regulated-activity perimeter, or whether it could lawfully operate pre-authorisation.
+
+The passages confirm holiday pay disputes are litigated and enforceable via tribunal (062f9e41bd34f79b, f213036a4beffda8, 73f2893345203aaf), but none show workers actively paying for a recovery service or quantify acute unmet demand among casualised multi-job workers as the candidate claims.

@@ -1,0 +1,13 @@
+RideCheck – The PHV Driver’s MOT Downtime Income.
+
+A parametric income protection product for taxi and private hire drivers that pays a daily cash benefit when their vehicle is off‑road due to an MOT failure, using telematics partnerships to select low‑risk drivers.
+
+As the DVSA tightens MOT standards (especially on emissions), more cabs fail and sit idle, costing drivers their entire day’s income. A solo operator can structure a simple parametric payout (fixed sum per day, verified by a failed‑MOT certificate) and, crucially, partner with telematics providers to underprice the risk by only enrolling drivers whose vehicle health data predicts a low failure probability. Incumbent insurers cannot access this data at scale for this micro‑segment.
+
+Self‑employed private hire and black‑cab drivers.
+
+DVSA’s rolling MOT regime toughening (e.g. Euro 6 diesel checks) is increasing failure rates for older purpose‑built hackney carriages, while platforms like Uber offer no income safety net.
+
+The passages only define what an MOT test is and how to check one, and separately show that gig-driver insurance products (Zego for Uber Eats) and Uber's own driver requirements exist, but none of them describe whether an MOT-failure income-protection payout is durable, already offered, or commoditised by any provider.
+
+Zego is described as a tech-driven insurer using telematics to deliver tailored policies specifically for UK private hire and gig-economy drivers, and is trusted by over half a million UK drivers — a well-funded incumbent already using the same telematics-based approach on this exact driver segment. That undercuts the claim that this space is open and that only a new entrant could access telematics data to underwrite PHV drivers cheaply.

@@ -1,0 +1,31 @@
+AI safety audits for Georgia poultry line workers.
+
+An AI-camera service that audits poultry line workers' ergonomic safety against OSHA recordable criteria, so plants catch injuries before they're filed.
+
+Georgia is the largest poultry-producing state, with plants clustered around Gainesville (the self-styled Poultry Capital of the World), Canton, and Claxton. Poultry processing has the highest injury rate of any major industry, and the Bureau of Labor Statistics publishes annual injury data showing the gap. Many Georgia poultry plants already run line cameras for quality control; those same camera feeds can flag OSHA-recordable ergonomic events (repetitive debone motion, blade proximity, slip patterns, cold-stress recovery) that the human safety inspector catches only on a daily walk-around.
+
+The service ingests existing line-camera feeds, runs the AI model, and delivers a weekly safety dossier to the plant manager. Pricing is per line per shift, with monthly bundles for multi-plant operators.
+
+This borrows from how professional sports teams use AI-camera analytics (NFL Next Gen Stats, NBA player tracking) to flag injury risks before they happen, applying that pattern-recognition discipline to industrial lines. The model is trained on poultry-line footage, a niche dataset a generic factory-floor safety vendor never collects, and plants also won't share line footage with a generic vendor who competes with their integrator customers.
+
+Plant safety manager or HR director at a Georgia poultry processor (Pilgrim's Pride in Canton, Tyson plants across the state, Fieldale Farms in Baldwin, Mar-Jac in Gainesville, Koch Foods, Claxton Poultry, and Crider in Stillwell).
+
+OSHA's 2024 poultry processing emphasis program increased inspections at Georgia plants; the Georgia Department of Labor's 2023 ergonomic initiative flagged poultry's outsized share of workers' comp claims.
+
+The passages discuss poultry processing technology adoption (PPO foreign-material detection, Ancera pathogen models) and OSHA hazards/program requirements, but none show active search demand, paid alternatives, or buyer inquiries specifically for AI-camera ergonomic auditing against OSHA recordable criteria in poultry plants.
+
+Passages show the named payers are large, solvent Georgia poultry operators: Pilgrim's Pride posts $18.44B trailing revenue [e601f498986befc9], and Fieldale, Tyson, JBS, Mar-Jac and Tip Top all run major Georgia complexes [afe48296682b799c, 7475a5d2478dc37b]. Even with industry consolidation pressure [8bb6b3152686a9ea, 5ab6e588929a3d6d], a £49.99 charge is rounding-error against any of these balance sheets, so the buyer clearly can pay; motive to spend on safety tools is not contradicted by the passages.
+
+The passages show an established, high-traffic channel for reaching U.S. poultry processors: IPPE's 2026/2027 expo draws 32,000+ attendees and 1,200+ exhibitors across 646,000+ sq ft [752250bdb77a6d57, 6a618b73886a33d6, 4f5c0aaa055d573f], and equipment distributors like Cantrell Gainco actively reach poultry plants through exclusive partnerships [876b3267cb36a35b]. Vendors like Safe Foods also engage plants directly on safety-adjacent issues [d6e3a4e99a2f22f9].
+
+The passages establish that Georgia employers may conduct video surveillance in common workplace areas under O.C.G.A. 16-11-62 and that no state statute requires advance notice before electronic monitoring begins, so a third-party AI processor analysing the plant's existing line-camera feeds for safety purposes does not require breaking any state surveillance or recording law cited in these passages.
+
+The OSHA Regional Emphasis Program for poultry processing (CPL 23/09, effective Oct 1, 2023, Region IV covering Georgia) confirms ongoing regulatory enforcement pressure, and the NIOSH HHE report documents carpal tunnel and musculoskeletal disorders as real ergonomic hazards in poultry plants — even though recent articles show injury rates have fallen below other industries, the active OSHA emphasis program and documented MSD/cumulative-trauma issues establish that plants have a real, acute reason to invest in prevention now.
+
+Passages show OSHA issued updated national Inspection Guidance for Animal Slaughtering and Processing Establishments on October 15, 2024 (c965a6793c3614bd), and an active poultry processing inspection at Keystone Foods in Camilla, GA was opened on December 27, 2024 (5bc6b62feab49543), confirming current enforcement pressure on Georgia poultry plants. The Regional Emphasis Program shown (c8007c16f34223c4d, c3f1a7941848fe73e) covers Region VI states (AR, LA, OK, TX, NM) rather than Georgia, but the national guidance and the live Georgia inspection demonstrate the regulatory trend is active…
+
+Passages show USPOULTRY runs an annual National Safety Conference for the Poultry Industry co-organized with Georgia Tech Research Institute, plus recurring clinics and a Poultry Insight video series — real, accessible industry channels where a novice exhibitor or sponsor could reach plant safety managers. No passage blocks entry or shows the channel is restricted to credentialed experts only. Competitor profiles (Intenseye, Voxel) confirm the buyer category exists but do not address distribution feasibility.
+
+The passages confirm Georgia as the nation's largest poultry-producing state (d3a6dc81162706fe, 1f27df498f17f925, 6a121f962b4dcb6f), Gainesville as the self-styled 'Poultry Capital of the World' (d969ab6c27521539), and the named processors Fieldale Farms, Claxton, and Mar-Jac as Georgia-based major poultry companies, with Tyson Foods also confirmed as operating in Georgia (fa84aa37c8a50445, d3a6dc81162706fe). No passage contradicts the candidate's framing of a large, mechanized Georgia poultry industry.
+
+No passage shows a single provider controlling 80%+ of the AI-camera safety or poultry-line monitoring channel — multiple funded competitors exist (Intenseye, Voxel, Protex AI, Ergora, Treston ErgoID, Forge Lens, Ergo Copilot), so no structural incumbent lockout is evidenced. Georgia law permits workplace video surveillance in common areas under O.C.G.A. 16-11-62 with no biometric-privacy statute, and named payers (Pilgrim's Pride $18.44B TTM revenue, Fieldale Farms ~$515M) are clearly solvent, so neither a regulatory blocker nor a documented unit-economics failure is shown.

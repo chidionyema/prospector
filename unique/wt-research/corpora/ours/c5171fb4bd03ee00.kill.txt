@@ -1,0 +1,23 @@
+Regression-test home-care visits for Georgia vendors.
+
+A repeatable test lab lets small Georgia home-care software firms verify visit exports before Georgia Medicaid's EVV aggregator accepts them.
+
+This is a repeatable test lab for small Georgia home-care software companies, so the business is TECH-VERTICAL. The payer is the company's founder, not the care provider. With written customer authorization, the tool turns approved schedules and synthetic visits into versioned test packets. It runs the same export logic used by the product and compares the result with Georgia Department of Community Health Electronic Visit Verification rules before a provider goes live.
+
+The recurring trigger is a new provider, payer, county, scheduler version, or interfacing vendor release. The deliverable is a cross-client test pack, a rejection-to-code fix map, and a release approval rule. The public sources are the Georgia DCH Electronic Visit Verification page, 42 C.F.R. § 440.720, and Social Security Act § 1903(l), which establish the personal-care EVV requirement. The tool does not submit a claim or alter visit data.
+
+This borrows contract tests from payment gateways, where every request needs an exact response before production traffic is allowed. The U.S. Bureau of Labor Statistics Occupational Employment and Wage Statistics program is the public proof that software quality-assurance analysts and testers are paid occupations. Charge $750 a month per software vendor. Most packets and expected outcomes are generated automatically, keeping review under five hours in a busy month. Reach buyers through home-care software consultants, EVV onboarding firms, and Georgia provider associations that refer preferred technology vendors.
+
+The lasting value is a de-identified corpus of recurring failure categories and accepted patterns across compatible clients, which one vendor's internal test team cannot build from its own product alone.
+
+The founder of a small Georgia home-care software company onboarding providers to Medicaid Electronic Visit Verification.
+
+Georgia Medicaid requires EVV records for covered personal-care visits, so every service-code or aggregator change can delay a provider rollout and its claims.
+
+The passages show that state EVV aggregators require third-party software vendors to complete formal testing scenarios before acceptance (Oregon passage), and that a commercial EVV export-validation tool (Oncu) already exists with a free-trial model for this exact problem class. This establishes that software vendors face a real, recurring testing burden and that buyers are willing to engage with paid tools in this space, even though no passage specifically addresses Georgia or the software-vendor-as-buyer niche.
+
+The passages confirm a Georgia EVV vendor market exists (Netsmart Mobile Care+, AxisCare, eVero) and that third-party integration is active, but none of them say what small Georgia home-care software founders spend, whether they buy auxiliary QA/testing tools, or whether £49.99 fits their budget and motive. Source_ids: [d51b9879abd3240a], [59fdc75cf1fc6de1], [1e18c99a8a65cb25], [e7f895501760ce5a], [57c723667e218dc6], [1858ff1f50818f3d].
+
+The passages show active referral and consulting channels in Georgia home care: The Kare Kollective connects agencies, businesses, and service providers via referrals (ddfa8145046c7664); licensing/startup consultants operate in the state (ace315ebb67b6e0b, 7469502f4eceac2f); and DCH maintains a public EVV third-party vendor integration pathway gated on supporting at least one enrolled Medicaid provider (59fdc75cf1fc6de1).
+
+Passages 418a8e116725e0e2, 069148c76171696e, and ad56413146daf077 affirm that generating synthetic healthcare data for testing is a lawful, HIPAA-safe practice when developers avoid real user data, comply with data protection laws, and label synthetic usage—conditions consistent with the candidate's stated use of synthetic visits and written customer authorization.

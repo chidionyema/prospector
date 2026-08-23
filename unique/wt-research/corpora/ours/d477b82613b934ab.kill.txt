@@ -1,0 +1,27 @@
+The Kitchen Bench Refund Harvester.
+
+A productized service that recovers VAT on bad debts for UK micro-restaurants using a reverse-audit of their merchant settlement files against HMRC's partial exemption rules.
+
+A solo operator can use an analogical transfer from construction adjudication to food service, where the friction point is the time cost of reconciling merchant fees with VAT returns. The structural form is a fixed-fee outcome service: the operator extracts merchant settlement CSVs, runs a proprietary script to identify unreclaimed VAT on bad debts and chargebacks, files the amendment, and splits the refund 70/30 with the restaurant. The wedge is the operator's proprietary tax-code logic and batch-filing script, which each restaurant would take 20+ hours to replicate.
+
+UK-based independent restaurants and cafes with 3-15 employees, processing £200k-£2M annually via card terminals, who have at least £5k in annual chargebacks/bad debts.
+
+HMRC's VAT bad-debt relief rules changed in 2024 to allow digital-only reclaims, but no free tool exists to automate the merchant-data-to-HMRC mapping. Restaurants are cash-poor post-inflation and overlook this reclaim because it requires reconciling three data sources (merchant statements, VAT returns, chargeback logs).
+
+The provided passage discusses reconciliation software for restaurant chains in India, focusing on aggregator settlements and GST regulations, and does not address the UK market or the specific VAT bad-debt relief service proposed in the candidate.
+
+The provided passage outlines the mechanism for claiming VAT relief on bad debts but does not contain information regarding the financial solvency or willingness to pay of the target UK independent restaurants.
+
+The provided passage is guidance on claiming VAT relief for bad debts and does not address methods, channels, or routes for distributing the service to the target audience.
+
+HMRC explicitly provides guidance for claiming relief from VAT on bad debts, indicating that this is a recognized and lawful tax mechanism. The proposed service facilitates the use of this legitimate statutory relief.
+
+The passage confirms the existence of a regulatory mechanism for VAT relief on bad debts but contains no information regarding the severity of the pain point for restaurants or whether they are currently paying to solve it.
+
+The provided passage covers general UK VAT principles, Making Tax Digital requirements, and partial exemption, but does not address the 2024 bad-debt relief rule changes required to verify the currency of this specific opportunity.
+
+The provided passage only explains the definition and application of VAT bad debt relief, and contains no information regarding channels or methods for reaching potential paying buyers for the service.
+
+The provided passage confirms that relief from VAT on bad debts exists, but it does not address or confirm the claim that a 2024 rule change introduced digital-only reclaims.
+
+The viability of 'The Kitchen Bench Refund Harvester' is fundamentally undermined by a complete lack of evidence for its core hypotheses. There is no confirmation of a reachable or willing customer base, no validation of the assumed 'high-friction' pain point in micro-restaurants, and no verification of the critical premise that 2024 HMRC rule changes enable a digital-only reclaim process that creates this opportunity [cd74117e106c6fd7]. Without evidence of demand, channel effectiveness, or even the regulatory premise itself, the business relies on speculative assumptions rather than validated need, making it a high-risk venture without a proven route to unit economics that support owner income.

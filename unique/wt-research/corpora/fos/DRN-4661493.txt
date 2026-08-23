@@ -1,0 +1,93 @@
+DRN-4661493
+The complaint
+Ms K complains Wise Payments Limited charged her fees she wasn’t aware of. 
+What happened
+Ms K saw an advert for Wise, and it said ‘Receive money with Wise for free’. Ms K opened a 
+Wise business account as she was expecting a payment in Euros. 
+Ms K received the payment and was sent a message to say she needed to ‘fix the transfer’ 
+by adding a bank account to receive her payment. Ms K added her bank details and then 
+had to transfer the money from her Wise account to her bank account. 
+This transfer was charged fees, €237.31. 
+Ms K thought this was unfair as she had no other option but to transfer into her bank 
+account. And the fees were only shown at this point, Ms K hadn’t seen anything about fees 
+previously, only the fee free advert. 
+Ms K complained to Wise and it replied to say there were no fees for receiving the payment 
+in Euros. But since Ms K transferred the Euro payment into an Indian Rupee account, there 
+were fees for this transaction. 
+Wise said its terms and conditions say balances aren’t available for personal accounts in 
+India. Wise also said there’s an article on its website that says “the money received in your 
+account details gets automatically converted into INR and transferred”. 
+Wise said it’s frequently asked questions could be clearer, and it’s looking to update this. But 
+since Wise felt its pricing was correct it didn’t agree to refund the fees Ms K was charged. 
+Wise accepted some of its communication could have been clearer and offered Ms K £50 to 
+compensate for this.
+Unhappy with this answer Ms K brought her complaint to this service. An investigator looked 
+into things and thought Ms K’s complaint should be upheld. 
+The investigator thought Wise’s website was confusing and there was lots of marketing sent 
+to Ms K highlighting the ‘no fees’. The investigator thought it would take a long time to find 
+the fees page, and had Ms K found out about the fees she’d have used a different company. 
+The investigator thought Wise should refund €110.94, the difference between Wise and the 
+service Ms K would have used instead, as well as the £50 compensation previously offered. 
+Ms K accepted the investigator’s outcome. 
+
+Wise disagreed and said Ms K would have seen the fees while setting up the payment. Wise 
+felt there are lots of resources on its website to help Ms K see what the fee is. 
+Wise responded further to say the fees are clearly linked on its home page and there’s a 
+calculator to work out the fees. Wise said its help centre would likely answer any questions 
+Ms K had about fees, or she could contact Wise direct. 
+Wise said its advert clearly says “Receive and add money to your Wise account” and doesn’t 
+say it’s free to send it on to another account. Since Ms K transferred the money she received 
+on to an external account, Wise felt it would be unfair to refund this fee.
+ 
+Wise asked for an ombudsman to decide things.
+My provisional decision
+Although I agreed this complaint should be upheld, I thought Wise needed to do more to 
+resolve things. I issued a provisional decision, and in it I said:
+There’s no dispute Wise charged Ms K a fee. And there’s no dispute Wise has links to its 
+pricing page and a calculator to work out fees. 
+But, looking at pricing page Wise links to in its agreements, there’s no ability for Ms K to see 
+what fees she might be charged for an outbound payment from her Wise account. 
+When the fees page is set to the consumer being an Indian resident with a business 
+account, the box for ‘send money’ is greyed out. There’s a page for ‘receive money’ but Ms 
+K wasn’t charged for receiving money. 
+Wise has made it very clear the receipt of the Euros was fee free. The fee was charged 
+when Ms K sent the money from her Wise account to her bank account in India. 
+But I don’t think Wise’s terms necessarily allow for this fee to be applied. 
+Wise’s terms give provision for a fee, section 10 of its terms and conditions say: 
+10.1 You must pay our fees. 
+and 10.2 You can see our fee structure on the Pricing page 
+The pricing page is where Wise lays out how much the fees are. Since there isn’t a sending 
+money pricing page Ms K can access, I can’t say any fees for sending money apply to Ms K 
+in her individual circumstances, being an Indian resident with a Wise business account.
+Since I don’t think the sending money pricing page forms part of the contract between Wise 
+and Ms K, or lists any fees, I don’t think Wise can fairly charge any fees for the money Ms K 
+sent from her Wise account to her bank account in India. 
+Ms K signed up to two separate contracts, one regulated in the UK and one that appears to 
+be regulated in India. I’m unlikely to be able to look at the agreement regulated in India, but I 
+don’t think this is relevant to whether Wise can charge a fee or not. 
+Wise has sent a copy of the transfer receipt, which shows the amount transferred and the 
+fee charged. This receipt was produced by Wise, and the footer of the receipt says it’s an 
+authorised electronic money institution. 
+I think the UK regulated part of Wise charged the fee, so I think this fee is something I can 
+consider. And having done this, I don’t think Wise’s terms allow it to charge the fee. 
+Because I don’t think Wise can fairly charge the fee it did, I think Wise needs to refund the 
+transfer fee, in full, to Ms K. 
+Wise had previously made an offer of £50 for some poor service Ms K received, and, in the 
+circumstances, I think this is a fair offer to compensate Ms K. 
+Responses to my provisional decision
+Wise agreed with my provisional decision.
+Ms K also agreed with my provisional decision, but wanted a final decision, which she’s 
+entitled to ask for.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Since neither party disagreed with my provisional decision, my final decision’s unchanged.
+My final decision
+My final decision is I uphold this complaint and Wise Payments Limited should:
+refund the €237.31 fee it charged
+pay Ms K £50 compensation
+Under the rules of the Financial Ombudsman Service, I’m required to ask Ms K to accept or 
+reject my decision before 2 April 2024.
+ 
+Chris Russ
+Ombudsman

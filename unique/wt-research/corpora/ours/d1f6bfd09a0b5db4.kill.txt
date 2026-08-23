@@ -1,0 +1,21 @@
+The SF Planning Decoder – Weekly Permit & Design Review Intel for Architects.
+
+A paid weekly podcast and transcript service that distills San Francisco Planning Department meetings and Design Review Board rulings into actionable intelligence for residential architects and interior designers navigating permits.
+
+narrow + first_principles – drilling down to a single city’s opaque regulatory meetings and extracting predictive signals that architects would otherwise spend 10+ hours a week trying to glean from raw minutes. The value compounds as a proprietary database of past decisions is built.
+
+freelance architects and interior designers working on residential projects in San Francisco.
+
+SF’s byzantine permitting process is a competitive moat; architects who understand subtle board biases and precedent win faster approvals. Advances in AI transcription and local government meeting digitization make it possible for a solo analyst to cover every session.
+
+The passages describe UK planning-application databases (Glenigan, Barbour ABI, PlanWire, Searchland, LandHawk, Strukta) sold as self-serve pipeline/permit data feeds, plus a generic meeting-minutes guide and a generic AI summarizer — none of them touch San Francisco's Planning Department or Design Review Board, and none address whether interpreting board deliberations for predictive precedent/bias signals is already commoditized.
+
+None of the passages mention San Francisco planning meetings, permits, or design review boards; they concern an unrelated music track, a general-purpose location-data tool, a Telegram channel named 'architects', and a clothing brand, none of which speaks to whether an incumbent already serves this niche.
+
+The passages describe RIBA industry benchmarking survey and UK architectural/engineering consultancy insolvency counts, but none states individual freelance architects' or designers' discretionary income or budget for a one-time information purchase. Growth of the profession and a count of insolvent firms neither confirm nor deny that a practitioner can afford £49.
+
+The passages describe RIBA's general events, awards, and network, plus unrelated survey-site and music content — none address a channel for selling a paid Planning Department intel product to freelance architects.
+
+The passages show UK councils have imposed total bans on filming/recording of committee meetings (a Wirral councillor barred from filming Planning Committee, a total ban following a complaint at North Area Committee), meaning the raw video/audio input this service depends on can be legally blocked at source. A margin built on extracting intelligence from meetings that councils can and do refuse to let anyone record is not reliably lawful to build.
+
+None of the passages address architects, permitting pain, or any acute problem people pay to solve—they cover Roblox game codes, Italian ski resorts, a Russian architecture firm co-founder's business exit, and generic GOV.UK site navigation/blog content.

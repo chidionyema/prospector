@@ -1,0 +1,29 @@
+PCI scope packs for UK ecommerce agencies.
+
+An AI-built scope report that tells a UK ecommerce agency which PCI DSS controls they owe on a given Shopify, Stripe or WooCommerce build.
+
+PCI DSS v4.0 became mandatory on 31 March 2025 with two new e-commerce controls (6.4.3 for payment-page script authorisation and 11.6.1 for payment-page script integrity monitoring) that any UK agency building checkout on Shopify Plus, Stripe Connect, Adyen or WooCommerce has to handle. Each new build triggers a decision the agency cannot avoid: which Self-Assessment Questionnaire (SAQ) applies, which compensating controls are owed, and what the merchant's acquirer (Worldpay, Barclaycard, Elavon) will demand in writing before signing off the merchant.
+
+A productized service that, for a fixed fee, takes the agency's architecture brief (platform, payment service provider, hosted fields versus custom fields, iframe versus redirect, MOTO versus recurring versus crypto) and returns within five working days a written scope decision naming the SAQ, the named compensating controls, and a one-page merchant letter, would replace the £3,000 to £8,000 Qualified Security Assessor scoping call that agencies either absorb or push back on the merchant.
+
+The compounding asset is a corpus of scope decisions against named UK stacks (Shopify Plus Checkout Extensibility, Stripe Connect with custom charges, Adyen for Platforms, WooCommerce Subscriptions with Stripe). Each engagement makes the next faster and aligns the language to what UK acquirers accept.
+
+The first-party alternative is the PCI Security Standards Council's own SAQ selection wizard, which returns a generic SAQ code without the agency's specific stack architecture. Vanta and Drata are built for the audited-entity use case (continuous control monitoring), not one-off deliverable scoping, and neither carries a corpus of named UK platform stacks with the merchant letter language UK acquirers demand.
+
+Technical director or project manager at a UK ecommerce dev agency that builds Shopify Plus, WooCommerce or Stripe Connect projects for retailers and carries the residual PCI risk for the merchant client.
+
+PCI DSS v4.0 became mandatory on 31 March 2025; the new 6.4.3 payment-page script authorisation control and the 11.6.1 script integrity control took effect on the same date; UK acquirers (Worldpay, Barclaycard, Elavon) are actively asking merchants to evidence payment-page script control before the next quarterly review.
+
+The passages confirm PCI DSS v4.0 is active with published SAQs and that ecommerce SAQ selection is recognised as difficult, while third-party service providers play an established role helping merchants meet requirements. The existence of only a generic international SAQ selection tool and ongoing development of ecommerce-specific guidance indicate the scoping problem persists and is not commoditised away.
+
+The passages describe the QSA designation process, general merchant scoping rules, and broad compliance automation tools (Vanta/Drata) framed around SOC 2/ISO/HIPAA, but none establish whether any company is already selling productised PCI DSS scope packs specifically to UK ecommerce agencies, so the presence or absence of a dominant incumbent in this exact niche cannot be determined.
+
+UK ecommerce revenues are projected to reach £141.95bn by 2029 with 7% annual growth and 38.1% of retail sales [d659b29d2998efd5], and the UK is a wealthy economy (GDP per capita ~$61k, HDI 0.946) [68e07bbc4261bb29], supporting that agencies operating in this large, expanding market can readily afford a £99.99 compliance pack. No passage directly addresses agency spending on compliance tooling or willingness to pay, so confidence is moderate.
+
+The passages show that UK ecommerce agencies exist and are actively findable through established channels: iWeb (a UK ecommerce agency since 1995) and Charle Agency (a UK Shopify Plus Partner Agency) have public profiles, and Shopify runs a partner program that paid $1.3B to partners in 2025 with public directories listing agencies by budget tier and platform expertise. A safe commonsense deduction is that these agencies are reachable through Shopify's partner ecosystem, public agency listings, and direct outreach — a low-friction route to the buyer is present.
+
+The passages describe QSA qualification requirements and the formal QSA assessment process but do not address whether a non-QSA scoping advisory product sold to agencies is prohibited, restricted, or otherwise unlawful; none of the sources establish that providing PCI scope reports or SAQ selection advice without QSA designation breaches any law or terms.
+
+Passages [6f107c45de54baa0] and [9c4ccf430476c4b8] show PCI DSS compliance is a real, current burden requiring merchants to complete mandatory questionnaires (SAQ A, ~22 questions) and implement script-integrity controls on payment pages, with the e-skimming threat described as 'real and ongoing' and QSA-led assessments as the enforcement mechanism. This establishes an acute, mandatory pain point that drives expenditure on compliance services.
+
+No passage shows that a non-QSA selling PCI scope reports to UK ecommerce agencies is illegal; sources discuss QSA qualification requirements for formal assessments but do not prohibit advisory deliverables. No passage establishes that customer acquisition cost would exceed the lifetime revenue from a single scope pack sale at the stated price point. No passage names a single company holding 80%+ of the UK ecommerce agency PCI scoping channel; the evidence names multiple competing offerings (PCI SSC wizard, Vanta, Drata, boutique consultancies) and many UK agencies.

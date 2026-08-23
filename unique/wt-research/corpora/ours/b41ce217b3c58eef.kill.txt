@@ -1,0 +1,23 @@
+The Visa Refusal Appeal Architect.
+
+A web tool that transforms a UK visa refusal letter into a court-ready appeal bundle, powered by FOI-obtained Tribunal data showing exactly which arguments won for similar cases.
+
+Squeezed‑middle individuals often sponsor a partner or parent for a UK visa but cannot afford a £2k+ immigration solicitor when it is refused. By using FOI to extract the specific appeal points and judge comments that succeeded in past Tribunal hearings, a solo operator builds a guided questionnaire that auto-generates a compelling, personalised bundle—turning opaque bureaucracy into a DIY win. The lens is first_principles: rebuild the appeal aid from the user's raw information gap and emotional need, ignoring how solicitors currently charge per hour.
+
+A 35‑55‑year‑old professional who has just received a visa refusal for a family member (spouse, parent, child) and is searching online for 'visa appeal help'.
+
+Home Office refusals are rising (especially in family visit and partner visas), Tribunal data is legally required to be public, and the squeezed‑middle have cash-flow pain that makes a £199 product far more achievable than a £2,000 solicitor.
+
+Passages show existing bundle formatting and drafting tools but do not address the candidate's proprietary FOI data or whether it provides durable, non-commoditised value.
+
+Passages mention existing bundle-preparation services (BundleCreator, a 'Chris' drafting tool), but none demonstrate that a dominant incumbent already provides personalised FOI-derived argument matching, so they neither support nor refute that the space is underserved.
+
+None of the passages discuss the payer's budget, willingness to pay, or any evidence of a segment that would pay £199; they only cover administrative procedures for appeal bundles.
+
+The passages describe generic appeal bundle preparation processes but do not discuss any distribution route for the candidate product, whether self-serve or otherwise.
+
+The passages discuss appeal bundle preparation procedures but do not address whether the proposed automated bundle generation service would break any law or terms of service.
+
+The passages describe procedural aspects of appeal bundle preparation but provide no evidence that individuals are suffering acutely or paying to solve this problem.
+
+Existing low-cost alternatives like BundleCreator (from £12) and eLitigant's Chris (£30) already format and draft appeal bundles, making it unlikely that a £199 product leveraging unproven FOI-derived argument matching can compete without demonstrated superior outcomes.

@@ -1,0 +1,11 @@
+The Age-in-Place Cost Navigator.
+
+A postcode-specific data intelligence pack revealing true local costs of common home adaptations and grant success odds, sourced from FOI requests and private contractor surveys, so retirees can confidently plan to modify their home.
+
+Retirees delay essential home modifications because they cannot find realistic cost benchmarks or gauge grant likelihood; a solo-compiled proprietary dataset fills this gap by aggregating FOI-sourced disability facilities grant success rates and contractor pricing, giving an actionable, paid report.
+
+Retirees or their adult children with budget authority over home improvements.
+
+Ageing-in-place policies are expanding local authority grant budgets but information remains opaque; an explosion of FOI-accessible data and increasing solo-operator automation tools make this intelligence product viable.
+
+The passages show DFG cost/grant information is publicly available (gov.uk pages on what DFGs cover, means-testing, VAT, payment timing) rather than opaque, and note demand for DFGs is strong due to an ageing population and housing shortage — evidence about applicant volume, not about any pricing data moat. No passage shows the FOI-plus-contractor dataset is unique or that free public sources fail to answer these questions, so the claimed proprietary value is undercut by the passages themselves.

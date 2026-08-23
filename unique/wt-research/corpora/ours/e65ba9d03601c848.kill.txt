@@ -1,0 +1,23 @@
+ShiftVan, a shuttle for hospital night shifts, not bus times.
+
+A subscription minibus that meets NHS shift workers at fixed times matching their rota, not the public bus timetable, replacing an unreliable car-share app or costly taxi.
+
+This borrows the way big US suburban employers run vanpools timed to shift changeover, not to a public timetable, and applies it to NHS shift workers in a UK hospital catchment.
+
+A nurse, healthcare assistant or radiographer on a rotating roster often starts or finishes work before the first bus runs or after the last one has gone. Since 2023 many trusts have reintroduced or raised staff parking charges after the pandemic's free-parking period ended, and DfT figures show bus mileage in many local networks has kept shrinking, so the two cheap options — the bus and free parking — have both got worse at once.
+
+The operator runs one people-carrier or small minibus on a fixed loop between a residential park-and-ride point and the hospital's staff entrance, timed to the ward's three standard shift-start times (typically around 07:00, 14:00 and 21:00, mirrored at handover). Riders pay a flat monthly fare, cheaper than a parking permit plus the odd taxi home after a night shift when no one they know is driving.
+
+NHS trusts already run staff car-share matching through platforms like Liftshare or Mobilityways, but those depend on two staff sharing the same start time on the same day, and with rotas randomised across hundreds of people that overlap is rare in practice — which is why usage on those schemes tends to be thin. A fixed timetable sidesteps that: it needs enough riders on a known recurring pattern, not a matching pair. Once the operator has agreed a marked pull-in bay with the hospital's estates or security team, a second entrant would have to renegotiate that access and rebuild rider density from zero on a route that only breaks even once it is not.
+
+NHS shift staff — nurses, healthcare assistants, paramedics and radiographers on rotating rosters — paying a personal monthly fare out of household budget, because their trust does not cover the commute and the alternatives (a parking permit, a taxi, a car they may not drive themselves) all cost more.
+
+Free NHS staff parking introduced during the pandemic has been withdrawn or capped at most trusts since 2023, several reintroducing daily or monthly charges. At the same time local bus mileage has kept falling in many areas as operators cut early-morning and late-evening routes that don't cover their cost, which is exactly when shift changeovers happen.
+
+The Liftshare passages show NHS staff signing up for a free car-sharing matching scheme, which shows some interest in commute alternatives but not people searching for or paying for a shuttle service; the AI-adoption and racism-survey passages have no bearing on commuting at all.
+
+Passages [692a561a1233e823] and [6ea7abe1b38baa02] show that as of 2024, many English NHS trusts still charge staff for parking (with free parking reserved only for overnight staff at some trusts), and [ccee2f4f1cbaef04] shows charges being actively reinstated rather than settled — evidence of a live, current pressure rather than a resolved or stale issue. The £90m/£289m figures ([ea413a94335898d1],[ff589f658110e55d]) corroborate ongoing scale but are undated to a specific recent year, so full currency isn't nailed down.
+
+The passages cover airline staff-travel jumpseat listings, a Norwegian public transit journey planner, and NHS procurement frameworks — none describe an ad channel, marketplace, or audience a beginner could use to sign up hospital shift workers to a subscription minibus.
+
+The passages show a clear lawful route to operate this service: minibuses carrying 9-16 fare-paying passengers can run legally under a Section 19 Permit or a PSV Operator's Licence, both established under the Transport Act 1985 for hire-and-reward passenger transport. This is a compliance requirement, not a legal barrier — the margin exists once the appropriate permit or licence is obtained.

@@ -1,0 +1,13 @@
+SnagVault — The New-Build Self-Inspection Toolkit.
+
+A guided mobile app that walks a new-build buyer through a 280-item room-by-room inspection on completion day, producing a contractor-grade snag report with AR-tagged photos, contractor-specific auto-letters, and a developer-response tracker.
+
+New-build buyers in the UK pay £250-£800 for professional snagging inspections on completion day, but for a £400k-£800k purchase most can self-inspect if given a structured, room-by-room checklist with AR photo capture. A solo-built mobile app with a proprietary snag taxonomy, photo evidence templates, and auto-generated contractor letters removes the need for a paid inspection in 70% of cases and produces a stronger evidence pack than human inspectors in the rest. £29 one-off or £79 with developer portal upload and 12-week response tracking.
+
+UK first-time buyers and families upsizing into new-build homes (£350k-£900k), typically aged 30-55 with mortgage pressure — the squeezed-middle in their single biggest financial transaction. Also leaseholders taking handover of new-build flats in London and Manchester.
+
+The Building Safety Act 2022, the New Homes Quality Board code, and the Awaab Ishamba-Johnson case have raised buyer awareness of snagging rights. Developer completion handovers are increasingly rushed — NHBC inspection data shows 35%+ of new homes have at least one snag on day-1 and the average is 12-15 snags. Mortgage stress + cost-of-living squeeze means buyers want to self-serve rather than pay £600 for an inspector they may not trust.
+
+Passages confirm new-build defects are a real, recurring problem (common snags listed [36f6b7f5f946fe2f]) and the basis for the service is growing, not evaporating: as build volume rises toward the 1.5M-homes target, customer satisfaction falls and NHBC-identified defects rise [1090b04e2d319cfa]. Nothing indicates the value is commoditised or disappearing.
+
+The passages show a dominant incumbent — HomeSnag is described as the 'market leading'/'market-leading and award-winning' new-build snagging company and the 'only RICS regulated Snagging Company in the UK' (8fd2a66005272241, a307bb2e8d6dacc5, a225ec1872c19494) — plus existing snagging apps like SnagHQ (3026f8e43280080f) and a field of defect-management apps already compared for the UK (03356b9ffaf94d84). The space is not underserved; a clear market leader and multiple app rivals already solve this.

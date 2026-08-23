@@ -1,0 +1,23 @@
+InspectAppeal – The Restaurant Health Code Defense Engine.
+
+A web tool that transforms a restaurant owner's violation details into a data-backed appeal dossier, using FOIA-obtained outcomes from similar infractions to maximize reversal odds.
+
+Independent restaurant owners receiving health code violations often feel powerless to appeal due to opaque processes and lack of legal knowledge. There is a friction in translating raw violation data into a persuasive, precedent-driven argument. A vertical_tool that combines a structured interview with a proprietary dataset of past appeal decisions (obtained via FOIA) can craft a statistically optimized appeal letter and evidence checklist, turning a panic event into a rule-based rebuttal.
+
+Independent restaurant and café owners (smb_owner with 1-20 staff, hands-on operators).
+
+Post-pandemic, health departments have ramped up inspections, generating a surge in fines. Simultaneously, open-records laws and natural language processing make it feasible for a solo operator to compile and analyze thousands of anonymized appeal outcomes across jurisdictions, providing a data moat that didn't exist five years ago.
+
+None of the passages discuss restaurant health code appeals, FOIA-obtained datasets for appeals, or any aspect of the candidate's value proposition. The passages are about unrelated FOIA incidents, drug facility inspections, and EU data protection, providing no evidence on durability.
+
+None of the provided passages address the existence or absence of incumbents in the restaurant health-code appeal tool market; they discuss FOIA request procedures, generic government search, and unrelated topics.
+
+The passages discuss FTC workshops, data privacy principles, defence budget transparency, ROI definitions, and PayPal accounts—none bear on restaurant owners' budgets or willingness to pay for a health-code appeal tool. No evidence addresses payer solvency.
+
+The passages discuss unrelated topics (restaurant tracking lawsuits, a generic database, FOIA police reports, Android backup) and provide no information about distribution channels for a health code appeal tool.
+
+None of the passages discuss the legality of using FOIA data to craft health code appeal letters; they mention FOIA broadly but provide no information on whether such a business model is lawful or requires breaking laws/terms.
+
+None of the passages mention restaurant health code violations, appeals, or any pain point relevant to the candidate. The passage about restaurant owner real-time data synchronization is irrelevant.
+
+None of the provided passages contain evidence of regulatory blockers, impossible unit economics, or an incumbent monopoly for this business model.

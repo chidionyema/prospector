@@ -1,0 +1,23 @@
+CarerClearing – The Rapid Equipment Liquidation Broker.
+
+A transaction broker that enables carers of deceased or recovering individuals to instantly sell used medical equipment and care-related goods to a pre-vetted network of dealers, taking a 15% fee from the buyer.
+
+Invert: As the cost of living crisis bites, carers increasingly need to liquidate assets of a care recipient immediately after death or discharge to cover expenses, yet face logistical hurdles and low-ball offers from generic online marketplaces. The more stringent the executor duties and time-pressured the need, the higher the value of a broker that guarantees a floor price and same-day pickup. The broker aggregates demand from refurbishers and overseas buyers, creating a proprietary bid book no single seller could access.
+
+The purchasing dealer pays a 15% sourcing fee on each item bought; the carer receives the net proceeds (typically 30–50% more than a Facebook Marketplace sale with zero effort).
+
+The used medical device market is booming due to NHS pressures and overseas demand for affordable mobility aids, yet sellers are fragmented. Carers facing funeral costs and urgent clearances need immediate, pressure-free disposal; local auction houses are too slow, and consumer platforms expose them to scams and endless haggling.
+
+None of the passages address used medical equipment, carer liquidation, network effects, or commoditisation; they consist of transaction definitions, a care act snippet, molecular sieve info, and deceased estate investigations — zero conceptual overlap with value durability.
+
+None of the passages mention the used medical equipment liquidation broker space or any dominant incumbent in it. The Exizent reference pertains to bereavement and probate administration, not equipment liquidation.
+
+None of the passages address whether purchasing dealers have budget or motive to pay a 15% sourcing fee; they define 'transaction,' discuss insolvent estates, and cite a carer programme cost, all irrelevant.
+
+The passages provide only generic definitions of 'transaction' and an unrelated case study on bereavement care; they contain no information about the existence or feasibility of a distribution channel for the broker's dealer network.
+
+None of the passages address the legality of selling used medical equipment or brokering such sales; they merely define 'transaction' or discuss unrelated subjects like body disposal or probate protocols.
+
+The passages define 'transaction', describe debt repayment from an estate, and mention a broker assisting with social care sourcing. None addresses whether carers face an acute, paid problem of liquidating medical equipment quickly; the evidence is entirely irrelevant to the pain reality claim.
+
+No evidence in the provided passages indicates that the business model is illegal, has impossible unit economics, or faces an incumbent monopoly controlling the distribution channel.

@@ -1,0 +1,21 @@
+The Creative's Almanac — your seasonal guide to exactly when to pitch fashion, education, retail and charity projects, so you catch the budget before it’s spent.
+
+A quarterly digital magazine that predicts the best months to pitch creative projects to different UK sectors, based on historical spending cycles and events.
+
+Borrowing from the farmer’s almanac, which predicts planting and harvest windows, this media product applies the same concept to the gig economy. Freelance creatives often pitch at the wrong time, missing the window when clients are allocating budgets. By analyzing public data like quarterly corporate earnings calls, ad-spend reports, grant cycles, funding rounds, and cultural events (e.g. London Fashion Week, Christmas campaigns), the almanac builds a predictive model of when each creative niche (fashion photography, e-learning design, packaging, etc.) sees a spike in demand. Each quarter, subscribers receive a digital magazine with visual timelines, lead-time warnings, and actionable pitch guides for the next six months. The wedge is proprietary_data: the amalgamated dataset and the forecasting model, refined year on year, become increasingly accurate and hard to replicate. A free blog post cannot match the depth or timeliness. The solo operator automates much of the data collection via APIs and manual curation, but the editorial analysis is the unique selling point.
+
+Freelance designers, copywriters, illustrators, and developers who serve multiple UK industries. Price: £29 per issue or £79 annually.
+
+Post-pandemic, freelance markets are more crowded, and timing can be the difference between feast and famine. With economic uncertainty, knowing when to focus efforts is critical.
+
+The passages show open freelance job listings, free presentation templates, open-source data-story projects, and generic printable calendars, but none say whether paid, sector-specific pitch-timing forecasts remain scarce or have been wiped out by free substitutes. They never address whether that forecasting product still has lasting paid value for UK creatives.
+
+The passages mention magazines seeking freelance pitches, general pitch-how-to advice for journalists, UK day-rate and salary guides, and European freelancer directories. None of them name or describe any product that forecasts when UK creatives should pitch fashion, education, retail, or charity work by budget cycle, so they do not show whether that niche is already dominated or still open.
+
+None of the passages say whether UK freelance creatives can or will pay for a paid pitch-timing magazine. They cover freelancers’ time on promotion, companies’ falling spend on freelance platforms, FMS market reports, hiring marketplaces, student pitch advice, and one unpaid-invoice anecdote—none of which establish buyer budget or willingness to pay.
+
+The passages only describe UK freelance job platforms and marketplaces where creatives find gigs or hire talent. They never say how a paid quarterly pitch-timing magazine would be sold, promoted, or delivered to those freelancers.
+
+The passages only say public-sector information may be re-used under Crown copyright rules and licences, and that commercial scraping tools exist. They never say whether a paid UK pitch-timing almanac built from earnings calls, ad-spend reports, events, and scraped third-party sources can be sold without breaking law or terms.
+
+The passages note pitch quality problems, contract caution, editor nerves, seasonal freelance waves, UK trading seasonality filters, and pressure to adapt amid AI and economic change, but none show freelancers suffering from or paying now to learn when sector budgets open. They never evidence an acute, paid demand for seasonal pitch-timing guidance of the kind this product sells.

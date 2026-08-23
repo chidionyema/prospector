@@ -1,0 +1,11 @@
+The Property Tax Appeal Evidence Builder.
+
+A web tool that equips US homeowners to fight assessment increases by generating a county-compliant comparable-sales evidence packet and appeal letter, using proprietary local market data and argument templates.
+
+Homeowners are over-assessed but lack the time or expertise to compile a persuasive appeal; the county provides raw data but no advocacy. By building a data engine that localizes comps and past appeal success patterns, a solo operator creates a tool that increases win probability for a flat fee.
+
+US homeowners aged 35–55 with recent assessment increases and assessed values above market, motivated by a potential tax saving of $1,000+.
+
+Post-pandemic home price volatility has made assessment errors rampant, while many counties are under-resourced, creating a window for DIY appeal tools.
+
+The exact value proposed for a flat fee — generating a comparable-sales/comp evidence packet and appeal kit — is already given away free by direct substitutes: one explicitly a 'free alternative to paid comp-report services' [98a2c9a3b3260d39] and another 'Free. All features included. No subscription, no in-app purchases' [966678c2cacfad1f], with a third instantly generating a county-specific challenge kit [047d206ce4e973d1]. Free tools doing the identical job remove the margin for a paid entry.

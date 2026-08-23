@@ -1,0 +1,11 @@
+The Boundary Dispute Evidence Builder.
+
+A web app for residential homeowners in England & Wales that compiles a litigation‑ready boundary‑dispute evidence pack using Ordnance Survey MasterMap data, historic aerial imagery, and an AI‑drafted witness statement — turning a £5k solicitor’s job into a £299 DIY product.
+
+The core need is to organise admissible evidence proving a boundary line; current processes rely on expensive surveyors manually gathering public data. By automating the merge of Land Registry title plans, high‑resolution historic imagery, and a statement wizard, a solo operator can deliver a dossier that shifts the power balance and makes legal prep affordable for the cash‑poor homeowner. A computer‑vision module that auto‑detects physical encroachment from historic aerial photos creates a technical moat no competitor can easily clone.
+
+The squeezed middle homeowner (age 40‑55, mortgaged property, professional income) embroiled in a boundary dispute with a neighbour, especially in suburban areas where surveyor costs are prohibitive.
+
+HM Land Registry’s digital services and OS MasterMap API allow instant title plan downloads, while high‑resolution historic imagery from companies like Nearmap is newly accessible. At the same time, post‑pandemic home‑improvement waves have triggered a record spike in disputes, and the average cost of a boundary surveyor has risen to £6,000 — making a £299 automated alternative irresistible.
+
+The candidate's product compiles a 'litigation-ready boundary-dispute evidence pack,' which is a type of legal bundle. The passage explicitly states that 'BunTool: Make legal bundles in minutes, for free,' indicating that the core value of creating legal bundles is already commoditized and available for free.

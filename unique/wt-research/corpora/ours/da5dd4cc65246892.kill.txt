@@ -1,0 +1,23 @@
+Direct Payment Uplift Broker – Carer’s Council Negotiation Engine.
+
+A commission‑based service that re‑negotiates inadequate direct payment budgets offered by local authorities to primary carers, securing a higher cash allocation for home care and taking a flat 25% of the first‑year uplift.
+
+Councils systematically under‑fund direct payments for home‑based care packages, relying on carers’ exhaustion and lack of benchmarking data to accept low offers. By inverting the power dynamic, this broker acts as a hostile negotiator on behalf of the carer, armed with a proprietary database of peer‑authority payment rates, statutory care act obligations, and anonymised case outcomes. We don’t fill in a form — we send a legally‑grounded rebuttal package that forces the council to re‑assess, and we handle all correspondence until a revised budget is issued. The carer never pays upfront; our fee is deducted from the first few months of the uplift. The structural moat is proprietary_data: a closed‑loop intelligence pipeline that tracks council under‑payment patterns across dozens of authorities, which no regulator or charity builds because it requires adversarial information extraction.
+
+The primary carer (or the disabled person’s appointee) pays a success fee from the increased direct payment cash — typically 25% of the first year’s extra amount, capped at a maximum absolute figure to ensure fairness.
+
+The post‑2023 squeeze on council budgets has seen a sharp rise in low‑ball direct payment offers, while the statutory duty to meet assessed needs remains unchanged. There is no free ‘broker’ service that monetises the gap between offer and entitlement; free advocacy (e.g. Carers UK helpline) only provides advice, not a transaction. The timing is urgent because many carers accept sub‑standard packages without realising they can challenge them.
+
+The passages mention direct payments and council budgets but provide no evidence about the durability, commoditisation, or evaporation of the proposed negotiation service's value. No passage supports or refutes the claim.
+
+The passages discuss barriers to direct payments and local authority budgets but do not mention any existing service that re-negotiates payment uplifts for carers, nor do they indicate the presence or absence of a dominant incumbent.
+
+Passages discuss corporate insolvency and general care system underfunding but contain no information about carers' financial capacity or willingness to pay a success fee from increased direct payments.
+
+None of the provided passages mention primary carers, direct payments, local authorities, or any channel to reach them; they discuss public health financing, budget processes, and infrastructure, which are irrelevant to the distribution question.
+
+The passages cover tax payments, fishing licences, financial aid, and healthcare funding gaps, none of which address the legality of negotiating direct payment budgets for carers. No evidence is provided regarding laws, terms of service, or measurement falsification for this activity.
+
+No passage describes acute suffering or existing payment for negotiation of direct payment budgets; the closest passage ([5d698477cb0091d9]) mentions 'injustice' for carers combining work but not the specific problem of low offers or people paying to challenge them.
+
+The provided evidence does not contain explicit support for any of the specified risk categories. The relevant checks (legality, distribution, incumbency) were all unverifiable, and no passage demonstrates illegality, uneconomic customer acquisition, or an incumbent monopoly.

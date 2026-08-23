@@ -1,0 +1,11 @@
+Private Parking Charge Autopsy Engine.
+
+An app that scans a private parking ticket photo, cross-references the operator's history of losing POPLA appeals, and auto-generates a winning appeal letter that a fatigued driver simply submits.
+
+Squeezed middle families get blindsided by private parking charges at supermarkets and hospitals. POPLA adjudicators side with motorists in ~50% of cases, but most people pay up because they don't know which technical failures (signage, grace periods, contract) apply to their operator. A solo builder can scrape and tag POPLA decisions to create a live database, then feed it into a document engine that picks the strongest arguments for that specific operator and car park.
+
+The registered keeper of a vehicle who has received a private parking charge notice from a BPA or IPC member, and would rather pay £25 for a proven appeal than £100 for the charge.
+
+Private parking companies have ramped up enforcement on retail parks post-COVID, and the new Private Parking Code of Practice (delayed but imminent) means many current charges are even more contestable. Drivers are unaware of the temporary window of leverage.
+
+Passage [d7c49c60361e716f] shows an existing AI product ('Appeal Ticket') already offers the same core value — upload a PCN photo, auto cross-reference legal checkpoints, generate an appeal — FREE and at scale (12,000+ motorists), which commoditises the £25 paid letter the candidate's value rests on. A free first-party-style AI tool performing the identical function removes the margin the durability claim depends on.

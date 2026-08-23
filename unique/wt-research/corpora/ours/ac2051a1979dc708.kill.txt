@@ -1,0 +1,25 @@
+VisitShield — the lone worker’s dog deterrent and incident logger, built for social care visits.
+
+A portable ultrasonic dog deterrent that also records audio and location, then builds the incident report a social worker needs for their employer.
+
+A council social worker visits homes alone, often encountering aggressive dogs. Standard advice is to stay calm and back away, but that’s not enough. This small device, shaped like a key fob, emits a high‑frequency sound that deters most dogs without injury. At the same time, it starts an encrypted audio recording and stamps the GPS location. After the visit, it syncs with a phone app. The app reconstructs the encounter into a pre‑filled incident report template matching the local authority’s format. It even notes the time the worker pressed the alert button as evidence of the incident timing. The worker just fills in a few details and submits. This is not a generic personal alarm; it’s a workflow tool built for the lone‑worker policy environment.
+
+The solo operator builds the device from a Bluetooth module, an ultrasonic transducer and a simple button. Over many users, the aggregated data reveals patterns of dog‑related incidents by housing type, area and time of day. That data can be sold as a safety insight report to local government insurers or safety departments.
+
+A social worker or family support worker employed by a local authority, who feels their employer’s lone‑worker devices are inadequate and wants their own extra layer of protection. They pay £80–£100 from their own pocket, often motivated after a near‑miss.
+
+Violence against public‑facing staff is politically visible, and the HSE is starting to scrutinise lone‑worker risk assessments more closely. At the same time, miniaturised electronics and low‑cost assembly mean a dedicated device can be produced in small batches without large investment. The social work workforce is also increasingly going into community settings after a shift away from office‑based assessments.
+
+The passages only describe generic lone-worker personal alarms and UK suppliers of such devices; none mention dog deterrents, social-care visit risks, council incident-report workflows, or whether any such offering still earns a durable margin. They therefore neither show that this product’s value holds nor that it has already been wiped out.
+
+The passages only show consumer ultrasonic dog deterrents on retail sites and generic lone-worker personal alarms (including Twig in Australia), not who leads or fills the UK social-care niche of a dog deterrent plus employer incident reporting. They never say whether that combined need is already dominated or left open.
+
+The passages show consumer personal alarms for sale and councils trialling or procuring lone-worker devices for social care staff, but they never say that individual social workers buy extra devices or pay £80–£100 from their own pockets. Nothing in the text addresses whether that worker has the money or the willingness to pay.
+
+The passages mention generic online safety-gear retail, work-equipment accidents in health and social care, PUWER duties, and employer standards for social workers, but none describe how an individual social worker would discover, buy, or be reached with this device. They do not show a self-serve path, forcing mechanism, or existing sales channel to that buyer.
+
+Passages state UK recording without the other party’s consent is not automatically illegal and that a participant may generally record a conversation for personal use without prior agreement, so the device’s audio capture need not break the law. Ultrasonic dog deterrents and sonic trainers are sold commercially, so the deterrent function likewise does not require illegality.
+
+Passages document a rise in UK dog attacks that have harmed social workers directly, plus routine home visits where dogs add real risk amid growing ownership. That establishes an acute, present safety problem for the workers named in the candidate.
+
+Passages say UK one-party recording for personal use is generally allowed and ultrasonic dog deterrents are sold commercially, so nothing shows this model is banned. No passage states what it costs to win a buyer versus the £80–£100 device price or lifetime revenue, and none names a single firm holding most of this channel.

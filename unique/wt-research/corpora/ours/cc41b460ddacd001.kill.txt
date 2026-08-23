@@ -1,0 +1,23 @@
+GigAlert – The Gig Worker's Underpayment Recovery Service.
+
+A productised service that scans gig platform earnings for hidden pay shortages and uses AI-generated demand letters to recover unpaid wages, charging a contingency fee.
+
+Combine the rise of opaque algorithmic pay with gig workers' lack of bargaining power; broaden a simple pay dispute into a proactive, data-driven recovery engine that catches underpayments the worker would never spot alone. (lens: combine_signals).
+
+Gen Z gig workers (rideshare, delivery, task) who suspect they're being shorted but lack the time or know-how to audit their weekly payouts.
+
+Gig platforms increasingly rely on dynamic pricing models that erode transparency, while class-action settlements and new regulations (e.g., California's Prop 22) expose systematic underpayment patterns.
+
+The passages discuss AI demand letter drafting and gig economy workforce shifts, but none address whether the specific value of a proactive underpayment recovery service for gig workers is durable, commoditized, or evaporating. No evidence confirms or refutes durability.
+
+Passages show no dominant incumbent or funded rival solving automated underpayment detection and recovery for gig workers. Free templates and academic AI tools exist but do not constitute a market leader capturing this exact segment.
+
+The passage shows California gig workers actively using demand letters to recover wages and expenses under AB5 and Prop 22, demonstrating strong motive; as the candidate charges only a contingency fee on recovered funds, no upfront budget is required, making willingness to pay a safe deduction.
+
+None of the passages discuss how GigAlert would reach gig workers; they cover AI costs, demand letters in personal injury, and debt collection, none addressing a distribution channel for this service.
+
+No passage indicates that scanning earnings or sending demand letters is unlawful; a related AI tool for gig worker data collection is described, supporting the lawfulness of such approaches.
+
+Passage 03eeaaf8b8d507dc notes algorithmic wage discrimination as a concern, confirming a real issue, but provides no evidence that workers are suffering acutely or already paying for solutions.
+
+No evidence indicates illegality, impossible unit economics, or a monopoly controlling 80%+ of distribution. The existence of a lawful AI gig worker collective action tool supports legality, and no dominant incumbent was found.

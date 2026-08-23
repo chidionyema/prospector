@@ -1,0 +1,13 @@
+The Pop-Up Permit Packager.
+
+A web-based vertical tool that instantly assembles a complete temporary event notice (TEN) application for alcohol-selling market stalls and pop-ups—auto-populating site plans, customizing event management plans, and selecting the local council’s exact phrasing to drastically reduce rejection rates.
+
+Mobile food vendors and market traders waste hours re-typing applications that bounce back for tiny omissions, costing them launch weekends. A tool that asks five situational questions and then self-generates a council-specific application pack—including a pseudo-engineering noise assessment and crowd flow diagram—turns a regulatory chore into a 3-minute checkout, creating deep workflow integration and reliance.
+
+Street-food traders, pop-up bar operators, and small event caterers who sell alcohol on a per-event basis (often sole traders).
+
+The street-food economy has exploded post-pandemic, and local councils, strapped for resources, have become punctilious with pre-event paperwork as a low-cost way to reduce noise complaints. An application that mirrors their internal checklist language sails through, while a generic form invites delay.
+
+The passages confirm TENs exist and that a competitor (Barnab) automates government licensing forms and that councils offer the form directly, but none addresses whether the specific value (a proprietary council-specific 'approval language' corpus) is durable; Barnab is a paid competitor, not a free first-party tool or total commodity that removes all margin, so durability is neither affirmed nor negated.
+
+The passages show Barnab, a platform that automates government bureaucracy and already offers a dedicated TEN product covering exactly this need (selling alcohol at pop-up bars/events), directly competing with the candidate. The space is therefore not underserved; an incumbent already addresses TEN applications for alcohol-selling pop-ups.

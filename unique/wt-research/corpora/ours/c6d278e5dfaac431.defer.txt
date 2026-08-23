@@ -1,0 +1,15 @@
+ASA ad pre-flight reviews for UK AI ad startups.
+
+A fixed-fee pre-flight review of a UK AI-generated ad campaign against CAP Code rules, written as a one-page go/no-go report.
+
+The founder or product head of a UK AI ad generation platform, a startup whose tool generates ads for enterprise retailers, needs every campaign pre-flighted against the CAP Code before it goes live. The CAP Code covers claims (substantiation, exaggeration), images (truthfulness, no harmful stereotypes), and social responsibility rules on children, gambling, alcohol and health. Today the founder either hires a creative compliance reviewer at £60-120k a year or pays a creative agency an extra fee to pre-flight every ad.
+
+The productized version widens to the whole ad pre-flight chain. For a fixed fee of £400-1,500 per campaign the buyer gets an ASA-format claims substantiation sheet, an image truthfulness check, a social responsibility flag list, and a one-page go/no-go report, a single report rather than three separate reviews.
+
+The defensible asset is proprietary: the team has compiled every ASA ruling on AI-generated or AI-assisted advertising since 2023 (around 40-60 rulings), indexed against ad format and product category. The ASA publishes AI ad guidance and runs Copy Advice at a reduced fee, but Copy Advice is generic and cannot pre-flight a specific AI-generated campaign at scale. The ASA is the regulator, not a per-campaign reviewer.
+
+Recurring trigger: every campaign before launch. Why now: the ASA published its first AI-specific ad guidance in 2024, and the CMA-ASA partnership on AI ad fairness launched the same year, signalling that AI-generated ads are now actively enforced.
+
+Founder or head of product at a UK AI ad generation SaaS selling to enterprise retailers, currently paying either an in-house compliance hire (£60-120k) or a creative agency add-on fee per campaign.
+
+ASA published its first AI-specific ad guidance in 2024, and the CMA-ASA partnership on AI ad fairness launched the same year, signalling that AI-generated ads are now actively enforced.

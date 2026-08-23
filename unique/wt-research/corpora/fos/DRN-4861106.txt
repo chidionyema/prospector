@@ -1,0 +1,220 @@
+DRN-4861106
+The complaint
+Miss R complains that Barclays Bank UK PLC (Barclays) lent to her irresponsibly.
+What happened
+On 26 April 2022, Miss R applied for a personal loan of £38,900 from Barclays. It was for 
+home furnishings for her new property. The loan was agreed, with a payment period of five 
+years and an interest rate of 15.9% APR. Repayments were £918.42. The loan was drawn 
+on 26 April 2022.
+On the same day, Miss R called Barclays to cancel the loan and was told she needed to call 
+back the following day to do that or go online/on her mobile app to do that the following day.
+On 27 April 2022, Miss R sent the loan money (£38,900) to a crypto investment – she was 
+the victim of an investment scam. She had already sent two other previous payments of 
+£1,900 and £4,280 as part of the scam. So she lost £45,080 in total in the scam.
+Miss R complained to Barclays about the scam and then to this service. As a result, Barclays 
+refunded 50% of the payments, plus 50% of the interest paid on the loan. The balance of the 
+loan after the refund was £22,064 (April 2023).
+Separately, Miss R made a complaint to Barclays to say the loan was lent irresponsibly – 
+which is the subject of this complaint. She said:
+- The loan was agreed the same day she applied and so Barclays couldn’t have done 
+the necessary checks.
+- She was buying a new property and her outgoings were increasing, and so Barclays 
+couldn’t have taken account of that.
+- As a result, she couldn’t have afforded the loan.
+- She called Barclays on the day the loan was agreed to cancel it but was told she 
+needed to call back the following day. So, because of that, the loan was void.
+- She didn’t sign a loan agreement.
+- She had used the loan to buy crypto currency – which was not the purpose of a loan. 
+Barclays stated this on their website. She told Barclays she was using the loan for 
+crypto and so Barclays shouldn’t have allowed the loan to be drawn.
+Barclays said they’d checked Miss R’s income and expenditure and this showed she could 
+afford the repayments. They said she had a monthly disposable income (MDI) of £1,802. In 
+a further final response, after allowing for living expenses, Barclays said her MDI was £930.  
+Barclays offered compensation of £300 for the time it had taken to resolve Miss R’s 
+complaint. 
+Miss R didn’t accept this and brought her complaint to us. Barclays didn’t initially provide any 
+
+information and so our investigator issued a view which upheld Miss R’s complaint. He 
+worked out Miss R’s monthly expenditure was £1,225 and her income was £1,937 – so the 
+repayments of £918 weren’t affordable. He said Barclays should refund the interest paid on 
+the loan and agree a payment programme for the remaining amount. Any adverse entries on 
+Miss R’s credit file should also be removed.
+Miss R didn’t agree and said Barclays should do more. She asked that an ombudsman look 
+at her complaint, and so it has come to me to do that.
+I issued a first provisional decision which upheld Miss R’s complaint:
+In looking at Miss R’s complaint about irresponsible lending, it’s important to note that in the 
+separate complaint about the scam investments, an ombudsman issued a final decision 
+which said:
+- Barclays should refund 50% of the loan (£19,450); and 50% of the other amounts 
+paid (£6,180).
+- Barclays should refund 50% of the interest on the loan.
+- These refunds and adjustments have been made.
+Therefore, this decision looks at the complaint about irresponsible lending, and not the 
+payments made to the scam investment.
+Turning to the purpose of the loan – we can only expect Barclays to agree a loan for the 
+stated purpose of it in the application made by Miss R – i.e. in this case, for home 
+furnishings. I don’t think it is reasonable for Miss R to argue that as she subsequently used 
+the loan for a (scam) investment, that that means it is void. I say that as the crypto payments 
+were made after the event of Barclays agreeing to the loan. So - I set aside Miss R’s claims 
+here.
+Miss R also argues that she called Barclays to cancel the loan on the day she applied for it 
+and when it was drawdown – 26 April 2022. I agree this would’ve been possible as it was 
+within the 14-day cooling off period – that was quoted in the loan agreement.  
+Barclays provided a transcript of the call she made on 26 April 2022. Miss R did call to say 
+she’d changed her mind and wanted to cancel the loan. Barclays’ call handler said the loan 
+could be cancelled, but it couldn’t be done that day (because the loan wasn’t showing in the 
+bank’s books that day) – and Miss R was advised to ether call the next day (27 April 2022) to 
+cancel it or cancel it herself in the app or online.
+But I can see that what then happened – was that in the following morning of 27 April 2022, 
+Miss R made the payments to the crypto currency payment platform. So – it looks like she 
+decided not to cancel the loan, but instead use it to buy crypto currency. So, she decided to 
+go ahead with the loan, rather than cancel it. So – I set that claim aside also.
+Miss R says she didn’t sign a loan agreement. But Barclays have provided a copy of the loan 
+agreement  - which was signed online electronically by Miss R. So – I also set that point 
+aside.
+That now brings me to the crux of Miss R’s complaint – that Barclays didn’t carry out 
+sufficient checks when agreeing to the loan.
+All lenders have an obligation to lend money responsibly. We have to check whether 
+Barclays acted in line within the Financial Conduct Authority (FCA) rules on creditworthiness 
+assessment as set out in its handbook, (CONC) section 5.2. These say that a firm must 
+undertake a reasonable assessment of creditworthiness, considering both the risk to it of the 
+customer not making the repayments, as well as the risk to the customer of not being able to 
+make repayments. We look at:
+Whether the lender completed reasonable and proportionate checks to satisfy itself 
+that the borrower would be able to repay any credit in a sustainable way?
+If reasonable and proportionate checks were completed, did the lender make a fair 
+lending decision bearing in mind the information gathered and what the lender knew 
+about the borrower’s circumstances?
+And a reasonable and proportionate check would usually need to be more thorough:
+othe lower a customer’s income, and the higher amount to be repaid. 
+othe greater the number of loans and frequency of loans.
+othe longer the term of the loans
+It’s important to note that the checks must be proportionate to the amount being lent – so the 
+higher the amount, the greater the checks must be, and the lower the amount, then fewer 
+checks can be made. I think it’s reasonable for me to say that this was a loan for a large 
+amount, and over a fairly long period (five years) – and so Barclays had an obligation to 
+carry out detailed and proportionate checks before agreeing to the loan.
+We asked Barclays for their files and up to the point of our investigator’s view, hadn’t 
+provided anything. After that time Barclays send us some information, including their final 
+responses and an income and expenditure assessment. This showed the figures as I quoted 
+above – that Miss R had sufficient monthly disposable income to meet the payments. 
+But it’s important to note that this assessment appears to have been carried out by Barclays 
+after the event of agreeing to the loan – when they were dealing with Miss R’s complaint. 
+Barclays haven’t provided anything to show the assessment they carried out at the point of 
+approval of the loan – so we have no contemporaneous information to see if they carried out 
+the necessary checks in April 2022.
+The post event figures worked out by Barclays show an average MDI (over four months) of 
+£930 per month – so the payments of £918 were going to be tight based on that. And in the 
+month of March 2022 (after Miss R had bought her new property and taken on a new 
+mortgage), the MDI was £914 (after deducting food etc from the MDI calculation). So, the 
+payments of £918 were again shown to be tight. And therefore – it’s reasonable to have 
+expected Barclays to have asked more questions of Miss R, but (based on the evidence 
+provided) they didn’t.
+So, based on this – I think it’s reasonable for me to say that Barclays didn’t carry out 
+sufficient and proportionate affordability checks. Miss R has had the use of the money (even 
+though this was unfortunately lost in the investment scam) and so it’s not reasonable for me 
+to ask Barclays to write off the capital amount. But Barclays must refund the interest debited 
+to the loan to date, and not charge any further interest. And agree with Miss R a mutually 
+satisfactory payment programme for the residual amount owed, and on an interest free 
+basis. And - remove any adverse information reported to credit reference agencies.
+It's not clear if Barclays have paid the agreed compensation of £300 to Miss R – the bank 
+should confirm this when responding to this provisional decision.
+I invite either Barclays or Miss R to respond to this provisional decision with any new 
+information – for example, if Barclays provide evidence of the checks they carried out at the 
+time of the loan, then I will review this.
+Responses to the first provisional decision:
+Miss R said she called Barclays to check if the loan money could be used for investments. 
+She said Barclays told her she could and so she decided not to cancel the loan and invest it 
+– which led to the scam. So, she argues that she didn’t cancel the loan because of that.
+Barclays provided more information:
+- the bank showed us the actual affordability calculations they carried out when Miss R 
+applied for the loan. The provisional decision had noted that Barclays had done some 
+post-event calculations – I wanted to see what actually happened when the loan was 
+applied for.
+- Barclays showed us they worked out (from what Miss R told the bank and Barclays’ 
+own research):
+oMiss R’s income was £1,937 per month.
+oHer monthly disposable income (MDI) was £1,041 (and the new loan 
+payments were £918).
+oThis included ‘housing costs’ (i.e. rent) of £163.
+- So the crux of this decision comes down to whether Barclays could reasonably have 
+known that Miss R had just taken out a mortgage with a monthly cost on £547. This 
+wasn’t shown in the bank’s affordability calculations. 
+- If Barclays had known this, or had been told about it, then I would’ve expected this to 
+be shown in the affordability work. If Barclays were aware of it, then including it would 
+have shown the new loan to be unaffordable.
+- Barclays showed us the credit search they did at the time – and it didn’t show the 
+new mortgage – which started 11 February 2022. I’m not surprised by this – as it can 
+take at least two months for a credit file to be updated, i.e. in this case, at the end of 
+April 2022. So – it’s clear that Barclays wouldn’t have been aware of it, or be 
+expected to be aware of it.
+- Barclays told us that as part of the application process, Miss R was asked if there 
+were any recent changes to her expenditure. Miss R didn’t declare anything.
+- So, Barclays argued that the income and expenditure analysis they did was 
+proportionate and met the checks they needed to complete.
+I considered what points Miss R and Barclays made. And then issued a second 
+provisional decision which did not uphold Miss R’s complaint:
+I consider that Miss R’s point about asking Barclays about whether she could invest the 
+money as being relevant only to her complaint about the scam – which has been closed. So, 
+I set that aside.
+I’m persuaded by Barclays’ further points and evidence - that the bank did complete 
+reasonable and proportionate checks when agreeing the loan. The MDI showed Miss R 
+could afford the repayments, and Barclays had checked her credit file and this showed there 
+wasn’t (as at that date) anything showing as a mortgage payment. So they couldn’t have 
+been expected to include it.
+Because of this, my view has changed and I don’t intend to uphold this complaint. But 
+Barclays haven’t advised if the offered compensation of £300 has been paid or not. If it 
+hasn’t, then Miss R is welcome to ask for it to be paid. 
+Responses to the second provisional decision:
+Miss R asked to see the documents provided by Barclays and made the following points (in 
+summary):
+- She didn’t sign the loan agreement, either in paper form or electronically. So, the 
+loan should be written off.
+- The documents provided by Barclays (e.g. the credit search and affordability 
+calculations) could’ve been forged. There was no evidence that they were the original 
+source documents.
+- Barclays couldn’t have done a credit search – as her credit file (as at May 2024) 
+showed the earliest search by the bank was in March 2023 (and the loan application 
+was in April 2022).
+I now need to consider the points made by Miss R and make a final decision. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I appreciate the work and arguments made by Miss R. I’ve gone though her complaint and 
+all the evidence again and I am satisfied that the second provisional decision is a fair and 
+reasonable one.
+Loan agreement: Barclays showed us a copy of the agreement dated 26 April 2022. It was 
+signed electronically by Miss R. The application was made online. The electronic signing of 
+loan agreements are common in banking today, and I’m satisfied Miss R did so. It’s also 
+relevant to say that the loan was drawn down and the proceeds spent by Miss R (albeit she 
+then lost the money in a scam). The calls with Barclays also show that she wanted to borrow 
+the money – as she questioned if she could then use the loan for investment; and at one 
+point, she said she may cancel it.
+So, I am satisfied this was a valid loan agreement.
+Validity of documents provided by Barclays: we are an informal dispute resolution service 
+which seeks to come to fair decisions where there is a complaint from a consumer about a 
+financial business. In this connection, there is no reason to believe the documents are not 
+genuine. Firms have a duty to provide our service with relevant and genuine information. I’m 
+satisfied there had been no forging of documents as Miss R alleges.
+Credit search: Barclays showed us a screenshot of the actual credit search they carried out 
+at the time. This showed ‘secured balance : nil’. In other words, there wasn’t a mortgage (a 
+secured loan) showing in the search. I’m satisfied that the credit search Barclays did was 
+genuine and showed that Miss R didn’t have a mortgage recorded on her credit file.
+Miss R argues that Barclays couldn’t have done a search – in May 2024 she showed us her 
+credit file extract, and this didn’t show a search by Barclays in April 2022. But looking at Miss 
+R’s credit file (provided by her in November 2023) – this says that searches are only shown 
+for the last 12 months. So – any search made by Barclays in April 2022 won’t show up after 
+April 2023. So, I don’t agree with this point.
+Therefore, while I know Miss R will be disappointed, I am not upholding her complaint. The 
+decision formalises Barclays original offer of compensation of £300 – if this hasn’t already 
+been paid.
+My final decision
+Barclays Bank UK PLC has already made an offer to pay £300 to settle the complaint and I 
+think this offer is fair in all the circumstances.
+So my decision is that Barclays Bank UK PLC should pay £300 – if the bank hasn’t already 
+paid this to Miss R.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Miss R to accept 
+or reject my decision before 17 July 2024.
+ 
+Martin Lord
+Ombudsman

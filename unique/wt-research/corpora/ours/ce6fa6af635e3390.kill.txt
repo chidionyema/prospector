@@ -1,0 +1,21 @@
+HireBlack — the independent black box that proves what happened to hired plant before you get billed for damage.
+
+A clip-on recorder for hired diggers, platforms and power tools that logs condition, knocks and hours independently of the hire firm, for small groundworks and landscaping contractors who keep losing damage disputes.
+
+Sole traders and small groundworks, landscaping and demolition firms hire machines constantly because owning a fleet doesn't pay. Every hire ends the same way: a depot check-in that finds a scratch, a cracked bucket tooth or 'excess wear', and an invoice for hundreds of pounds that the trade has no way to contest, because the only condition record was written by the company sending the bill.
+
+This borrows the flight data recorder from aviation and the telemetry black box from motorsport, where an independent, tamper-evident log is standard practice precisely because the parties involved can't be trusted to self-report after something goes wrong. HireBlack rents out a rugged, magnetic unit that clips to the machine at pickup: it timestamps and geotags photos of every panel, logs shocks and vibration through the job, and records operating hours. At drop-off it spits out a sealed condition report before the hire desk even opens its own paperwork.
+
+Most hires end with no dispute at all, and that's fine — the value is in removing the argument, not winning it. Over thousands of hires across many trades and machine types, the accumulated shock-and-wear data becomes a real baseline: how much vibration is normal for eight hours on a mini-digger, how a genuine impact looks against normal use. No single hire company has this because they only ever see their own fleet; no single tradesperson has it because they only ever see their own jobs. That cross-hire baseline is what lets HireBlack later flag, automatically, when a damage claim doesn't match the recorded usage pattern — without ever drafting a legal argument or entering a dispute process itself.
+
+Self-employed groundworks, landscaping, demolition and utilities contractors who hire plant weekly or monthly from firms like HSS Hire, Speedy Hire, or independent local depots, and who have been hit with a disputed damage charge at least once. They pay a flat fee per hire, roughly £8 to £15 depending on machine size, charged automatically when they book the unit out — cheaper than one disputed excess-wear invoice, which routinely runs into hundreds of pounds.
+
+Hire firms have spent the last few years fitting their own fleets with telematics to cut theft and misuse losses, and are using that same data more aggressively to justify damage and excess-wear billing at drop-off. Sole traders and small firms hiring the equipment have no equivalent record of their own, so the information gap between hirer and hire company has widened, not narrowed. At the same time, machine and parts replacement costs have risen sharply, giving hire companies a stronger financial incentive to bill for wear than they had five years ago.
+
+The passages establish that plant hire damage liability and waiver charges exist and cause confusion, but none show tradespeople actively searching for or paying for an independent condition-recording tool, nor do they evidence a community of hirers organizing around this specific pain.
+
+The passages give general UK construction/contractor day rates and generic personal-insolvency/bankruptcy procedure, but none show that plant-hiring sole traders or small groundworks firms actually incur or resent disputed damage/excess-wear charges, or that they would allocate part of that day-rate income to an £8-£15 per-hire fee.
+
+The passages show HSS and Speedy Hire are large online-bookable hire firms and mention telematics and damage-waiver paperwork, but none describes a channel for selling an independent inspection device or service to tradespeople hiring from those firms — no mention of depot partnerships, marketplaces, or self-serve signup for a third-party add-on.
+
+The passages establish only that dashcam/vehicle recording must be disclosed to filmed individuals and GDPR-compliant, and that plant hire contracts cover third-party equipment and damage liability — none address whether attaching an independent monitoring device to hired plant breaches the hire contract's terms or any equipment-tampering clause.

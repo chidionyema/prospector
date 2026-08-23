@@ -1,0 +1,168 @@
+DRN-4693830
+The complaint
+Miss H complains that Wise Payments Limited won’t refund money she lost when she was 
+the victim of a scam. She’s also unhappy with the way Wise communicated with her about its 
+attempts to recover her money. 
+What happened
+The background to this complaint is well known to both parties and so I’ll only refer to some 
+key events here.
+In August 2021 Miss H was looking for accommodation in France. She’s explained that she 
+found the details of a property through a legitimate website recommended by her university. 
+To secure the property, Miss H made the following payment, via transfer into Euros, from a 
+newly opened account with Wise to an individual based in France:
+Date Amount
+20 August 2021 £818.78 
+(950 Euros)
+Wise didn’t flag the payment as suspicious.  
+On 1 September 2021 Miss H contacted Wise to say she’d been scammed. Wise asked 
+Miss H for more information; and on 3 September 2021 it contacted the beneficiary bank to 
+ask if any funds remained. Wise let Miss H know that it was trying to recover the funds. It 
+said:
+‘Thanks for sending over that document. I’ve sent it to our relevant team — we’ll let 
+you know if we manage to recover any money back.’
+Wise added that:
+‘ … but we can’t guarantee this. We’ll follow up with you, but only if we manage to
+get any of that money back’.
+On 7 September 2021 Wise said: 
+‘We will contact you ourselves if we have any update on the recall. We will try to do 
+everything on our side but we cannot promise that the recovery process will be 
+successful’.
+On 21 September 2021 Wise said:
+‘As mentioned previously, we cannot provide you with any updates in regards to our 
+recovery process. We’ll follow up with you, but only if we manage to get any of that 
+money back. Recovery process is often long as beneficiary bank has to conduct their 
+own investigation, and we cannot guarantee the success as it depends on beneficiary 
+banks cooperation’.
+
+Miss H asked Wise for an update in November 2021 and January 2022, and it confirmed it 
+hadn’t received a response from the beneficiary bank. Wise reiterated that it would contact 
+Miss H if there was an update. 
+Wise chased the beneficiary bank for updates in September, October and December 2021. 
+On 11 January 2022 Wise recorded the recovery attempt as:
+‘No reply, considering failed’. 
+Miss H contacted Wise again in July 2022 for an update. And in September and November 
+2023 she contacted Wise asking that the case be looked at again and to be awarded 
+compensation. Wise said it would action this. 
+In December 2023 Miss H made a complaint to Wise. She said she’d not received an 
+acceptable level of service; nor had she received a conclusive response to whether her 
+money had been recovered. 
+Wise partly upheld Miss H’s complaint. In short, it said it had been Miss H’s obligation to 
+check the payee was legitimate; and that once the funds left Miss H’s account they were no 
+longer under Wise’s control. Wise said it had attempted to recover the funds, but this had 
+been unsuccessful.
+In terms of its communication with Miss H, Wise said it had been consistently clear with her 
+that it would only contact her in the event the funds had been recovered. And as recovery 
+had been unsuccessful, Wise didn’t think it had done anything wrong here. 
+Wise accepted it had misadvised Miss H when she made contact in 2023 asking for the 
+matter to be looked at again. Wise said it should’ve said this wasn’t possible rather than 
+suggesting it was. Wise apologised and offered Miss H £50 for the distress and 
+inconvenience caused. 
+Miss H referred her complaint to the Financial Ombudsman. She maintained that Wise had 
+poorly communicated with her about its attempts to recover her funds; and that it had taken 
+over two years for Wise to tell her the funds couldn’t be recovered. 
+Miss H said she’d received conflicting and contradictory information from Wise about 
+whether her money could be recovered, and she didn’t accept its offer of £50 compensation. 
+Because of Wise’s poor handling, she wanted the £818.78 returned to her. 
+One of our Investigators considered the complaint and initially upheld it. She didn’t think 
+Wise should’ve intervened in the payment given its size and lack of payment history. But 
+because Wise had been unable to evidence its attempts to recover the funds once Miss H 
+alerted it to the scam, our Investigator said Wise should refund the £818.78 plus 8% interest, 
+together with the £50 compensation offered previously. 
+Miss H was happy with this outcome. But Wise didn’t agree and provided information on its 
+attempts to recover the funds. On considering Wise’s evidence, our Investigator decided the 
+complaint shouldn’t be upheld. She thought Wise should’ve contacted the beneficiary bank 
+as soon as it was alerted to the scam (1 September 2021) rather than waiting until 
+3 September 2021. But given the lack of response from the beneficiary bank, she didn’t think 
+this would’ve made a difference to the likelihood of funds being recovered.  
+Miss H doesn’t agree and has asked for a final decision. She said if Wise had contacted the 
+beneficiary bank on 1 September 2021, then there was a possibility the funds would’ve been 
+recoverable. 
+Miss H said Wise should’ve let her know in January 2022 that the recovery attempts had 
+failed – rather than suggesting in correspondence after this date that recovery was still an 
+option. She said Wise had ‘left her in the dark’ which caused her much stress and confusion.
+On that basis, Miss H wanted Wise to refund the £818.78 plus interest. And she said she 
+would only accept the £50 compensation payment in addition to this.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+I’m sorry Miss H has been the victim of a scam and I don’t underestimate the impact this has 
+had on her. But I must consider whether Wise is responsible for the loss she has suffered. 
+And while I realise this isn’t the outcome Miss H is hoping for, for similar reasons as our 
+Investigator, I don’t think it is. I therefore don’t think Wise has acted unfairly by not refunding 
+the £818.78 payment. I’ll explain why. 
+It isn’t in dispute that Miss H authorised the £818.78 payment. And, under the Payment 
+Services Regulations 2017 and the terms of her account, Wise are expected to process the 
+payment and Miss H is presumed liable for the loss in the first instance.
+However, taking into account the regulatory rules and guidance, relevant codes of practice 
+and good industry practice, there are circumstances where it might be appropriate for Wise 
+to take additional steps or make additional checks before processing a payment to help 
+protect customers from the possibility of financial harm from fraud.
+So, the starting point here is whether the instruction given by Miss H to Wise was unusual 
+enough to have expected additional checks being carried out before the payment was 
+processed. 
+The Wise account was newly opened and so there wasn’t any historical spending to have 
+allowed Wise to assess whether the scam payment transaction was unusual or out of 
+character for Miss H. I’ve therefore thought about whether the payment itself, without any 
+typical account usage available, was suspicious enough to have prompted Wise to consider 
+Miss H was at risk of financial harm from fraud.
+Neither Wise nor Miss H have suggested the payment should’ve flagged as suspicious. 
+Miss H has told us she specifically set up the Wise account to make the transfer (allowing 
+her to convert the funds to Euros). This is a commonly used feature of Wise accounts – with 
+payments being made internationally and converted into the respective currency. The 
+amount was also not of a significantly high value in general banking terms to have alerted 
+Wise to the possibility of a scam. And so, taking these points into account, I don’t think there 
+was anything suspicious or unusual about the £818.78 payment that should’ve caused any 
+concern to Wise or for it to suspect that Miss H was at risk of financial harm. And so, I don’t 
+think Wise could’ve reasonably prevented Miss H’s loss.
+The main point in issue here is whether, on being alerted to the scam, Wise could 
+reasonably have done more to recover Miss H’s loss. I agree with our Investigator, and 
+Miss H, that Wise should’ve contacted the beneficiary bank on 1 September 2021 – as soon 
+as Miss H alerted it to the scam. But I don’t agree that this would’ve likely resulted in the 
+funds being recovered. I’ll explain why.
+Firstly, the payment was made on 20 August 2021 – more than 10 days before any recovery 
+attempt could’ve been made. And from our experience, it’s ordinarily likely that funds 
+obtained as part of a scam are quickly removed from the beneficiary account upon arrival.
+Secondly, the payment was made to a bank account in France. International beneficiary 
+banks can often be very unresponsive, but I can see from information provided by Wise that 
+it made reasonable attempts to try and recover Miss H’s funds; and so, it would be unfair to 
+hold Wise responsible for the beneficiary bank not responding. 
+Overall, whilst I think Wise should’ve contacted the beneficiary bank sooner – I think it’s 
+unlikely, on balance, that the beneficiary bank would’ve responded confirming that any funds 
+remained. And so, I don’t think it would be reasonable to expect Wise to refund the £818.78 
+payment to Miss H. 
+I’ve thought next about the level of service Miss H received from Wise. When considering 
+what a business should do to put things right, it’s not my role to punish it – instead I look at 
+the direct impact its shortcomings have had on a customer. 
+As I’ve discussed above; I don’t think mistakes by Wise have directly resulted in Miss H 
+being unable to recover the lost funds. And so, it follows that I don’t agree with Miss H that 
+Wise should reimburse her the £818.78 plus interest.
+In terms of its communication about the recovery attempts, I can see from the 
+correspondence that Wise did let Miss H know it was attempting recovery and was 
+consistently clear with her that it would only contact her if recovery was successful. I 
+appreciate that Miss H was keen to find out whether any funds remained; and was frustrated 
+at the lack of updates from Wise, but I don’t think Wise has done anything wrong here and 
+has acted in accordance with what it said it would do. 
+Wise accepts that when Miss H contacted it in September and November 2023 it wrongly 
+told her the case would be looked at again. Wise has apologised for this and offered Miss H 
+£50. I can accept Miss H’s point that when she communicated with Wise after it was decided 
+the recovery had failed (11 January 2022), it might’ve been helpful if Wise had conveyed that 
+to Miss H. But I don’t think Wise did anything fundamentally wrong here. As I’ve mentioned 
+above, Wise had been very clear that it would only contact Miss H if money was recovered. 
+And so, I don’t think Miss H’s frustration here was as a direct result of a shortcoming by 
+Wise. 
+In taking all of this into account, I consider the apology and £50 Wise has offered to pay 
+Miss H to be a fair and reasonable level of compensation; and in line with what I’d have 
+awarded had Wise not made an offer. 
+I have a great deal of sympathy for Miss H and the loss she’s suffered. But it would only be 
+fair for me to direct Wise to refund her loss if I thought it was responsible – and I’m not 
+persuaded that this was the case. For the above reasons, I think Wise has acted fairly and 
+so I’m not going to tell it to do anything further.
+If Miss H wishes to now accept the £50 Wise offered her as compensation, then she should 
+contact Wise direct. 
+My final decision
+My final decision is that I do not uphold this complaint.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Miss H to accept 
+or reject my decision before 10 May 2024.
+ 
+Anna Jackson
+Ombudsman

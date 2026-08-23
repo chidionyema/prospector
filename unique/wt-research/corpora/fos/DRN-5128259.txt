@@ -1,0 +1,177 @@
+DRN-5128259 
+ 
+ 
+The complaint 
+ 
+Mr F complains that Mitsubishi HC Capital UK Plc trading as Novuna Personal Finance 
+(“Novuna”) is holding him liable for the debt on a loan which he says he didn’t consent to. 
+ 
+What happened 
+In July 2023, Mr F saw an advert for an investment opportunity which was endorsed by a 
+well-known celebrity. The advert suggested he could make good returns by investing in 
+stocks and shares with a company I’ll refer to as “B”. Unfortunately, the investment turned 
+out to be a scam. 
+ 
+Early in the scam period, Mr F was told that the funds he’d invested had been seized by the 
+cryptocurrency exchange company as the activity was classed as fraudulent and that he’d 
+have to pay £20,000 to release them. He told the scammer he couldn’t afford to pay this, and 
+she told him that he could apply for an interest free loan with one of B’s sister companies 
+which he could repay within 14 days using the returns from his investment. 
+ 
+The scammer told Mr F to download AnyDesk remote access software onto his laptop and to 
+set up online banking, and on 25 July 2023, £20,000 was credited into Mr F’s account from 
+“Z”. He then transferred the funds to Bank C (an account which he was told to open by the 
+scammer) and then onwards to a cryptocurrency exchange, under the guidance of the 
+scammer.  
+ 
+On 28 July 2023, a further loan was credited into his account from Bank N, and on receipt of 
+a further email stating he’d have to pay a further £30,000, the scammer said again that she’d 
+obtain loans from B’ sister companies. On 31 July 2023, two loans for £15,000 each were 
+credited into the account from Novuna. Mr F then transferred these funds to Bank C the 
+following day before sending them to a cryptocurrency exchange on the understanding that 
+his money would be released. 
+ 
+When Mr F discovered he’d been scammed, he complained to Novuna stating the loans 
+were fraudulent and that he didn’t apply for them. He also said the loans were unaffordable 
+and should never have been approved. 
+ 
+Novuna said the applications weren’t fraudulent and that he would remain liable for the 
+principal loan sums for both agreements. It said F’s genuine details were used on the 
+applications which contained details of his annual income and employment, so it was clearly 
+completed with his input. The loan agreements were sent to his genuine email address, he 
+completed the e-signature to agree to the loans and the funds were paid into his genuine 
+bank account before being transferred out of the account. 
+ 
+Regarding the affordability of the loans, it said it had searched his credit record to check 
+information such as borrowing history, how much he owed, how often he applied for credit, 
+whether he made repayments on time, and whether he had any defaults, County Court 
+Judgements, or insolvencies. It used his credit record along with other information provided 
+on the loan application to calculate an overall score, and his score exceeded its minimum 
+lending criteria and passed the credit check. It also used a third-party affordability product 
+
+ 
+ 
+which provides trends overtime in relation to income and general indebtedness and assists 
+with understanding on affordability and there was indication he’d struggle to service the loan 
+agreement.  
+ 
+However, it accepted it shouldn’t have agreed to lend Mr F the second loan and offered to 
+remove all interest and charges applied from the start of the agreement. It also confirmed it 
+had submitted a request to remove any negative information applied to his credit file for the 
+agreement. Finally, it apologised for the time it had taken to review Mr F’s complaint and 
+offered him £175 for the distress and inconvenience this had caused. 
+ 
+Mr F wasn’t satisfied and so he complained to this service stating he didn’t apply for the 
+loans, and that he wanted it to write off both loans and cancel all interest and charges. He 
+said the scammer had taken out the loans having told him she was going to borrow funds 
+from one of B’s sister companies and that he didn’t receive any loan agreements or emails 
+from Novuna. 
+ 
+Novuna explained that when carrying out a credit check it receives raw data from the credit 
+reference agencies which mortgage balances and monthly payments, credit balances, 
+payment statuses, application searches, insolvency and fraud markers, and income 
+verification data. It said Mr F had allowed the scammer to access his device using AnyDesk 
+and that he gave his driving licence and internet banking details which had enabled them to 
+take out the loan. The funds had entered his genuine bank account and he’d transferred 
+them to the scam. 
+ 
+Our investigator recommended that the complaint should be upheld in part. She noted Mr F 
+had given the scammer everything she needed to pretend the loans were being applied for 
+by Mr F, including his correct email address and telephone number, and it wasn’t 
+unreasonable for Novuna to have believed the applications were genuine. 
+ 
+She was satisfied that Mr F knew the loans were being applied for, commenting that when 
+he first contacted Novuna, he said he’d applied for the loans under the instructions and 
+coercion of the scammer who said he’d be able to repay the loan within 14 days.  
+ 
+She noted Mr F was sent an email confirming the approved loans and details about the 
+repayments and even though he denied receiving the email, she was satisfied it was sent to 
+his correct email address and that he ought to have been on notice that a loan application 
+was taking place. Further, as both loan applications were successfully completed, this 
+means he’d received a text message and the codes to complete the loan applications. She 
+accepted the scammer could have deleted emails or messages from Novuna using 
+AnyDesk, but she was satisfied he knew the scammer was obtaining loans with sister 
+companies, and that he’d be held liable for those loans. So, she was satisfied it was fair to 
+him to be held liable for the principal loan sums. 
+ 
+Regarding the affordability of the loans, she didn’t think the first loan was affordable and so 
+she recommended that Novuna should remove the interest and charges for that loan. But 
+she was satisfied that as Mr F did use the loan funds, albeit to send to a scam, she couldn’t 
+fairly ask it to write off the loans.   
+ 
+Mr F has asked for his complaint to be reviewed by an Ombudsman, maintaining he wasn’t 
+the one who took out the loans. 
+ 
+What I’ve decided – and why 
+I’ve considered all the available evidence and arguments to decide what’s fair and reasonable 
+ 
+ 
+in the circumstances of this complaint. 
+I’ve focused on what I think is the heart of the matter here. If there’s something I’ve not 
+mentioned, it isn’t because I’ve ignored it. I haven’t. I’m satisfied I don’t need to comment on 
+every individual point or argument to be able to reach what I think is the right outcome. Our 
+rules allow me to do this. This reflects the informal nature of our service. 
+ 
+Consent 
+ 
+In this case, my first consideration is: did Mr F know these loans were being taken out in his 
+name, or was it done without his knowledge and consent? Having considered this carefully, I 
+think it’s most likely the loans were taken out in Mr F’s name with his knowledge and consent 
+at the time, and he therefore did consent to the loan agreements. 
+ 
+I’m sorry Mr F was scammed. However, this was the fault of the scammers, not Novuna. I 
+can’t see it was Novuna’s fault that scammer was able to take out loans in Mr F’s name 
+given the fact he’d allowed them remote access to his device using AnyDesk, the application 
+contained details of his annual income and employment, and the details on the loan 
+applications were genuine, including his email address, bank account, and phone number. I 
+note Mr F has argued that the address on the loan application was an old address and I 
+accept this is because it was taken from his driving license. But this supports that the 
+scammers were using information provided to them by Mr F. 
+ 
+Mr F has argued that he wasn’t sent any emails or loan agreements. However, the email 
+address and phone number on the loan applications were Mr F’s, so it’s likely the emails 
+were received. However, even if the emails were intercepted by the scammers, he knew 
+loans were being applied for and at the very least he facilitated the applications by giving the 
+scammers remote access to his device and providing all the information necessary to 
+complete them.  
+ 
+Significantly, Mr F has described that the scammer told him a loan would be taken out in his 
+name, albeit with one of B’s sister companies, and that he’d be able to repay the loan within 
+14 days. I accept he believed the loan would be obtained from one of B’s sister companies, 
+but he still had knowledge that a loan wase being applied for in his name and that it would 
+need to be repaid. He also told Z that he’d known about the loans when he first made 
+contact. So, I’m satisfied he knew about and consented to the loan applications.  
+ 
+Further, the loans were received into Mr F’s genuine account, and he then moved the funds 
+out to the scam, so while the funds were lost, I’m satisfied they were used. 
+ 
+I couldn’t reasonably ask Novuna to write off the principal loan amounts unless its acts and 
+omissions unfairly resulted in Mr F’s loss; and/or I was satisfied this was a fair and 
+reasonable outcome. Consequently, I’m satisfied that Mr F should be held liable for the 
+principal loan sums. 
+ 
+Affordability 
+ 
+Novuna has agreed to remove interest and charges for both loans and so I don’t need to 
+consider affordability further.  
+ 
+Novuna should now agree with Mr F an affordable repayment plan for both loans and as he 
+hasn’t made any repayments towards either loan, I don’t recommend any changes are made 
+to his credit file. 
+ 
+Compensation 
+ 
+ 
+ 
+Novuna has apologised and paid Mr F £175 compensation for the time it took to review his 
+complaint, and I’m satisfied that’s fair.  
+ 
+My final decision 
+My final decision is that Mitsubishi HC Capital UK PLC trading as Novuna Personal Finance 
+should remove all interest, fees and charges applied to the second loan. 
+ 
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr F to accept or 
+reject my decision before 7 March 2025. 
+   
+Carolyn Bonnell 
+Ombudsman

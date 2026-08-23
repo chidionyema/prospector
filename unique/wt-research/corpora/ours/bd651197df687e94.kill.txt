@@ -1,0 +1,13 @@
+EduPrint On-Demand – The Teacher's TPT Physical Fulfillment Engine.
+
+A solo-operated print, laminate, and ship service that turns teachers' TPT digital files into premium physical teaching resources, so they can earn passive income from their side hustle without touching a laminator.
+
+combine_signals: The teacherpreneur boom (6 million teachers on TPT) meets the demand for tactile learning materials post-pandemic. A solo operator with domestic-grade printers and laminators can capture the fulfillment niche by being the only service that understands teacher-specific formats (e.g., dry-erase lamination, velcro dots on sorting mats). AI automates order ingestion from TPT via API, print queue prioritization, and label generation.
+
+K-12 teachers in the US (public sector education workers) who sell resources on Teachers Pay Teachers as a side hustle.
+
+Cost of living crunch drives teachers to monetize their lesson plans; TPT is accelerating but the physical product option is under-served.
+
+The passages are either research reports on teacher time and instructional-resource use, or generic office/campus print services (PaperCut, Epson ink subscriptions, campus Creative & Print Services) — none describe TPT sellers, teacher-specific physical resource fulfillment, or whether specialty formats like lamination/velcro sorting mats hold durable, non-commoditized value.
+
+Twinkl already operates as a dominant, award-winning teaching-resources platform selling both digital and physical items (books, notebooks, printed materials) with free UK delivery, directly covering the teacher-resource physical-product niche. Printful, Printify and VistaPrint are established, well-funded print-on-demand/fulfillment platforms already serving custom physical goods at scale, so the fulfillment mechanics this candidate relies on are not an open space either.

@@ -1,0 +1,21 @@
+ThresholdPass — the evidence file that finally gets a teacher onto the upper pay scale.
+
+A fixed-fee service that writes a teacher's promotion case against the official Teachers' Standards, so a stalled pay rise gets approved instead of quietly refused.
+
+Since 2014, English schools no longer give teachers automatic pay rises for years served. A headteacher and governors decide each year whether a teacher's evidence meets the Teachers' Standards well enough to move up, and crossing onto the Upper Pay Range is worth several thousand pounds a year, every year, for the rest of their career. Many teachers who are doing the job perfectly well get turned down anyway, not because their teaching is weak, but because their written evidence file is thin, badly mapped to the Standards, or missing the kind of proof a panel actually wants to see.
+
+This borrows the way a professional grant writer earns a fee by turning a researcher's real work into the specific case a funding panel will approve, and applies the same discipline to a teacher's own pay progression file. The service interviews the teacher about their last year's lesson observations, pupil progress data, CPD and extra responsibilities, then builds a structured evidence pack mapped line by line to the Teachers' Standards, in the format governors and heads are used to approving. It is delivered once a year, timed to the appraisal cycle each school runs under the School Teachers' Pay and Conditions Document.
+
+The part that compounds: every case handled adds to a private record of which kinds of evidence actually got a 'yes' from which academy trusts and local authorities, and which got knocked back and why. A national teaching union can only ever hand out one generic template to everyone, because it has to stay neutral across every school in the country. This service gets sharper with every trust it has already won a case against.
+
+Individual classroom teachers in England and Wales, mainly in their first ten years of teaching, paying out of their own salary once a year around appraisal season (typically the summer term) for a personal shot at a permanent pay rise.
+
+Teacher pay has fallen behind inflation for over a decade, so the jump onto the Upper Pay Range or through the main scale threshold matters more to household budgets than ever, and heavier academy trust involvement in pay decisions since 2014 means the panel judging a teacher's case is increasingly a stranger, not a head who has watched them teach for years.
+
+The paid personal-statement services in these passages help teachers write statements for job applications, not evidence for pay-progression or threshold assessments, so they show no buyer intent for the candidate's actual product. The remaining passages are a free union model letter and official government forms, with no sign anyone searches for or pays for help completing them.
+
+[08443fadd1d71101] shows MPR salaries alone range from £32,916 to £45,352, so a one-off £49 fee is trivially small relative to income and the size of the pay jump at stake — the passages give no reason to doubt affordability, but they also give no direct confirmation teachers will spend it, and the other passages ([9c16a53c2add0e41], [45afbaa95ee508ad], [98712fca944dd91c], [bd57890e38a738ee], [3b75d41ae231c7e4]) are about unrelated pay scales, US tax brackets, mortgage affordability, free worksheets, or African school tuition, giving no evidence of willingness or ability to pay a teacher…
+
+The passages show TES as a recruitment/hiring channel for schools finding staff, not a channel for reaching individual teachers with a pay-progression evidence service, and NASUWT's listed offering is free will-writing, not a distribution route for a paid product. None of the passages address any self-serve signup, ad channel, or forcing mechanism by which teachers would discover or buy this service.
+
+All six passages concern personal-statement/CV writing services and essay mills for university admissions and academic integrity law, none address a teacher pay-progression evidence-writing service under the Teachers' Standards or School Teachers' Pay and Conditions Document.

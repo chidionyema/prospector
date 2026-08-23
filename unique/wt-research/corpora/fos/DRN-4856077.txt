@@ -1,0 +1,115 @@
+DRN-4856077
+The complaint
+Mr M complains about Lloyds Bank PLC (“Lloyds”) response to his claim brought under s.75 
+Consumer Credit Act 1974. 
+What happened
+In May 2022 Mr M booked a package holiday including flights and accommodation for him 
+and his family with a supplier I’ll call T. The holiday cost £5,483.13 and he paid some of this 
+using his Lloyds credit card. He was due to travel in August 2023. 
+Mr M said the quality of the hotel was poor and not to the standard shown in the pictures and 
+descriptions on T’s website. Upon his return he wrote to T setting out a list of complaints 
+about the room, the communal areas, the food and T’s rep. 
+T apologised and offered to pay Mr M compensation of £270. Mr M did not find this amount 
+acceptable and asked Lloyds to step in and help.
+Lloyds didn’t think it was liable to Mr M under s.75 as it didn’t think T had breached its 
+contract with him. It said Mr M’s contract required him to tell the hotel or T straight away if 
+things went wrong and Mr M had said he didn’t do this. It thought that because the hotel or T 
+weren’t given the opportunity to put things right during the stay, it wasn’t liable to Mr M. It 
+said T’s offer to pay Mr M £270 was fair in the circumstances. 
+Mr M then logged a complaint with Lloyds about its response to his claim. 
+Lloyds responded to Mr M’s complaint along similar lines in January 2024 explaining that he 
+had not provided photographic evidence to support his list of complaints and had not 
+reported them to the hotel at the time. So, it still didn’t think it was liable to Mr M under s.75.
+Dissatisfied Mr M referred his complaint to this service. 
+An investigator thought it was likely T had breached its contract with Mr M by failing to 
+provide accommodation to an appropriate standard. However, he thought the compensation 
+T had offered to pay Mr M was fair in the circumstances, so he thought Lloyds was 
+reasonable to conclude the same. 
+Mr M did not agree with the investigator and asked an ombudsman to review his complaint. 
+He said there was a good reason why he didn’t raise his complaints with the hotel or T at the 
+time and he wasn’t given a chance to give this context to Lloyds when he made his claim. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+
+I am sorry to hear Mr M was disappointed in his holiday. However, it is important to note that 
+Lloyds is not the supplier of the holiday. So, in order to decide if it has acted fairly, I need to 
+consider its role as a provider of financial services only. I note that Mr M used his credit card 
+to pay for the holiday. And with this in mind I consider the rules of chargeback and s.75 to be 
+particularly relevant as to how Lloyds could reasonably assist Mr M. It is these I have 
+focused on when determining what is fair and reasonable.
+S.75
+S.75 provides that in certain circumstances the borrower under a credit agreement has an 
+equal right to claim against the credit provider if there's either a breach of contract or 
+misrepresentation by the supplier of goods or services. 
+Relevant to this determination are the Package Travel and Linked Travel Arrangements 
+regulations 2018 (”The PTR”) and the Consumer Rights Act 2015 (“the CRA”). 
+Very briefly, the PTR implied terms in Mr M’s contract with T making it liable to Mr M for the 
+performance of the travel services included in his package contract. The CRA implied a term 
+that services, including the provision of the hotel accommodation, would be provided with 
+reasonable care and skill. A breach of this term could ultimately give Mr M the right to ask for 
+an appropriate price reduction. 
+From looking at the photographs Mr M provided of his room, I agree with the investigator that 
+this part of his package was not provided with reasonable care and skill. His room did not 
+appear to meet the standard a reasonable person would expect given the price he paid and 
+the description of the hotel as ‘five star’.  
+I’ve not seen any other photographs to support Mr M’s claims about the communal areas so 
+it’s difficult to know if the condition of these areas was as described by Mr M. I also find that 
+some of the things on Mr M’s list of complaints could be perceived as subjective and quite 
+difficult to prove – such as the hotel giving preferential treatment to locals for example
+Lloyds said the terms of Mr M’s contract with T said he had to alert it straight away if he had 
+any problems and he didn’t do this. I do understand why it was made more difficult for Mr M 
+to do this given the circumstances of his family’s illness. But in any event, I do not think this 
+term defeated the term implied by the CRA that services would be provided with reasonable 
+care and skill and on balance it doesn’t appear that all of them were. 
+It appears therefore that Mr M may have had the right to seek an appropriate price reduction.
+In deciding what this might have been I’ve taken account of the extent and severity of the 
+breach of contract in the context of the overall package of services that were supplied. This 
+means I should account for the fact that Mr M did have use of those facilities he hasn’t 
+complained, including the flights – which for a trip like Mr M’s could have made up a 
+significant portion of the overall cost of the package. 
+I do think its relevant also that some of Mr M’s holiday appears to have been made worse by 
+illness suffered in the family. I am sorry to hear about the impact this had on Mr M’s holiday. 
+I’ve not seen enough however to attribute this to any lack of conformity with contract or lack 
+of reasonable care and skill by the hotel. So, I don’t find it would be fair to ask Lloyds to 
+compensate Mr M for it. 
+Taking everything into account, I find the compensation T offered Mr M was fair in the 
+circumstances. It is around 5% of the total cost of his holiday, and as a percentage of the 
+accommodation cost that is likely to be an even higher portion. 
+Chargeback
+Chargeback is not a legal right but a dispute resolution process set out in rules made by the 
+card schemes. It was a separate option to s.75 in which Lloyds could have attempted to 
+recover money from T should the circumstances of Mr M’s dispute have fit within the card 
+scheme dispute conditions. It will often be good practice to attempt a chargeback where 
+there is a reasonable prospect of success.
+There were dispute conditions in the card scheme rules for where the quality of services was 
+disputed. However, in view of the fact that T had made an offer of compensation already to 
+Mr M and taking account of the fact I think this was fair compensation in the circumstances, I 
+don’t find Lloyds was wrong not to have raised a chargeback. Even if it had, I’m not 
+persuaded Mr M would have been able to recover more than T was already offering him 
+given the available evidence. 
+Mr M confirmed that T’s offer of £270 is still available to him. I don’t find Lloyds was 
+unreasonable to conclude this offer was fair in the circumstances. However, if Mr M decides 
+he would like to accept that offer and T does not pay it to him then Lloyds must pay £270 to 
+Mr M subject to him providing evidence of T’s refusal.  I make this conditional award 
+because I do find T was in breach of contract to Mr M by failing to provide its services with 
+reasonable care and skill. So he likely had a valid s.75 claim against Lloyds. It wouldn’t be 
+fair to leave Mr M out of pocket should T not honour its offer.
+I recognise that Mr M is unhappy with the way Lloyds handled his s.75 claim and feels he 
+wasn’t given the opportunity to give context to why he didn’t complain to T or the hotel 
+sooner, or a right of reply. However, I’ve not seen anything in the way Lloyds dealt with Mr 
+M’s claim that makes me think it should pay him compensation. It gave him an answer to his 
+claim in a reasonable time and based on the evidence that had been presented to it. Lloyds 
+was not required to give referral rights to this service in its response to his claim, only to his 
+complaint. I don’t think Lloyds prevented Mr M from going back to it with additional evidence 
+should he have wished to either. 
+My final decision
+For the reasons I have explained I do not currently require Lloyds Bank PLC to do anything 
+to settle Mr M’s complaint. However, if Mr M accepts T’s offer to pay him compensation of 
+£270 and T does not pay this, Lloyds Bank PLC must pay Mr M £270 (subject to him 
+providing evidence of T’s refusal to pay).   
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr M to accept or 
+reject my decision before 23 July 2024.
+ 
+Michael Ball
+Ombudsman

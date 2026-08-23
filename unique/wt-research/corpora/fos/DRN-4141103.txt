@@ -1,0 +1,86 @@
+DRN-4141103
+The complaint
+Miss T complains that Revolut Ltd won’t refund money she lost when she fell victim to an 
+investment scam.
+Miss T is being represented by solicitors in her complaint.
+What happened
+The detailed background to this complaint is well known to both parties, so I won’t repeat it 
+again here. Instead, I’ll focus on giving my reasons for my decision.
+The complaint concerns 10 transactions totalling around £24,000 which Miss T made to a 
+cryptocurrency exchange using her Revolut card between May and July 2022. Miss T says 
+she made the payments in connection with an investment opportunity promoted by a 
+company, “M”, which she subsequently discovered was a scam. 
+Although Miss T’s Revolut account was opened in July 2020, the first payment out of the 
+account wasn’t until 23 May 2022, when she made the first payment in dispute. 
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+Having done so, I agree with the conclusions reached by the investigator for the following 
+reasons:
+The starting position is that liability for an authorised payment rests with the payer, 
+even when they are duped into making that payment. There’s no dispute that Miss T 
+made all the disputed payments using her security credentials, and so they are 
+authorised. But in accordance with the law, regulations and good industry practice, a 
+payment service provider, including an electronic money institution like Revolut, 
+should be on the look-out for and protect its customers against the risk of fraud and 
+scams so far as is reasonably possible. If it fails to act on information which ought 
+reasonably to alert it to potential fraud or financial crime, it might be fair and 
+reasonable to hold it liable for losses incurred by its customer as a result.
+Revolut is an electronic money institution (EMI), not a bank or building society. EMIs 
+are set up with the purpose of sending and receiving money and the type of 
+payments they’re generally used for tends to be somewhat different to banks and 
+building societies. Often, the payments will be for larger sums. Where there’s no 
+previous account history, what should reasonably strike Revolut as concerning for a 
+first payment isn’t down solely to the transaction amount involved. I haven’t seen any 
+other factors at play here such that, in my view, Revolut should have been concerned 
+and ought to have intervened and questioned Miss T before executing her authorised 
+instruction for a payment of around £2,700. Purchasing cryptocurrency is a legitimate 
+exercise. 
+
+The second payment, for just over £2,500, was authorised twenty minutes later. 
+Between these two payments, there were two declined transactions to the same 
+merchant. Revolut has provided technical data which shows that the transactions 
+were declined due to insufficient funds. But given multiple attempts to send money to 
+a cryptocurrency exchange in a relatively short period of time, I consider the second 
+authorised payment ought to have given grounds for suspicion. In the circumstances, 
+I consider the provision of a warning which covered scam risks involving 
+cryptocurrency would have been a sufficient step for Revolut to take. We know that 
+no such warning was provided at the time. But as the investigator explained, and I 
+agree, such a warning is unlikely to have stopped Miss T in her tracks.  
+There were no regulator warnings published about M at the time of the payment. 
+Having carried out a backdated search on the internet, I haven’t been able to find any 
+adverse information about it either. From what her representative has said, I can see 
+Miss T did research M on the internet and found nothing suspicious about it; in fact, 
+she saw positive Trustpilot reviews. Reviewing her submissions to Revolut when she 
+reported the scam, I also understand that Miss T found M on the Companies House 
+register during her research. And that since engaging with M, the scammer was in 
+constant communication with her and provided reassurances. 
+So, even if Revolut had provided a warning specific to cryptocurrency scams, given 
+there was no adverse information about M in the public domain, and the scammer 
+who was in regular contact with her and would have been able to provide 
+reassurances, I’m more persuaded that Miss T would likely have gone ahead with the 
+payment. Therefore, I don’t think Revolut could have prevented the payment from 
+being made. 
+Thinking next about the subsequent transactions, which went to the same merchant, 
+I don’t consider that they would have appeared suspicious given the pattern that had 
+been established. There were some more declined payments in between authorised 
+ones. But this was either due to insufficient funds, or due to daily card limit being 
+reached. Having given this some thought, I don’t think Revolut ought to have 
+intervened when Miss T made the subsequent payments.
+I’ve also thought about whether Revolut could have done more to recover the funds 
+after it became aware of the situation. Miss T’s payments went to a cryptocurrency 
+exchange. She wouldn’t be able to make a successful chargeback claim in the 
+circumstances because the merchant she paid did provide the service requested 
+(i.e., conversion of fiat money into cryptocurrency). I can see Revolut did attempt a 
+chargeback, but it was defended by the merchant.    
+In summary, I recognise that this will come as a considerable disappointment to Miss T. 
+I fully acknowledge that she’s lost a significant amount of money. But having considered the 
+matter very carefully, for the reasons given, it wouldn’t be fair of me to hold Revolut 
+responsible for her loss.  
+My final decision
+For the reasons given, my final decision is that I don’t uphold this complaint.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Miss T to accept or 
+reject my decision before 16 January 2024.
+ 
+Gagandeep Singh
+Ombudsman

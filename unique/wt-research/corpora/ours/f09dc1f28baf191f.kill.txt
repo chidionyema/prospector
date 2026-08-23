@@ -1,0 +1,21 @@
+ShipProof, sells your build logs to your own auditor.
+
+A data service for engineering operations managers that turns the build and deploy logs you already keep into the evidence your customers' security teams demand, priced per audited claim rather than per seat.
+
+Start with the plain version. A software company's operations manager already stores every build, every deploy approval and every dependency change in GitHub Actions, GitLab or Jenkins. When a large customer's security team asks "prove no single engineer can push to production unreviewed", that same manager spends days hand-collecting screenshots. ShipProof reads the logs continuously and keeps a standing, timestamped answer to each question a buyer actually asks.
+
+The angle here is deliberately adversarial to the body imposing the duty. The UK's Cyber Essentials Plus scheme and the NCSC Cyber Assessment Framework both keep raising what counts as evidence, and the government's Software Security Code of Practice, published by DSIT in May 2025, adds voluntary-but-contractually-quoted expectations on suppliers. Those bodies publish the questions. They cannot, structurally, take the supplier's side, argue a control was met by a compensating measure, or tell one supplier how its evidence compares with the thirty other suppliers bidding for the same contract. A regulator can ship a free checklist. It cannot ship an advocate.
+
+The compounding asset is the mapping layer: which literal log signature in which CI system satisfies which worded question, and which assessor or customer security team accepted it. Every audit run adds observed question wording plus the accepted evidence pattern. Rivals cannot buy this because it only exists where the logs and the audit outcomes meet, and neither GitHub nor an assessor sees both sides.
+
+Growth motion is product-led then partner-led. Free read-only scan of one repository shows the manager the three questions their current logs cannot answer. Paid tiers cover the whole estate. Partner motion runs through Cyber Essentials certification bodies, who currently hand clients a spreadsheet.
+
+This commits to shape (C), sells-to-tech: the buyer is an engineering operations manager inside a UK software company, the recurring trigger is annual Cyber Essentials Plus recertification plus every enterprise security questionnaire, the deliverable is a per-question evidence pack drawn from live logs, and the public source proving the pain is already paid for is the published Cyber Essentials Plus scheme and its assessor-body fee structure.
+
+Engineering operations managers and heads of platform inside UK software companies of roughly 20 to 300 staff who sell to the public sector or to banks, and who already pay an IASME-appointed certification body for Cyber Essentials Plus each year.
+
+DSIT published the Software Security Code of Practice in May 2025, and the Cyber Essentials technical requirements were revised in April 2025 to tighten evidence expectations. Buyers now quote both in contracts. At the same time, AI coding assistants have sharply increased the volume of automated commits, so the old habit of screenshotting a handful of pull requests no longer covers what actually shipped.
+
+The passages confirm only that the UK Cyber Essentials requirements exist and keep being revised (minor April 2025 changes to v3.2, mandatory MFA for cloud services, and a v3.3 update applying to assessment accounts created after April 27, 2026) — they say nothing about whether firms struggle to produce evidence from build and deploy logs, or what they pay for that today [9f99ce6d14d4e973][72ba4adb8a0c0d40][5d10fae6b3de1dea].
+
+The passages describe Vanta as a well-established platform that automates security monitoring and the collection of compliance evidence, covering SOC 2, HIPAA, ISO 27001, PCI and GDPR, and working directly with audit firms to prepare companies for examination [39a2742fc547ef87][2044bc56c010a0f4][31d00dfe64d90147]. That is a funded, operating rival already doing the core job this candidate proposes — turning a company's own system records into audit-ready proof — so the space is not open.

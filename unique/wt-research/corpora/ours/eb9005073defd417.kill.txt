@@ -1,0 +1,23 @@
+CrashScene Doc‑On‑Demand.
+
+A rapid‑response accident‑scene documentation service that deploys a solo operator within the hour to capture professional photos, witness statements, and a physical evidence pack for insurance claims—paid by the motorist at the roadside.
+
+After a road accident, drivers are disoriented, stressed or injured and miss critical evidence that insurers later dispute; an impartial, instant scenedocumenter dramatically improves claim outcomes.
+
+Public‑sector worker motorists involved in a collision (often in older cars or with limited insurance) who want to maximise their claim.
+
+Rising insurance fraud and post‑code claim disputes are pushing insurers to demand more robust, independent evidence; dashcams are common but miss context—an on‑scene professional fills the gap.
+
+The passages mention unrelated fleet management software, a self-help accident app, an executive order, aerial documentation for investigations, and a solo officer training course; none address whether the value of an impartial, rapid-response human documentation service is real, durable, already commoditised, or evaporating. The app described in [5625f157fa195fdf] assists drivers but does not show the independent human component is obsolete or that the claimed value is non-existent.
+
+The passages describe official investigation tools for police/public safety agencies, not a consumer-facing roadside documentation service. They provide no information about incumbency in the space of paid, on-demand accident scene documentation for motorists.
+
+None of the passages discuss the budget, willingness to pay, or financial capacity of public‑sector worker motorists. The topic is irrelevant to the question.
+
+The passages cover accident reconstruction software and a guided checklist app, but none discuss a route for motorists to discover or purchase an on-demand scene documentation service.
+
+The passages describe crash scene documentation procedures and law enforcement tools but contain no information about the legality of a private, paid scene-documentation service. No legal prohibition or permission is mentioned.
+
+All passages describe professional crash investigation tools and methods for law enforcement, reconstruction, and safety investigations. None mention individual drivers hiring or paying for rapid on-scene documentation services, nor do they address whether the target motorist audience suffers an acute pain they pay to solve.
+
+All evidence provided is unrelated to the candidate's consumer-facing accident documentation service; no passages contain explicit proof of illegality, cost-exceeding-revenue economics, or a single company dominating 80%+ of the distribution channel.

@@ -1,0 +1,164 @@
+DRN-4362811
+The complaint
+Mr S complains that HSBC UK Bank Plc mishandled his chargeback claim.
+What happened
+In or around December 2021 Mr S entered into a contract with a merchant for the supply and 
+installation of a costal unit heat pump, a 250L solar cylinder, a 10-year parts and labour 
+warranty and other works. A schedule of work was signed, and the work was due to 
+commence in January 2022. Mr R made an initial payment of £8,712.15 with a final payment 
+of £5,937.51 to be made once the work had been completed.
+The merchant undertook the work but there were issues with their service/quality of work. 
+These included that the wrong heat pump was installed, a 210L cylinder pump was fitted and 
+Mr R says he wasn’t provided with the parts and labour warranty. 
+Mr R made a complaint to an alternative dispute resolution service (“ADR”) which was able 
+to deal with a complaint about the supply, installation and service directly with the merchant. 
+In March 2022 the ADR issued a report that set out what the merchant needed to do to put 
+things right which was signed by both Mr R and the merchant. This report also stated that Mr 
+R needed to pay a final instalment to the merchant of £5,360 following a deduction for 
+damage that had been sustained to carpets and a bench belonging to Mr R. Mr R paid this 
+amount with his visa credit card held via HSBC.
+Mr R says that the merchant didn’t then follow the recommendations of the ADR service. He 
+therefore made a chargeback claim for the £5,360 to HSBC. HSBC credited this amount 
+back to Mr R’s credit card account and raised a chargeback under the merchandise/services 
+not received reason code. The merchant challenged the chargeback saying that it had 
+installed everything and had provided a 10-year warranty. It said that in respect of a 10-year 
+parts warranty from the manufacturer, that the manufacturer only provided as standard a 
+three-year warranty and it would cost £500 to go to the maximum warranty period offered by 
+them which Mr S could pay. The merchant said they didn’t offer anything more than the 
+standard manufacturer parts warranty for these units and that it wasn’t in Mr R’s contract to 
+be provided with a 10-year manufacturer’s warranty. They also contested that the extended 
+manufacturer’s warranty would cost the amount of the chargeback.
+Having received the response from the merchant, HSBC contacted Mr S and informed him 
+of what had been said. Mr S provided a detailed challenge of his own. HSBC decided it was 
+unable to take the chargeback further and notified Mr S of its decision in December 2022. 
+Unfortunately, Mr S didn’t receive this letter and only became aware of it when his credit 
+card account was again debited for the £5,360 amount.
+Mr S complained to HSBC about its decision. It provided its final response letter setting out it 
+had been unable to uphold his complaint because the goods were in his possession and 
+although it was the wrong heat pump this was to be replaced once back in stock at a later 
+date and that the warranty had been extended. HSBC said that if that wasn’t the case then 
+Mr S could seek independent advice.
+
+HSBC passed Mr S’s claim to its section 75 claim team and opened a claim for him.
+Mr S made a complaint to this service in December 2022. Following his complaint there were 
+a number of developments. These included the merchant installing the correct heat pump 
+and Mr S raising another issue with the other ADR service. The ADR service has issued a 
+new settlement agreement between Mr S and the merchant which Mr R is happy to accept. 
+However, Mr S says he remains unhappy at HSBC’s handling of his chargeback claim and 
+he would like this service to continue to investigate that.
+Our investigator recommended that Mr S’s complaint should be partially upheld. He said that 
+chargeback claims weren’t guaranteed to succeed, and they could be challenged and 
+defended by the merchant/retailer. If a retailer put up a valid defence, then he said he 
+wouldn’t expect a bank to take a chargeback claim further.
+Here, our investigator said there was a relatively complex situation as it was contested as to 
+what had been installed, what was outstanding and what Mr S had paid for using his credit 
+card. Our investigator said Mr S had only paid the last instalment via his card, the larger 
+portion of the cost had been paid via a different method. He said no breakdown as to what 
+had been covered by this final amount had been provided.
+Our investigator said he thought HSBC had acted reasonably when it decided not to proceed 
+with the chargeback claim. He said that HSBC had then considered a claim for Mr S under 
+section 75 of the Consumer Credit Act 1974. However, our investigator said that as another 
+ADR service had put a resolution in place it would be reasonable for HSBC to see if the 
+merchant acted in accordance with that to resolve the dispute. 
+Our investigator said that although HSBC had acted reasonably in considering the two 
+processes it could follow to assist Mr S, he thought HSBC could have acted faster despite 
+the complexity. The delay had caused Mr S frustration. He said it would be fair for HSBC to 
+pay Mr S £200 as compensation for its handling of his claim.
+HSBC has agreed with the view of our investigator, but Mr S has disagreed. He says that 
+HSBC had many lapses in the way it handled his claim. He says it shouldn’t have accepted 
+the warranty as the manufacturer’s parts and labour warranty as it was for workmanship only 
+meaning it hadn’t checked the documents. Mr S says HSBC also hadn’t checked that he had 
+the correct item in his possession and that the correct unit was in stock and so available. 
+As the parties were unable to reach an agreement the complaint was passed to me.
+What I’ve decided – and why
+I’ve considered all the available evidence and arguments to decide what’s fair and 
+reasonable in the circumstances of this complaint.
+The issue for me to consider here is whether HSBC has handled Mr S’s claim for 
+reimbursement of the final payment of £5,360 fairly. I’m not looking at the actions of the 
+merchant. And I also can’t seek to enforce the settlement agreements recommended by 
+the other ADR service. I, like HSBC must look at the contract that had been entered into 
+between Mr S and the merchant.
+Mr S made a chargeback claim for the final instalment he had paid after he had made a 
+complaint with the other ADR service, and it had issued a suggested settlement which 
+both Mr S and the merchant had signed. Mr S says that the merchant didn’t keep to either 
+the terms of the contract between them or to all of the terms of the settlement agreement. 
+However, the signing of the settlement agreement by the merchant does, I think, show 
+that there was some acknowledgement by the merchant that there were issues that 
+needed to be resolved.
+A chargeback is a process that involves the card issuer disputing payments made on a 
+card through a dispute resolution scheme operated by the companies which run the card 
+networks, here that is Visa. It allows customers to ask for a transaction to be reversed if 
+there's a problem with the goods or services they've paid for. There's no automatic right 
+to a chargeback and it isn’t a guaranteed method of getting a refund. A consumer can’t 
+insist that their card provider attempts a chargeback, but this service would expect a card 
+provider to do so as a matter of good industry practice if there was a reasonable prospect 
+of the chargeback succeeding.
+A chargeback can only be for the amount that’s been paid, so that would mean Mr S 
+couldn’t seek reimbursement for anything outside of that amount, such as interest or 
+compensation. 
+I’ve seen that HSBC raised a claim under merchandise/services not received. It also 
+credited the amount in dispute back to Mr S’s credit card account while the claim was 
+being considered.
+Under the chargeback scheme a merchant/retailer is able to defend a claim and I’ve seen 
+that the merchant informed HSBC that it was contesting Mr S’s claim. They said the 
+goods/services and warranty had or would be provided as per the contract. (There 
+appears to have been acceptance that the wrong heat pump had been provided and that 
+this would be rectified when the unit was available – which it later was). They disputed that 
+there was an agreement to provide a 10-year manufacturer’s warranty and said that 
+wasn’t part of the contract. HSBC informed Mr S what the merchant had said, and he 
+provided a response. 
+While I appreciate Mr S disagrees with what the merchant has said, I’ve seen that the 
+situation was complicated. I’ve seen there had been a contract for the supply and 
+installation of a number of items plus the provision of a 10-year parts and labour warranty, 
+but I haven’t seen that it was set out in that schedule of works that this would be a 
+manufacturer’s warranty. I’ve also seen that the total contract price was over £14,000 and 
+although there was a schedule of work, there was no itemising as to the costs for the work 
+or the items supplied. The payments made by Mr S weren’t allocated to particular items 
+being supplied or works carried out. So, I don’t think it was clear what the £5,360 payment 
+had been for in respect of which goods or services that hadn’t been received by Mr S.
+Mr S says that HSBC should have done more than accept the merchant’s view, but I think 
+it’s likely that HSBC had considered what both parties had said. This wasn’t a 
+straightforward claim of services/items not supplied and HSBC decided not to take the 
+case further which it was entitled to do. As set out above, my role isn’t to second-guess 
+Visa’s arbitration decision or scheme rules but to determine whether the regulated card 
+provider (here that’s HSBC) had acted fairly. And I think given the contested evidence, 
+that the merchant said they would be fitting the correct heat pump and the overall 
+complexity of the situation including the disagreement at to the cost of any manufacturer’s 
+warranty, that HSBC had acted reasonably in deciding that Mr S’s chargeback claim was 
+likely to be unsuccessful and so it wouldn’t take it further.
+I appreciate Mr S was upset to discover his chargeback claim had failed by discovering 
+the amount had been debited from his credit card account rather than receiving a letter 
+from HSBC first. But I don’t think HSBC deliberately didn’t inform him, I don’t know why he 
+didn’t receive the letter that it said it sent.
+HSBC then opened a claim under section 75 of the Consumer Credit Act 1974 for Mr S. I 
+understand from the evidence that’s been provided that in April 2023, HSBC advised Mr S 
+it didn’t think it could assist him further as it couldn’t establish whether there had been a 
+breach of contract. However, I haven’t considered the section 75 claim in my decision for 
+two reasons. Firstly, I haven’t seen that Mr S has complained to HSBC about its decision 
+(if that has been finalised) to decline his section 75 claim. And secondly, I’ve seen that Mr 
+S had made a further complaint to the other ADR service and they have issued another 
+settlement agreement which Mr S felt would resolve the outstanding issues with the 
+merchant. If that is the case, then a section 75 claim wouldn’t add anything for Mr S. 
+However, should this not be the case then Mr S can ask HSBC to consider the matter 
+again under section 75 since it would appear that this ADR service has found that there 
+was a breach of contract.
+While I think that the decision of HSBC in respect of Mr S’s chargeback claim was 
+reasonable, I agree with our investigator that it could have dealt with things in a more 
+timely way. I appreciate that things were changing with works being undertaken by the 
+merchant and the input from the other ADR service, but I think Mr S has been caused 
+unnecessary distress and inconvenience waiting for HSBC to deal with his claim. I think 
+compensation of £200 is appropriate for its handling of Mr S’s claim.
+I appreciate my decision will be of disappointment to Mr S, but for the reasons given I’m 
+partially upholding Mr S’s complaint.
+Putting things right
+I’m asking HSBC to pay Mr S £200 compensation for its handling of his claim for 
+reimbursement of £5,360.
+My final decision
+For the reasons set out above, I’m partially upholding Mr S’s complaint. I’m asking HSBC UK 
+Bank Plc to pay Mr S £200 compensation for its handling of his claim to be reimbursed the 
+amount of £5.360.
+Under the rules of the Financial Ombudsman Service, I’m required to ask Mr S to accept or 
+reject my decision before 13 December 2023.
+ 
+Jocelyn Griffith
+Ombudsman

@@ -1,0 +1,15 @@
+Microsoft co-sell evidence binders for UK AI ISVs.
+
+A fixed-fee binder of Microsoft co-sell readiness evidence that a UK AI ISV submits to achieve Solutions Partner designation.
+
+The founder of a UK AI independent software vendor (ISV), typically a sub-30-staff team, needs Microsoft IP Co-Sell readiness evidence to win Solutions Partner designation and unlock Microsoft's enterprise sales channel. The Microsoft IP Co-Sell Playbook requires three customer references in a published format, an offer in AppSource, and a certified workload or AI designation. A UK ISV typically spends 6-12 months assembling this, with a Microsoft partner manager and a £20-50k consultancy engagement.
+
+The productized version widens the chain. For a fixed fee of £5-9k the buyer gets a customer-reference template in the three required formats, an AppSource listing review and rewrite, a workload-or-AI designation readiness checklist, and a co-sell deal-registration walkthrough, a single binder rather than four separate consultancy streams.
+
+The defensible asset is proprietary: the team has compiled Microsoft Solutions Partner reviewer commentary from published partner case studies and Microsoft partner conference decks. Microsoft's own Partner Center self-service portal is generic; the consultancy's value is the per-designation reviewer nuance. Microsoft is the platform owner, not a consultancy, so it cannot write customer references for hire.
+
+Recurring trigger: annual designation renewal plus every new product line. Why now: Microsoft launched its AI Designation in 2024, creating a fresh cohort of UK AI ISVs needing this binder for the first time, and the 2025 partner tier restructuring reset designation requirements.
+
+Founder or commercial director of a UK AI ISV pursuing Microsoft Solutions Partner designation, currently paying a Microsoft partner consultancy £20-50k for co-sell readiness support.
+
+Microsoft launched its AI Designation in 2024, creating a fresh cohort of UK AI ISVs needing this binder for the first time. Microsoft's 2025 partner tier restructuring reset designation requirements across the board.

@@ -1,0 +1,23 @@
+ProvenKey, UK-made security keys with a paper trail.
+
+ProvenKey sells UK-made FIDO2 security keys with a documented supply chain, for small software firms proving Cyber Essentials Plus compliance to NHS and MOD buyers.
+
+The 2024 discovery of a backdoor hidden in the widely used xz-utils compression library made supply-chain trust a mainstream worry across the software industry, not just a niche security concern. At the same time, NCSC's supply chain security guidance and the tightening of Cyber Essentials Plus requirements across NHS and MOD supplier frameworks mean small firms are now being asked questions about hardware provenance they were never asked five years ago, and most don't have a ready answer.
+
+The passages describe UK Cyber Essentials/Cyber Essentials Plus certification generally (pricing, scope, test specs, supply-chain risk guidance) but say nothing about buyers searching for or paying for UK-made hardware security keys with a documented supply chain, nor about NHS/MOD suppliers seeking hardware provenance solutions specifically.
+
+UK software businesses report spending over £50,000/year on cyber protection measures and over half of tech SMBs cite security threats as their top challenge, showing this buyer segment already commits budget far exceeding £49.99 and has active motive to spend on security credibility; MOD's Cyber Security Model and supplier questionnaires further show buyers are formally pressed to prove exactly this kind of compliance.
+
+IASME/NCSC operate a nationwide network of licensed Certification Bodies and NCSC-assured providers, searchable via a public directory, giving a small UK firm a ready-made self-serve path to Cyber Essentials Plus assessment without needing bespoke sales access to NHS/MOD buyers.
+
+The passages describe UK export-control licensing regimes (the Cryptography Note, the Strategic Export Control List, and Open General Export Licences) that govern exporting dual-use information-security items abroad, not the domestic manufacture or sale of FIDO2 keys to UK-based NHS and MOD buyers. Nothing here confirms or denies whether ProvenKey's domestic supply-chain and compliance-documentation business requires any illegal act.
+
+The passages establish that software supply-chain attacks (xz Utils) and UK cyberattack notifications are real and widespread, but none mentions small software firms, Cyber Essentials Plus, NHS/MOD buyers, or hardware security keys with provenance documentation — the specific pain the candidate claims to address.
+
+The passages confirm NCSC's supply chain security guidance and Cyber Essentials scheme exist, but none mention the xz-utils backdoor, NHS/MOD supplier frameworks, or any recent tightening tying hardware provenance to certification requirements — the specific 'why now' timing claim is unaddressed.
+
+The passages describe cloud encryption-key-management services and the G-Cloud digital marketplace framework, none of which concern selling physical FIDO2 hardware security keys or reaching small software firms seeking Cyber Essentials Plus compliance evidence.
+
+The passages are NCSC Cyber Essentials Plus test specifications and general guidance documents; none of them mention FIDO2 keys, UK manufacturing, supply-chain provenance documentation, or any requirement tying hardware provenance to Cyber Essentials Plus certification for NHS/MOD suppliers.
+
+The export-control passages govern shipping encryption hardware abroad, not domestic UK manufacture or sale to NHS/MOD suppliers, so no passage shows this business model is illegal. The price comparables list several competing FIDO2 key sellers (Project Telecom, Token2, PMC Telecom, HushKey) with no single firm shown controlling most of the distribution channel, and no passage gives customer-acquisition-cost or lifetime-value figures that would show the economics can't work.

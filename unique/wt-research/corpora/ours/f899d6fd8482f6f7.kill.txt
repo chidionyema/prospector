@@ -1,0 +1,21 @@
+AI procurement dossiers for agencies selling to IL insurers.
+
+When your agency pitches AI to an Illinois insurance carrier, a fixed-fee dossier proves you meet NAIC and IL DOI requirements, so procurement stops bouncing you.
+
+Plain version: a productized dossier builder that turns an agency's AI pitch (claims triage, underwriting copilot, fraud detection) into the documentation package the National Association of Insurance Commissioners Model Bulletin on Use of AI by Insurers and the Illinois Department of Insurance's AI bulletin require, mapped to the specific procurement template the carrier uses.
+
+Why it works: Illinois is the US insurance headquarters (State Farm in Bloomington, Allstate in Northbrook, Country Financial in Bloomington). The IL Department of Insurance adopted the NAIC Model Bulletin on AI in 2024, requiring every insurer to document AI governance before procurement. Agencies pitching AI to these carriers keep losing RFPs because their documentation does not match the format procurement committees grade on, and a Big Four consultancy charges $50,000-plus for a generic version.
+
+Why it holds: borrows the FDA 510(k) substantial equivalence pattern, where a vendor must show their device is substantially equivalent to a previously accepted device on the dimensions the regulator cares about; the dossier does this for the agency's AI product on the dimensions the IL DOI bulletin cares about. The DOI bulletin itself is free, and Big Four decks are too expensive and too generic; the agency needs a fixed-fee, Illinois-specific, carrier-customized version it can re-use across Allstate, State Farm and Country Financial without rewriting.
+
+Illinois-based dev agency owners (typically 5 to 20 people) selling AI features to insurance carriers, including the major IL-domiciled carriers and the larger regional carriers headquartered in Chicago, Peoria and Bloomington.
+
+The NAIC Model Bulletin on AI was adopted in late 2023 and adopted in Illinois via a 2024 DOI bulletin; Allstate publicly committed to 'responsible AI' procurement in its 2024 annual report; State Farm increased vendor AI oversight in 2024. The pain is documented in the bulletin itself, the public Allstate and State Farm statements, and the IL DOI enforcement record.
+
+Multiple passages show active buyer demand: Tribble and Everwise explicitly sell tools to IT vendors and consultancies responding to insurance RFPs, Everest Group sells an L&A Insurance Technology RFP accelerator, and Polygraf offers a free Insurance AI Governance Policy Template aligned to the NAIC Model Bulletin. Live insurance AI RFPs (LIC Agentic AI/GenAI platform, KEMI medical records AI) confirm ongoing procurement activity. The NAIC Model Bulletin's December 2023 adoption establishes the regulatory pressure that creates the need for compliant documentation.
+
+None of the passages address small Illinois-based dev agencies (5–20 people) selling AI to insurers or their willingness to pay for a procurement dossier; the evidence covers insurer IT budgets, vendor contracts, and agency tech adoption broadly, but never the specific buyer segment or its spending behavior on compliance documentation.
+
+The Illinois Technology Association (ITA) operates a 500+ member directory and a Service Network Guide explicitly designed to connect service providers with member tech companies in the region, which constitutes an existing, low-friction channel to reach Illinois-based tech agencies. However, the passages are truncated and do not confirm that the specific buyer subset (dev agencies pitching AI to insurance carriers) is concentrated in this network, which limits confidence.
+
+The passages describe a recognized market for AI compliance documentation and consulting services: [9e1fb9e37d73f607] shows compliance attorneys routinely drafting AI-specific contract and compliance language for tech vendors, [2f58691f32a7c2bd] describes the AI compliance consulting market as legitimate across regulated industries including insurance, and [ff10a7ce000da0bf] outlines the NAIC documentation requirements that create the demand such dossiers would serve.

@@ -1,0 +1,17 @@
+CalTrue, colour calibration rounds for freelance editors.
+
+A small team of technicians who visit UK freelance video editors and colourists at home to calibrate their monitors, rooms and audio so their work passes broadcast delivery checks.
+
+Freelance editors and colourists working from a spare room or garden studio are increasingly delivering finished work straight to broadcasters and streamers, not through a facility. BBC, ITV, Channel 4 and Netflix all set technical delivery rules through the Digital Production Partnership's AS-11 standard and colour specs like ITU-R BT.709 and BT.2020. If a freelancer's monitor is out of calibration, or their room has the wrong ambient light, their master can be rejected at quality control, costing them the invoice and the relationship.
+
+A chain of local technicians, organised city by city (starting in London, Manchester, Bristol and Cardiff, where most UK indie production companies cluster), drives a set route of home studios. Each visit calibrates the screen with proper viewing-geometry and ambient-light checks, tests the audio monitoring against broadcast loudness standards, and issues a dated compliance certificate the editor can attach to a delivery or show a commissioning QC team before they even hire.
+
+This is built first-principles: the freelancer's actual problem isn't 'I need a colorimeter', it's 'I need proof, today, that my suite will pass', which a self-service gadget can't give them. The chain keeps a calibration history per client — drift patterns, room changes, past certificates — so re-booking with the same team is faster and more trusted than starting over with anyone else, and over time the certificate itself becomes something production companies recognise by name.
+
+UK freelance video editors, colourists and sound engineers who take on paid delivery contracts for broadcasters or streamers and need their home setup to pass technical QC before or after delivery.
+
+Post-production work has shifted heavily to home-based freelancers since 2020, while broadcasters and streamers have tightened automated QC on delivered masters — a rejected file means late payment or a lost client, so the cost of getting caught out has gone up just as the number of people working outside a proper facility has grown.
+
+The passages show generic consumer interest in self-service monitor calibration (Windows tools, colorimeter tips) and unrelated freelance-job and lens-calibration content, but none show UK broadcast/streamer freelance editors searching for or paying for a compliance-certificate or room/audio calibration service tied to delivery QC.
+
+None of the passages address willingness or ability to pay £49.99 for a calibration certificate; instead they show colorists already face tight, revision-eaten margins and rely on generalist freelance-hiring platforms with no reference to calibration spend, so there is no evidence this payer has spare budget for the claimed price.
