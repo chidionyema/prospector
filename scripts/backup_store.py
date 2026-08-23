@@ -683,6 +683,36 @@ def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[st
     stamp = time.strftime("%Y-%m-%dT%H%M%SZ", time.gmtime())
     key = f"{REPO_PREFIX}{stamp}.bundle"
 
+    # A SHALLOW REPOSITORY CANNOT PRODUCE A USABLE BUNDLE, AND NOTHING DOWNSTREAM CAN TELL.
+    # This is checked first because it is the only failure here that cannot be repaired by
+    # trying again. `git bundle create --all` from a shallow clone walks to the grafted
+    # boundary and stops. The bundle declares no prerequisites, because as far as it knows
+    # the boundary commits are roots, so it looks self-contained and complete.
+    #
+    # Measured 2026-08-23. `prospector-live` has been shallow since 2026-08-18 16:56 (7
+    # boundary commits in .git/shallow) and the nightly mirror has run from it ever since.
+    # Every bundle it produced — 14 objects in the bucket, the newest three each exactly
+    # 71,176,969 bytes — is unrestorable. All three restore paths die the same way:
+    #     git clone --bare  ->  error: Could not read 788dca7d...
+    #                           fatal: Failed to traverse parents of commit d932e28e
+    #                           fatal: remote did not send all necessary objects
+    #     git clone --mirror -> identical
+    #     git init + git fetch '+refs/*:refs/*' -> 0 refs recovered
+    # `git fsck --connectivity-only` on the source exits 0 the whole time, because a shallow
+    # repo IS internally consistent. The damage only exists in the bundle's consumer.
+    shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+    )
+    if shallow.stdout.strip() == "true":
+        raise RuntimeError(
+            f"{REPO_ROOT} is a shallow clone, so no bundle taken from it can be restored: "
+            "the history stops at the graft boundary and every clone dies traversing past "
+            "it. Repair the source before backing it up — `git -C "
+            f"{REPO_ROOT} fetch --unshallow origin` — rather than storing another unusable "
+            "copy. Refusing to upload."
+        )
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp_bundle = Path(tmp) / "mirror.bundle"
         # `git bundle create` --all walks every ref under REPO_ROOT. The exit code is the
@@ -699,14 +729,30 @@ def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[st
 
         # Verify BEFORE uploading: uploading an unreadable bundle is the same failure as not
         # backing up at all, and it would look green because the upload itself succeeded.
-        verify = subprocess.run(
-            ["git", "bundle", "verify", str(tmp_bundle)],
-            cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+        #
+        # THE CHECK IS A CLONE, NOT `git bundle verify`. Verify reads the bundle header and
+        # asks whether this repository already holds the prerequisites it names. It never
+        # reads the pack. Measured 2026-08-23: it exits 0 on a bundle truncated to 300 bytes,
+        # and it exited 0 on all fourteen shallow bundles described above, printing "The
+        # bundle contains these 169 refs" about a file from which zero refs can be recovered.
+        # Cloning into a throwaway directory is the only check that reads every object, and
+        # it is the operation a restore actually performs.
+        probe = Path(tmp) / "probe.git"
+        clone = subprocess.run(
+            ["git", "clone", "--bare", "--quiet", str(tmp_bundle), str(probe)],
+            capture_output=True, text=True, check=False,
         )
-        if verify.returncode != 0:
+        if clone.returncode != 0:
             raise RuntimeError(
-                f"git bundle verify failed (rc={verify.returncode}): "
-                f"{verify.stderr.strip() or '<no stderr>'}"
+                f"the bundle cannot be cloned, so it is not a backup (rc={clone.returncode}): "
+                f"{clone.stderr.strip() or '<no stderr>'}"
+            )
+        refs = subprocess.run(
+            ["git", "-C", str(probe), "show-ref"], capture_output=True, text=True, check=False,
+        ).stdout.splitlines()
+        if not refs:
+            raise RuntimeError(
+                "the bundle cloned to zero refs, so it carries no history worth storing"
             )
 
         size = tmp_bundle.stat().st_size

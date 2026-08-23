@@ -231,6 +231,148 @@ sources:
     # and a shut lid over a weekend is not a backup failure. A week of silence is.
     max_age_hours: 72
     keep: 30
+  - name: secret-store
+    why: >-
+      deploy/secrets.env.age — the age-encrypted file holding all 25 secrets the stack needs to
+      authenticate anywhere: the Stripe live keys, the R2 keys, the Fly token, the store's
+      internal API key and every model provider key. It is what makes the difference between a
+      restored machine that runs and a restored machine that runs and cannot authenticate, which
+      is exactly the failure of 2026-08-17 that deploy/secrets.sh was written to end. It was
+      created on 2026-08-23 and until this entry it had one copy, on the laptop whose loss is the
+      disaster the whole programme exists to survive.
+
+      It does NOT go in git, and that is a correction rather than an omission. deploy/secrets.sh
+      instructed in its own header that the file be committed, on the reasoning that ciphertext
+      is useless without the key. That holds for a private repository. chidionyema/prospector is
+      PUBLIC, so a commit would publish every live credential to an internet that keeps clones
+      after a deletion, with one X25519 key on one laptop as the only protection, permanently.
+      This bucket is private and already holds the money database, so the store is no more
+      exposed here than the thing it protects — and it arrives already encrypted, so even losing
+      the bucket does not lose the values.
+    fetch:
+      # It uploads the CIPHERTEXT, and it decrypts only into memory, only to prove the file is
+      # whole. `verify: nonempty` is the only kind that fits an opaque blob and a byte count
+      # cannot tell a good store from a truncated one, so the real verification happens here,
+      # before anything leaves: the file must decrypt with the laptop's key and must yield at
+      # least as many assignments as the store had when this was written. A truncated or
+      # key-mismatched store fails at this step and never displaces the good copy in the bucket.
+      #
+      # No plaintext is written to disk and no value is printed, only a count. The subprocess
+      # output is held in a variable and dropped when the process exits.
+      - python3
+      - -c
+      - |-
+        import shutil, subprocess, sys
+        store, key, dest = sys.argv[1], sys.argv[2], sys.argv[3]
+        out = subprocess.run(["age", "-d", "-i", key, store],
+                             capture_output=True, check=True).stdout.decode()
+        n = sum(1 for line in out.splitlines() if "=" in line and not line.startswith("#"))
+        del out
+        if n < 20:
+            sys.exit("the store decrypted to %d assignments, which is short of the 25 it held "
+                     "on 2026-08-23: refusing to overwrite a good backup with a damaged one" % n)
+        shutil.copyfile(store, dest)
+        print("copied an encrypted store holding %d secrets" % n)
+      # Literal, for the same reason every other path in this file is literal: `_expand` raises
+      # on an unset variable and would take the WHOLE run to unknown, the money database with it.
+      - /Users/chidionyema/Documents/code/prospector-live/deploy/secrets.env.age
+      - /Users/chidionyema/.config/prospector/age-key.txt
+      - "{dest}"
+    key: secret-store/secrets.env.age
+    # The fetch above already refused a store that does not decrypt, so what reaches here is
+    # known-good and this only confirms bytes landed.
+    verify: nonempty
+    # Only the laptop holds the key, so only the laptop can prove the store is whole. The engine
+    # container skips the fetch and still GRADES the prefix, which is the arrangement that
+    # matters: the always-on host notices when the laptop stops taking the copy.
+    only_where: /Users/chidionyema/.config/prospector/age-key.txt
+    # 72 hours, the same as the other laptop-scoped sources. A shut lid over a weekend is not a
+    # backup failure; a week of silence is.
+    max_age_hours: 72
+    # 30 copies, so a secret rotated by mistake can be recovered from a store taken before it.
+    keep: 30
+  - name: architect-code
+    why: >-
+      A `git bundle` of every ref in ~/dev/code/hermes-v2 — the Architect's source. Its memory
+      is already covered by the `hermes-state` source above, and that is the half that misleads:
+      a restore that brings back 388 messages and 23 sessions with no code to run them against
+      is not a restore. `mirror_repo()` in scripts/backup_store.py makes exactly this argument
+      for the prospector repository and states the reason in its own docstring — "the only git
+      remote is GitHub, if that account is lost every branch, tag and commit goes with it" —
+      and then bundles one repository. The Architect is not that repository, so losing the
+      GitHub account today loses its code while its memory sits safely in this bucket.
+
+      1.0 MiB over 11 refs, measured 2026-08-23, so 30 copies is about 30 MiB.
+    fetch:
+      # Bundle, then CLONE IT, before anything is uploaded. Cloning is the check and
+      # `git bundle verify` is not: measured 2026-08-23, verify accepted a bundle truncated to
+      # its first 300 bytes, because it reads the header and confirms the prerequisite commits
+      # exist locally without ever reading the pack. A clone reads the whole pack, and the same
+      # truncated file failed it with exit 128. `git bundle create` can write a short file on a
+      # full disk and exit 0, so this is the failure that actually happens. Doing it here rather
+      # than in `verify:` is deliberate: the engine's verifiers know sqlite and tar and nothing
+      # about git.
+      - python3
+      - -c
+      - |-
+        import os, subprocess, sys, tempfile
+        repo, dest = sys.argv[1], sys.argv[2]
+        subprocess.run(["git", "-C", repo, "bundle", "create", dest, "--all"], check=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            probe = os.path.join(tmp, "probe.git")
+            subprocess.run(["git", "clone", "--bare", "--quiet", dest, probe], check=True)
+            refs = subprocess.run(["git", "-C", probe, "show-ref"],
+                                  capture_output=True, text=True, check=True).stdout
+        n = len(refs.splitlines())
+        if n < 1:
+            sys.exit("the bundle of %s cloned to %d refs: refusing to upload it" % (repo, n))
+        print("bundled %s and cloned it back to %d refs" % (repo, n))
+      - /Users/chidionyema/dev/code/hermes-v2
+      - "{dest}"
+    key: architect-code/hermes-v2.bundle
+    # The fetch already refused a bundle that will not verify, so this only confirms bytes
+    # landed. There is no git verifier in the engine and adding one to grade a file the fetch
+    # has already opened would be a second implementation of the same check.
+    verify: nonempty
+    only_where: /Users/chidionyema/dev/code/hermes-v2/.git
+    # 72 hours, the same as every other laptop-scoped source. A shut lid is not a failure.
+    max_age_hours: 72
+    keep: 30
+  - name: maestro-code
+    why: >-
+      A `git bundle` of every ref in ~/dev/code/maestro — the autonomous operator's source, and
+      the other half of the pair the `maestro-experience` source above only half covers. The
+      experience graph holds what Maestro learned and the invariants that bound what it may do;
+      this holds the code that reads them. Restoring the invariants without the engine that
+      enforces them gives you a record of the rails and nothing standing on them.
+
+      516 KiB over 9 refs, measured 2026-08-23, so 30 copies is about 15 MiB.
+    fetch:
+      # Identical to architect-code above, and deliberately a second copy rather than a shared
+      # anchor. `_expand` reads this file literally, the two differ only in a path, and a YAML
+      # anchor would put the one thing a reader needs to check behind an indirection.
+      - python3
+      - -c
+      - |-
+        import os, subprocess, sys, tempfile
+        repo, dest = sys.argv[1], sys.argv[2]
+        subprocess.run(["git", "-C", repo, "bundle", "create", dest, "--all"], check=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            probe = os.path.join(tmp, "probe.git")
+            subprocess.run(["git", "clone", "--bare", "--quiet", dest, probe], check=True)
+            refs = subprocess.run(["git", "-C", probe, "show-ref"],
+                                  capture_output=True, text=True, check=True).stdout
+        n = len(refs.splitlines())
+        if n < 1:
+            sys.exit("the bundle of %s cloned to %d refs: refusing to upload it" % (repo, n))
+        print("bundled %s and cloned it back to %d refs" % (repo, n))
+      - /Users/chidionyema/dev/code/maestro
+      - "{dest}"
+    key: maestro-code/maestro.bundle
+    verify: nonempty
+    only_where: /Users/chidionyema/dev/code/maestro/.git
+    max_age_hours: 72
+    keep: 30
   - name: logs
     why: >-
       Yesterday's ingested logs, every service, one file per service per day. They are the only
