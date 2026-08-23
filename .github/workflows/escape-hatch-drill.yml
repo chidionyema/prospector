@@ -76,12 +76,27 @@ jobs:
           # allowed to start on the far side.
           python3 scripts/store_migrate.py verify "$RUNNER_TEMP/restored" --sample 50
 
+      # This step used to run under `if: always()`, so it printed the sentence below on runs
+      # where "Pack the live store off Fly" had FAILED and "Verify the payload is intact" had
+      # been SKIPPED. Measured 2026-08-23 on run 32618271131: pack failure, verify skipped,
+      # and the log still read "Proved: the live store can be extracted from Fly". The drill
+      # announced a proof it never obtained, on every run from 2026-08-19 onward. Anyone
+      # reading the log rather than the job's colour would have concluded the exit was drilled.
       - name: Say what was proved
-        if: always()
+        if: success()
         run: |
           echo "Proved: the live store can be extracted from Fly through the adapter, and the"
           echo "payload verifies. NOT proved: a second machine is running it today. That is"
           echo "deliberate - see this workflow's header."
+
+      # A red drill has to say what it means, in the log, and not leave the reader to work it
+      # out from a step name. LAW 19: an exit that has never been drilled is not portable.
+      - name: Say what was NOT proved
+        if: failure()
+        run: |
+          echo "NOT PROVED: the store could not be extracted from Fly on this run."
+          echo "The exit is undrilled until this workflow goes green. Read the failing step"
+          echo "above; do not read the previous green run as current."
 
       - name: Leave nothing behind
         if: always()
