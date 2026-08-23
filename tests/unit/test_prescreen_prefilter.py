@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import urllib.error
 
@@ -261,8 +262,21 @@ def test_host_and_timeout_come_from_the_environment(monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
-# The ONE live test: skipped whenever ollama is not reachable.
-# Run it explicitly with: -k live_ollama
+# The ONE live test. OPT-IN ONLY: it does not run unless PROSPECTOR_LIVE_OLLAMA=1.
+#
+# 2026-08-23: it was gated on "does the daemon answer", which is the wrong question on a
+# developer laptop. Ollama.app is a login item here, so the daemon always answers, and
+# answering means ollama loads nomic-embed-text into a llama-server process. The POPDD
+# pre-commit gate runs the whole suite on every commit, so every `git commit` on this
+# machine spawned a model server. The test skips in CI (no daemon) and therefore gates
+# nothing, while running in the one place it must not.
+#
+# What it asserts is a property of nomic-embed-text, a third-party model, not of this
+# repository: that a paraphrase scores above an unrelated sentence. Prospector's own
+# handling of that backend is already pinned by the mocked tests above, which run
+# everywhere and cost nothing.
+#
+# Run it deliberately with: PROSPECTOR_LIVE_OLLAMA=1 pytest -k live_ollama
 # --------------------------------------------------------------------------- #
 
 def test_a_degraded_embedder_says_so():
@@ -280,6 +294,8 @@ def test_a_degraded_embedder_says_so():
     assert 0 < len(emb.encode("probate clear-out concierge")) < 768
 
 
+@pytest.mark.skipif(os.environ.get("PROSPECTOR_LIVE_OLLAMA") != "1",
+                    reason="live ollama test is opt-in: set PROSPECTOR_LIVE_OLLAMA=1")
 def test_live_ollama_backend_discriminates_paraphrase_from_unrelated():
     """Proof the dense backend is real: 768 dims, and it ranks a rewording higher.
 

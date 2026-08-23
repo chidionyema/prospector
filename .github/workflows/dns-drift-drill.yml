@@ -63,8 +63,15 @@ jobs:
         run: python3 scripts/dns_zone.py --check --zone mumchimp.com
 
       - name: Say what was proved
-        if: always()
+        if: success()
         run: |
           echo "Proved: every record in deploy/dns/mumchimp.com.zone is still live, and nothing"
           echo "has appeared that is not in the file. NOT proved: that we still control the"
           echo "registrar account. That needs a credential the drill deliberately does not hold."
+
+      - name: Say what was NOT proved
+        if: failure()
+        run: |
+          echo "NOT PROVED: live DNS does not match deploy/dns/mumchimp.com.zone on this run."
+          echo "Either a record drifted or the file is stale. Read the diff in the failing step"
+          echo "above; do not read the previous green run as current."
