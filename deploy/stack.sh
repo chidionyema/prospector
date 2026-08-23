@@ -143,15 +143,41 @@ else:
         )
         bucket = os.environ.get("R2_BACKUP_BUCKET") or "prospector-backup"
 
-        # what, prefix, the command that restores it
+        # what, prefix, the command that restores it.
+        #
+        # Two rows were REMOVED from this table on 2026-08-23 because both were false greens,
+        # and a false green in a disaster-recovery inventory is the worst row there is.
+        #
+        #   ("hermes state", "hermes/", ...) — r2:hermes/ holds exactly one object, leader.json,
+        #   313 bytes of leader-election state that is rewritten constantly. It is not a backup
+        #   of anything. This row reported GREEN forever off a file with nothing to do with
+        #   Hermes being recoverable. ops/config/offsite_backup.yaml already carried that
+        #   finding in a comment; this table had not been told. The real memory is the
+        #   offsite/hermes-state/ row below.
+        #
+        #   ("offsite mirror", "offsite/", ...) — one aggregate row over six unrelated sources,
+        #   named the wrong writer (estate_push.sh copies the estate audit; the six sources are
+        #   written by ops.automations.offsite_backup), and stayed green whenever ANY one of
+        #   them was fresh. Five could stop and the row would not move. They are listed one per
+        #   line below, which is the only way this table answers the question it is titled with.
+        RESTORE_OFFSITE = "aws s3 cp --recursive s3://%s/offsite/%%s/ ./restored" % bucket
         WANT = [
             ("money ledger",   "ledger/",   "python3 scripts/backup_store.py --restore-money ./restored"),
             ("money db",       "db/",       "python3 scripts/backup_store.py --restore-money ./restored"),
             ("dossiers",       "dossiers/", "python3 scripts/backup_store.py --restore ./restored"),
             ("this repo",      "repo/",     "git clone <the .bundle downloaded from r2> prospector"),
             ("engine logs",    "logs/",     "aws s3 cp --recursive s3://%s/logs/ ./logs" % bucket),
-            ("offsite mirror", "offsite/",  "see ~/.claude/scripts/estate/estate_push.sh (it wrote these)"),
-            ("hermes state",   "hermes/",   "see ~/.claude/scripts/estate/estate_push.sh (it wrote these)"),
+
+            # The six things whose only other copy is a laptop disk. Written nightly by
+            # `python -m ops.automations.offsite_backup --fix`, declared in
+            # ops/config/offsite_backup.yaml, one object per run so the age of the newest
+            # object is exactly "when did this last deposit bytes".
+            ("money db (snapshot)",  "offsite/money-db/",              RESTORE_OFFSITE % "money-db"),
+            ("data protection keys", "offsite/data-protection-keys/",  RESTORE_OFFSITE % "data-protection-keys"),
+            ("agent estate",         "offsite/agent-estate/",          RESTORE_OFFSITE % "agent-estate"),
+            ("hermes memory",        "offsite/hermes-state/",          RESTORE_OFFSITE % "hermes-state"),
+            ("maestro experience",   "offsite/maestro-experience/",    RESTORE_OFFSITE % "maestro-experience"),
+            ("yesterday's logs",     "offsite/logs/",                  RESTORE_OFFSITE % "logs"),
         ]
         for what, prefix, cmd in WANT:
             newest, size, count = None, None, 0
@@ -172,6 +198,13 @@ else:
                 row(what, f"r2:{prefix}", "MISSING", "-", "NOTHING IS BACKED UP HERE")
             else:
                 row(f"{what} ({count} obj)", f"r2:{prefix}", ago(newest), human(size), cmd)
+    except ImportError:
+        # Named separately from every other failure because it is the one the header at the top
+        # of this verb promised to distinguish: "no module" is a box that has not been set up,
+        # "no credentials" is a box that has. Printing a raw traceback into a column headed
+        # RESTORE WITH tells a person at 3am nothing they can act on.
+        row("R2 offsite copies", "cloudflare r2", "UNKNOWN", "-",
+            "cannot look: boto3 is not installed for %s -- pip install boto3" % sys.executable)
     except Exception as exc:  # noqa: BLE001 -- the reason is the answer, whatever it is
         row("R2 offsite copies", "cloudflare r2", "UNKNOWN", "-", f"{type(exc).__name__}: {exc}")
 
@@ -197,7 +230,13 @@ for what, path, cmd in [
     else:
         row(what, "this laptop", "MISSING", "-", cmd)
 
-bad = sum(1 for r in ROWS if r[2] in ("MISSING", "UNKNOWN"))
+# MISSING and UNKNOWN are counted apart, because they are different facts and only one of
+# them is a hole. MISSING means there is nothing to restore from. UNKNOWN means this box could
+# not ask -- no credential, no network, no boto3. The header of this verb already said so and
+# the `status` verb already does it (UNKNOWN exits 2, DOWN exits 1); this line lumped them, so
+# a box that merely could not look reported the estate as having no backups.
+gone = [r[0] for r in ROWS if r[2] == "MISSING"]
+unknown = [r[0] for r in ROWS if r[2] == "UNKNOWN"]
 
 # A copy older than this is a stopped job, not a slow one. The money snapshots are written
 # daily, so 26h is one missed run plus two hours of slack for a late start. Without this the
@@ -214,11 +253,14 @@ if as_json:
     import json as _json
     print(_json.dumps({
         "rows": [{"what": a, "where": b, "age": c, "newest": d, "restore": e} for a, b, c, d, e in ROWS],
-        "missing": bad,
+        "missing": len(gone),
+        "missing_what": gone,
+        "unknown": len(unknown),
+        "unknown_what": unknown,
         "stale": stale,
         "stale_after_hours": STALE_H,
     }, indent=2))
-    sys.exit(1 if (bad or stale) else 0)
+    sys.exit(1 if (gone or stale) else (2 if unknown else 0))
 
 w = [max(len(str(r[i])) for r in ROWS + [("WHAT", "WHERE", "AGE", "NEWEST", "")]) for i in range(4)]
 # AGE and NEWEST describe the most recent object under the prefix, not the whole prefix.
@@ -228,10 +270,15 @@ print(f"{'-'*w[0]}  {'-'*w[1]}  {'-'*w[2]}  {'-'*w[3]}  {'-'*12}")
 for what, where, age, size, cmd in ROWS:
     print(f"{what:<{w[0]}}  {where:<{w[1]}}  {age:<{w[2]}}  {size:<{w[3]}}  {cmd}")
 print()
-print(f"{len(ROWS)} copies listed, {bad} missing or unreadable, {len(stale)} older than {STALE_H:.0f}h")
+print(f"{len(ROWS)} copies listed. {len(gone)} with nothing to restore from, "
+      f"{len(unknown)} this box could not check, {len(stale)} older than {STALE_H:.0f}h")
+if gone:
+    print("NOTHING TO RESTORE FROM: " + ", ".join(gone))
+if unknown:
+    print("COULD NOT CHECK: " + ", ".join(unknown) + " -- this is not a pass and not a failure")
 if stale:
     print("STALE: " + ", ".join(stale) + " -- whatever writes these has stopped")
-sys.exit(1 if (bad or stale) else 0)
+sys.exit(1 if (gone or stale) else (2 if unknown else 0))
 
 PYEOF
   RC=$?
