@@ -148,7 +148,23 @@ EOF
 
 # $1 = local .tar.gz to write. Used when Fly is the SOURCE, i.e. when we leave.
 t_pack() {
-  t_exec "python /app/scripts/store_migrate.py pack /data/handover.tar.gz --store /data/store"
+  # PROSPECTOR_PACK_FORCE=1 is for the weekly drill, and only for the drill.
+  #
+  # store_migrate.py's pack refuses to run while the scheduler or the consumer is up, which is
+  # right for a cutover: at cutover, phase 4 has already stopped the engine, so a live writer
+  # there means something is wrong and stopping is the correct answer. It is wrong for a drill.
+  # The drill rehearses leaving without taking production down, so the engine is up by design and
+  # the refusal fires every time. Three drills, three failures, all `exit 2` from that check,
+  # never once a real defect in the exit path.
+  #
+  # Forcing it is safe here because the manifest hashes the bytes as they enter the tar rather
+  # than stat-ing the tree beforehand (scripts/store_migrate.py, cmd_pack). The payload proves
+  # itself even when the store is being appended to underneath it. Measured 2026-08-23 against a
+  # copy of the store with a writer appending to prospector.jsonl every 20ms: pack PASS 34 files,
+  # verify PASS 34/34 hashed, db_integrity=ok.
+  local force=""
+  [ "${PROSPECTOR_PACK_FORCE:-0}" = "1" ] && force=" --force"
+  t_exec "python /app/scripts/store_migrate.py pack /data/handover.tar.gz --store /data/store$force"
   fly ssh sftp get -a "$APP" /data/handover.tar.gz "$1"
   t_exec "rm -f /data/handover.tar.gz"
 }

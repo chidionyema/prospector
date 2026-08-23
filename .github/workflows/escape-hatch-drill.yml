@@ -47,6 +47,9 @@ jobs:
       - name: Pack the live store off Fly
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE || secrets.FLY_API_TOKEN }}
+          # The engine stays up through the drill, so store_migrate's live-writer refusal has to
+          # be told this is a drill. See deploy/targets/fly.sh, t_pack, for why that is safe.
+          PROSPECTOR_PACK_FORCE: "1"
         run: |
           set -euo pipefail
           : "${FLY_API_TOKEN:?set repo secret FLY_API_TOKEN_ENGINE}"
