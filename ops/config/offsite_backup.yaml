@@ -170,6 +170,67 @@ sources:
     # over a weekend is not a backup failure. A week of silence is.
     max_age_hours: 72
     keep: 30
+  - name: maestro-experience
+    why: >-
+      ~/.maestro — the autonomous operator's experience graph and its intent record. The
+      database holds 109 episodes and 7 invariants: every incident Maestro has seen, what it
+      decided, and the rules it has been given. Alongside it, intents/ holds 82 JSON files, one
+      per thing it was asked to do. Neither is in git and neither has ever left this laptop, so
+      until this entry the whole of what Maestro has learned sat in one copy on one disk. Losing
+      it does not just lose history: the invariants table is the rail that bounds what the
+      operator is allowed to do, and an operator restored without its invariants is an operator
+      with no limits.
+    fetch:
+      # SQLite's online backup API, then a tar, for one measured reason. On 2026-08-23 the
+      # database on disk was 102,400 bytes and its write-ahead log was 1,314,312 bytes — twelve
+      # times the size of the file a `cp` would have copied. The launchd job
+      # com.chidionyema.maestro holds this database open in WAL mode and checkpoints rarely, so
+      # a byte copy takes an almost-empty file and reports success. `.backup()` reads through
+      # the WAL and produces the whole database. The source is opened read-only so this job can
+      # never corrupt the memory it exists to protect.
+      #
+      # intents/ goes in the same archive because it is not in the database. The episode ids are
+      # CRISIS-*, the intent files are INTENT-*, and nothing joins them: a restore of the
+      # database alone would come back knowing what Maestro concluded and not what it was asked.
+      - python3
+      - -c
+      - |-
+        import os, sqlite3, sys, tarfile, tempfile
+        home, dest = sys.argv[1], sys.argv[2]
+        db = os.path.join(home, "experience_graph.db")
+        with tempfile.TemporaryDirectory() as tmp:
+            snap = os.path.join(tmp, "experience_graph.db")
+            source = sqlite3.connect("file:%s?mode=ro" % db, uri=True)
+            target = sqlite3.connect(snap)
+            with target:
+                source.backup(target)
+            target.close()
+            source.close()
+            with tarfile.open(dest, "w:gz") as tar:
+                tar.add(snap, arcname="experience_graph.db")
+                intents = os.path.join(home, "intents")
+                if os.path.isdir(intents):
+                    tar.add(intents, arcname="intents")
+        print("packed %s" % dest)
+      # Literal, for the same reason the hermes-state path above is literal: `_expand` raises on
+      # an unset variable, and an unset MAESTRO_HOME would take the WHOLE run to unknown — the
+      # money database included.
+      - /Users/chidionyema/.maestro
+      - "{dest}"
+    key: maestro-experience/maestro.tgz
+    # Opened as a tar archive and its index read. That is weaker than the integrity_check the
+    # money database gets, and it is the right grade here: the sqlite verifier opens {dest}
+    # directly, and {dest} is an archive. The consistency guarantee for the database inside it
+    # comes from `.backup()` refusing to produce a torn snapshot in the first place.
+    verify: tgz
+    # Only the laptop runs Maestro. The engine container skips the fetch and still GRADES the
+    # prefix, which is the arrangement that matters: the always-on host notices when the laptop
+    # stops taking the copy.
+    only_where: /Users/chidionyema/.maestro/experience_graph.db
+    # 72 hours, not 24, for the same reason as agent-estate and hermes-state: this is a laptop,
+    # and a shut lid over a weekend is not a backup failure. A week of silence is.
+    max_age_hours: 72
+    keep: 30
   - name: logs
     why: >-
       Yesterday's ingested logs, every service, one file per service per day. They are the only
