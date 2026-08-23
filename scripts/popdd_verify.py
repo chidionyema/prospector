@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import fcntl
 import json
 import os
 import re
@@ -657,6 +658,104 @@ def single_flight():
             pass
 
 
+MACHINE_LOCK = Path.home() / ".estate" / "locks" / "popdd-gate-machine.lock"
+
+
+def _machine_lock_path() -> Path:
+    """Where the machine lock lives. POPDD_MACHINE_LOCK overrides it.
+
+    The override is not a convenience knob. This module's own tests prove the waiting
+    behaviour by SPAWNING gate runs, and those tests are themselves run by the gate — so
+    against a single fixed path the inner runs queue behind the outer gate that is running
+    them, and time out. Measured 2026-08-23: 4 passed standalone in 17.55s, then 2 of the
+    same 4 failed inside the gate for exactly that reason. A test that cannot run under the
+    thing it tests is not a test, so the path is a parameter.
+    """
+    override = os.environ.get("POPDD_MACHINE_LOCK")
+    return Path(override) if override else MACHINE_LOCK
+
+
+@contextlib.contextmanager
+def machine_capacity():
+    """Let only ONE gate run use this machine's cores at a time. Wait, do not refuse.
+
+    This is a different rail from single_flight() above and it is answering a different
+    question. That one protects `.git/index.lock`, which is per checkout, so it refuses in
+    under a second and tells you to get your own worktree. This one protects the CPU, which
+    is NOT per checkout, and a worktree of your own does nothing for it.
+
+    Measured 2026-08-23 on this machine: two sessions in two separate worktrees each held
+    their own single_flight lock legitimately and each ran a 6-worker pytest. 15 pytest
+    processes, load average 137 on 12 logical cores. Everything else on the machine then
+    starts timing out rather than failing: the founder board could not answer 7 of its ~40
+    rows, and 14 of 30 guard selftests exited 124. None of those were broken. They gave up
+    waiting for a machine that was thrashing.
+
+    So the advice single_flight prints -- "get your own working tree, then both sessions
+    commit concurrently" -- is correct about the index and wrong about the box. Concurrency
+    was never free here; it was being paid for out of every other instrument's timeout.
+
+    WAITING IS THE RIGHT BEHAVIOUR HERE, and it is the opposite of the choice above, because
+    the failure is the opposite. Two gates sharing one checkout queue behind a lock that one
+    of them may wedge. Two gates sharing one CPU do not queue -- they interleave, and both
+    finish LATER than if one had waited. Serialising is faster in total, not slower.
+
+    FAIL-OPEN, deliberately. This is a capacity rail, not a correctness rail: a wedged holder
+    must never be able to stop every commit on the machine, which is the exact failure the
+    2026-08-14 incident in single_flight() was about. After one full gate ceiling plus a
+    margin, we stop waiting and run anyway, saying so.
+
+    OFF SWITCH: POPDD_NO_MACHINE_LOCK=1 git commit ...
+    """
+    if os.environ.get("POPDD_NO_MACHINE_LOCK") == "1":
+        yield
+        return
+
+    try:
+        lock_path = _machine_lock_path()
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o644)
+    except OSError as e:
+        # A lock we cannot even create must not block a commit.
+        print(f"   POPDD gate: no machine lock ({e}); running without it.")
+        yield
+        return
+
+    ceiling = TEST_TIMEOUT_SECONDS + DRAIN_TIMEOUT_SECONDS + 120
+    waited = 0.0
+    held = False
+    try:
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                held = True
+                break
+            except OSError:
+                if waited == 0:
+                    print("\n⏳ POPDD gate: another gate run holds this machine's cores. "
+                          "Waiting rather than thrashing.")
+                    print("   Two full suites at once make BOTH slower and time out every "
+                          "other instrument on the box.")
+                if waited >= ceiling:
+                    print(f"   Waited {int(waited)}s, past the gate's own ceiling. The holder "
+                          f"is wedged; running anyway.")
+                    break
+                time.sleep(5)
+                waited += 5
+                if waited % 60 == 0:
+                    print(f"   still waiting, {int(waited // 60)}m")
+        if held and waited:
+            print(f"   Got the machine after {int(waited)}s.\n")
+        yield
+    finally:
+        try:
+            if held:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError:
+            pass
+        os.close(fd)
+
+
 class StepTimeout(Exception):
     """The step exceeded its wall-clock ceiling and its process group was killed.
 
@@ -916,11 +1015,14 @@ def main(argv: list[str] | None = None) -> int:
     with single_flight() as acquired:
         if not acquired:
             return 1
-        for key in selected:
-            ran.append(key)
-            if not run_lane(agent, scope_ruff(LANES[key], paths)):
-                ok = False
-                break   # kill-fast: a failed lane already blocks the commit
+        # Inside single_flight, not around it: the fast refusal for a same-checkout collision
+        # must still happen in under a second, before anything queues on the machine lock.
+        with machine_capacity():
+            for key in selected:
+                ran.append(key)
+                if not run_lane(agent, scope_ruff(LANES[key], paths)):
+                    ok = False
+                    break   # kill-fast: a failed lane already blocks the commit
 
     verify = agent.verify_chain()   # (auto-saved by PopddAgent)
 
