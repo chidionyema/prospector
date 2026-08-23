@@ -11,7 +11,7 @@ api.mumchimp.com      CNAME  prospector-store-api.fly.dev.
 mumchimp.com          A      66.241.124.37
 mumchimp.com          AAAA   2a09:8280:1::130:427c:0
 mumchimp.com          MX     5 smtp.google.com.
-mumchimp.com          NS     ns03.domaincontrol.com.
-mumchimp.com          NS     ns04.domaincontrol.com.
+mumchimp.com          NS     danica.ns.cloudflare.com.
+mumchimp.com          NS     tony.ns.cloudflare.com.
 mumchimp.com          TXT    "v=spf1 include:_spf.google.com include:spf.mailjet.com ~all"
 www.mumchimp.com      CNAME  prospector-store-web.fly.dev.

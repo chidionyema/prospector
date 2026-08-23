@@ -63,10 +63,15 @@ jobs:
         run: |
           set -euo pipefail
           bytes=$(wc -c < "$RUNNER_TEMP/handover.tar.gz" | tr -d ' ')
-          echo "payload: $bytes bytes"
-          # A tarball that exists but is tiny is the failure mode a size check catches and a
-          # `test -f` does not. One megabyte is far below the real store and far above an empty
-          # or truncated archive.
+          echo "payload: $bytes bytes  sha256: $(sha256sum "$RUNNER_TEMP/handover.tar.gz" | cut -d' ' -f1)"
+
+          # A BYTE FLOOR IS NOT A VERIFICATION, AND THIS DRILL LEARNED IT THE EXPENSIVE WAY.
+          # On 2026-08-23 `fly ssh sftp get` delivered 12,779,520 of 112,474,776 bytes and
+          # exited 0. The old check here was `[ "$bytes" -gt 1000000 ]`, which an 11% payload
+          # passes comfortably. t_pack now proves the transfer with a per-part and whole-file
+          # sha256 taken on the VM, so the size question is settled before this step runs.
+          # What is left for this step is the question t_pack cannot answer: does the archive
+          # restore into a store the engine would actually accept.
           [ "$bytes" -gt 1000000 ] || { echo "payload is too small to be the store"; exit 1; }
 
           mkdir -p "$RUNNER_TEMP/restored"
@@ -75,6 +80,42 @@ jobs:
           # the restored copy. It is the same check the cutover ran before the engine was
           # allowed to start on the far side.
           python3 scripts/store_migrate.py verify "$RUNNER_TEMP/restored" --sample 50
+
+      - name: Prove the restored store is not a smaller copy of itself
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE || secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The failure this catches: an export that is internally consistent - it opens, the
+          # manifest matches, 50 sampled rows re-hash - and is still missing most of the store,
+          # because it was packed from a partial volume rather than truncated in flight. The
+          # manifest's own census cannot catch that: the census is computed at pack time on the
+          # VM and travels inside the archive, so it describes what was packed, not what was
+          # there. Counting the live ledger separately is the only reading that is independent
+          # of the payload.
+          live=$(bash deploy/targets/fly.sh t_exec \
+                   "echo LIVEROWS=\$(wc -l < /data/store/prospector.jsonl | tr -d ' ')" 2>/dev/null \
+                 | grep -o 'LIVEROWS=[0-9]*' | head -1 | cut -d= -f2 || true)
+          got=$(wc -l < "$RUNNER_TEMP/restored/prospector.jsonl" 2>/dev/null | tr -d ' ' || true)
+          echo "live ledger rows: ${live:-unknown}   restored ledger rows: ${got:-unknown}"
+
+          if [ -z "${live:-}" ] || [ -z "${got:-}" ]; then
+            echo "NOT PROVED: could not count /data/store/prospector.jsonl on one or both sides."
+            echo "The export verified structurally; its completeness is unproven, and an unproven"
+            echo "exit is the thing this drill exists to refuse."
+            exit 1
+          fi
+
+          # The store is live and rows arrive while the drill runs, so the restored copy may be
+          # a few rows behind. It may never be AHEAD, and it may never be materially short.
+          [ "$got" -le "$live" ] \
+            || { echo "restored has MORE rows than live - this archive is not of this store"; exit 1; }
+          floor=$(( live * 99 / 100 ))
+          [ "$got" -ge "$floor" ] \
+            || { echo "restored $got rows against $live live - short by $(( live - got ))."
+                 echo "This is the silent partial export the 2026-08-23 truncation produced."
+                 exit 1; }
+          echo "complete: $got/$live ledger rows, within the 1% the live store drifts during a drill"
 
       # This step used to run under `if: always()`, so it printed the sentence below on runs
       # where "Pack the live store off Fly" had FAILED and "Verify the payload is intact" had
