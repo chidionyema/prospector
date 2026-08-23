@@ -1355,6 +1355,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cargo/bin
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
             engine-rs/target
           key: rust-${{ runner.os }}-${{ hashFiles('engine-rs/Cargo.lock', 'engine-rs/rust-toolchain.toml') }}
           restore-keys: rust-${{ runner.os }}-
@@ -1373,9 +1375,36 @@ jobs:
       # cargo-audit answers "is a dependency known-vulnerable"; cargo-deny answers "may we
       # legally ship it, is it banned, did it come from crates.io". Different questions, and
       # a green audit says nothing about a licence.
+      # WHY THIS IS NOT A PLAIN `cargo install`. It was, and it broke the rust lane on
+      # 2026-08-23, run 32645534200:
+      #
+      #   error: binary `cargo-audit` already exists in destination
+      #   error: binary `cargo-deny` already exists in destination
+      #
+      # `cargo install` is a no-op only when it can SEE that it installed the crate before,
+      # and that record lives in ~/.cargo/.crates.toml, which the cache above did not carry
+      # until this commit. So a restored cache handed the job the two binaries with no record
+      # of them, and cargo refused to overwrite files it did not remember writing. The failure
+      # needs an exact cache hit, so it cannot happen on the run that changes Cargo.lock -- it
+      # happens on the NEXT run, which is why the lane went green and then red with no Rust
+      # change in between.
+      #
+      # Caching the two metadata files fixes it going forward. This step is what fixes it now,
+      # for every cache already saved without them: ask the binaries whether they are there
+      # instead of asking cargo's bookkeeping, and install only what is missing.
       - name: Install supply-chain tools
         run: |
-          cargo install cargo-audit cargo-deny --locked
+          missing=()
+          command -v cargo-audit >/dev/null 2>&1 || missing+=(cargo-audit)
+          command -v cargo-deny  >/dev/null 2>&1 || missing+=(cargo-deny)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "installing: ${missing[*]}"
+            cargo install "${missing[@]}" --locked
+          else
+            echo "cargo-audit and cargo-deny already on PATH, from the cache"
+          fi
+          cargo audit --version
+          cargo deny --version
 
       - name: Audit dependencies
         run: cargo audit
