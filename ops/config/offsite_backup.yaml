@@ -123,6 +123,53 @@ sources:
     # than going red every Monday until somebody mutes it.
     max_age_hours: 72
     keep: 30
+  - name: hermes-state
+    why: >-
+      ~/dev/code/hermes-v2/state.db — The Architect's durable memory. Sessions, every message,
+      the full-text index over them, system prompts, routing and delegation state. 23 tables,
+      1.1 MiB measured 2026-08-23. This file is the ONLY record of what the agent has been told
+      and what it has said; the repository holds the code and none of the memory. Until this
+      entry existed it had one copy on one laptop disk. `bin/backup-state.sh` in that repo wrote
+      a local .gz that held ONE of the 23 tables and never left the machine, and the requirement
+      that graded it (REQ-020) passed on `test -s`, which proves a file is present and nothing
+      more. That is the false green this entry replaces. The note above under `watch:` said
+      "Hermes state is genuinely NOT backed up; that is the open M4 work" — this closes it.
+    fetch:
+      # SQLite's online backup API, not `cp` and not a shell redirect. The gateway
+      # (launchd ai.architect.gateway) holds this database open and writes to it continuously,
+      # so a byte copy can be torn mid-page. `.backup()` takes a consistent snapshot of a live
+      # database, carries every table, and does not need the writer stopped. The source is
+      # opened read-only so this job can never be the thing that corrupts the memory it exists
+      # to protect.
+      - python3
+      - -c
+      - |-
+        import sqlite3, sys
+        src, dest = sys.argv[1], sys.argv[2]
+        source = sqlite3.connect("file:%s?mode=ro" % src, uri=True)
+        target = sqlite3.connect(dest)
+        with target:
+            source.backup(target)
+        target.close()
+        source.close()
+        print("copied %s" % src)
+      # Literal, for the same reason /data/logs is literal above: `_expand` raises on an unset
+      # variable, HERMES_HOME is not set in this job's environment, and an unset variable would
+      # take the WHOLE run to unknown — the money database included.
+      - /Users/chidionyema/dev/code/hermes-v2/state.db
+      - "{dest}"
+    key: hermes-state/state.db
+    # PRAGMA integrity_check before it counts, the same grade the money database gets. A torn
+    # copy must never displace a good one.
+    verify: sqlite
+    # Only the laptop runs the gateway. The engine container skips the fetch and still GRADES
+    # the prefix, which is the arrangement that matters: the always-on host notices when the
+    # laptop stops taking the copy.
+    only_where: /Users/chidionyema/dev/code/hermes-v2/state.db
+    # 72 hours, not 24, for the same reason as agent-estate: this is a laptop, and a shut lid
+    # over a weekend is not a backup failure. A week of silence is.
+    max_age_hours: 72
+    keep: 30
   - name: logs
     why: >-
       Yesterday's ingested logs, every service, one file per service per day. They are the only
