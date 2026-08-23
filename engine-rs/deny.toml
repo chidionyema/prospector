@@ -28,6 +28,12 @@ allow = [
   # obligation attaches to modified MPL files, not to the binary. If we ever patch one,
   # that patch is published — so vendoring an MPL crate is a decision, not a default.
   "MPL-2.0",
+  # The Mozilla CA root bundle inside webpki-roots, which ureq pulls in for TLS. This is a
+  # data licence, not a code one: it permits use and redistribution of the root list with
+  # no copyleft and no obligation on the binary that carries it. Named here because the
+  # allow-list is explicit on purpose -- without this line every branch that adds an HTTP
+  # client fails the supply-chain gate on a CA bundle nobody chose directly.
+  "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.9
 
