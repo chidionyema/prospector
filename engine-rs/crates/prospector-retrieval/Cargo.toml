@@ -7,8 +7,8 @@ publish.workspace = true
 
 [dependencies]
 encoding_rs = "0.8"
-scraper = "0.20"
-ego-tree = "0.6"
+scraper = "0.27"
+ego-tree = "0.11"
 ureq = { version = "2", default-features = false, features = ["tls", "gzip"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
