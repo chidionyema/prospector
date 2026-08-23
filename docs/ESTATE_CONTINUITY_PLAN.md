@@ -185,10 +185,11 @@ platform must be behind one adapter.**
 
 | Component | How we leave | Time | Tested? |
 |---|---|---|---|
-| engine | `deploy/cutover.sh --from fly --to sshdocker` | ~30 min | adapter written, dry-run pending |
+| engine, to the laptop | `deploy/cutover.sh --from fly --to laptop` | ~30 min | **dry run green 2026-08-23**, all 8 phases. Never run for real |
+| engine, to a rented box | `deploy/cutover.sh --from fly --to sshdocker` | ~30 min | **cannot run.** Preflight stops at `deploy/targets/sshdocker.sh:12`, `PROSPECTOR_SSH_HOST` unset. We have not rented the box |
 | store API | image is a plain Dockerfile; data is `store.db`, one file. Copy, run, repoint DNS. | ~1 hour | not yet |
 | store web | stateless container, rebuild anywhere, repoint DNS | ~20 min | not yet |
-| DNS | GoDaddy — change the A/CNAME. Not Fly's. | minutes | — |
+| DNS | Cloudflare since 2026-08-22 — change the A/CNAME. Not Fly's. | minutes | zone moved and serving; `deploy/dns/mumchimp.com.zone` still names the old GoDaddy nameservers (crew #19) |
 | R2 | S3-compatible; any S3 client, any S3 host | — | — |
 | Stripe | not moving; Stripe is the business, not the platform | — | — |
 

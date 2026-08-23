@@ -1,0 +1,25 @@
+{
+  "EnvironmentVariables": {
+    "HOME": "/Users/chidionyema",
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
+  },
+  "Label": "com.prospector.restore-drill",
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "com.prospector.restore-drill",
+    "--script",
+    "offsite_restore_drill",
+    "--",
+    "/usr/bin/python3",
+    "/Users/chidionyema/.claude/scripts/drills/run.py",
+    "--run",
+    "offsite-backup-restore"
+  ],
+  "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/restore_drill.log",
+  "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/restore_drill.log",
+  "StartInterval": 86400,
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live"
+}

@@ -54,6 +54,25 @@ def _hooks_dir() -> Path:
     return path if path.is_absolute() else (REPO_ROOT / path)
 
 
+def _own_hook_path() -> Path | None:
+    """This repository's OWN pre-commit hook — the one an estate-wide router chains to.
+
+    --git-common-dir, not --git-dir: in a linked worktree --git-dir is that worktree's
+    private directory, which holds no hooks/ at all.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            cwd=REPO_ROOT, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    common = Path(out)
+    if not common.is_absolute():
+        common = REPO_ROOT / common
+    return common / "hooks" / "pre-commit"
+
+
 INSTALLED_HOOK = _hooks_dir() / "pre-commit"
 
 
@@ -223,11 +242,32 @@ class TestTheLaneMapCoversEachSourceKind:
         assert "--force-exclude" in ruff_argv, ruff_argv
         assert dict(scoped.steps)["pytest"] == dict(py.steps)["pytest"], "only ruff is scoped"
 
-        # Three ways of not knowing, all of which must grade MORE, never less.
-        for label, paths in [("caller knows nothing", []), ("no .py in the commit", ["a.md"])]:
-            fallback = dict(runner.scope_ruff(py, paths).steps)["ruff"]
-            assert fallback == dict(py.steps)["ruff"], f"{label}: {fallback}"
+        # Not knowing the paths must grade MORE, never less. `--lanes` and a bare invocation
+        # both arrive with an empty list, and only they do: a `--staged` run that selected a
+        # lane always carries at least one path.
+        fallback = dict(runner.scope_ruff(py, []).steps)["ruff"]
+        assert fallback == dict(py.steps)["ruff"], fallback
         assert runner.scope_ruff(runner.LANES["web"], ["a.py"]) is runner.LANES["web"]
+
+    def test_incident_a_python_free_diff_does_not_get_a_repo_wide_ruff(self, runner):
+        """Paths known and none of them Python must DROP ruff, not widen it to the repo.
+
+        2026-08-23. A commit of `.gitignore`, `deploy/secrets.sh` and
+        `ops/config/offsite_backup.yaml` was refused by the gate for an unsorted import block
+        in `tools/experiments/q4b_live_catalogue_exposure.py`. The committer had never opened
+        that file. `scope_ruff` treated "no .py in this diff" as "caller does not know the
+        paths" and fell through to the repo-wide run, which is the exact failure the whole
+        function exists to remove, reached by a narrower door.
+
+        The rule, and not the code: ruff grades Python in the diff. No Python in the diff, no
+        ruff. The lane still runs, because a `.yaml` under `ops/config` drives Python and
+        pytest is what proves it.
+        """
+        py = runner.LANES["python"]
+        scoped = runner.scope_ruff(py, [".gitignore", "deploy/secrets.sh",
+                                        "ops/config/offsite_backup.yaml"])
+        assert "ruff" not in dict(scoped.steps), dict(scoped.steps).keys()
+        assert dict(scoped.steps)["pytest"] == dict(py.steps)["pytest"], "the lane still runs"
 
     def test_the_web_lane_proof_is_not_pytest(self, runner):
         """A green pytest is not evidence about a .tsx diff, so the web lane must not use it."""
@@ -465,6 +505,31 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
         # Identical bytes is the property this class actually cares about: the stale second
         # copy it was written to catch is one whose content has DIVERGED.
         resolved = INSTALLED_HOOK.resolve()
+        # AN ESTATE-WIDE ROUTER IN FRONT OF THE HOOK IS NOT A DEFECT, AND SINCE 2026-08-23
+        # IT IS WHAT RUNS. `core.hooksPath` is now set globally to ~/.estate/guards/hooks,
+        # so `git rev-parse --git-path hooks` answers with the estate's directory and this
+        # symlink resolves to its `_router` rather than to anything in this repo. The router
+        # runs the estate guard and then chains to the repository's OWN hook through
+        # --git-common-dir, so .lux/hooks/pre-commit still runs — it is one layer down.
+        #
+        # Measured 2026-08-23: this assertion failed in every checkout of this repo at once,
+        # naming the POPDD gate, on a day when the gate was working correctly. It blocked two
+        # branches in this session and would have blocked every python commit from every
+        # session until somebody read past the word POPDD. A test that goes red because a
+        # guard was installed IN FRONT of the thing under test is grading the topology, not
+        # the property it was written to protect.
+        #
+        # So when what is installed lives outside this repo, follow the chain and ask the
+        # same question of the hook the router delegates to. The property is unchanged: the
+        # file that runs must be the tracked one, never a stale second copy.
+        if REPO_ROOT not in resolved.parents:
+            own = _own_hook_path()
+            if own is None or not (own.exists() or own.is_symlink()):
+                pytest.skip(
+                    f"{INSTALLED_HOOK} resolves to {resolved}, outside this repo, and this "
+                    "repo has no own pre-commit for a router to chain to — nothing to compare"
+                )
+            resolved = own.resolve()
         assert resolved.parts[-3:] == (".lux", "hooks", "pre-commit"), (
             f"installed hook resolves to {resolved}, which is not a .lux/hooks/pre-commit"
         )

@@ -18,10 +18,24 @@
 # key. Putting a hostname in here would mean needing the private key to find out what the site is
 # called.
 #
-# THE KEY NEVER ENTERS THE REPO. It lives at ~/.config/prospector/age-key.txt, mode 600. The
-# encrypted file deploy/secrets.env.age IS committed - that is the point, it is useless without
-# the key. Losing the key means re-minting every credential, so back it up somewhere that is not
-# this laptop, which is the same reason this whole programme exists.
+# THE KEY NEVER ENTERS THE REPO. It lives at ~/.config/prospector/age-key.txt, mode 600.
+#
+# AND NEITHER DOES THE ENCRYPTED FILE. This header said the opposite until 2026-08-23 - that
+# deploy/secrets.env.age "IS committed, that is the point, it is useless without the key". That
+# is correct reasoning about a PRIVATE repository and wrong about this one. `gh repo view`
+# reports chidionyema/prospector as PUBLIC. Committing the store would publish the Stripe live
+# keys, the R2 keys, the Fly token and every model provider key to the open internet, where
+# clones and caches keep them after any deletion, leaving one X25519 key on one laptop as the
+# only thing between a stranger and the money. age is strong today and the ciphertext would be
+# public forever, which is the half that cannot be undone. .gitignore now refuses it.
+#
+# So the second copy goes somewhere private instead: the `secret-store` source in
+# ops/config/offsite_backup.yaml puts it in the R2 backup bucket on every offsite run.
+#
+# Losing the key means re-minting every credential, so back it up somewhere that is not this
+# laptop, which is the same reason this whole programme exists. Back up the R2 read credentials
+# in the SAME place while you are there: they live inside this store, so a laptop loss with only
+# the key recovered leaves you holding a key and no way to reach the file it opens.
 #
 #   bash deploy/secrets.sh init                 # make the keypair, once per machine
 #   printf %s "$VALUE" | bash deploy/secrets.sh set KEY   # add or change one secret
