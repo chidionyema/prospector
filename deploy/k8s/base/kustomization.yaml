@@ -9,9 +9,19 @@ resources:
   - engine.yaml
   - api.yaml
   - web.yaml
+  - edge.yaml
 
-# STILL NOT HERE, and not pretended otherwise. The engine, the store API and the storefront moved
-# on 2026-08-24 (register row F-39); the edge proxy and the CI runner are still generated inline by
-# deploy/targets/k8s.sh and are still refused by this estate's own policies. Each manifest here
-# carries its own header saying what about it is declared and what is measured — api.yaml's
-# `runAsUser: 10001`, for one, has not been drilled the way engine.yaml's has.
+# STILL NOT HERE: the CI runner, the fifth of the five services in
+# deploy/compose/docker-compose.yml. The other four moved on 2026-08-24 (register row F-39).
+#
+# A CORRECTION THAT MATTERS, MEASURED RATHER THAN REMEMBERED. This comment used to say the
+# remaining services were "still generated inline by deploy/targets/k8s.sh". They are not, and were
+# never. That script emits exactly three documents — a PersistentVolumeClaim, a Deployment and a
+# Service, all for the engine — and mentions no storefront, no API, no edge and no runner. The
+# runner has no Kubernetes representation at all, which is a worse state than a bad one and is the
+# reason to say it plainly here.
+#
+# Each manifest carries its own header saying what about it is declared and what is measured.
+# api.yaml's and web.yaml's `runAsUser: 10001` have not been drilled the way engine.yaml's has, and
+# edge.yaml needs two cluster components — the Gateway API CRDs and cert-manager — that no cluster
+# here has.

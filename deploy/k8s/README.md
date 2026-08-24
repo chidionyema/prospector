@@ -6,7 +6,7 @@ The standards, the reasoning and the measurements behind every choice here are i
 ## The shape
 
 ```
-base/          the namespace, its security level, and three of the five workloads. True everywhere.
+base/          the namespace, its security level, and four of the five workloads. True everywhere.
 policies/      admission control: the upstream Kyverno library, pinned, plus two estate policies.
 overlays/      staging and production. Image tags, hostnames, secret references. Never a policy.
 argocd/        one ApplicationSet owning both clusters.
@@ -32,15 +32,21 @@ $ kubectl kustomize deploy/k8s/overlays/production | grep -c '^kind: ClusterPoli
 $ kubectl kustomize deploy/k8s/overlays/production | grep -o 'validationFailureAction: [A-Za-z]*' | sort | uniq -c
   26 validationFailureAction: Enforce
 $ kyverno apply deploy/k8s/policy-tests/policies.generated.yaml --resource /tmp/production-workloads.yaml
-Applying 87 policy rule(s) to 10 resource(s)...
+Applying 87 policy rule(s) to 15 resource(s)...
 pass: 91, fail: 0, warn: 0, error: 0, skip: 0
 ```
 
-The ten documents are the namespace and the three workloads `base/` now declares: a PVC, a
-Deployment and a Service each for the engine and the store API, and a Deployment, a Service and a
-PodDisruptionBudget for the storefront. Staging grades identically: `87 rules, 91 passes, 0 fails`,
-measured the same way on 2026-08-24. That equality is the point of the two overlays being the same
-files.
+The fifteen documents are the namespace and the four workloads `base/` now declares: a PVC, a
+Deployment and a Service each for the engine and the store API; a Deployment, a Service and a
+PodDisruptionBudget for the storefront; and a ClusterIssuer, a Gateway and three HTTPRoutes for the
+edge. Staging grades identically: `87 rules, 91 passes, 0 fails`, measured the same way on
+2026-08-24. That equality is the point of the two overlays being the same files.
+
+**Read the two numbers together, because 15 documents and 91 passes is the same 91 the ten
+documents scored.** The five edge documents contributed nothing. No policy in the set of 26 matches
+a `Gateway`, an `HTTPRoute` or a `ClusterIssuer` — every one of them is about pods. So the edge is
+in the count because a build that silently dropped `edge.yaml` must fail the gate, not because
+anything graded it. Saying it the other way round would be the "grade a proxy" mistake.
 
 26 policies. 24 of them are maintained by the Kyverno project; 2 are this estate's, and
 `policies/RETIRED.md` is the row-by-row account of which six hand-written ones were deleted and what
@@ -86,8 +92,30 @@ Honest state, so nobody reads this directory as a report of something running:
   that needs an API server: that the webhook is reachable, that the policies were installed at all,
   and that the cluster is not quietly running them in Audit. Register row F-47 stays `◐`; the
   offline half is F-55 and is `✅`.
-- **`base/` declares the namespace, the engine, the store API and the storefront. The edge proxy
-  and the runner are still generated** inline by `deploy/targets/k8s.sh`. Register row F-39.
+- **`base/` declares the namespace, the engine, the store API, the storefront and the edge. The CI
+  runner is the one service left.** Register row F-39. **A correction, because this file said
+  otherwise until 2026-08-24**: the remaining services were never "generated inline by
+  `deploy/targets/k8s.sh`". That script emits exactly three documents — a PersistentVolumeClaim, a
+  Deployment and a Service, all for the engine — and mentions no storefront, no API, no edge and no
+  runner. The runner has no Kubernetes representation of any kind, which is worse than a bad one.
+- **The edge is NOT the Caddy container ported across, and that decision has receipts.**
+  `deploy/compose/docker-compose.yml` runs `caddy:2.10-alpine` with a hand-written Caddyfile.
+  Lifting it into a Deployment was the smallest diff and the wrong one, so the research ran first
+  and is on the record in `~/dev/code/crew/science/RESEARCH-LEDGER.jsonl`. What it found:
+  `gh api repos/kubernetes/ingress-nginx --jq .archived` returns **`true`**, last push
+  2026-03-23 — the Ingress API's flagship controller is retired, its successor InGate never
+  shipped, and the Kubernetes Steering and Security Response Committees name **Gateway API** as
+  the migration path. So `base/edge.yaml` is a Gateway plus three HTTPRoutes plus a cert-manager
+  ClusterIssuer. `gatewayClassName` is the only controller-specific string in the file; k3s ships
+  Traefik, and Envoy Gateway is one word away. The Caddyfile's two site blocks, its
+  `X-Forwarded-Proto` header, its 60s Stripe-webhook timeout and its `force_https` all have a
+  named counterpart there. **Compose keeps Caddy unchanged** — on a plain Docker host with no
+  cluster it is the right answer, and the two substrates are allowed to differ.
+  **What is NOT true: no cluster has the Gateway API CRDs or cert-manager installed**, so this is
+  admissible YAML that nothing reconciles, and per `apis/v1/shared_types.go:468-478` a controller
+  may accept an HTTPRoute and mark it `PartiallyInvalid` with reason `UnsupportedValue` rather
+  than refuse it — the `timeouts` block is `Support: Extended` and is exactly the field that can
+  be dropped that way.
 - **The storefront is the only workload here that may lose a pod without losing the service, and
   it is the only one with a PodDisruptionBudget.** It owns no database, so it runs two replicas,
   rolls rather than Recreates, and carries no `prospector.estate/single-writer` label. The engine

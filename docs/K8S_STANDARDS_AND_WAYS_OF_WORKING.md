@@ -61,6 +61,10 @@ table below says "via parent" that is what it means.
 | Trivy | image and manifest scanning | via Aqua | — | 37,579 | Apache-2.0 |
 | Falco | runtime security detection | **Graduated** | 78.12 | 9,294 | Apache-2.0 |
 | **Velero** | backup and restore | CNCF | 73.96 | 10,252 | Apache-2.0 |
+| **Gateway API** | edge routing, the Ingress API's successor | SIG-Network, v1.6.1 | — | 2,976 | Apache-2.0 |
+| **Traefik** | the Gateway API controller k3s already ships | not CNCF | — | 64,556 | MIT |
+| Envoy Gateway | the named replacement controller | CNCF via Envoy | — | 2,975 | Apache-2.0 |
+| ingress-nginx | the retired rival | **ARCHIVED 2026-03** | — | 19,480 | Apache-2.0 |
 | **cert-manager** | TLS issuance and renewal | **Graduated** | ~100 | 14,045 | Apache-2.0 |
 | External Secrets | secrets from a real store | **Sandbox** | 96.88 | 6,807 | Apache-2.0 |
 | **Kustomize** | per-environment overlays | Graduated via Kubernetes | — | 12,143 | Apache-2.0 |
@@ -83,6 +87,7 @@ column is what the platform already does, better, and with somebody else maintai
 | Is this cluster hardened | nothing | **kube-bench**, the CIS Kubernetes Benchmark |
 | Staging against production | nothing | **Kustomize overlays** plus an **Argo CD ApplicationSet** |
 | Bad deploy rolled back | nothing | **Argo Rollouts**, with an analysis step that aborts on its own metrics |
+| TLS and hostname routing | `deploy/compose/Caddyfile`, 3,286 bytes of one vendor's config language, plus an ACME_EMAIL default that exists only because `email` with no argument is a Caddy parse error | **Gateway API**, with **cert-manager** issuing the certificates. The routing stops being the proxy's config and becomes Kubernetes objects; `gatewayClassName` is the only controller-specific string left. Compose keeps Caddy, because on a Docker host with no cluster there is no controller to talk to |
 
 **What stays ours, and the test for it.** A policy is allowed to be hand-written only when it encodes
 something true about this business that no upstream library could know. Exactly one of the seven

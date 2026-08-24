@@ -13,6 +13,85 @@ resources:
 patches:
   - path: api-hostnames.yaml
 
+  # THE EDGE'S THREE HOSTNAMES AND ITS CERTIFICATE AUTHORITY, inline rather than in a file of their
+  # own, and that is a kustomize fact rather than a preference: a file named by `path:` holds the
+  # PATCH BODY only. It cannot carry its own `target:`, and a file that tries prints
+  # `error: must specify a target for patch` followed by the whole file — measured 2026-08-24.
+  # Four targets would therefore be four files plus four `target:` blocks here. One block is
+  # smaller and keeps the reason next to the change.
+  #
+  # WITHOUT THESE THE STAGING CLUSTER SERVES mumchimp.com. Two things go wrong and only one is
+  # obvious. The obvious one: two Gateways in two clusters both claiming the shop's apex, and
+  # whichever DNS points at wins. The other costs money: cert-manager on staging would ask Let's
+  # Encrypt's PRODUCTION directory for a mumchimp.com certificate, fail HTTP-01 because DNS does
+  # not point there, and keep asking — against limits the real shop needs on the day it needs them.
+  #
+  # WHY JSON 6902 AND NOT A STRATEGIC MERGE PATCH. api-hostnames.yaml above is a strategic merge
+  # patch and that works because `env` is a keyed list: kustomize merges by `name` and leaves the
+  # other thirteen entries alone. `spec.hostnames` and `spec.listeners` are not keyed lists, and
+  # neither Gateway nor HTTPRoute is a built-in type kustomize has a merge schema for, so a
+  # strategic merge patch on them is guessing. A JSON patch names the index it replaces.
+  #
+  # THE HOSTNAMES BELOW DO NOT RESOLVE YET, the same as api-hostnames.yaml's. There is no staging
+  # cluster and no staging DNS record.
+  - target:
+      group: gateway.networking.k8s.io
+      version: v1
+      kind: Gateway
+      name: prospector-edge
+      namespace: prospector
+    patch: |-
+      - op: replace
+        path: /spec/listeners/1/hostname
+        value: staging.mumchimp.com
+      - op: replace
+        path: /spec/listeners/2/hostname
+        value: www.staging.mumchimp.com
+      - op: replace
+        path: /spec/listeners/3/hostname
+        value: api.staging.mumchimp.com
+  - target:
+      group: gateway.networking.k8s.io
+      version: v1
+      kind: HTTPRoute
+      name: prospector-store-web
+      namespace: prospector
+    patch: |-
+      - op: replace
+        path: /spec/hostnames/0
+        value: staging.mumchimp.com
+      - op: replace
+        path: /spec/hostnames/1
+        value: www.staging.mumchimp.com
+  - target:
+      group: gateway.networking.k8s.io
+      version: v1
+      kind: HTTPRoute
+      name: prospector-store-api
+      namespace: prospector
+    patch: |-
+      - op: replace
+        path: /spec/hostnames/0
+        value: api.staging.mumchimp.com
+  # Let's Encrypt's STAGING directory. Its certificates are signed by a root no browser trusts,
+  # which is correct — a staging site should show a warning rather than look like the shop. What it
+  # proves is the part that matters: that the challenge was solved, the order completed and the
+  # Secret was written. A different directory means a different ACME account, so it needs its own
+  # account key; pointing both at one Secret would have staging's registration overwrite
+  # production's.
+  - target:
+      group: cert-manager.io
+      version: v1
+      kind: ClusterIssuer
+      name: prospector-letsencrypt
+    patch: |-
+      - op: replace
+        path: /spec/acme/server
+        value: https://acme-staging-v02.api.letsencrypt.org/directory
+      - op: replace
+        path: /spec/acme/privateKeySecretRef/name
+        value: prospector-letsencrypt-staging-account
+
 labels:
   - includeSelectors: false
     pairs:

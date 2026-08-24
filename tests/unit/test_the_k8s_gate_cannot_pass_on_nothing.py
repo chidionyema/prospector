@@ -48,14 +48,56 @@ NAMESPACE = "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: prospector\n"
 PVC = "apiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: prospector-data\n"
 SERVICE = "apiVersion: v1\nkind: Service\nmetadata:\n  name: prospector-engine\n"
 DEPLOYMENT = "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: prospector-engine\n"
-FULL = "\n---\n".join([POLICY, NAMESPACE, PVC, DEPLOYMENT, SERVICE])
+PDB = "apiVersion: policy/v1\nkind: PodDisruptionBudget\nmetadata:\n  name: prospector-store-web\n"
+GATEWAY = ("apiVersion: gateway.networking.k8s.io/v1\nkind: Gateway\n"
+           "metadata:\n  name: prospector-edge\n")
+ROUTE = ("apiVersion: gateway.networking.k8s.io/v1\nkind: HTTPRoute\n"
+         "metadata:\n  name: prospector-store-web\n")
+ISSUER = ("apiVersion: cert-manager.io/v1\nkind: ClusterIssuer\n"
+          "metadata:\n  name: prospector-letsencrypt\n")
+
+# A four-document build. It was what the overlays produced on the day this gate was written, and it
+# is now BELOW the floor — which is the point of keeping it: it is the shape a build takes after
+# three of the four manifests are silently dropped from base/kustomization.yaml.
+SMALL = "\n---\n".join([POLICY, NAMESPACE, PVC, DEPLOYMENT, SERVICE])
+
+# What both overlays actually build, measured 2026-08-24: 15 non-policy documents. The kinds are in
+# the order kustomize emits them.
+FULL = "\n---\n".join([
+    POLICY,
+    NAMESPACE,
+    SERVICE, SERVICE, SERVICE,
+    PVC, PVC,
+    DEPLOYMENT, DEPLOYMENT, DEPLOYMENT,
+    PDB,
+    ISSUER, GATEWAY, ROUTE, ROUTE, ROUTE,
+])
 
 
 def test_a_real_build_is_split_into_workloads_and_graders():
     keep, kinds = split_workloads.split(FULL)
-    assert kinds == ["Namespace", "PersistentVolumeClaim", "Deployment", "Service"]
+    assert kinds == [
+        "Namespace",
+        "Service", "Service", "Service",
+        "PersistentVolumeClaim", "PersistentVolumeClaim",
+        "Deployment", "Deployment", "Deployment",
+        "PodDisruptionBudget",
+        "ClusterIssuer", "Gateway", "HTTPRoute", "HTTPRoute", "HTTPRoute",
+    ]
     assert not any("ClusterPolicy" in d for d in keep), "the policies are the graders, not the graded"
     assert split_workloads.check(keep, kinds, "production") is None
+
+
+def test_the_floor_rises_with_the_estate():
+    """The failure a fixed floor cannot catch, and the reason this test exists at all.
+
+    The floor was 4 when base/ held one workload. Three more landed on 2026-08-24, and a floor left
+    at 4 would admit a build that had silently lost the store API, the storefront and the edge — it
+    still has a Namespace, a PVC, a Deployment and a Service, so both checks pass. So the yesterday
+    build must now be REFUSED, and it is that refusal, not the number, that is asserted here."""
+    keep, kinds = split_workloads.split(SMALL)
+    reason = split_workloads.check(keep, kinds, "production")
+    assert reason and "builds only 4 non-policy document(s)" in reason
 
 
 def test_a_policy_only_build_is_refused():
