@@ -7,9 +7,10 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - engine.yaml
+  - api.yaml
 
-# STILL NOT HERE, and not pretended otherwise. The engine moved on 2026-08-24 (register row F-39);
-# the shop, api, web and edge workloads are still generated inline by deploy/targets/k8s.sh and are
-# still refused by this estate's own policies. engine.yaml is the pattern the other four follow,
-# and its header lists the two things that must change in the engine itself before a pod started
-# from it can actually run.
+# STILL NOT HERE, and not pretended otherwise. The engine and the store API moved on 2026-08-24
+# (register row F-39); the web storefront, the edge proxy and the runner are still generated inline
+# by deploy/targets/k8s.sh and are still refused by this estate's own policies. Each manifest here
+# carries its own header saying what about it is declared and what is measured — api.yaml's
+# `runAsUser: 10001`, for one, has not been drilled the way engine.yaml's has.

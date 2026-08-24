@@ -31,7 +31,15 @@ $ kubectl kustomize deploy/k8s/overlays/production | grep -c '^kind: ClusterPoli
 26
 $ kubectl kustomize deploy/k8s/overlays/production | grep -o 'validationFailureAction: [A-Za-z]*' | sort | uniq -c
   26 validationFailureAction: Enforce
+$ kyverno apply deploy/k8s/policy-tests/policies.generated.yaml --resource /tmp/production-workloads.yaml
+Applying 87 policy rule(s) to 7 resource(s)...
+pass: 62, fail: 0, warn: 0, error: 0, skip: 0
 ```
+
+The seven documents are the namespace and the two workloads `base/` now declares — a PVC, a
+Deployment and a Service each for the engine and the store API. Staging grades identically:
+`87 rules, 62 passes, 0 fails`, measured the same way on 2026-08-24. That equality is the point of
+the two overlays being the same files.
 
 26 policies. 24 of them are maintained by the Kyverno project; 2 are this estate's, and
 `policies/RETIRED.md` is the row-by-row account of which six hand-written ones were deleted and what
@@ -77,8 +85,21 @@ Honest state, so nobody reads this directory as a report of something running:
   that needs an API server: that the webhook is reachable, that the policies were installed at all,
   and that the cluster is not quietly running them in Audit. Register row F-47 stays `◐`; the
   offline half is F-55 and is `✅`.
-- **`base/` declares the namespace and the engine. The shop, api, web and edge are still
-  generated** inline by `deploy/targets/k8s.sh`. Register row F-39 is half done.
+- **`base/` declares the namespace, the engine and the store API. The web storefront, the edge
+  proxy and the runner are still generated** inline by `deploy/targets/k8s.sh`. Register row F-39.
+- **The store API's manifest is admitted, and the application change it needed is written and
+  tested.** `secrets-not-from-env-vars` refuses a credential in the pod environment, and the compose
+  file supplies all seven of the API's secrets that way, so the API had to learn to read secrets as
+  files. It reads them with `Microsoft.Extensions.Configuration.KeyPerFile`, which is in the
+  `Microsoft.AspNetCore.App` shared framework — no package was added and no resolver was written.
+  `Store.Api/Infrastructure/FileSecrets.cs` adds only the refusal on a missing or empty mount, and
+  reads the same `PROSPECTOR_SECRETS_DIR` the engine reads. Eight tests in
+  `Store.Tests/Infrastructure/FileSecretsTests.cs` prove the four refusals and the four things the
+  manifest bets on: `Jwt__SigningKeyPem` becomes `Jwt:SigningKeyPem`, a Kubernetes projected-volume
+  symlink farm yields the keys and none of the `..`-prefixed machinery, a trailing newline is not
+  part of the value, and a mounted file beats an environment variable of the same name.
+  **What is NOT proved: nothing has run the API image as `runAsUser 10001` with a read-only root**,
+  the way the engine was drilled. Its Dockerfile has no `USER` line.
 - **The engine manifest is admissible, and one of its two gaps is closed.** `prospector/file_secrets.py`
   reads the file-mounted secrets that `secrets-not-from-env-vars` forces and puts them in
   `os.environ` before any module runs, so the 30 files that read a credential from the environment

@@ -7,6 +7,12 @@ resources:
   - ../../base
   - ../../policies
 
+# A HOSTNAME IS AN OVERLAY CONCERN; A POLICY IS NOT. This patch changes the four URLs the store API
+# hands to a buyer. Without it staging inherits base/'s production values and sends a real customer
+# to the real checkout. See the file for why the staging hostname does not resolve yet.
+patches:
+  - path: api-hostnames.yaml
+
 labels:
   - includeSelectors: false
     pairs:
