@@ -431,3 +431,4 @@ and 2.6 are unchanged.
 | S2 | Rotate `PROSPECTOR_ENTITLEMENTS_API_KEY` and `STORE_INTERNAL_API_KEY`, exposed 2026-08-18 | **founder** | — |
 | S3 | Bring the 5 CI credentials under a declared source of truth | agent, after Part 3 lands | consolidation |
 | S4 | Make `secrets.sh check` detect a value that DIFFERS between sinks, not only one that is absent | agent, after Part 3 lands | the detect half of 2.6 |
+| S5 | Recipient list in `deploy/secrets.recipients`, read by `encrypt_stdin`, so a recipient survives re-encryption (3.7 named this action but this table never held its row) | agent — landed 2026-08-24 | S1 — without it, S1's escrow recipient is stripped by the next `set` |

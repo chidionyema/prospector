@@ -54,6 +54,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STORE="${PROSPECTOR_SECRETS_FILE:-$HERE/secrets.env.age}"
 KEY="${PROSPECTOR_AGE_KEY:-$HOME/.config/prospector/age-key.txt}"
 REQUIRED="$HERE/secrets.required"
+RECIPIENTS="${PROSPECTOR_AGE_RECIPIENTS:-$HERE/secrets.recipients}"
 
 die() { echo "$*" >&2; exit 1; }
 
@@ -72,12 +73,22 @@ plaintext() {
   age -d -i "$KEY" "$STORE"
 }
 
-# Encrypt stdin to the store, to the public half of our own key.
+# Encrypt stdin to the store. When deploy/secrets.recipients exists, every public key listed
+# there can decrypt, and the list survives re-encryption — before this, every `set` re-encrypted
+# to our own key alone, so a recovery recipient added by hand was silently stripped by the next
+# write (SECRETS_PROGRAM.md 3.7). A recipients file that omits our own public key is refused:
+# honouring it would make this the last `set` this machine can ever read back.
 encrypt_stdin() {
   need_age; need_key
   local pub
   pub="$(age-keygen -y "$KEY")"
-  age -r "$pub" -o "$STORE.tmp"
+  if [ -f "$RECIPIENTS" ]; then
+    grep -qxF "$pub" "$RECIPIENTS" \
+      || die "our own public key is not in $RECIPIENTS - encrypting would lock this machine out of its own store; add the line: $pub"
+    age -R "$RECIPIENTS" -o "$STORE.tmp"
+  else
+    age -r "$pub" -o "$STORE.tmp"
+  fi
   mv "$STORE.tmp" "$STORE"
 }
 
