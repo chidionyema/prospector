@@ -25,9 +25,22 @@
 #      exists to prevent. Proved by tests/test_incident_secrets_mounted_as_files.py.
 #      The writer side already existed: deploy/targets/k8s.sh:115 creates this Secret with
 #      --from-env-file, which is one key per variable, which mounts as one file per variable.
-#   2. THE IMAGE MAY NOT RUN AS NON-ROOT. deploy/engine/supervisord.conf starts supervisord and
-#      the Next.js console; nothing has verified it works under runAsUser 10001 with a read-only
-#      root filesystem. That is a drill, not an assumption, and the drill has not run.
+#   2. THE IMAGE DOES NOT RUN AS NON-ROOT YET, and the drill has now said exactly why. Run
+#      2026-08-24 against prospector-engine:local with --user 10001:10001 --read-only, an
+#      emptyDir at /tmp and the secrets mounted as files. Three blockers, each measured:
+#        a. supervisord refused outright: "Error: Can't drop privilege as nonroot user", because
+#           deploy/engine/supervisord.conf sets user=root. No program ever started. THIS IS AN
+#           IMAGE CHANGE AND IT IS NOT MADE YET — see the note in supervisord.conf.
+#        b. HOME=/, which uid 10001 cannot write. Fixed here by the HOME env var below.
+#        c. .next/cache is root-owned and mode 755, and a read-only root filesystem means no
+#           chown in the image can help. Fixed here by the console-cache emptyDir below.
+#      With all three worked around, supervisord and eight of its nine programs reached RUNNING
+#      as uid 10001 with a read-only root, and the log carried no permission, EACCES, EROFS or
+#      read-only error of any kind. STILL OPEN: the ops console process stayed up but never
+#      answered HTTP on its published port and printed nothing, so `next start` under these
+#      constraints is NOT proved. The liveness and readiness probes below target that port.
+#   2b. THE PROBES BELOW ARE THEREFORE UNPROVEN. Until (2) closes, a pod started from this file
+#      would be killed by its own livenessProbe rather than serve.
 #   3. NO CLUSTER HAS EVER APPLIED THIS. The build is green; there is no cluster.
 #
 # Both gaps are real work with a named shape, which is the point of writing the manifest first:
@@ -124,6 +137,12 @@ spec:
             # that is only writable because of the emptyDir mounted at /tmp below.
             - name: TMPDIR
               value: /tmp
+            # MEASURED, not assumed. Running the image as uid 10001 on 2026-08-24 printed
+            # `HOME=/`, and uid 10001 cannot write `/`. node and next both write under HOME,
+            # so the ops console would fail on a path nothing in this file names. Pointing HOME
+            # at the emptyDir below costs one line and needs no second volume.
+            - name: HOME
+              value: /tmp
           ports:
             - name: console
               containerPort: 8601
@@ -173,6 +192,13 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            # `next start` writes its runtime cache here. MEASURED as uid 10001 on 2026-08-24:
+            # /app and every directory under it is owned by root and mode 755, so this path is
+            # not writable, and a read-only root filesystem means no chown in the image can make
+            # it writable either. The build output the console SERVES is in .next/, not
+            # .next/cache, so covering the cache directory hides nothing `next start` reads.
+            - name: console-cache
+              mountPath: /app/store_platform/src/Ops.Console/.next/cache
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -185,6 +211,8 @@ spec:
             # none of its 24 settings while the deploy script reported success.
             optional: false
         - name: tmp
+          emptyDir: {}
+        - name: console-cache
           emptyDir: {}
 ---
 apiVersion: v1

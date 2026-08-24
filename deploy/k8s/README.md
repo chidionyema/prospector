@@ -82,8 +82,17 @@ Honest state, so nobody reads this directory as a report of something running:
 - **The engine manifest is admissible, and one of its two gaps is closed.** `prospector/file_secrets.py`
   reads the file-mounted secrets that `secrets-not-from-env-vars` forces and puts them in
   `os.environ` before any module runs, so the 30 files that read a credential from the environment
-  needed no change. What is still unproved: **nothing has run the image under `runAsUser 10001`
-  with a read-only root filesystem.** That is a drill, and the drill has not run.
+  needed no change.
+- **The non-root drill has now run, and the image fails it as shipped.** 2026-08-24, the real
+  image under `--user 10001:10001 --read-only`: supervisord refused with `Can't drop privilege as
+  nonroot user` because `deploy/engine/supervisord.conf` sets `user=root`, `HOME` was `/` which
+  uid 10001 cannot write, and `.next/cache` was root-owned and unwritable. The last two are fixed
+  in `base/engine.yaml`. **The first is an image change and is not made yet**, because dropping
+  `user=root` means the image runs as 10001 under `docker compose` too, where `./data` on the host
+  is not owned by 10001. With all three worked around, supervisord and eight of nine programs
+  reached RUNNING with no permission or read-only error anywhere in the log. **The ops console
+  stayed up but never answered HTTP, so it is not proved**, and the liveness probe targets that
+  port, so a pod started from this file today would be killed by its own probe.
 - **`argocd/applicationset.yaml` has a placeholder for the production API URL**, because there is no
   production cluster to name.
 
