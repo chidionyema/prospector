@@ -43,6 +43,36 @@ note() { printf '   -   %s\n' "$*"; }
 bad()  { printf '   BAD %s\n' "$*"; }
 fail() { printf '!! %s\n' "$*" >&2; exit 1; }
 
+# CAN THE DAEMON ACTUALLY START A CONTAINER? `docker info` cannot answer that question.
+#
+# THE INCIDENT, 2026-08-24. cmd_up's only daemon check was `docker info >/dev/null || fail`. It
+# passed. `docker ps`, `docker version` and `docker context ls` all passed too. Meanwhile a no-op
+# container -- `docker run --rm alpine echo ok` -- did not return in 90 seconds, `docker stop`
+# reported "tried to kill container, but did not receive an exit event", and `docker rm -f` removed
+# nothing. The containerd shim in the colima VM was wedged while every status command answered
+# normally.
+#
+# What that cost: this script ran anyway, got far enough to create the k3d containers and not far
+# enough to write the serverlb's confd config, and left a half-built cluster whose load balancer
+# crash-looped 19 times on `stat /etc/confd/values.yaml: no such file or directory`. The wreckage
+# then sat on the machine holding CPU. The half-cluster looked like a k3d bug and was not one.
+#
+# THE CLASS, not the instance: a preflight that asks an instrument for a STATUS instead of asking
+# the system to DO THE WORK. `docker info` reports a shape. Starting a container is the work. This
+# is the same family docs/CI_DEBUG_RUNBOOK.md is written about, and the rule there is the rule here.
+#
+# DAEMON_PROBE exists so this check can be proved BOTH ways without needing a broken daemon to hand
+# (LAW 38: a guard only ever seen refusing has never been shown to permit):
+#   DAEMON_PROBE=/usr/bin/true  ./rehearse_cluster.sh up   # must get past this line
+#   DAEMON_PROBE=/usr/bin/false ./rehearse_cluster.sh up   # must stop on this line
+# Unset, it runs the real thing. alpine is 3MB and pulling it also proves the daemon can pull, which
+# cluster creation needs a few lines later anyway.
+DAEMON_PROBE="${DAEMON_PROBE:-docker run --rm alpine:latest true}"
+
+daemon_can_start_a_container() {
+  timeout "${DAEMON_PROBE_TIMEOUT:-60}" $DAEMON_PROBE >/dev/null 2>&1
+}
+
 # THE VERSION SKEW TRAP, HANDLED RATHER THAN NARRATED.
 #
 # Measured 2026-08-24 on this laptop: the kubectl on PATH is v1.27.2, shipped by Docker Desktop, and
@@ -99,6 +129,24 @@ wait_for_api() {
 cmd_up() {
   command -v docker >/dev/null || fail "docker is not installed on this laptop"
   docker info >/dev/null 2>&1 || fail "the local docker daemon is not running"
+  # `docker info` answering is not the test; on 2026-08-24 it was the thing that lied. See the
+  # comment on daemon_can_start_a_container.
+  daemon_can_start_a_container || fail \
+"the docker daemon answers status commands but cannot start a container within \
+${DAEMON_PROBE_TIMEOUT:-60}s.
+
+Runtime that failed: context '$(docker context show 2>/dev/null || echo unknown)'. Name it, because
+the obvious repair is to restart the wrong thing: Docker Desktop is installed on this laptop and is
+NOT the runtime, so restarting it clears nothing while appearing to succeed.
+
+Do NOT let this script build into that. It gets far enough to create the k3d containers and not far
+enough to configure them, and leaves a half-built cluster that then looks like a k3d bug.
+
+Reproduce it in one line:   docker run --rm alpine:latest echo ok
+Runtime on this machine:    docker context show    (colima, not Docker Desktop)
+crew/STATE.md carries the standing instruction for this exact failure: do NOT restart colima,
+route it to the founder -- an unco-ordinated restart is crew #85, load 255 on 12 cores."
+  ok "docker context '$(docker context show 2>/dev/null || echo unknown)' started a container"
   command -v k3d >/dev/null   || fail "k3d is not installed. brew install k3d"
 
   say "cluster"
@@ -171,13 +219,39 @@ cmd_up() {
   # --no-rollback keeps whatever came up. The timeout goes to 900s because the measured cold build
   # took 913s. Then this script waits for /readyz itself, so the verdict comes from the API server
   # answering rather than from k3d's patience.
+  # WHAT IS STARVED IS I/O, NOT CPU, AND THAT CHANGES WHICH ADD-ONS ARE WORTH DISABLING.
+  #
+  # Measured 2026-08-24 inside the colima VM, immediately after a bootstrap failed at t=1250s with
+  # `failed to bootstrap cluster data: context deadline exceeded`:
+  #
+  #   /proc/loadavg          499.75 473.70 416.25   551/3159 runnable
+  #   nproc                  4
+  #   df -h /var/lib/docker  59G total, 38G available      <- not a disk-space problem
+  #   free -m                3445 MB available             <- not a memory problem
+  #   host CPU               Intel i7-8850H, 6 cores       <- no emulation; colima arch matches
+  #
+  # A load average of 500 on 4 CPUs with memory and disk to spare is hundreds of processes parked
+  # in uninterruptible sleep waiting on the disk. That matches the 17 `Slow SQL ... INSERT INTO
+  # kine(...) duration=2.79s` lines k3s printed: every write of the bootstrap goes through kine to
+  # SQLite on overlay2 inside a VM. The fix is to make the bootstrap write less, not to wait longer
+  # -- a timeout increase measures patience, and the previous attempt already had 900s and lost.
+  #
+  # traefik and servicelb are two Helm chart installs on the critical path, and the estate wants
+  # neither: deploy/k8s/base/edge.yaml is Gateway API served by its own controller, and a rehearsal
+  # with --agents 0 has nothing for servicelb to balance. metrics-server was already off.
+  #
+  # local-storage STAYS ON, deliberately. deploy/k8s/base declares two PVCs (prospector-data and
+  # prospector-store-api-data); without the local-path provisioner they never bind and every
+  # workload sits Pending. Disabling it would make the cluster start faster and prove nothing.
   local clog="$CACHE/k3d-create.log"
   set +e
   k3d cluster create "$CLUSTER" --wait --timeout "${K3D_TIMEOUT:-900s}" \
     --no-rollback \
     --agents 0 \
     --image "$k3s_image" \
-    --k3s-arg '--disable=metrics-server@server:0' >"$clog" 2>&1
+    --k3s-arg '--disable=metrics-server@server:0' \
+    --k3s-arg '--disable=traefik@server:0' \
+    --k3s-arg '--disable=servicelb@server:0' >"$clog" 2>&1
   local crc=$?
   set -e
 
