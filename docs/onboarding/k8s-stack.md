@@ -87,8 +87,11 @@ that says which field of which container broke the rule.
 - `deploy/k8s/overlays/{staging,production}/` — the two environments. They differ on image tags and
   hostnames, never on a policy.
 - `deploy/k8s/argocd/applicationset.yaml` — one object owning both clusters. Nothing has run it.
-- `.github/workflows/k8s-manifests.yml` — the four gates that make the above enforced rather than
-  merely written down.
+- `.github/workflows/k8s-manifests.yml` — the five gates that make the above enforced rather than
+  merely written down. Four grade the built manifests; the fifth watches the policies decide.
+- `deploy/k8s/policy-tests/` — eleven manifests each with exactly one thing wrong, one manifest that
+  is compliant, and Kyverno's own test format asserting which rule of which policy catches which. It
+  runs offline, so knowing whether a standard works no longer waits on a cluster existing.
 - `docs/K8S_STANDARDS_AND_WAYS_OF_WORKING.md` — the research, the CNCF measurements, and the
   processes.
 - `deploy/rehearse_cluster.sh` — the drill that proves them.
@@ -120,6 +123,12 @@ deploy/rehearse_cluster.sh status     # what is true right now
 ## What goes wrong
 
 **"the local docker daemon is not running".** k3d runs k3s inside Docker. Start Docker.
+
+**`kyverno test` says everything passed when it did not.** Measured 2026-08-24 on v1.16.1: with one
+assertion deliberately violated it printed `Test Summary: 13 tests passed and 0 tests failed` and
+exited **0**, while its own `REASON` column on that row read `Want fail, got pass`. Read `REASON`,
+via `-o json`, and never the summary or the exit code. The CI gate does this; a person running the
+command by hand will be told the wrong thing.
 
 **A policy refuses something correct.** That is an outage, not a false positive, and it is graded as
 one. The drill proves every standard both ways in the same run for this reason: eight refusals it

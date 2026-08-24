@@ -131,3 +131,109 @@ jobs:
           echo "OK: every remote kustomize resource is pinned"
           find deploy/k8s -name kustomization.yaml -print0 \
             | xargs -0 grep -hoE '[0-9a-f]{40}' | sort -u | sed 's/^/  pinned at /'
+
+      # ---------------------------------------------------------------------------------------
+      # GATE 5. The policies actually DECIDE, and they decide both ways.
+      #
+      # Everything above proves the policy set BUILDS: 26 of them, all Enforce, both overlays
+      # identical, every remote resource pinned. None of that watches a policy refuse anything. A
+      # policy that builds is a policy nobody has seen make a decision, and the estate has spent a
+      # whole night on instruments that report a shape while the thing itself refuses to work.
+      #
+      # The Kyverno CLI runs the same admission engine offline, so no cluster is needed and the
+      # decision is made by the code that will make it in production rather than by a reading of the
+      # YAML. What this still cannot prove is that the webhook is reachable, that the policies were
+      # installed at all, or that the cluster is not quietly running them in Audit. Those need a live
+      # API server and stay open as register row F-47. This is the cheap one of LAW 15's two angles.
+      # ---------------------------------------------------------------------------------------
+      - name: Install the Kyverno CLI at the version the cluster runs
+        run: |
+          set -euo pipefail
+          # Pinned to KYVERNO_VERSION in deploy/rehearse_cluster.sh, NOT to latest. A CLI on a
+          # different engine version answers a different question than the one the cluster is asked.
+          want=$(grep -oE 'KYVERNO_VERSION:-v[0-9]+\.[0-9]+\.[0-9]+' deploy/rehearse_cluster.sh \
+                 | head -1 | sed 's/.*://')
+          [ -n "$want" ] || { echo "FAIL: could not read KYVERNO_VERSION from the drill"; exit 1; }
+          echo "drill installs kyverno $want, so that is the CLI this gate uses"
+          curl -fsSL -o /tmp/kyverno.tgz \
+            "https://github.com/kyverno/kyverno/releases/download/${want}/kyverno-cli_${want}_linux_x86_64.tar.gz"
+          tar -xzf /tmp/kyverno.tgz -C /usr/local/bin kyverno
+          kyverno version
+
+      - name: Build the policy set the tests run against
+        run: |
+          set -euo pipefail
+          # The POLICIES kustomization, not an overlay. An overlay also emits the Namespace, and the
+          # CLI silently loads ZERO rules from a file carrying a non-policy document -- it prints
+          # "pass: 0, fail: 0, error: 0" and exits 0, which reads exactly like success. Measured
+          # 2026-08-24. Generated here rather than committed so the tests cannot drift from what ships.
+          kubectl kustomize deploy/k8s/policies > deploy/k8s/policy-tests/policies.generated.yaml
+          kinds=$(grep -c '^kind: ClusterPolicy' deploy/k8s/policy-tests/policies.generated.yaml || true)
+          other=$(grep '^kind:' deploy/k8s/policy-tests/policies.generated.yaml | grep -vc 'ClusterPolicy' || true)
+          echo "built $kinds ClusterPolicy documents, $other of anything else"
+          if [ "$other" -ne 0 ]; then
+            echo "FAIL: a non-policy document is in the policy build. The CLI would load zero rules"
+            echo "      from it and report success. See the comment above."
+            exit 1
+          fi
+          if [ "$kinds" -lt 20 ]; then
+            echo "FAIL: only $kinds policies built. The set has been 26 since 2026-08-24 and a"
+            echo "      sudden collapse means a remote base stopped resolving, not that we simplified."
+            exit 1
+          fi
+
+      - name: The reference workload is ADMITTED
+        run: |
+          set -euo pipefail
+          # LAW 38: a fence proved only in the refusing direction has never been shown safe to
+          # install. deploy/k8s/policy-tests/admitted.yaml is the shape a Prospector workload has to
+          # have, and if the policy set refuses it that is an outage, not a strict configuration.
+          # `|| true` because the CLI exits non-zero when a resource is refused, and under
+          # `set -e` that killed this step before it could print WHY -- a gate that fails for the
+          # right reason and says nothing is a gate somebody disables. The verdict is read from the
+          # output below, and a CLI that crashed instead of running is caught by the rule count.
+          kyverno apply deploy/k8s/policy-tests/policies.generated.yaml \
+            --resource deploy/k8s/policy-tests/admitted.yaml 2>&1 | tee /tmp/admit.txt || true
+          rules=$(sed -n 's/^Applying \([0-9]*\) policy rule(s).*/\1/p' /tmp/admit.txt | head -1)
+          fails=$(sed -n 's/.*fail: \([0-9]*\).*/\1/p' /tmp/admit.txt | head -1)
+          passes=$(sed -n 's/^pass: \([0-9]*\).*/\1/p' /tmp/admit.txt | head -1)
+          # The rule count is asserted because zero rules also produces "fail: 0".
+          if [ "${rules:-0}" -lt 50 ]; then
+            echo "FAIL: only ${rules:-0} rules loaded, so 'fail: 0' below proves nothing"; exit 1
+          fi
+          if [ "${fails:-1}" -ne 0 ] || [ "${passes:-0}" -eq 0 ]; then
+            echo "FAIL: the reference workload was refused by its own policy set."
+            echo "      Either the manifest stopped being compliant, or a policy now refuses correct work."
+            exit 1
+          fi
+          echo "OK: $passes rule evaluations passed, 0 failed, out of $rules rules loaded"
+
+      - name: Every standard refuses the thing it exists to refuse
+        run: |
+          set -euo pipefail
+          # NEVER TRUST `kyverno test`'s SUMMARY OR ITS EXIT CODE. Measured 2026-08-24 on v1.16.1:
+          # with one assertion deliberately violated it printed
+          #     Test Summary: 13 tests passed and 0 tests failed
+          # and exited 0, while its own REASON column on that row said "Want fail, got pass". The
+          # verdict is in REASON; RESULT and the summary report a shape. This is the same defect the
+          # estate hit five other times in one night, and here it is inside the grading tool itself.
+          kyverno test deploy/k8s/policy-tests -o json --remove-color > /tmp/kt.json 2>&1 || true
+          kyverno test deploy/k8s/policy-tests --remove-color || true
+          python3 - <<'PY'
+          import json, sys
+          raw = open('/tmp/kt.json').read()
+          a, b = raw.find('['), raw.rfind(']')
+          if a < 0 or b < a:
+              sys.exit("FAIL: the CLI produced no results array. Output was:\n" + raw[:2000])
+          rows = json.loads(raw[a:b + 1])
+          if len(rows) < 13:
+              sys.exit(f"FAIL: {len(rows)} assertions ran. The suite has had 13 since 2026-08-24, and "
+                       "a suite that shrinks silently is a gate that stops grading.")
+          bad = [r for r in rows if r.get('REASON') != 'Ok']
+          if bad:
+              for r in bad:
+                  print(f"  {r.get('POLICY')} / {r.get('RULE')} on {r.get('RESOURCE')}: {r.get('REASON')}")
+              sys.exit(f"FAIL: {len(bad)} of {len(rows)} assertions did not hold. "
+                       "'Want fail, got pass' means a standard stopped refusing what it exists to refuse.")
+          print(f"OK: all {len(rows)} policy decisions were the ones asserted")
+          PY

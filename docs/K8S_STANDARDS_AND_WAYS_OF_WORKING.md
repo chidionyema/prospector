@@ -221,8 +221,36 @@ is installed, and has not moved.
 
 - **No cluster has applied any of it.** The build is green and there is no cluster. That is the
   honest state and it is why nothing above is written as done.
-- **No policy has been shown to refuse a workload.** LAW 38 wants both directions on a live API
-  server, and only the CI gates have been proved both ways so far.
+- **No policy has been shown to refuse a workload ON A CLUSTER.** That line had no qualifier when it
+  was written a few hours earlier, and the qualifier is the change: the policies are now proved to
+  decide, offline, by the same admission engine a cluster runs. The Kyverno CLI is a standalone
+  binary and needed no API server, which means "does this standard actually work" stopped being a
+  question that waits on a rented box. Measured 2026-08-24: 13 assertions pairing each of eleven
+  single-violation manifests to the specific policy AND rule that must catch it, all 13 holding, and
+  a reference workload admitted with 0 failures out of 87 rules loaded. Register row F-55, `✅`.
+
+  What still needs a live API server, and is therefore still F-47 at `◐`: that the admission webhook
+  is reachable, that the policies were installed at all, and that the cluster is not quietly running
+  them in `Audit`. LAW 15 wants two angles; this is one of them, and it is the cheap one.
+
+- **Adopting somebody else's library means adopting rules you did not think of, and one of them bit
+  the same day.** `secrets-not-from-env-vars` forbids `envFrom.secretRef` outright and
+  `env[].valueFrom.secretKeyRef` with it: secrets must be mounted as files, because an environment
+  variable is readable from `/proc/<pid>/environ`, lands in crash dumps, and is inherited by every
+  child the container spawns. The first draft of the reference workload used `envFrom`, which is how
+  this whole estate does it in compose today, and the policy refused it. It is left enforcing rather
+  than relaxed: no Kubernetes workload manifests exist yet, so it costs nothing today and forces the
+  right shape when they are written. Weakening a fence before it has ever refused real work is how a
+  fence stops being one.
+
+- **The grading tool itself reported a shape while the substance said otherwise, which is now the
+  sixth instance in one night.** `kyverno test` v1.16.1, with one assertion deliberately violated,
+  printed `Test Summary: 13 tests passed and 0 tests failed` and exited **0** — while its own
+  `REASON` column on that row read `Want fail, got pass`. Had the gate been wired to the exit code,
+  which is the obvious way to wire it, it would have been permanently green and nobody would have
+  had a reason to look. The gate parses `-o json` and grades `REASON`. The general rule this estate
+  keeps re-learning: find the field that carries the verdict, and never grade the field that carries
+  the summary.
 
 - The chaos choice between Litmus and Chaos Mesh is not settled. Both are CNCF Incubating. Chaos Mesh
   has more stars (7,853 against 5,600) and a CLOMonitor score of 40.0, which is the lowest of
