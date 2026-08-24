@@ -36,11 +36,28 @@
 #           chown in the image can help. Fixed here by the console-cache emptyDir below.
 #      With all three worked around, supervisord and eight of its nine programs reached RUNNING
 #      as uid 10001 with a read-only root, and the log carried no permission, EACCES, EROFS or
-#      read-only error of any kind. STILL OPEN: the ops console process stayed up but never
-#      answered HTTP on its published port and printed nothing, so `next start` under these
-#      constraints is NOT proved. The liveness and readiness probes below target that port.
-#   2b. THE PROBES BELOW ARE THEREFORE UNPROVEN. Until (2) closes, a pod started from this file
-#      would be killed by its own livenessProbe rather than serve.
+#      read-only error of any kind.
+#   2a. THE CONSOLE UNDER THESE CONSTRAINTS IS NOW PROVED, and it was NOT on 2026-08-24 morning.
+#      The earlier drill started `next start` from a shell inside the container and saw an empty
+#      log, nothing listening and no process, which is why this comment used to read "NOT
+#      proved". Re-run 2026-08-24 with node as the container's PID 1 -- `docker run --user
+#      10001:10001 --read-only`, tmpfs at /tmp and at .next/cache, HOME=/tmp, TMPDIR=/tmp --
+#      against a freshly built prospector-engine:local:
+#        Next.js 16.3.1 / Network: http://[::]:8611 / Ready in 2.7s
+#        Running=true ExitCode=0 OOMKilled=false
+#        GET / on the published port -> 307
+#      A control arm of the SAME image and command with NO --user and NO --read-only answered
+#      307 as well, in 2.1s. The two arms agree, so the 307 is what this app answers on `/`
+#      and not a symptom of the constraints (LAW 29: attribute before you repair). A
+#      Kubernetes httpGet probe succeeds on any status from 200 to 399, so 307 is a PASS for
+#      both probes below, which ask for exactly this path on exactly this port.
+#   2b. WHAT IS STILL NOT PROVED IS THE PATH THE POD ACTUALLY TAKES. The pod does not run
+#      `next start`; Dockerfile:127-128 makes PID 1 tini -> entrypoint.sh -> supervisor, and
+#      supervisord.conf:219 starts the console. Drilled 2026-08-24 with the image's own
+#      entrypoint under this file's securityContext: ExitCode=2, log
+#      "Error: Can't drop privilege as nonroot user". That is blocker (a) above, unchanged and
+#      now measured twice. So the process is proved and the supervision is not, and (a) is the
+#      only thing between them.
 #   3. NO CLUSTER HAS EVER APPLIED THIS. The build is green; there is no cluster.
 #
 # Both gaps are real work with a named shape, which is the point of writing the manifest first:

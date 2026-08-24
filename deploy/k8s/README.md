@@ -152,9 +152,21 @@ Honest state, so nobody reads this directory as a report of something running:
   in `base/engine.yaml`. **The first is an image change and is not made yet**, because dropping
   `user=root` means the image runs as 10001 under `docker compose` too, where `./data` on the host
   is not owned by 10001. With all three worked around, supervisord and eight of nine programs
-  reached RUNNING with no permission or read-only error anywhere in the log. **The ops console
-  stayed up but never answered HTTP, so it is not proved**, and the liveness probe targets that
-  port, so a pod started from this file today would be killed by its own probe.
+  reached RUNNING with no permission or read-only error anywhere in the log.
+- **The ops console under those constraints IS now proved, and it was not this morning.** The
+  earlier drill ran `next start` from a shell inside the container and saw an empty log, nothing
+  listening and no process. Re-run 2026-08-24 with node as the container's PID 1 — `--user
+  10001:10001 --read-only`, tmpfs at `/tmp` and `.next/cache`, `HOME=/tmp` — against a freshly
+  built image: `Next.js 16.3.1`, `Ready in 2.7s`, `Running=true ExitCode=0`, and `GET /` on the
+  published port returned **307**. A control arm of the same image and command with no `--user`
+  and no `--read-only` returned **307** in 2.1s, so the status is the app's answer and not a
+  symptom of the constraints. A Kubernetes `httpGet` probe passes on 200–399, and both probes in
+  `base/engine.yaml` ask for exactly that path on exactly that port.
+- **What is still unproved is the path the pod takes, and it is blocked on one line.** The pod
+  runs the image's own entrypoint, so supervisord starts the console rather than Docker. Drilled
+  under the same securityContext: `ExitCode=2`, `Error: Can't drop privilege as nonroot user`.
+  That is the `user=root` blocker above, measured twice now, and it is the only thing between the
+  proved process and a proved pod.
 - **`argocd/applicationset.yaml` has a placeholder for the production API URL**, because there is no
   production cluster to name.
 
