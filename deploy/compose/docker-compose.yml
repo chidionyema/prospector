@@ -237,6 +237,16 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
 
+    # PID 1 in this container is `dotnet`, which does not reap orphaned children. The
+    # healthcheck below spawns `head` and `grep` every 15s and nothing collects them when
+    # they exit. Measured 2026-08-24 in the Colima VM: 48 zombies parented to `dotnet
+    # Store.Api.dll`, exactly 24 `head` and 24 `grep`, matching the two commands in the
+    # check. `init: true` makes Docker run its own tini as PID 1, which reaps them. This is
+    # Docker's built-in flag, not a wrapper we wrote. The engine container has never had this
+    # problem because its image already starts `/usr/bin/tini`, which is the control that
+    # proves the attribution rather than merely fitting it.
+    init: true
+
     healthcheck:
       # The same path Fly checks, so a green container here means the same thing it means
       # NO HTTP CLIENT EXISTS IN THIS IMAGE. The line here used to be `wget -q -O-`, with a
@@ -298,6 +308,11 @@ services:
 
     restart: unless-stopped
     stop_grace_period: 30s
+
+    # Same defect as the API, same fix. PID 1 here is `next-server`, which does not reap
+    # either: measured 2026-08-24, 8 zombie `wget` processes parented to it, one per probe
+    # that had run since the container started.
+    init: true
 
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
@@ -388,6 +403,14 @@ services:
         condition: service_started
 
     restart: unless-stopped
+
+    # Same class as the API and the web container, applied here before it bites rather than
+    # after. Being honest about the evidence: the 2026-08-24 measurement found ZERO zombies
+    # parented to caddy, so this one is prophylactic and not a fix for something observed.
+    # It is here because the condition that produces the defect is present - a PID 1 that
+    # does not reap, and a healthcheck that runs a process every 60s - and the flag costs
+    # nothing.
+    init: true
 
     healthcheck:
       # Asks Caddy's own config parser, not a URL: this catches a Caddyfile that failed to
