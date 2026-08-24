@@ -97,6 +97,9 @@ that says which field of which container broke the rule.
   processes.
 - `deploy/rehearse_cluster.sh` — the drill that proves them.
 - `deploy/k8s/base/engine.yaml` — the engine as a declared workload, admitted by all 26 policies.
+- `prospector/file_secrets.py` — why the engine can read a secret that arrives as a file rather than
+  an environment variable, and why it refuses to start on half a credential set.
+- `deploy/k8s/split_workloads.py` — the part of the gate that refuses to grade an empty build.
   It replaces what `deploy/targets/k8s.sh` wrote inline, which ten of those policies refused.
 - `deploy/targets/k8s.sh` — the adapter that deploys the engine, written 2026-08-20 and never once
   executed against a cluster until this drill ran it. Its `t_start` still writes a Deployment

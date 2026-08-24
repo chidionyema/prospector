@@ -79,12 +79,11 @@ Honest state, so nobody reads this directory as a report of something running:
   offline half is F-55 and is `✅`.
 - **`base/` declares the namespace and the engine. The shop, api, web and edge are still
   generated** inline by `deploy/targets/k8s.sh`. Register row F-39 is half done.
-- **The engine manifest is admissible, not runnable.** Two things must change in the engine before
-  a pod started from `base/engine.yaml` can work, and both are named in that file's header:
-  `prospector/config.py` reads `os.environ` and cannot read the file-mounted secrets that
-  `secrets-not-from-env-vars` forces (59 environment variables, 15 of them secrets, measured
-  2026-08-24); and nothing has verified the image runs under `runAsUser 10001` with a read-only
-  root filesystem.
+- **The engine manifest is admissible, and one of its two gaps is closed.** `prospector/file_secrets.py`
+  reads the file-mounted secrets that `secrets-not-from-env-vars` forces and puts them in
+  `os.environ` before any module runs, so the 30 files that read a credential from the environment
+  needed no change. What is still unproved: **nothing has run the image under `runAsUser 10001`
+  with a read-only root filesystem.** That is a drill, and the drill has not run.
 - **`argocd/applicationset.yaml` has a placeholder for the production API URL**, because there is no
   production cluster to name.
 
@@ -127,8 +126,8 @@ written from it on 2026-08-24; the shop, api, web and edge follow the same way.
    and it forbids `env[].valueFrom.secretKeyRef` too. Secrets must be mounted as files. The first
    draft of `admitted.yaml` used `envFrom` — which is how the whole estate does it in compose today
    — and was refused. Adopting an upstream library means adopting rules nobody here thought of, and
-   this is the first one that bit. It is left enforcing, and it has now cost something real:
-   `base/engine.yaml` mounts its secrets as files to satisfy it, and `prospector/config.py` reads
-   `os.environ` and cannot yet read them — 59 environment variables, 15 of them secrets. The fence
-   is what makes that a named piece of work instead of a habit nobody questions. Weakening a fence
-   the first time it refuses real work is how a fence stops being one.
+   this is the first one that bit, and it cost something real rather than being weakened:
+   `base/engine.yaml` mounts its secrets as files, and `prospector/file_secrets.py` was written to
+   read them. The estate is better off — a credential is now a file with an owner and a mode
+   rather than a string in a process listing — and it would not have been written if the fence had
+   been softened the first time it refused work.

@@ -151,9 +151,21 @@ jobs:
           set -euo pipefail
           # Pinned to KYVERNO_VERSION in deploy/rehearse_cluster.sh, NOT to latest. A CLI on a
           # different engine version answers a different question than the one the cluster is asked.
+          # Take the version itself, never "everything after a delimiter". The first version of
+          # this line was `sed 's/.*://'` against `KYVERNO_VERSION:-v1.16.1`, and greedy `.*:`
+          # stops at the colon, so it yielded `-v1.16.1` — dash included — and the download 404'd
+          # on a URL that looked almost right. Measured on run 32690391183, 2026-08-24.
           want=$(grep -oE 'KYVERNO_VERSION:-v[0-9]+\.[0-9]+\.[0-9]+' deploy/rehearse_cluster.sh \
-                 | head -1 | sed 's/.*://')
-          [ -n "$want" ] || { echo "FAIL: could not read KYVERNO_VERSION from the drill"; exit 1; }
+                 | head -1 | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          # Grade the value, not the fact that a value exists. A non-empty check passes on the
+          # malformed string that caused the 404, and the failure then surfaces one step later as
+          # a network error, which reads like GitHub being down rather than like our own sed.
+          case "$want" in
+            v[0-9]*.[0-9]*.[0-9]*) : ;;
+            *) echo "FAIL: read '$want' as the Kyverno version from deploy/rehearse_cluster.sh."
+               echo "That is not a vX.Y.Z tag, so the download below would 404 on a URL that"
+               echo "looks nearly right. Fix the extraction, not the URL."; exit 1 ;;
+          esac
           echo "drill installs kyverno $want, so that is the CLI this gate uses"
           curl -fsSL -o /tmp/kyverno.tgz \
             "https://github.com/kyverno/kyverno/releases/download/${want}/kyverno-cli_${want}_linux_x86_64.tar.gz"
@@ -256,25 +268,13 @@ jobs:
           set -euo pipefail
           for env in staging production; do
             kubectl kustomize "deploy/k8s/overlays/$env" > "/tmp/$env.yaml"
-            python3 - "$env" <<'PY'
-          import sys
-          env = sys.argv[1]
-          docs = open(f'/tmp/{env}.yaml').read().split('\n---\n')
-          keep = [d for d in docs if d.strip() and 'kind: ClusterPolicy' not in d]
-          # A vacuous pass is the failure mode here: with no workloads to grade, kyverno reports
-          # "pass: 0, fail: 0", which reads exactly like success. The overlay has carried a
-          # Namespace, a PVC, a Deployment and a Service since 2026-08-24.
-          kinds = [l.split(': ', 1)[1].strip() for d in keep for l in d.splitlines()
-                   if l.startswith('kind: ')]
-          if 'Deployment' not in kinds:
-              sys.exit(f"FAIL: {env} builds no Deployment. There is nothing to admit, so this gate "
-                       "would pass while grading nothing.")
-          if len(keep) < 4:
-              sys.exit(f"FAIL: {env} builds only {len(keep)} non-policy document(s): {kinds}. "
-                       "It has had 4 since 2026-08-24.")
-          open(f'/tmp/{env}-workloads.yaml', 'w').write('\n---\n'.join(keep))
-          print(f"{env}: grading {len(keep)} workload document(s): {', '.join(kinds)}")
-          PY
+            # A vacuous pass is the failure mode here: handed no workloads, kyverno reports
+            # "pass: 0, fail: 0" and exits 0, which reads exactly like success. The splitter
+            # refuses that, and it is a file rather than inline python so that
+            # tests/unit/test_the_k8s_gate_cannot_pass_on_nothing.py grades THIS code instead of
+            # a copy of it.
+            python3 deploy/k8s/split_workloads.py \
+              "/tmp/$env.yaml" "/tmp/$env-workloads.yaml" "$env"
             kyverno apply deploy/k8s/policy-tests/policies.generated.yaml \
               --resource "/tmp/$env-workloads.yaml" 2>&1 | tee "/tmp/$env-admit.txt" || true
             rules=$(sed -n 's/^Applying \([0-9]*\) policy rule(s).*/\1/p' "/tmp/$env-admit.txt" | head -1)

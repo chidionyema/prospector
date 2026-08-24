@@ -17,12 +17,14 @@
 #
 # WHAT IS STILL NOT TRUE. Read this before applying it anywhere:
 #
-#   1. THE ENGINE CANNOT YET READ THESE SECRETS. Secrets are mounted as files below, because
-#      secrets-not-from-env-vars refuses envFrom.secretRef outright. prospector/config.py reads
-#      os.environ. Measured 2026-08-24: 59 distinct environment variables, 15 of them secrets
-#      (STRIPE_API_KEY, MINIMAX_API_KEY, TELEGRAM_BOT_TOKEN and twelve more). The change is one
-#      resolver that reads $PROSPECTOR_SECRETS_DIR/<NAME> before falling back to os.environ, and
-#      it is not written. A pod started from this file today comes up with no credentials.
+#   1. CLOSED 2026-08-24. The engine reads these secrets. prospector/file_secrets.py copies
+#      every file in $PROSPECTOR_SECRETS_DIR into os.environ from prospector/__init__.py, before
+#      any module in the package runs, so the 30 files that read os.environ for a credential
+#      needed no change. It refuses to start on a missing mount, an empty mount, an unreadable
+#      file or a name no shell could read, because half a credential set is the incident it
+#      exists to prevent. Proved by tests/test_incident_secrets_mounted_as_files.py.
+#      The writer side already existed: deploy/targets/k8s.sh:115 creates this Secret with
+#      --from-env-file, which is one key per variable, which mounts as one file per variable.
 #   2. THE IMAGE MAY NOT RUN AS NON-ROOT. deploy/engine/supervisord.conf starts supervisord and
 #      the Next.js console; nothing has verified it works under runAsUser 10001 with a read-only
 #      root filesystem. That is a drill, not an assumption, and the drill has not run.
