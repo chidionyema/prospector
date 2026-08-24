@@ -1,0 +1,209 @@
+# The engine, declared. This replaces the Deployment that deploy/targets/k8s.sh writes inline at
+# t_start. Register row F-39.
+#
+# WHY IT MOVED. The adapter's version was measured against this estate's own 26 admission policies
+# on 2026-08-24 and refused by ten of them:
+#
+#   disallow-latest-tag            disallow-privilege-escalation   drop-all-capabilities
+#   require-pod-probes             require-requests-limits         require-ro-rootfs
+#   require-run-as-nonroot         restrict-seccomp-strict         secrets-not-from-env-vars
+#   (pass: 19, fail: 10)
+#
+# The only Kubernetes deployment path the estate had would not have been admitted to the cluster
+# the estate is building. That is not a manifest bug; it is what happens when the standards are
+# written after the deploy script. This file is written from
+# deploy/k8s/policy-tests/admitted.yaml, which is the shape proved to pass, and the CI gate grades
+# this build the same way so it cannot drift back.
+#
+# WHAT IS STILL NOT TRUE. Read this before applying it anywhere:
+#
+#   1. THE ENGINE CANNOT YET READ THESE SECRETS. Secrets are mounted as files below, because
+#      secrets-not-from-env-vars refuses envFrom.secretRef outright. prospector/config.py reads
+#      os.environ. Measured 2026-08-24: 59 distinct environment variables, 15 of them secrets
+#      (STRIPE_API_KEY, MINIMAX_API_KEY, TELEGRAM_BOT_TOKEN and twelve more). The change is one
+#      resolver that reads $PROSPECTOR_SECRETS_DIR/<NAME> before falling back to os.environ, and
+#      it is not written. A pod started from this file today comes up with no credentials.
+#   2. THE IMAGE MAY NOT RUN AS NON-ROOT. deploy/engine/supervisord.conf starts supervisord and
+#      the Next.js console; nothing has verified it works under runAsUser 10001 with a read-only
+#      root filesystem. That is a drill, not an assumption, and the drill has not run.
+#   3. NO CLUSTER HAS EVER APPLIED THIS. The build is green; there is no cluster.
+#
+# Both gaps are real work with a named shape, which is the point of writing the manifest first:
+# the standard is now the thing the code has to meet, rather than the other way round.
+#
+# `namespace: prospector` is written on all three objects rather than left to the overlay's
+# namespace transformer. disallow-default-namespace refuses a pod controller that names no
+# namespace, so a base without it is refused when graded on its own — measured 2026-08-24, fail 1
+# of 31, then pass 31 of 31 with it. Naming it here means base/ is admissible standing alone, and
+# the overlays set the same value, which is a no-op rather than a correction.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prospector-data
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-engine
+    app.kubernetes.io/part-of: prospector
+spec:
+  # ReadWriteOnce on purpose, and it is the same rule as the Recreate strategy below. One writer is
+  # the contract. Asking for ReadWriteMany on a default StorageClass gets a PVC that stays Pending
+  # forever with no obvious reason why — the note deploy/targets/k8s.sh already carries.
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prospector-engine
+  namespace: prospector
+  labels:
+    app: prospector-engine
+    app.kubernetes.io/name: prospector-engine
+    app.kubernetes.io/part-of: prospector
+    # This label is what money-rail-single-writer keys on. It makes the two settings below
+    # (replicas 1, strategy Recreate) enforced by admission rather than by whoever edits the file
+    # next. SQLite has exactly one writer, and two engines is two spend ledgers each honouring the
+    # daily cap separately, so a $100 cap silently becomes $200.
+    prospector.estate/single-writer: "true"
+spec:
+  replicas: 1
+  strategy:
+    # NOT the default. A Deployment's default RollingUpdate starts the replacement pod BEFORE the
+    # old one terminates, which breaks the single-writer rule on every single release, and which
+    # also deadlocks against a ReadWriteOnce volume with "Multi-Attach error" until the rollout
+    # times out. One setting, two failures.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prospector-engine
+  template:
+    metadata:
+      labels:
+        app: prospector-engine
+        app.kubernetes.io/name: prospector-engine
+        prospector.estate/single-writer: "true"
+    spec:
+      # The engine never calls the Kubernetes API. A mounted token it does not use is a credential
+      # sitting in the pod for anything that gets a shell in it.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        # Without fsGroup the PVC is owned by root and a non-root process cannot write to /data,
+        # which fails as a permission error deep inside the store rather than at startup.
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: engine
+          # Never a moving tag. You cannot roll back to a tag that moves, and disallow-latest-tag
+          # refuses one anyway. The real tag is set per environment in the overlay's `images:`
+          # block, by commit SHA, which makes the git history the deployment audit log. This
+          # placeholder is deliberately unpullable so that applying base/ directly fails loudly
+          # with ImagePullBackOff instead of quietly running whatever was there before.
+          image: ghcr.io/chidionyema/prospector-engine:set-by-an-overlay
+          imagePullPolicy: IfNotPresent
+          env:
+            # Paths and flags only. No secret value appears in this file, in the pod spec, in etcd,
+            # or in `kubectl describe pod`.
+            - name: PROSPECTOR_SECRETS_DIR
+              value: /var/run/secrets/prospector
+            - name: PROSPECTOR_STORE_DIR
+              value: /data/store
+            # With a read-only root filesystem Python cannot write .pyc files next to the source,
+            # and it does not need to: they are already in the image.
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            # prospector/claude_cli.py, prospector/pack_data.py, prospector/copy_lint.py and
+            # prospector/cli_governor.py all call tempfile.gettempdir(). With readOnlyRootFilesystem
+            # that is only writable because of the emptyDir mounted at /tmp below.
+            - name: TMPDIR
+              value: /tmp
+          ports:
+            - name: console
+              containerPort: 8601
+            - name: ops
+              containerPort: 8611
+          # HONEST LIMIT: this probes the Next.js ops console (supervisord.conf:219 runs
+          # `next start -H :: -p 8611`). It proves the console answers. It does NOT prove the
+          # scheduler, the consumer or the moat are healthy — there is no /healthz on this port to
+          # ask, and inventing a path that 404s would CrashLoop the pod while looking like a
+          # health check. A real engine health endpoint is the follow-up.
+          livenessProbe:
+            httpGet:
+              path: /
+              port: ops
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: ops
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: secrets
+              mountPath: /var/run/secrets/prospector
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: prospector-data
+        - name: secrets
+          secret:
+            secretName: prospector-engine-env
+            # optional: false, and no-optional-secret-references enforces it. The 2026-08-24
+            # incident written as a setting: compose's `required: false` let a box start carrying
+            # none of its 24 settings while the deploy script reported success.
+            optional: false
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prospector-engine
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-engine
+    app.kubernetes.io/part-of: prospector
+spec:
+  # ClusterIP: reachable inside the cluster and nowhere else. The operator reaches it with
+  # `kubectl port-forward`, which is this platform's `fly proxy`. Exposure is an Ingress decision
+  # made once, in the open, not a side effect of a Service type.
+  type: ClusterIP
+  selector:
+    app: prospector-engine
+  ports:
+    - name: console
+      port: 8601
+      targetPort: console
+    - name: ops
+      port: 8611
+      targetPort: ops

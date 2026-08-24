@@ -237,3 +237,63 @@ jobs:
                        "'Want fail, got pass' means a standard stopped refusing what it exists to refuse.")
           print(f"OK: all {len(rows)} policy decisions were the ones asserted")
           PY
+
+      # GATE 6 — the workloads the cluster is handed are ADMITTED by the policies it is handed.
+      #
+      # Gates 1-5 grade the policies. None of them graded the manifests those policies would judge,
+      # and on 2026-08-24 that gap was load-bearing: the Deployment that deploy/targets/k8s.sh
+      # wrote inline was refused by TEN of the estate's own 26 policies — disallow-latest-tag,
+      # disallow-privilege-escalation, drop-all-capabilities, require-pod-probes,
+      # require-requests-limits, require-ro-rootfs, require-run-as-nonroot,
+      # restrict-seccomp-strict, secrets-not-from-env-vars (pass 19, fail 10). The only Kubernetes
+      # deploy path the estate had would not have been let into the cluster the estate is building.
+      #
+      # This grades what is actually APPLIED, which is the overlay build, not base/ and not the
+      # source. The ClusterPolicy documents are filtered out first: they are the judge, not the
+      # judged.
+      - name: Every workload in both overlays is admitted by its own policies
+        run: |
+          set -euo pipefail
+          for env in staging production; do
+            kubectl kustomize "deploy/k8s/overlays/$env" > "/tmp/$env.yaml"
+            python3 - "$env" <<'PY'
+          import sys
+          env = sys.argv[1]
+          docs = open(f'/tmp/{env}.yaml').read().split('\n---\n')
+          keep = [d for d in docs if d.strip() and 'kind: ClusterPolicy' not in d]
+          # A vacuous pass is the failure mode here: with no workloads to grade, kyverno reports
+          # "pass: 0, fail: 0", which reads exactly like success. The overlay has carried a
+          # Namespace, a PVC, a Deployment and a Service since 2026-08-24.
+          kinds = [l.split(': ', 1)[1].strip() for d in keep for l in d.splitlines()
+                   if l.startswith('kind: ')]
+          if 'Deployment' not in kinds:
+              sys.exit(f"FAIL: {env} builds no Deployment. There is nothing to admit, so this gate "
+                       "would pass while grading nothing.")
+          if len(keep) < 4:
+              sys.exit(f"FAIL: {env} builds only {len(keep)} non-policy document(s): {kinds}. "
+                       "It has had 4 since 2026-08-24.")
+          open(f'/tmp/{env}-workloads.yaml', 'w').write('\n---\n'.join(keep))
+          print(f"{env}: grading {len(keep)} workload document(s): {', '.join(kinds)}")
+          PY
+            kyverno apply deploy/k8s/policy-tests/policies.generated.yaml \
+              --resource "/tmp/$env-workloads.yaml" 2>&1 | tee "/tmp/$env-admit.txt" || true
+            rules=$(sed -n 's/^Applying \([0-9]*\) policy rule(s).*/\1/p' "/tmp/$env-admit.txt" | head -1)
+            fails=$(sed -n 's/.*fail: \([0-9]*\).*/\1/p' "/tmp/$env-admit.txt" | head -1)
+            passes=$(sed -n 's/^pass: \([0-9]*\).*/\1/p' "/tmp/$env-admit.txt" | head -1)
+            # Assert the rule count, because the CLI silently loads ZERO rules from a file with a
+            # non-policy document in it and then reports "pass: 0, fail: 0" — measured 2026-08-24.
+            if [ "${rules:-0}" -lt 50 ]; then
+              echo "FAIL: only ${rules:-0} rules loaded for $env; the library has had 87 since 2026-08-24."
+              exit 1
+            fi
+            if [ "${fails:-1}" != "0" ]; then
+              echo "FAIL: $env has ${fails} policy violation(s) in its own workloads."
+              echo "A workload this repo cannot admit is a workload the cluster will refuse at apply time."
+              exit 1
+            fi
+            if [ "${passes:-0}" = "0" ]; then
+              echo "FAIL: $env passed 0 rules, which means nothing was graded."
+              exit 1
+            fi
+            echo "OK: $env — ${passes} rule decisions, 0 violations, across ${rules} rules"
+          done

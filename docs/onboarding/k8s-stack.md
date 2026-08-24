@@ -87,16 +87,20 @@ that says which field of which container broke the rule.
 - `deploy/k8s/overlays/{staging,production}/` — the two environments. They differ on image tags and
   hostnames, never on a policy.
 - `deploy/k8s/argocd/applicationset.yaml` — one object owning both clusters. Nothing has run it.
-- `.github/workflows/k8s-manifests.yml` — the five gates that make the above enforced rather than
-  merely written down. Four grade the built manifests; the fifth watches the policies decide.
+- `.github/workflows/k8s-manifests.yml` — the six gates that make the above enforced rather than
+  merely written down. Four grade the built manifests, the fifth watches the policies decide, and
+  the sixth grades the workloads those policies would judge.
 - `deploy/k8s/policy-tests/` — eleven manifests each with exactly one thing wrong, one manifest that
   is compliant, and Kyverno's own test format asserting which rule of which policy catches which. It
   runs offline, so knowing whether a standard works no longer waits on a cluster existing.
 - `docs/K8S_STANDARDS_AND_WAYS_OF_WORKING.md` — the research, the CNCF measurements, and the
   processes.
 - `deploy/rehearse_cluster.sh` — the drill that proves them.
+- `deploy/k8s/base/engine.yaml` — the engine as a declared workload, admitted by all 26 policies.
+  It replaces what `deploy/targets/k8s.sh` wrote inline, which ten of those policies refused.
 - `deploy/targets/k8s.sh` — the adapter that deploys the engine, written 2026-08-20 and never once
-  executed against a cluster until this drill ran it.
+  executed against a cluster until this drill ran it. Its `t_start` still writes a Deployment
+  inline for the four workloads that have not moved.
 - `~/dev/code/crew/science/RESEARCH-LEDGER.jsonl` row 14 — the sources and the decision.
 
 ## How to turn it off
