@@ -288,7 +288,7 @@ jobs:
     if: ${{ always() && !(needs.smoke.result == 'skipped'
                           && needs.a11y.result == 'skipped'
                           && needs.lighthouse.result == 'skipped') }}
-    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'fly' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     # It writes one issue and nothing else. No checkout, so no contents scope.
     permissions:
       issues: write

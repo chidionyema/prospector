@@ -11,7 +11,7 @@ fails. A change that removes one passes and lowers the baseline. The count only 
 and when it reaches zero the vendor is gone with no single dangerous commit anywhere in the
 history.
 
-IT IS NOT ABOUT FLY. `vendors.yaml` lists the patterns per vendor, so the next exit reuses this
+IT IS NOT ABOUT FLY. The `VENDORS` table below holds one pattern per vendor, so the next exit reuses this
 instead of writing a second copy of it (LAW 34: the estate is the thing that persists, a vendor is
 a supplier it happens to be using this month).
 
@@ -47,9 +47,25 @@ BASELINE_REL = Path("ops") / "config" / "vendor_ratchet.json"
 # the opposite of a dependency, and a ratchet that counted it would push agents to delete the
 # history that explains the migration. What counts is a path that would BREAK if the vendor
 # vanished tonight.
+# A RUNNER LABEL IS A CALL-SITE AND THIS PATTERN COULD NOT SEE ONE. Measured 2026-08-24:
+# .github/workflows/e2e-live-smoke.yml:291 read
+#
+#     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'fly' }}
+#
+# and this counter read the whole repository as 402 occurrences with that line present and 402 with
+# it gone. Every alternative above matches the vendor's command syntax or a hostname; none matches
+# the bare name used as a VALUE. That was the one shape where it mattered most, because a job
+# waiting for a label no runner carries queues forever and reports pending rather than failed, so
+# nothing pages.
+#
+# The new alternative is deliberately narrow: the bare name only counts on a `runs-on` line. A bare
+# \bfly\b anywhere would also count the 31 files that hold "fly" as a deploy-target NAME in the exit
+# machinery itself -- fly_estate_probe.py, rollback_now.py, the migration tests -- all of which have
+# to exist until the cutover finishes. Report mode measured that: 31 files, and adding them would
+# have raised the baseline by more than a hundred and taught the next agent to ignore the number.
 VENDORS: dict[str, dict] = {
     "fly": {
-        "pattern": r"fly\.io|flyctl|\bfly (?:deploy|apps|secrets|ssh|status|machines?|volumes?|scale)\b|\.fly\.dev|fly\.internal|fly\.toml",
+        "pattern": r"fly\.io|flyctl|\bfly (?:deploy|apps|secrets|ssh|status|machines?|volumes?|scale)\b|\.fly\.dev|fly\.internal|fly\.toml|runs-on:[^\n]*[\"']fly[\"']|runs-on:[ \t]*fly[ \t]*$",
         "exclude": r"\.md$|^docs/|^specs/|/incidents/|vendor_ratchet",
     },
 }
