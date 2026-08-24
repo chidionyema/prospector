@@ -1,0 +1,283 @@
+# The estate's dead-man receiver, declared. This is the Kubernetes shape of the thing currently
+# running as the `estate-healthchecks` docker container on this Mac.
+#
+# WHY IT IS A MANIFEST AND NOT A CHART. Founder ruling R6 says use the mature project's own ship
+# rather than hand-rolling. There isn't one. Measured 2026-08-24: the healthchecks/healthchecks
+# repository contains no `charts/` and no `kubernetes/` directory, only `docker/`. ArtifactHub
+# returns six community Helm charts and not one is published by the project:
+#
+#   zekker6/healthchecks     updated ~2026-08, wraps linuxserver/healthchecks, not the upstream image
+#   gabe565/healthchecks     v0.17.0, 2025-02-19, also wraps linuxserver
+#   improwised/healthchecks  v1.1.1, 2023-06-01
+#   geek-cookbook/...        v4.4.2, 2022-08-02
+#   stackhelm, douban        listed, not independently verified
+#
+# Every maintained one of those swaps the official image for linuxserver's rebuild, which is a
+# second supplier to depend on for no gain. So this is four objects of plain Kubernetes against the
+# project's own image, which is a smaller thing to own than a chart wrapping a fork.
+#
+# WHAT WAS MEASURED, from the image itself on 2026-08-24, not from documentation:
+#
+#   $ docker image inspect healthchecks/healthchecks:latest
+#     RepoDigests: healthchecks/healthchecks@sha256:cd7bcd94350818b3944f82eb5995f48bdeab8c8627977578a569ffa73f56f56f
+#     Created:     2026-07-14T10:18:20Z
+#     User:        [hc]        Entrypoint: null      Cmd: ["uwsgi","/opt/healthchecks/docker/uwsgi.ini"]
+#     Healthcheck: ["CMD-SHELL","./fetchstatus.py"]
+#   $ docker run --rm --entrypoint sh <img> -c 'id'
+#     uid=999(hc) gid=999(hc) groups=999(hc)
+#
+# That uid is why this file says 999 and not the 10001 the Prospector manifests use. 10001 is the
+# uid Prospector's own image is built for; borrowing the number without the image behind it gets a
+# process that cannot read its own installation. The policy asks for non-root, not for a particular
+# integer.
+#
+# THE SECRET QUESTION, AND THE ANSWER IS BETTER THAN EXPECTED. `secrets-not-from-env-vars` refuses
+# `env.valueFrom.secretKeyRef` and `envFrom.secretRef` outright, so any app that only reads
+# credentials from the environment needs a shim. Healthchecks does not. Read from the image:
+#
+#   /opt/healthchecks/hc/settings.py:47   def envsecret(s, default=None):
+#   /opt/healthchecks/hc/settings.py:55       if secret_path := os.getenv(s + "_FILE"):
+#   /opt/healthchecks/hc/settings.py:59           raise Exception(f"Error reading {s}_FILE ...")
+#
+#   SECRET_KEY, DB_PASSWORD, EMAIL_HOST_PASSWORD, S3_SECRET_KEY, DISCORD_CLIENT_SECRET,
+#   GITHUB_CLIENT_SECRET, GITHUB_PRIVATE_KEY, MATRIX_ACCESS_TOKEN, NTFY_SH_TOKEN,
+#   PUSHOVER_API_TOKEN, PUSHBULLET_CLIENT_SECRET, SLACK_CLIENT_SECRET, TELEGRAM_TOKEN,
+#   TWILIO_AUTH, TRELLO_APP_KEY   -- all go through it.
+#
+# So every credential is a mounted file and `*_FILE` holds a PATH, which is not a secret and is
+# safe as a literal below. No entrypoint override, no wrapper script, no init container. And it
+# fails loudly rather than starting half-configured -- drilled 2026-08-24 by pointing
+# SECRET_KEY_FILE at a path the container could not read:
+#
+#   Exception: Error reading SECRET_KEY_FILE (/var/run/secrets/healthchecks/SECRET_KEY)
+#   --- no python application found ---   (every request 500, the app never mounts)
+#
+# WHAT THE IMAGE DOES AT BOOT, from /opt/healthchecks/docker/uwsgi.ini:
+#
+#   hook-pre-app = exec:./manage.py migrate            migrations run in-process at start
+#   attach-daemon = ./manage.py sendalerts             alerting is IN this container, not beside it
+#   attach-daemon = ./manage.py sendreports --loop
+#   check-static = static-collected/                   static assets are baked in at build time
+#   http-socket = :8000  (or [::]:8000 when LISTEN_IPV6 is set)
+#
+# One container is the whole service, including the part that sends the alert. That is why there is
+# one Deployment here and not three.
+#
+# WHAT IS STILL NOT TRUE. Read this before applying it anywhere:
+#
+#   1. NO CLUSTER HAS APPLIED THIS. Under R14 the cluster is local k3d/k3s on this Mac and it does
+#      not exist yet. This file is graded by `kyverno apply` against the estate's own 26 policies,
+#      which is a real gate and is not the same thing as running.
+#   2. THE APP HAS NOT BEEN SEEN SERVING 200 UNDER THESE CONSTRAINTS. Drilled 2026-08-24 with
+#      `--user 999:999 --read-only`, a tmpfs at /tmp and the secret mounted as a file. uWSGI
+#      itself came up clean under all of it -- it bound :8000, initialised the Python interpreter,
+#      forked its workers and reached `running "exec:./manage.py migrate" (pre app)` with no
+#      permission, EACCES or EROFS line anywhere in the log. So read-only root and uid 999 are not
+#      the problem. The run then died on the unreadable secret described above, which was the
+#      drill's own defect: colima shares $HOME and not /private/tmp, so the bind mount was empty.
+#      Re-running it needs a docker daemon that answers in under two minutes, and this one does not
+#      right now (crew#85). The gap is one command, not a redesign.
+#   3. `harakiri = 10` IS HARDCODED IN THE IMAGE'S uwsgi.ini AND NO ENV VAR OVERRIDES IT. Any
+#      request that takes over ten seconds gets its worker killed. That is the measured mechanism
+#      behind this morning's outage: the container read `Up 6 hours (unhealthy)` and answered
+#      nothing while all four workers were killed and respawned under machine load. The Kubernetes
+#      answer is the `resources.requests` below -- a scheduled CPU reservation is the difference
+#      between a process that gets time and one that does not -- and it is a mitigation, not a
+#      fix. The fix is upstream or a mounted uwsgi.ini, and neither is done here.
+#   4. THIS RECEIVER IS INSIDE THE FAILURE DOMAIN IT WATCHES, and R14 says that is where it stays
+#      for now. A monitor on this Mac cannot report that this Mac is dead. Nothing in this file
+#      changes that; the off-box question is settled at crew#78 and this manifest is the part that
+#      does not depend on the answer.
+#
+# `namespace: estate` is written on every object rather than left to an overlay, because
+# disallow-default-namespace refuses a pod controller that names no namespace, so a base without it
+# is refused when graded standing alone.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: estate
+  labels:
+    app.kubernetes.io/part-of: estate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: healthchecks-data
+  namespace: estate
+  labels:
+    app.kubernetes.io/name: healthchecks
+    app.kubernetes.io/part-of: estate
+spec:
+  # ReadWriteOnce, and the Recreate strategy below is the same rule stated twice. The database is
+  # SQLite at /data/hc.sqlite, and SQLite has exactly one writer. Asking for ReadWriteMany on a
+  # default StorageClass also gets a PVC that stays Pending forever with no obvious reason why.
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: healthchecks
+  namespace: estate
+  labels:
+    app: healthchecks
+    app.kubernetes.io/name: healthchecks
+    app.kubernetes.io/part-of: estate
+spec:
+  replicas: 1
+  strategy:
+    # NOT the default. RollingUpdate starts the replacement pod before the old one terminates,
+    # which puts two writers on one SQLite file and deadlocks against the ReadWriteOnce volume with
+    # "Multi-Attach error" until the rollout times out. One setting, two failures.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: healthchecks
+  template:
+    metadata:
+      labels:
+        app: healthchecks
+        app.kubernetes.io/name: healthchecks
+    spec:
+      # The receiver never calls the Kubernetes API. A mounted token it does not use is a
+      # credential sitting in the pod for anything that gets a shell in it.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        # Without fsGroup the PVC is owned by root and uid 999 cannot write /data, which surfaces
+        # as a SQLite "unable to open database file" during the pre-app migrate rather than as a
+        # permission error at startup.
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: healthchecks
+          # Never a moving tag. The container running on this Mac today is `:latest`, which is why
+          # nobody can say which version is in production. The overlay pins the digest; the one
+          # measured on 2026-08-24 is
+          # sha256:cd7bcd94350818b3944f82eb5995f48bdeab8c8627977578a569ffa73f56f56f. This
+          # placeholder is deliberately unpullable so applying base/ directly fails loudly with
+          # ImagePullBackOff instead of quietly running whatever was there before.
+          image: healthchecks/healthchecks:set-by-an-overlay
+          imagePullPolicy: IfNotPresent
+          env:
+            # Paths and flags only. Every value here is safe in `kubectl describe pod`, in etcd and
+            # in anything that scrapes the API, because a path to a secret is not a secret.
+            - name: SECRET_KEY_FILE
+              value: /var/run/secrets/healthchecks/SECRET_KEY
+            - name: TELEGRAM_TOKEN_FILE
+              value: /var/run/secrets/healthchecks/TELEGRAM_TOKEN
+            - name: DB
+              value: sqlite
+            - name: DB_NAME
+              value: /data/hc.sqlite
+            - name: DEBUG
+              value: "False"
+            # MEASURED: hc/settings.py defaults DEBUG to "True". A monitor serving Django's debug
+            # pages publishes its own settings to anyone who can reach it.
+            - name: SITE_ROOT
+              value: http://healthchecks.estate.svc.cluster.local
+            - name: ALLOWED_HOSTS
+              value: healthchecks.estate.svc.cluster.local,healthchecks,localhost,127.0.0.1
+            # uwsgi.ini forks 4 workers unless this is set. Four Django processes on a laptop that
+            # is also the developer's machine is how the harakiri loop in note 3 above started.
+            - name: UWSGI_PROCESSES
+              value: "2"
+          ports:
+            - name: http
+              containerPort: 8000
+          # The image's own HEALTHCHECK is `./fetchstatus.py`, which GETs this exact path and
+          # asserts 200, and its docstring says it "tests if the database connection is alive". So
+          # this probe asks the same question the image already asks itself, rather than a path
+          # invented here that would 404 and CrashLoop the pod while looking like a health check.
+          #
+          # The Host header is not decoration. DEBUG is False, so Django enforces ALLOWED_HOSTS,
+          # and a kubelet probe sends the pod IP as Host by default, which Django answers with 400.
+          # A 400 fails the probe, the pod restarts, and nothing in the event log says why.
+          readinessProbe:
+            httpGet:
+              path: /api/v3/status/
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: healthchecks.estate.svc.cluster.local
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/v3/status/
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: healthchecks.estate.svc.cluster.local
+            # The pre-app hook runs `manage.py migrate` before the app mounts, so the first
+            # request cannot be served until migrations finish. A liveness probe that starts
+            # before that is a restart loop that never lets the migration complete.
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: secrets
+              mountPath: /var/run/secrets/healthchecks
+              readOnly: true
+            # uWSGI and Django both write under /tmp, and readOnlyRootFilesystem makes that fail.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: healthchecks-data
+        - name: secrets
+          secret:
+            secretName: healthchecks-secrets
+            # optional: false, and no-optional-secret-references enforces it. A missing secret must
+            # stop the pod, not produce a receiver running on Django's "---" default SECRET_KEY.
+            optional: false
+            defaultMode: 0400
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: healthchecks
+  namespace: estate
+  labels:
+    app.kubernetes.io/name: healthchecks
+    app.kubernetes.io/part-of: estate
+spec:
+  # ClusterIP: reachable inside the cluster and nowhere else. Jobs on this Mac reach it through
+  # whatever the overlay exposes; exposure is a decision made once, in the open, not a side effect
+  # of a Service type. hc-wrap.sh already reads its base address from a file, so pointing the 46
+  # jobs at whatever this becomes is one line in ~/.estate/healthchecks/base.
+  type: ClusterIP
+  selector:
+    app: healthchecks
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

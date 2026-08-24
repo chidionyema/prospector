@@ -168,3 +168,46 @@ def test_the_real_base_kustomization_still_declares_the_engine():
 def test_the_workflow_calls_the_splitter():
     """The one fact the module cannot check about itself: that the gate runs it."""
     assert "deploy/k8s/split_workloads.py" in WORKFLOW.read_text()
+
+
+# The floor was a single number, `MINIMUM_DOCUMENTS = 15`, and on 2026-08-24 deploy/k8s/estate was
+# added: 4 documents, refused by a floor that describes Prospector's release. The three tests below
+# grade the per-directory floor both ways in one run — it must admit a small directory that is
+# complete, and still refuse a large one that has lost documents.
+def test_the_same_four_documents_are_admitted_for_estate_and_refused_for_production():
+    """One build, two labels, two answers. A floor that is not per-directory cannot do this, and a
+    floor that is per-directory but wrong in the permissive direction fails the second half."""
+    keep, kinds = split_workloads.split(SMALL)
+    assert split_workloads.check(keep, kinds, "estate") is None
+    reason = split_workloads.check(keep, kinds, "production")
+    assert reason and "builds only 4 non-policy document(s)" in reason
+
+
+def test_estate_losing_a_document_is_still_refused():
+    """The small floor must still be a floor. Three documents is what estate looks like after the
+    PVC is dropped from its kustomization."""
+    keep, kinds = split_workloads.split("\n---\n".join([POLICY, NAMESPACE, DEPLOYMENT, SERVICE]))
+    reason = split_workloads.check(keep, kinds, "estate")
+    assert reason and "builds only 3 non-policy document(s)" in reason
+
+
+def test_a_directory_with_no_declared_floor_is_refused():
+    """The silent-miss case. A directory added to deploy/k8s and enumerated by the workflow, but
+    never given a floor, must stop the gate rather than be graded against a default."""
+    keep, kinds = split_workloads.split(FULL)
+    reason = split_workloads.check(keep, kinds, "sandbox")
+    assert reason and "has no document floor" in reason
+    assert "estate" in reason and "production" in reason, "the reason lists what is known"
+
+
+def test_every_manifest_directory_the_workflow_grades_has_a_floor():
+    """The two halves are edited in different files, so they drift. This is the join: whatever the
+    workflow enumerates on disk must have a row in MINIMUM_DOCUMENTS."""
+    graded = sorted(
+        p.parent.name
+        for p in (ROOT / "deploy" / "k8s").glob("*/**/kustomization.yaml")
+        if p.parent.name not in ("policies", "base")
+    )
+    assert graded, "the enumeration found no manifest directories"
+    missing = [d for d in graded if d not in split_workloads.MINIMUM_DOCUMENTS]
+    assert not missing, f"no document floor declared for: {missing}"
