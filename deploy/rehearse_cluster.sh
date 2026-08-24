@@ -73,6 +73,144 @@ daemon_can_start_a_container() {
   timeout "${DAEMON_PROBE_TIMEOUT:-60}" $DAEMON_PROBE >/dev/null 2>&1
 }
 
+# HAS THE MACHINE GOT THE CAPACITY TO FINISH WHAT THIS SCRIPT IS ABOUT TO START?
+#
+# THE SECOND INCIDENT, 2026-08-24, an hour after the first. The guard above was in place and it
+# PASSED -- the daemon started a container in under a second, correctly. The boot then ran for 20
+# minutes and got nowhere. Measured while it was stuck:
+#
+#   CPU utilisation      98% busy, 1% idle over a 5s sample of /proc/stat, on 4 vCPUs
+#   CPU pressure         /proc/pressure/cpu some avg10=91.85
+#   IO pressure          some avg10=0.71     memory pressure  some avg10=0.00
+#   k3s server's share   28% of the whole machine
+#   kine SQL             a single indexed SELECT taking 1.7-1.9s; it is milliseconds when idle
+#   k3s uptime           1205s without ever writing its own /etc/rancher/k3s/k3s.yaml
+#
+# The apiserver could not answer its OWN client inside the client's timeout, so k3s never finished
+# bootstrapping, k3d never got a kubeconfig, and the serverlb never got its confd config. The
+# wreckage is byte-identical to the wreckage the wedged daemon produced, which is the trap: the
+# same symptom, a completely different cause, and the guard above says the runtime is fine because
+# the runtime IS fine.
+#
+# THE CLASS, which is one step out from the class above: a preflight that proves a dependency
+# RESPONDS but not that the machine has the CAPACITY to complete the work it is about to begin.
+# Responding is cheap. Bootstrapping a control plane is not. A one-second container start is not
+# evidence about a twenty-minute job, and treating it as evidence is how this script burned twenty
+# minutes and left a half-built cluster for the second time in one afternoon.
+#
+# THE FLOOR IS A JUDGEMENT, AND IT IS LABELLED AS ONE. It is anchored on exactly one measured
+# failure -- 1% idle did not boot -- and there is no measured success yet to bound it from the
+# other side, so 10% is chosen to refuse only the case that is already known to fail. When a boot
+# does succeed, put its idle figure in this comment and re-derive the floor from two points instead
+# of one. Do not raise it on a hunch: LAW 38, a guard that refuses correct work is an outage.
+#
+# CAPACITY_PROBE is the seam that lets this be proved both ways with no need to saturate a laptop:
+#   CAPACITY_PROBE='echo 90' ./rehearse_cluster.sh up   # must get past this line
+#   CAPACITY_PROBE='echo 1'  ./rehearse_cluster.sh up   # must stop on this line
+#   CAPACITY_PROBE='echo x'  ./rehearse_cluster.sh up   # unreadable => BLIND, proceeds, says so
+#
+# It measures inside a container on purpose: /proc/stat is not namespaced, so the container reads
+# the kernel that will actually run k3s -- the colima VM here, the LinuxKit VM under Docker Desktop,
+# the host itself on native Linux. Reading the Mac's own load would answer about the wrong machine,
+# which is the mistake made earlier today when a listener started on the Mac was unreachable from a
+# container because the container's gateway is the bridge inside the VM.
+CAPACITY_PROBE="${CAPACITY_PROBE:-}"
+
+measure_idle_pct() {
+  if [ -n "$CAPACITY_PROBE" ]; then $CAPACITY_PROBE; return; fi
+  timeout "${CAPACITY_PROBE_TIMEOUT:-45}" docker run --rm alpine:latest sh -c '
+    read_stat() { awk "/^cpu /{print \$2+\$3+\$4+\$6+\$7+\$8, \$5}" /proc/stat; }
+    set -- $(read_stat); b=$1; i=$2
+    sleep 4
+    set -- $(read_stat); B=$1; I=$2
+    db=$((B-b)); di=$((I-i)); t=$((db+di))
+    if [ "$t" -gt 0 ]; then echo $((di * 100 / t)); else echo unreadable; fi
+  ' 2>/dev/null
+}
+
+# What is eating the machine, so the refusal names the cause instead of only the symptom. A refusal
+# that says "the machine is full" and nothing else sends the reader back to the same measuring this
+# guard just did.
+#
+# It is `top -b -n 1`, not `ps -eo pcpu,comm --sort=-pcpu`, and that is not a style choice. alpine's
+# ps is busybox, which has neither -eo nor --sort: the ps form printed "unrecognized option" to
+# stderr, which 2>/dev/null then swallowed, and the refusal shipped with an EMPTY evidence section.
+# Caught 2026-08-24 by reading the guard's own output instead of trusting that it had one, which is
+# the whole of LAW 28. busybox top -b -n 1 needs no options and gives the CPU line, the load average
+# and the consumers sorted, in one shot.
+top_cpu_consumers() {
+  # The fallback is chosen on the CONTENT, not on an exit status. Two reasons, both measured
+  # 2026-08-24 on this line:
+  #
+  #   1. `docker run ... | head -10 || echo fallback` never runs the fallback. The `||` binds to the
+  #      whole pipeline, and `head` exits 0 on empty input, so a sidecar that failed to start still
+  #      reported success. Sampled three times in a row: the section came back EMPTY once and
+  #      populated twice. An intermittently blank evidence block is worse than a stated failure,
+  #      because it reads as "nothing is using the machine".
+  #   2. The sidecar genuinely does fail sometimes here, and for the guard's own reason -- a machine
+  #      with no CPU left is slow to start a container. So this must degrade to a sentence, never to
+  #      whitespace (LAW 28: an instrument nobody can read is not an instrument).
+  #
+  # EVIDENCE_PROBE is a seam, for the same reason DAEMON_PROBE and CAPACITY_PROBE are. The failure
+  # path here cannot be reached by stubbing a shell function called `docker`: `timeout` is an
+  # external binary and execs the docker BINARY, so a function never gets a look in. Without this
+  # seam the fallback branch is unprovable, and an unproven fallback is the branch that ships broken.
+  local out
+  if [ -n "${EVIDENCE_PROBE:-}" ]; then
+    out="$($EVIDENCE_PROBE 2>/dev/null | head -10)"
+  else
+    out="$(timeout 30 docker run --rm --pid=host alpine:latest top -b -n 1 2>/dev/null | head -10)"
+  fi
+  if [ -n "$out" ]; then
+    printf '%s\n' "$out"
+  else
+    echo "   (could not read the process table: the evidence sidecar did not start either, which is"
+    echo "    itself consistent with the reading above)"
+  fi
+}
+
+# The gate is its own function so it can be proved without building a cluster: source this file
+# with a harmless argument, then call it. A guard that can only be exercised by running the
+# twenty-minute job it protects will not be exercised.
+capacity_gate() {
+  local idle; idle="$(measure_idle_pct)"
+  case "$idle" in
+    ''|*[!0-9]*)
+      # A guard that loses its evidence reports BLIND, never a verdict. Refusing on an unreadable
+      # measurement would be a guard refusing correct work, which is LAW 38's outage.
+      note "CPU headroom UNREADABLE (probe said '${idle:-nothing}'); proceeding BLIND, this run is not covered by the capacity guard"
+      return 0
+      ;;
+  esac
+  if [ "$idle" -lt "${IDLE_FLOOR_PCT:-10}" ]; then
+    fail \
+"this machine has ${idle}% idle CPU and cannot bootstrap a control plane.
+
+Floor is ${IDLE_FLOOR_PCT:-10}%, measured over 4s inside the runtime's own kernel, not on the Mac.
+
+This is NOT the daemon being broken -- the check above just started a container in under a second,
+and it was right to pass. The runtime is healthy and the machine is full. Both failures leave the
+same wreckage (no kubeconfig, no serverlb confd config, a half-built cluster), so read the number
+above rather than the symptom.
+
+What it looked like the last time this ran anyway, 2026-08-24: 20 minutes, k3s at 28% of the
+machine, a single indexed kine SELECT taking 1.9s, and k3s never writing its own
+/etc/rancher/k3s/k3s.yaml in 1205 seconds. The apiserver could not answer its own client.
+
+What is using the machine:
+$(top_cpu_consumers)
+
+The remedy is to free CPU, not to retry. On this laptop the compose stack in deploy/compose shares
+these vCPUs with the cluster, so stopping it for the rehearsal window is the free option -- but it
+is shared estate infrastructure other sessions depend on, so that is a founder call under LAW 11,
+not this script's and not yours. Raising the VM's vCPU count needs a colima restart, which
+crew/STATE.md forbids outright: route it to the founder, crew #85.
+
+To override deliberately, with a reason:   IDLE_FLOOR_PCT=0 deploy/rehearse_cluster.sh up"
+  fi
+  ok "CPU headroom ${idle}% idle over 4s, floor ${IDLE_FLOOR_PCT:-10}%"
+}
+
 # THE VERSION SKEW TRAP, HANDLED RATHER THAN NARRATED.
 #
 # Measured 2026-08-24 on this laptop: the kubectl on PATH is v1.27.2, shipped by Docker Desktop, and
@@ -147,6 +285,11 @@ Runtime on this machine:    docker context show    (colima, not Docker Desktop)
 crew/STATE.md carries the standing instruction for this exact failure: do NOT restart colima,
 route it to the founder -- an unco-ordinated restart is crew #85, load 255 on 12 cores."
   ok "docker context '$(docker context show 2>/dev/null || echo unknown)' started a container"
+
+  # Starting a container proves the runtime works. It says nothing about whether this machine can
+  # finish a control-plane bootstrap. See the comment on measure_idle_pct for what that cost.
+  capacity_gate
+
   command -v k3d >/dev/null   || fail "k3d is not installed. brew install k3d"
 
   say "cluster"
