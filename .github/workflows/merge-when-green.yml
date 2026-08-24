@@ -209,6 +209,26 @@ jobs:
           # unstall it.
           gh workflow run ci.yml --ref main || echo "could not dispatch ci.yml"
 
+          # The container images, unconditionally and with no file test. container-images.yml
+          # carries no paths filter on main for the same reason: the engine's build context is
+          # the repository root, so almost any commit can change its image, and a filter that
+          # guesses wrong does not fail -- it silently leaves the published image behind main.
+          # Measured 2026-08-24: #702 merged at 10:25:58Z and no `push` run existed for
+          # 7142f8d1 four minutes later, because a merge made with GITHUB_TOKEN emits no event
+          # any workflow can see. That is the whole reason this step exists; a new workflow
+          # triggered only by `push: main` never runs at all, and reports nothing while not
+          # running.
+          gh workflow run container-images.yml --ref main || \
+            echo "could not dispatch container-images.yml"
+
+          # The admission gate, for the same reason and with a receipt of its own: measured
+          # 2026-08-24, k8s-manifests.yml had 13 runs and every one was `pull_request`. It has
+          # graded proposals and has never once graded main. Its paths filter is honoured by the
+          # dispatch below only in the sense that the whole workflow is cheap; it builds two
+          # overlays and runs the Kyverno CLI, and it needs no cluster.
+          gh workflow run k8s-manifests.yml --ref main || \
+            echo "could not dispatch k8s-manifests.yml"
+
           files=$(cat merged_files.txt)
           want() { grep -Eq "$1" <<<"$files"; }
           if grep -q '__UNKNOWN__' <<<"$files"; then

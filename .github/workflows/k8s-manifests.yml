@@ -47,6 +47,48 @@ jobs:
             echo "$env: $(wc -c < "_build/$env.yaml") bytes"
           done
 
+      # GATE 0. Every workload image resolves to a commit SHA, in the BUILT output.
+      #
+      # base/ pins `:set-by-an-overlay` on all three images on purpose, so a manifest applied
+      # without an overlay fails loudly instead of pulling something. The overlay is what turns
+      # that into a real tag, and until 2026-08-24 neither overlay did -- the `images:` block was
+      # commented out in both, so every environment named a tag that has never existed.
+      #
+      # Kyverno does not catch this and is not meant to: `disallow-latest-tag` refuses `:latest`
+      # and an untagged image, and `set-by-an-overlay`, `main` or `v2` all sail past it. A moving
+      # tag is worse than a missing one, because a missing one fails at pull time where you can
+      # see it, and a moving one runs code nobody reviewed while every check stays green.
+      - name: Every workload image is pinned to a commit SHA
+        run: |
+          set -euo pipefail
+          fail=0
+          for env in staging production; do
+            imgs=$(grep -oE '^\s+image:\s*ghcr\.io/\S+' "_build/$env.yaml" \
+                   | sed -E 's/^\s*image:\s*//' | sort -u)
+            if [ -z "$imgs" ]; then
+              echo "FAIL: $env built no ghcr.io image at all; this gate would pass on nothing"
+              fail=1
+              continue
+            fi
+            while IFS= read -r img; do
+              tag=${img##*:}
+              if printf '%s' "$tag" | grep -Eq '^[0-9a-f]{40}$'; then
+                echo "  OK   $env  $img"
+              else
+                echo "  FAIL $env  $img -- tag '$tag' is not a 40-character commit SHA"
+                fail=1
+              fi
+            done <<< "$imgs"
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo
+            echo "An overlay must name the commit its images were built from. container-images.yml"
+            echo "publishes exactly one immutable tag per commit; paste it into the overlay's"
+            echo "images: block. A tag that is not a commit SHA either does not exist (the pods"
+            echo "never start) or can move (the cluster runs code that was never reviewed)."
+            exit 1
+          fi
+
       # GATE 1. Upstream ships every policy as Audit, which writes a report and admits the workload
       # anyway. LAW 28: an instrument nobody reads is not an instrument. One Audit policy in the
       # built output means a rule that has been quietly turned into a suggestion.

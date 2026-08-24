@@ -101,6 +101,14 @@ labels:
 # moves. Promotion from staging to production is a commit that edits the line below, which makes the
 # git history the deployment audit log.
 #
-# images:
-#   - name: ghcr.io/chidionyema/prospector-engine
-#     newTag: <commit sha>
+# All three images, not just the engine. base/ pins `:set-by-an-overlay` on every one of them
+# (api.yaml:96, engine.yaml:139, web.yaml:72), and an overlay that names only the engine leaves
+# the other two pointing at a tag that has never existed -- which fails at pull time, in the
+# cluster, rather than here.
+images:
+  - name: ghcr.io/chidionyema/prospector-engine
+    newTag: 7142f8d15539f568c47b21ea51b79af8018d1162
+  - name: ghcr.io/chidionyema/prospector-store-api
+    newTag: 7142f8d15539f568c47b21ea51b79af8018d1162
+  - name: ghcr.io/chidionyema/prospector-store-web
+    newTag: 7142f8d15539f568c47b21ea51b79af8018d1162
