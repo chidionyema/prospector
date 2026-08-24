@@ -89,6 +89,61 @@ def test_it_refuses_a_new_reference_to_a_vendor_we_are_leaving(tmp_path):
     )
 
 
+def test_it_refuses_a_workflow_that_falls_back_to_the_vendors_runner_label(tmp_path):
+    """Incident 2026-08-24. The counter could not see the one reference that mattered most.
+
+    .github/workflows/e2e-live-smoke.yml:291 read `|| 'fly' }}` as its runs-on fallback. Measured:
+    the repository counted 402 occurrences with that line present and 402 with it removed, so the
+    gate would have let it stand forever. A job waiting for a runner label nobody carries queues
+    rather than fails, which means it reports pending and nothing pages.
+
+    This is the REFUSE half for that shape, and the ALLOW half is the test below it.
+    """
+    repo = _throwaway_repo(tmp_path)
+    wf = repo / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    added = wf / "smoke.yml"
+    added.write_text(
+        "jobs:\n"
+        "  smoke:\n"
+        "    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'fly' }}\n"
+    )
+    subprocess.run(["git", "add", "-N", str(added)], cwd=repo, check=True, capture_output=True)
+
+    result = _run("--check", "--root", str(repo))
+    assert result.returncode == 1, (
+        "the ratchet allowed a workflow that falls back to the departed vendor's runner label:\n"
+        f"{result.stdout}{result.stderr}"
+    )
+    assert "smoke.yml" in result.stdout, (
+        f"it refused without naming the workflow that caused it:\n{result.stdout}"
+    )
+
+
+def test_it_allows_a_workflow_whose_runner_fallback_is_hosted(tmp_path):
+    """The ALLOW half of the same shape, and the reason it is a separate test.
+
+    The narrow pattern must match the vendor's name on a runs-on line and nothing else on one. A
+    guard that refused `ubuntu-latest` here would refuse every workflow in the estate, which is the
+    outage LAW 38 names.
+    """
+    repo = _throwaway_repo(tmp_path)
+    wf = repo / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    added = wf / "smoke.yml"
+    added.write_text(
+        "jobs:\n"
+        "  smoke:\n"
+        "    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}\n"
+    )
+    subprocess.run(["git", "add", "-N", str(added)], cwd=repo, check=True, capture_output=True)
+
+    result = _run("--check", "--root", str(repo))
+    assert result.returncode == 0, (
+        f"it refused a workflow that falls back to a GitHub-hosted runner:\n{result.stdout}{result.stderr}"
+    )
+
+
 def test_it_allows_again_once_the_new_reference_is_gone(tmp_path):
     """A gate that stays red after the cause is removed is an outage, not a guard."""
     repo = _throwaway_repo(tmp_path)
