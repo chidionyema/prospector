@@ -171,13 +171,39 @@ cmd_up() {
   # --no-rollback keeps whatever came up. The timeout goes to 900s because the measured cold build
   # took 913s. Then this script waits for /readyz itself, so the verdict comes from the API server
   # answering rather than from k3d's patience.
+  # WHAT IS STARVED IS I/O, NOT CPU, AND THAT CHANGES WHICH ADD-ONS ARE WORTH DISABLING.
+  #
+  # Measured 2026-08-24 inside the colima VM, immediately after a bootstrap failed at t=1250s with
+  # `failed to bootstrap cluster data: context deadline exceeded`:
+  #
+  #   /proc/loadavg          499.75 473.70 416.25   551/3159 runnable
+  #   nproc                  4
+  #   df -h /var/lib/docker  59G total, 38G available      <- not a disk-space problem
+  #   free -m                3445 MB available             <- not a memory problem
+  #   host CPU               Intel i7-8850H, 6 cores       <- no emulation; colima arch matches
+  #
+  # A load average of 500 on 4 CPUs with memory and disk to spare is hundreds of processes parked
+  # in uninterruptible sleep waiting on the disk. That matches the 17 `Slow SQL ... INSERT INTO
+  # kine(...) duration=2.79s` lines k3s printed: every write of the bootstrap goes through kine to
+  # SQLite on overlay2 inside a VM. The fix is to make the bootstrap write less, not to wait longer
+  # -- a timeout increase measures patience, and the previous attempt already had 900s and lost.
+  #
+  # traefik and servicelb are two Helm chart installs on the critical path, and the estate wants
+  # neither: deploy/k8s/base/edge.yaml is Gateway API served by its own controller, and a rehearsal
+  # with --agents 0 has nothing for servicelb to balance. metrics-server was already off.
+  #
+  # local-storage STAYS ON, deliberately. deploy/k8s/base declares two PVCs (prospector-data and
+  # prospector-store-api-data); without the local-path provisioner they never bind and every
+  # workload sits Pending. Disabling it would make the cluster start faster and prove nothing.
   local clog="$CACHE/k3d-create.log"
   set +e
   k3d cluster create "$CLUSTER" --wait --timeout "${K3D_TIMEOUT:-900s}" \
     --no-rollback \
     --agents 0 \
     --image "$k3s_image" \
-    --k3s-arg '--disable=metrics-server@server:0' >"$clog" 2>&1
+    --k3s-arg '--disable=metrics-server@server:0' \
+    --k3s-arg '--disable=traefik@server:0' \
+    --k3s-arg '--disable=servicelb@server:0' >"$clog" 2>&1
   local crc=$?
   set -e
 
