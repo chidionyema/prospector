@@ -2973,6 +2973,34 @@ heartbeat:
 
 providers:
 
+  # LiteLLM — the estate's model router. Founder ruling 2026-08-24: "the decision is final."
+  #
+  # This is the migration seam, and it needs no new Python. `_build_operator` falls through
+  # to this block and constructs an `OpenAICompatibleOperator`, which is already the shape
+  # LiteLLM speaks. The six hand-written HTTP adapters above it — MiniMax, DeepSeek,
+  # OpenRouter, Gemini, Ollama, OpenAICompatible — become one config file in
+  # ~/dev/code/idp/llm/config.yaml, and the fallback chain, the retries and the circuit
+  # breaker move into `router_settings` there.
+  #
+  # DECLARED BUT NOT ON ANY CHAIN, ON PURPOSE. Nothing constructs a provider that no
+  # `operator:` / `noncritical_operator:` / `moat_primary:` line names, so this block is
+  # inert today. Cutting over is adding the word `litellm` to one of those lines, and that
+  # happens only after `idp/bin/litellm-status` shows the proxy answering and a differential
+  # run agrees with the current adapters. Declaring it now means the cutover is one word
+  # rather than a rewrite under pressure.
+  #
+  # WHAT NEVER MOVES HERE. `claude_cli` and `gemini_cli` stay exactly where they are. They
+  # drive local CLI binaries against a SUBSCRIPTION, not an API key; a proxy cannot shell
+  # out to `claude -p`. They are the trusted `moat_primary` tier and the EUR 0 path (R14).
+  litellm:
+    base_url: http://127.0.0.1:4000/v1
+    api_key_env: LITELLM_MASTER_KEY
+    # These are LiteLLM `model_name` entries, not vendor model ids — the mapping to a real
+    # upstream lives in idp/llm/config.yaml, which is the point of the change.
+    model: minimax
+    fast_model: minimax
+    timeout_s: 300
+
   # Groq — founder directive 2026-08-21 "lets add Groq fallback".
   # E-106 measured it as an AVAILABILITY FLOOR, NOT A DRAIN: free tier is
   # 30 RPM / 1,000 RPD / 8,000 TPM / 200,000 TPD, and our check call is ~12,750
