@@ -399,6 +399,20 @@ jobs:
       # would prove nothing about the image we ship.
       - name: The runner carries the tools our workflows run
         run: python3 scripts/ci_runner_tools.py
+
+      # THE VENDOR RATCHET. The founder asked on 2026-08-24 to eradicate Fly.io. Measured that
+      # day: 586 references across 130 executable files, which is not one commit's worth of
+      # deletion and cannot be, because production takes money through Fly right now and its
+      # deploy path is inside that set.
+      #
+      # So the count only ever goes down. This step fails a pull request that ADDS a reference.
+      # It says nothing about the ones already there, which is the whole point: it stops the
+      # hole being dug deeper while the filling in happens at a safe pace.
+      #
+      # It is not a Fly gate. scripts/vendor_ratchet.py takes the vendor list from a table, so
+      # the next exit reuses it instead of someone writing a second copy (LAW 34).
+      - name: No new dependency on a vendor we are leaving
+        run: python3 scripts/vendor_ratchet.py --check
       # A workflow GitHub cannot START fails with ZERO jobs, no log, no annotation and no red
       # check anywhere. It can therefore be dead for its entire life and nothing reports it.
       # Measured 2026-08-19: `.github/workflows/ci-autoscale.yml` had 30 runs, 30 failures and

@@ -751,7 +751,7 @@ site, so a retry that turns red into green hides an intermittent production faul
 | `test_no_doc_gets_less_accurate_than_its_baseline` red | A doc gained a finding | `scripts/doc_lint.py --json`; fix the doc, do not edit the baseline |
 | `step 'pytest' exceeded 2400s` with no slow test | tmp dir accumulation (8 roots, 4,296 dirs) | `pytest.ini:69` fixes it; clear stale roots if you predate it |
 | A timing test passes on one box, fails on another | Wall-clock budget under variable `-n auto` | Measure `time.process_time()` |
-| Build "passes" with `| tail` | Pipeline reports `tail`'s status | Capture `$?` before the pipe, or `set -o pipefail` |
+| Build "passes" with `\| tail` | Pipeline reports `tail`'s status | Capture `$?` before the pipe, or `set -o pipefail` |
 | `git commit` runs no tests | The gate is uninstalled | `test -e .git/hooks/pre-commit`; see [developer.md](developer.md) §4 |
 
 ---

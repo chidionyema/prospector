@@ -24,6 +24,20 @@ that would settle it. A row with no proof is not done, however finished it feels
 | [`PLATFORM_MANIFESTO.md`](PLATFORM_MANIFESTO.md) | the platform laws L1–L13 |
 | [`PACK_NARRATIVE_PROGRAM.md`](PACK_NARRATIVE_PROGRAM.md) | what the buyer reads, and why the renderers stay model-free |
 | [`WORK_REGISTER.md`](WORK_REGISTER.md) | strands in flight across the whole estate, not just the engine |
+| [`MIGRATION_AND_DR_PROGRAM.md`](MIGRATION_AND_DR_PROGRAM.md) | **§11 — F-01…F-50 and N-01…N-14**, the platform, migration, DR and portability requirements, one row per ten-plane guarantee |
+
+**The seventh row was missing until 2026-08-24, and its absence was the exact failure this file was
+written to end.** This register says at the top that requirements had accumulated in four documents
+with four numbering schemes, so "is R4 done?" had four answers. §11 of the migration programme was a
+fifth, with 60 rows in an `F-`/`N-` sequence, and nothing here linked to it. The two registers were
+measured the same night and disagreed in public: `founder_board.py` renders **13 of 58 done** from
+the `R-` rows here, and §11 counts **3 proven** out of its own. Both numbers were correct about
+their own file and neither was the answer to "how much is done".
+
+They are not merged, and merging them is not the fix. They count different things — `R-` rows are
+what the founder asked for across the whole estate, `F-`/`N-` rows are the ten-plane platform
+contract — and a single flat sequence is what produced the drift in the first place. What was
+missing is the link, and a reader that reports both numbers rather than one.
 
 ---
 

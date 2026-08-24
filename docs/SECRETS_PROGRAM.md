@@ -380,6 +380,49 @@ Not `sops` — see 3.0. Run on the laptop that holds the key.
   can run, printing nothing at all. `v=""; IFS= read -r v || true` then testing `[ -n "$v" ]` is
   the form that handles all four cases. Three iterations were spent finding this.
 
+## Part 4b — A FIFTH SINK, added 2026-08-24: a mounted directory of files
+
+Kubernetes forced a shape the other three sinks never did, and it is a better one.
+
+`deploy/k8s/policies` includes the upstream `secrets-not-from-env-vars`, which refuses
+`envFrom.secretRef` and `env[].valueFrom.secretKeyRef` outright. Measured 2026-08-24, it was one of
+ten policies that refused the Deployment `deploy/targets/k8s.sh` writes inline (`pass: 19, fail:
+10`). So on Kubernetes a secret cannot reach the engine as an environment variable declared in the
+pod spec, where it would sit in etcd and in `kubectl describe pod`. It arrives as a directory of
+files, one file per name, mounted read-only.
+
+**The writer side already existed and needed no change.** `deploy/targets/k8s.sh:115` builds the
+Secret with `kubectl create secret generic prospector-engine-env --from-env-file`, which is one key
+per variable, which mounts as one file per variable. `--from-env-file` takes a path, so no value is
+ever an argument — the same rule as `deploy/runners.sh`, and it is why nothing had to be rewritten.
+
+**The reader side was missing and is now `prospector/file_secrets.py`.** It copies every file in
+`$PROSPECTOR_SECRETS_DIR` into `os.environ`, called from `prospector/__init__.py` so it runs before
+any module in the package. Measured 2026-08-24: 30 files read a credential from `os.environ`
+directly — `prospector/retrieval.py`, `prospector/operator.py`, `prospector/bridge.py`,
+`prospector/api.py`, `prospector/scheduler/telegram_sender.py` and 25 more — and several read it at
+module scope. A resolver only `config.py` called would have fixed none of them.
+
+Three decisions in it worth keeping:
+
+- **The file wins over an environment variable of the same name.** Both can be set on a laptop that
+  has a `.env` and a mount. The file is what the cluster deployed and what a rotation updates;
+  preferring the environment would mean a rotated secret silently does not take effect, which is
+  2.5's missing rotation story failing in the least visible way possible.
+- **A partial set refuses to start.** Missing mount, empty mount, unreadable file, or a name no
+  shell could read: all raise, at import. That is 2.4's "bootstrap has no second chance" applied
+  where it can still be cheap — a container that will not start, rather than "All operators
+  unavailable - check API keys" three hours later in another subsystem.
+- **No value reaches an exception message**, and the `UnicodeDecodeError` is deliberately not
+  chained, because its own message prints the offending bytes.
+
+Proof: `tests/test_incident_secrets_mounted_as_files.py`, 12 cases including the Kubernetes
+symlink-farm layout (`..data` plus per-key symlinks) and a subprocess that asks a real Python
+process what it can read.
+
+**This does not close S3 or S4.** It adds a sink; the read-audit and drift-detection gaps in 2.5
+and 2.6 are unchanged.
+
 ## Part 5 — Open actions
 
 | # | Action | Owner | Blocking |

@@ -338,6 +338,25 @@ LEDGER: tuple[Mode, ...] = (
         None,
         None,
     ),
+    # ---- at the standards gate
+    Mode(
+        "an-admission-gate-passes-on-nothing",
+        "k8s-manifests.yml grades the Kubernetes manifests against the estate's own 26 admission "
+        "policies. Handed no resources to grade, the Kyverno CLI prints `Applying 0 policy "
+        "rule(s)` and `pass: 0, fail: 0, error: 0` and exits 0 — measured 2026-08-24 — so the gate "
+        "goes green while grading nothing. Two ordinary edits produce that: dropping engine.yaml "
+        "from base/kustomization.yaml, and pointing the CLI at a build that contains a non-policy "
+        "document, which makes it silently load ZERO rules.\n\n"
+        "This is the same class as `kyverno test` reporting `13 tests passed` with an assertion "
+        "violated: every instrument in the chain reports a SHAPE, and a shape is green when there "
+        "is nothing behind it. The gate therefore asserts what it graded, not merely that grading "
+        "returned no failures — a Deployment present, at least 4 non-policy documents, at least "
+        "50 rules loaded, and a non-zero pass count.",
+        (".github/workflows/k8s-manifests.yml", "deploy/k8s/split_workloads.py"),
+        "tests/unit/test_the_k8s_gate_cannot_pass_on_nothing.py",
+        None,
+        None,
+    ),
 )
 
 # The modes with no proof. This set is a RATCHET: removing an entry is the point of the

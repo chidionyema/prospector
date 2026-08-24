@@ -1,0 +1,15 @@
+# What is true in EVERY environment. An overlay may change an image tag, a hostname, a replica count
+# or which Secret is referenced. An overlay may never change a policy: staging with softer rules
+# proves nothing about production.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - engine.yaml
+
+# STILL NOT HERE, and not pretended otherwise. The engine moved on 2026-08-24 (register row F-39);
+# the shop, api, web and edge workloads are still generated inline by deploy/targets/k8s.sh and are
+# still refused by this estate's own policies. engine.yaml is the pattern the other four follow,
+# and its header lists the two things that must change in the engine itself before a pod started
+# from it can actually run.
