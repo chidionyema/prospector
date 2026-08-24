@@ -13,9 +13,11 @@ name: CI
 # our own runner is the free path, and this variable is how we take it without rewriting the
 # workflow under pressure.
 #
-# The jobs are OS-portable already: no apt-get, no sudo, no docker, no service containers. They
-# use checkout, setup-python, setup-uv, setup-node, setup-dotnet and cache, every one of which
-# supports macOS, so the same five jobs run unchanged wherever CI_RUNS_ON points.
+# The jobs are OS-portable: no docker, no service containers. They use checkout, setup-python,
+# setup-uv, setup-node, setup-dotnet and cache, every one of which supports macOS. The one
+# exception is the python job's "Install age" step, which falls back to sudo apt-get only when
+# `age` is not already on PATH — on a non-Debian runner, preinstall age (brew install age on a
+# Mac; deploy/runner/Dockerfile bakes it in) and the step is a no-op.
 #
 # TWO POOLS, BECAUSE THE JOBS ARE NOT THE SAME SIZE.
 #

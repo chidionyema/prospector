@@ -81,6 +81,18 @@ def test_a_listed_recipient_survives_the_next_set(two_identities):
     assert _keys_readable_by(env, b) == ["FAKE_ONE", "FAKE_TWO"]
 
 
+def test_a_crlf_recipients_file_is_not_refused(two_identities):
+    """Receipt-auditor finding on PR #701: age's own parser accepts a CRLF recipients file, but
+    the lockout guard's exact-line grep refused it — telling the operator to add a line that was
+    already there. The guard must strip CR/trailing whitespace before the membership test."""
+    env, pub_a, pub_b, a, b = two_identities
+    Path(env["PROSPECTOR_AGE_RECIPIENTS"]).write_text(f"{pub_a}\r\n{pub_b}\r\n")
+
+    assert _set(env, "FAKE_ONE", "v1").returncode == 0
+    assert _keys_readable_by(env, a) == ["FAKE_ONE"]
+    assert _keys_readable_by(env, b) == ["FAKE_ONE"]
+
+
 def test_a_recipients_file_omitting_our_own_key_is_refused(two_identities):
     """Honouring such a file would make this the last `set` this machine can read back."""
     env, pub_a, pub_b, a, b = two_identities

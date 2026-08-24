@@ -83,7 +83,10 @@ encrypt_stdin() {
   local pub
   pub="$(age-keygen -y "$KEY")"
   if [ -f "$RECIPIENTS" ]; then
-    grep -qxF "$pub" "$RECIPIENTS" \
+    # Strip CR and trailing whitespace before the membership test: age's own parser accepts a
+    # CRLF recipients file, and an exact-line grep would refuse it with a wrong diagnosis
+    # ("add the line" when the line is already there).
+    sed 's/[[:space:]]*$//' "$RECIPIENTS" | grep -qxF "$pub" \
       || die "our own public key is not in $RECIPIENTS - encrypting would lock this machine out of its own store; add the line: $pub"
     age -R "$RECIPIENTS" -o "$STORE.tmp"
   else
