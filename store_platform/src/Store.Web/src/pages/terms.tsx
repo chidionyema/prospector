@@ -8,7 +8,7 @@
 import React from 'react';
 import Link from 'next/link';
 import LegalDoc, { LegalHeading, LegalText, LegalList } from '@/components/LegalDoc';
-import { LEGAL } from '@/lib/config';
+import { LEGAL, traderIdentity } from '@/lib/config';
 import Disclaimer from '@/components/Disclaimer';
 import { textLinkClass } from '@/components/ui';
 
@@ -168,7 +168,7 @@ export default function TermsPage() {
         <a href={`mailto:${LEGAL.contactEmail}`} className={textLinkClass()}>
           {LEGAL.contactEmail}
         </a>
-        . Operator: {LEGAL.legalName}, {LEGAL.address}. For our refund policy, see{' '}
+        . Operator: {traderIdentity()}. For our refund policy, see{' '}
         <Link href="/refund" className={textLinkClass()}>
           Refund Policy
         </Link>

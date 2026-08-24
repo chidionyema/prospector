@@ -1,5 +1,5 @@
 /**
- * Docs — the decisions, incidents and runbooks, readable without a checkout.
+ * Docs — every document in the repo, readable without a checkout.
  *
  * Why this page exists. On 2026-08-19 the founder asked twice whether the stack documents were
  * reachable from ops. They were not: no page rendered markdown, no API route read `docs/`, and
@@ -7,23 +7,83 @@
  * and pushed, and still be readable only by someone at a terminal with a clone. That is the
  * "built and unreachable" failure this estate keeps hitting.
  *
- * What this is NOT yet: shareable. A link a non-operator can open, that expires and can be
- * revoked, needs a token store and a route that answers without a session. Tracked separately.
- * Everything here sits behind the console's own auth, exactly like every other page.
+ * WHAT CHANGED ON 2026-08-20, AND WHY IT WAS OWED. The first version of this file said, in this
+ * docblock, that plain text was deliberate: "the console has no markdown dependency, and adding
+ * one in order to ship a reader is the scope creep that turns a same-day answer into a week".
+ * That was an honest trade and it bought a same-day answer. The founder then read a page of raw
+ * markdown source and said: "i can see a list but cant read it, loads slow, no way to search and
+ * filter etc or categorise". That is the bill for the deferral, and this commit pays it. Four
+ * things, all of which the earlier version scoped as "a later commit that touches only this file":
  *
- * Rendering is deliberately plain text rather than parsed markdown. The console has no markdown
- * dependency, and adding one in order to ship a reader is the scope creep that turns a same-day
- * answer into a week. Monospace with the source visible is honest and complete; a prettier
- * renderer is a later commit that touches only this file.
+ *  1. RENDERED DOCUMENTS, with a Source toggle. WHICH renderer a document gets is not decided
+ *     here any more: `@/components/DocBody` decides it, and `/s/<token>` uses the same component,
+ *     so the two readers cannot drift. This page used to send every non-`.json` document to
+ *     `react-markdown`, which meant the 18 tracked `.html` documents were listed as readable and
+ *     arrived as stranded attribute text. Markdown still renders through `react-markdown` +
+ *     `remark-gfm` with raw HTML NOT enabled; HTML gets a sandboxed frame that cannot run
+ *     scripts; everything else is source. The argument for each is in `@/lib/docKind`.
+ *  2. SEARCH AND CATEGORY CHIPS, entirely client-side over the index that is already loaded.
+ *     Typing costs nothing: no read, no spawn.
+ *  3. REAL CATEGORIES, from `prospector/ops/docs_view.py::_CATEGORIES`. There used to be three
+ *     sections and 78 of the 104 documents sat in the third one.
+ *  4. NO POLLING ON THIS PAGE. `useOps` polls every 30s by default, and every poll is a fresh
+ *     Python process — two of them here, one for the index and one for the open document.
+ *     Documents change when someone deploys, not every thirty seconds, so both reads are
+ *     `pollMs: 0` with a Refresh button. That is two spawns per 30s per open tab, removed.
+ *
+ *  5. EVERY DOCUMENT IS SHAREABLE FROM HERE. `ShareDoc` below mints an expiring, revocable link
+ *     for the document on screen. This paragraph used to read "What this is NOT yet: shareable",
+ *     and it stayed true for a day after it stopped being the whole story: the token store and
+ *     the sessionless route both shipped on 2026-08-19 as `/share`, and nothing joined them to
+ *     the page where the operator is actually standing. Measured 2026-08-20 against the live
+ *     store: 0 shares had ever been minted. Reading a path off this page and typing it into
+ *     another one is a step nobody takes.
+ *
+ * WHAT CHANGED ON 2026-08-21: COVERAGE. The founder's words were "no docs are nissed out".
+ * Measured that morning on origin/main: **298 tracked document files, 113 of them on this page
+ * and 185 invisible** — the index root was `docs/`, it never recursed, and its suffix list was
+ * `(.md, .json)`. So `docs/design/`, `docs/storefront/`, `tools/`, `scripts/`, `prompts/`,
+ * `specs/` and every `.html` and `.txt` in the estate simply did not exist here, on a page that
+ * looked complete. The index now draws from `share.shareable_files()` — the same population the
+ * share tokens are minted from, so listed and shareable are one set — and carries 321 documents
+ * in 28 sections. Two consequences for this file:
+ *
+ *  - DOCUMENT NAMES ARE REPO-RELATIVE (`docs/LINKS.md`, `tools/NOTES.md`). `ShareDoc` mints
+ *    against the name as-is; prefixing `docs/` here would target `docs/docs/LINKS.md`. Links
+ *    minted in the old docs-relative form still resolve, on the backend.
+ *  - A ROW CAN BE LISTED AND NOT RENDERABLE (`readable: false`, today one PDF). It is listed
+ *    because a silent exception is the exact defect above; opening it returns an explanation
+ *    rather than an error, so the click still does something.
  */
+import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import Confirm from '@/components/Confirm';
+import DocBody from '@/components/DocBody';
 import Shell from '@/components/Shell';
-import { AsOf, Card, Empty, Note, Problem, Scroll, Spinner } from '@/components/ui';
+import {
+  AsOf,
+  Button,
+  Card,
+  Empty,
+  Mono,
+  Note,
+  Pill,
+  Problem,
+  Scroll,
+  Spinner,
+} from '@/components/ui';
+import { kindOf } from '@/lib/docKind';
 import { useOps } from '@/lib/useOps';
 
-type DocEntry = { name: string; title: string; bytes: number; modified: number };
+type DocEntry = {
+  name: string;
+  title: string;
+  bytes: number;
+  modified: number;
+  category?: string;
+};
 type DocsIndex = {
   root: string;
   count: number;
@@ -43,6 +103,240 @@ function size(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`;
 }
 
+
+type ShareRow = {
+  id: string;
+  scope: string;
+  target: string;
+  note: string;
+  created_at: number;
+  expires_at: number;
+  reads: number;
+  status: 'live' | 'expired' | 'revoked';
+};
+type Shares = { shares: ShareRow[]; default_days: number; max_days: number };
+
+/**
+ * The public/private switch for the document on screen.
+ *
+ * Added 2026-08-20. The two halves of "expose every repo doc as a shareable link" both shipped on
+ * 2026-08-19 and were never joined. This page could read 127 documents; `/share` could mint an
+ * expiring, revocable link for any of 2,093 tracked files. Getting from one to the other meant
+ * reading the path off this page and typing it into that one. Measured the same day, against the
+ * live store: 0 shares had ever been minted. The founder checked and said the story was not done,
+ * and he was right — a rail nobody can reach from where they are standing is not a rail.
+ *
+ * SAME DAY, SECOND CORRECTION, AND IT IS WHY THIS BLOCK LOOKS THE WAY IT DOES. The first version
+ * of this component could only mint. The founder's words: "docs are still not hshareable with
+ * public/private switch". A control that turns a thing on and cannot turn it off is not a switch,
+ * it is a one-way door — and the operator could not even SEE whether the document in front of him
+ * was already public, because nothing on this page read the share list. So the component now
+ * starts from the ANSWER to "who can read this right now", and both directions are one click from
+ * it. State comes from the live share list (`shares`), never from anything remembered here.
+ *
+ * Both directions go through the SAME actions as `/share` — `share.create` and `share.revoke`,
+ * with the same preview-then-apply gate — so what a link may cover is still decided in one place
+ * (`prospector/ops/share.py`). This is a shorter walk to that fence, never a second one: a copy of
+ * the rule here would be a rule that can disagree with itself.
+ *
+ * The link this switch controls is the one to the FILE IN THIS REPO. A document also published as
+ * a page on claude.ai is governed by that page's own share menu, which this console cannot reach.
+ * `/reports` says the same thing about the same pair, for the same reason.
+ */
+function ShareDoc({ name }: { name: string }) {
+  const [panel, setPanel] = useState(false);
+  const [days, setDays] = useState(7);
+  const [note, setNote] = useState('');
+  /** Held only until the operator navigates away. The token is never re-readable. */
+  const [minted, setMinted] = useState<{ url: string; expires: number } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // No polling. Every read is a fresh Python process, and a document's audience changes when
+  // somebody presses one of the two buttons below — which refresh it — not every thirty seconds.
+  const shares = useOps<Shares>('shares', {}, { pollMs: 0 });
+
+  // Repo-relative since 2026-08-21, when the index widened past docs/. Prefixing
+  // `docs/` here would mint a link to `docs/docs/LINKS.md`, which does not exist.
+  const target = name;
+  const rows = shares.data?.shares ?? [];
+  const live =
+    rows.find((r) => r.status === 'live' && r.scope === 'file' && r.target === target) ?? null;
+
+  async function copy(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      // Clipboard access is refused outside a secure context and in some browsers. The link is on
+      // screen and selectable, so this is a missing convenience, never a lost token.
+      setCopied(false);
+    }
+  }
+
+  const status = shares.error ? (
+    <span className="text-[12.5px] text-muted">share list unavailable</span>
+  ) : shares.loading && !shares.data ? (
+    <span className="text-[12.5px] text-muted">checking…</span>
+  ) : live ? (
+    <>
+      <Pill tone="warn">Public</Pill>
+      <span className="text-[12.5px] text-muted">
+        anyone with the link, until {new Date(live.expires_at * 1000).toLocaleDateString()} ·{' '}
+        {live.reads} {live.reads === 1 ? 'read' : 'reads'}
+      </span>
+    </>
+  ) : (
+    <>
+      <Pill tone="ok">Private</Pill>
+      <span className="text-[12.5px] text-muted">console login only</span>
+    </>
+  );
+
+  // Until the share list has answered, this component cannot know which of its two branches is
+  // the truth, and BOTH of them are writes. Offering either one is offering an action that may be
+  // retracted under the operator's hands. Measured 2026-08-21 by the e2e share journey: the mint
+  // form rendered for a document that already had a live link, accepted a note, and then vanished
+  // mid-action when the list arrived — silently, with nothing on screen to say what had happened.
+  // A write you cannot yet justify is a write you do not offer.
+  const stateKnown = !shares.error && !(shares.loading && !shares.data);
+
+  if (!stateKnown) {
+    return (
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {status}
+        <Button disabled>
+          {shares.error ? 'Sharing unavailable' : 'Checking who can read it…'}
+        </Button>
+      </div>
+    );
+  }
+
+  if (!panel) {
+    return (
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {status}
+        <Button onClick={() => setPanel(true)}>{live ? 'Change who can read it' : 'Share this doc'}</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-3 rounded-sm border border-line px-3 py-3">
+      <div className="flex flex-wrap items-center gap-2">{status}</div>
+      <div className="mt-2 text-[13px] font-[560]">
+        {live ? (
+          <>
+            <Mono>{target}</Mono> is readable by anyone holding its link.
+          </>
+        ) : (
+          <>
+            A link to <Mono>{target}</Mono> that anyone can open without a login.
+          </>
+        )}
+      </div>
+
+      {live ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Confirm
+            action="share.revoke"
+            label="Turn it off"
+            kind="danger"
+            applyLabel="Yes, make it private"
+            payload={() => ({ id: live.id })}
+            renderPreview={(p) => (
+              <div>
+                <div className="font-mono text-[12.5px]">{String(p.target) || target}</div>
+                <div className="mt-1 text-[12px] text-muted">
+                  Anyone holding this link stops being able to read the file. A page published for
+                  this document on claude.ai is not affected — that one is turned off in its own
+                  share menu.
+                </div>
+              </div>
+            )}
+            onApplied={() => {
+              setMinted(null);
+              shares.refresh();
+            }}
+          />
+          <Button onClick={() => setPanel(false)}>Close</Button>
+        </div>
+      ) : (
+        <>
+          <div className="mt-2 flex flex-wrap gap-3">
+            <label className="flex flex-col gap-1 text-[13px]">
+              <span className="text-subtle">Days until it expires</span>
+              <input
+                type="number"
+                min={1}
+                max={90}
+                value={days}
+                onChange={(e) => setDays(Number(e.target.value))}
+                className="tap w-28 rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
+              />
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-[13px]">
+              <span className="text-subtle">Who is it for (recorded, not shown to them)</span>
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="architecture review"
+                className="tap rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Confirm
+              action="share.create"
+              label="Check what this covers"
+              kind="primary"
+              applyLabel="Mint the link"
+              payload={() => ({ scope: 'file', target, days, note })}
+              renderPreview={(p) => (
+                <div className="flex flex-col gap-2">
+                  <div>
+                    <strong>{String(p.covers)}</strong> file, readable by anyone holding the link
+                    for {String(p.days)} days.
+                  </div>
+                  <div className="text-[12px] text-muted">{String(p.note ?? '')}</div>
+                </div>
+              )}
+              onApplied={(receipt) => {
+                setCopied(false);
+                setMinted({
+                  url: `${window.location.origin}${String(receipt.path ?? '')}`,
+                  expires: Number(receipt.expires_at ?? 0),
+                });
+                // The switch above must now read Public. It is derived from this list, so the
+                // list is what gets refreshed — nothing here remembers the new state separately.
+                shares.refresh();
+              }}
+            />
+            <Button onClick={() => setPanel(false)}>Close</Button>
+          </div>
+        </>
+      )}
+
+      {minted ? (
+        <div className="mt-3 rounded-sm border border-ok/40 bg-ok-bg px-3 py-3">
+          <div className="text-[13px] font-[560] text-ok-strong">
+            Copy this now. It is not stored and cannot be shown again.
+          </div>
+          <div className="wrap-any mt-2 font-mono text-[12.5px]">{minted.url}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button onClick={() => copy(minted.url)}>{copied ? 'Copied' : 'Copy link'}</Button>
+            <span className="text-[12px] text-muted">
+              expires {minted.expires ? new Date(minted.expires * 1000).toLocaleString() : '—'}
+            </span>
+            <Link className="text-[12px] underline" href="/share">
+              Every link, on one page
+            </Link>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function Docs() {
   // `?open=incidents/INC-....json` opens that document directly. The Incidents page links here
   // that way, and a link that lands on the right page and then does nothing is the same
@@ -58,10 +352,44 @@ export default function Docs() {
   const open = picked === undefined ? fromUrl : picked;
   const setOpen = setPicked;
 
-  const index = useOps<DocsIndex>('docs');
+  const [q, setQ] = useState('');
+  const [chip, setChip] = useState<string | null>(null);
+  const [source, setSource] = useState(false);
+
+  // pollMs: 0 on both. See the docblock — a document does not change every thirty seconds, and
+  // each poll is a fresh Python process.
+  const index = useOps<DocsIndex>('docs', {}, { pollMs: 0 });
   // The second read is skipped until something is selected — `useOps` takes a null view for
   // exactly this, so opening the page costs one gateway call rather than two.
-  const doc = useOps<DocText>(open ? 'docs' : null, open ? { name: open } : {});
+  const doc = useOps<DocText>(open ? 'docs' : null, open ? { name: open } : {}, { pollMs: 0 });
+
+  const sections = useMemo(() => index.data?.sections ?? [], [index.data]);
+
+  // Filtering happens here, over data already in the browser. `needle` matches the document's own
+  // heading AND its path, because an operator looking for a decision record knows one or the
+  // other and rarely both.
+  const shown = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return sections
+      .filter((s) => !chip || s.label === chip)
+      .map((s) => ({
+        label: s.label,
+        docs: (s.docs ?? []).filter(
+          (d) =>
+            !needle ||
+            d.title.toLowerCase().includes(needle) ||
+            d.name.toLowerCase().includes(needle),
+        ),
+      }))
+      .filter((s) => s.docs.length > 0);
+  }, [sections, q, chip]);
+
+  const total = sections.reduce((n, s) => n + (s.docs?.length ?? 0), 0);
+  const matched = shown.reduce((n, s) => n + s.docs.length, 0);
+  const filtering = Boolean(q.trim() || chip);
+  // A document already shown as source has nothing to toggle TO, and that is a property of the
+  // format rather than of `.json` specifically — see `@/lib/docKind`.
+  const alreadySource = kindOf(doc.data?.name ?? open ?? '') === 'source';
 
   return (
     <Shell
@@ -72,7 +400,12 @@ export default function Docs() {
 
       <Card
         title="Documents"
-        right={<AsOf asOf={index.envelope?.as_of} tookMs={index.envelope?.took_ms} />}
+        right={
+          <div className="flex items-center gap-2">
+            <AsOf asOf={index.envelope?.as_of} tookMs={index.envelope?.took_ms} />
+            <Button onClick={index.refresh}>Refresh</Button>
+          </div>
+        }
       >
         {index.loading && !index.data ? <Spinner what="the document index" /> : null}
         {index.data?.note ? <Note>{index.data.note}</Note> : null}
@@ -80,13 +413,58 @@ export default function Docs() {
           <Empty>No readable documents under docs/.</Empty>
         ) : null}
 
-        {(index.data?.sections ?? []).map((section) => (
+        {total > 0 ? (
+          <div className="mb-4">
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={`Search ${total} documents by title or path`}
+              aria-label="Search documents"
+              className="w-full rounded border border-line bg-transparent px-3 py-2 text-[14px] outline-none focus:border-text"
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setChip(null)}
+                aria-pressed={chip === null}
+                className={`tap rounded-full border px-2.5 py-[3px] text-[12px] ${
+                  chip === null ? 'border-text font-[600] text-text' : 'border-line text-subtle'
+                }`}
+              >
+                All {total}
+              </button>
+              {sections.map((s) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  onClick={() => setChip(chip === s.label ? null : s.label)}
+                  aria-pressed={chip === s.label}
+                  title={s.label}
+                  className={`tap rounded-full border px-2.5 py-[3px] text-[12px] ${
+                    chip === s.label ? 'border-text font-[600] text-text' : 'border-line text-subtle'
+                  }`}
+                >
+                  {s.label.split('—')[0].trim()} {s.docs?.length ?? 0}
+                </button>
+              ))}
+            </div>
+            {filtering ? (
+              <p className="mt-2 text-[12px] text-subtle">
+                {matched} of {total} shown
+                {matched === 0 ? ' — nothing matches that.' : '.'}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {shown.map((section) => (
           <div key={section.label} className="mb-5 last:mb-0">
             <h3 className="mb-2 text-[11px] uppercase tracking-wide text-subtle">
               {section.label}
             </h3>
             <ul className="m-0 list-none p-0">
-              {(section.docs ?? []).map((d) => (
+              {section.docs.map((d) => (
                 <li key={d.name} className="py-[3px]">
                   <button
                     type="button"
@@ -111,21 +489,35 @@ export default function Docs() {
       {open ? (
         <Card
           title={doc.data?.title ?? open}
-          right={<AsOf asOf={doc.envelope?.as_of} tookMs={doc.envelope?.took_ms} />}
+          right={
+            <div className="flex items-center gap-2">
+              <AsOf asOf={doc.envelope?.as_of} tookMs={doc.envelope?.took_ms} />
+              {alreadySource ? null : (
+                <Button onClick={() => setSource((v) => !v)}>
+                  {source ? 'Rendered' : 'Source'}
+                </Button>
+              )}
+              <Button onClick={doc.refresh}>Refresh</Button>
+            </div>
+          }
         >
           {doc.error ? <Problem>{doc.error}</Problem> : null}
           {doc.loading && !doc.data ? <Spinner what={open} /> : null}
+          {doc.data ? <ShareDoc name={doc.data.name} /> : null}
           {doc.data?.truncated ? (
             <Note>
               Showing the first {size(doc.data.text.length)} of {size(doc.data.bytes)}. The rest is
-              in the repo at docs/{doc.data.name}.
+              in the repo at {doc.data.name}.
             </Note>
           ) : null}
           {doc.data ? (
             <Scroll>
-              <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[12.5px] leading-[1.6]">
-                {doc.data.text}
-              </pre>
+              <DocBody
+                name={doc.data.name}
+                text={doc.data.text}
+                title={doc.data.title ?? doc.data.name}
+                source={source}
+              />
             </Scroll>
           ) : null}
         </Card>

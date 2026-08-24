@@ -44,6 +44,7 @@ import sys
 import urllib.request
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2]))
+from prospector.config import store_root  # noqa: E402
 from prospector.admissibility import (  # noqa: E402
     LOW_TIERS,
     host_of,
@@ -86,7 +87,7 @@ def main() -> int:
     ruled = low = demoted = 0
 
     for key in sorted(live):
-        paths = glob.glob(os.path.join("store", "dossiers", key + "*.json"))
+        paths = glob.glob(str(store_root() / "dossiers" / (key + "*.json")))
         if not paths:
             items_nodossier.add(key)
             continue

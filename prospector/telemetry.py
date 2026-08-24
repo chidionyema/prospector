@@ -84,6 +84,91 @@ def setup_logging(level: int = logging.INFO) -> logging.Logger:
 logger = setup_logging()
 
 
+# The value `prospector/scheduler/guard.py:315` matches on (`if d.get("event") == "spend"`) to
+# decide what `daily_cap_usd` enforces. Emitted by `prospector/spend.py:28` as
+# `extra={"event": "spend", "amount_usd": ...}`. Named here so the handler below and the guard
+# are visibly keyed to the same field, and so a test can pin them together. guard.py:150 records
+# that a wrong key on this trail returns a confident $0.00 and raises nothing.
+MONEY_EVENT = "spend"
+
+
+class DurableFileHandler(logging.FileHandler):
+    """A FileHandler that gets the money rows onto the disk, not just out of the process.
+
+    WHY THIS EXISTS, measured 2026-08-21. `store/prospector.jsonl` is the spend and decision
+    trail. `prospector/scheduler/guard.py` re-derives today's spend from it on every beat, so a
+    lost row is an under-count and the daily cap sits higher than it should. That file was
+    written by a plain `logging.FileHandler`. `StreamHandler.emit` calls `flush()`, which moves
+    the bytes out of Python into the kernel page cache and stops there. Nothing ever called
+    `fsync`.
+
+    That is fine until the machine goes away. The engine moved to Fly on 2026-08-18 and the
+    snapshot taken on 2026-08-21 held 1,479,555 records of which 50 were runs of NUL bytes,
+    89,366 NUL bytes in all. Records 1 through 924,844 -- 2026-06-15 to 2026-08-18 08:47 -- have
+    none. A NUL run is what a filesystem returns when the inode records a size the data never
+    reached: the size persisted, the page did not, the VM stopped, and the extent reads back as
+    zeros. Every hole sits immediately before the first line a freshly started consumer writes.
+
+    A SIGTERM handler does not fix this, and that is the trap worth naming. Shutting down
+    gracefully calls `flush()`, which is the call that was already happening. The bytes were
+    always out of the process; they were never on the disk. Only `fsync` moves them. The
+    `close()` fsync below covers clean exits and nothing else -- a Fly deploy sends SIGTERM then
+    SIGKILL, and under SIGKILL `close()` never runs. It carries none of the argument.
+
+    WHY THE MONEY ROWS ARE FSYNCED ONE BY ONE AND THE REST ARE NOT. Measured over the restored
+    ledger, 1,469,213 parsed records: rows carrying `event: "spend"` with `amount_usd` -- the
+    only leg `daily_cap_usd` enforces -- are 41,347 rows, 2.81% of the file, at a median of 1 per
+    second, p95 2, and a worst second of 44. Every other row, at median 6/s, p95 23 and one
+    second holding 546, is a decision record: worth keeping, not worth an fsync each. So a money
+    row is fsynced as it is written and everything else is coalesced to at most one fsync per
+    `interval_ms`. The busiest second in three days of ledger costs at most 44 + 5 fsyncs, and no
+    row the daily cap reads can be lost at all.
+
+    Set PROSPECTOR_LEDGER_FSYNC_MS=0 to fsync every record, or higher to widen the window for
+    the non-money rows. Money rows ignore it.
+    """
+
+    def __init__(self, *args: Any, interval_ms: Optional[int] = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if interval_ms is None:
+            import os as _os
+            raw = _os.environ.get("PROSPECTOR_LEDGER_FSYNC_MS", "200")
+            try:
+                interval_ms = max(0, int(raw))
+            except ValueError:
+                # A typo in an env var must not decide the durability of the money trail.
+                interval_ms = 200
+        self.interval_s = interval_ms / 1000.0
+        self._last_fsync = 0.0
+
+    def _fsync(self) -> None:
+        """Never raises. A handler that can raise turns one lost row into a lost run."""
+        stream = getattr(self, "stream", None)
+        if stream is None or getattr(stream, "closed", True):
+            return
+        try:
+            stream.flush()
+            import os as _os
+            _os.fsync(stream.fileno())
+        except (OSError, ValueError, AttributeError):
+            return
+        self._last_fsync = time.monotonic()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        super().emit(record)
+        # Called under Handler.lock via handle(), so this bookkeeping needs no lock of its own.
+        if getattr(record, "event", None) == MONEY_EVENT:
+            self._fsync()
+            return
+        # monotonic, not wall clock: a clock step must not disable the fsync for hours.
+        if time.monotonic() - self._last_fsync >= self.interval_s:
+            self._fsync()
+
+    def close(self) -> None:
+        self._fsync()
+        super().close()
+
+
 def route_logs_to_file(path: str, level: int = logging.INFO) -> None:
     """Send the structured JSON audit log to a file instead of stderr, leaving
     stderr free for the human progress stream (progress.py). Idempotent. Set
@@ -97,7 +182,7 @@ def route_logs_to_file(path: str, level: int = logging.INFO) -> None:
     # Drop existing stream handlers; attach a single file handler.
     for h in list(logger.handlers):
         logger.removeHandler(h)
-    handler = logging.FileHandler(path, encoding="utf-8")
+    handler = DurableFileHandler(path, encoding="utf-8")
     handler.setFormatter(CustomJsonFormatter("%(timestamp)s %(level)s %(name)s %(message)s"))
     logger.addHandler(handler)
     logger.setLevel(level)

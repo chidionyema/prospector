@@ -1,0 +1,155 @@
+{
+ "rows": [
+  {
+   "id": "broadside",
+   "name": "The Broadside",
+   "score": 93.1,
+   "parts": {
+    "layers": 1,
+    "distinct": 1,
+    "type": 1,
+    "coherent": 0.7,
+    "restraint": 1,
+    "chroma": 1,
+    "parity": 0.7899337024105065
+   },
+   "fails": 0
+  },
+  {
+   "id": "ledger",
+   "name": "The Ledger",
+   "score": 90.8,
+   "parts": {
+    "layers": 0.9145455427772087,
+    "distinct": 1,
+    "type": 0.85,
+    "coherent": 0.95,
+    "restraint": 1,
+    "chroma": 0.86,
+    "parity": 0.7210971333677266
+   },
+   "fails": 0
+  },
+  {
+   "id": "signal",
+   "name": "The Signal",
+   "score": 90.7,
+   "parts": {
+    "layers": 1,
+    "distinct": 1,
+    "type": 0.85,
+    "coherent": 0.7,
+    "restraint": 1,
+    "chroma": 1,
+    "parity": 0.7869929688492705
+   },
+   "fails": 0
+  },
+  {
+   "id": "almanac",
+   "name": "The Almanac",
+   "score": 89.7,
+   "parts": {
+    "layers": 0.917290065520977,
+    "distinct": 1,
+    "type": 0.85,
+    "coherent": 0.7999999999999999,
+    "restraint": 1,
+    "chroma": 1,
+    "parity": 0.676183521391724
+   },
+   "fails": 0
+  },
+  {
+   "id": "prospectus",
+   "name": "The Prospectus",
+   "score": 88.8,
+   "parts": {
+    "layers": 1,
+    "distinct": 0.85,
+    "type": 1,
+    "coherent": 0.7999999999999999,
+    "restraint": 1,
+    "chroma": 0.72,
+    "parity": 0.7780048894889342
+   },
+   "fails": 0
+  },
+  {
+   "id": "quiet",
+   "name": "The Quiet",
+   "score": 88.1,
+   "parts": {
+    "layers": 1,
+    "distinct": 1,
+    "type": 1,
+    "coherent": 0.7999999999999999,
+    "restraint": 1,
+    "chroma": 0.62,
+    "parity": 0.5837379502900725
+   },
+   "fails": 0
+  },
+  {
+   "id": "instrument",
+   "name": "The Instrument",
+   "score": 86.2,
+   "parts": {
+    "layers": 0.9066700296859445,
+    "distinct": 1,
+    "type": 0.85,
+    "coherent": 0.7,
+    "restraint": 1,
+    "chroma": 0.86,
+    "parity": 0.6741051611023704
+   },
+   "fails": 0
+  },
+  {
+   "id": "workbench",
+   "name": "The Workbench",
+   "score": 86.1,
+   "parts": {
+    "layers": 0.9838255591023617,
+    "distinct": 1,
+    "type": 0.85,
+    "coherent": 0.7999999999999999,
+    "restraint": 1,
+    "chroma": 0.62,
+    "parity": 0.6571727922477131
+   },
+   "fails": 0
+  },
+  {
+   "id": "dossier",
+   "name": "The Dossier",
+   "score": 83.8,
+   "parts": {
+    "layers": 0.688186688964597,
+    "distinct": 1,
+    "type": 0.85,
+    "coherent": 0.7999999999999999,
+    "restraint": 1,
+    "chroma": 0.8,
+    "parity": 0.7440352625781277
+   },
+   "fails": 0
+  },
+  {
+   "id": "fieldguide",
+   "name": "The Field Guide",
+   "score": 82.7,
+   "parts": {
+    "layers": 0.9875626924022547,
+    "distinct": 0.65,
+    "type": 0.85,
+    "coherent": 0.7,
+    "restraint": 1,
+    "chroma": 1,
+    "parity": 0.5700806464868938
+   },
+   "fails": 0
+  }
+ ],
+ "rolledMedian": 79.2
+}

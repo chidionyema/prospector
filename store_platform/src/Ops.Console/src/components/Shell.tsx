@@ -21,9 +21,45 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { GROUPS, activeScreen } from '@/lib/nav';
+import { useOps } from '@/lib/useOps';
 
 const TAB_BASE =
-  'tap inline-flex items-center rounded-sm border px-3 text-[13px] font-[520] transition-colors';
+  'tap inline-flex items-center gap-1.5 rounded-sm border px-3 text-[13px] font-[520] transition-colors';
+
+type Attention = {
+  groups: { group: string; state: string; count: number; findings: { what: string }[] }[];
+  headline: string;
+  worst: string;
+};
+
+/**
+ * A dot on the group that has a problem.
+ *
+ * Before this, "is anything wrong" cost up to seven navigations: every screen derived its own
+ * trouble in its own markup and nothing above a screen carried a signal. The dot is the whole
+ * feature — it says WHICH group, and the group's own screen still says what.
+ *
+ * It renders for `bad` and `warn` only. `ok` and `unmeasured` both render nothing, and the
+ * difference between them is deliberately not a dot: an absent dot means "no fault found here",
+ * and if it could also mean "checked and healthy" versus "never asked" it would stop meaning
+ * anything at a glance. Which groups went unchecked is a sentence on the Now page, not a symbol.
+ *
+ * Fixed width, so a dot arriving on a poll cannot reflow the nav under the founder's thumb.
+ */
+function Dot({ a }: { a?: { state: string; count: number; findings: { what: string }[] } }) {
+  const on = a && (a.state === 'bad' || a.state === 'warn');
+  if (!on) return <span aria-hidden className="w-1.5" />;
+  const faults = a.findings.filter((f) => f.what).slice(0, 4).map((f) => f.what);
+  return (
+    <span
+      title={faults.join('\n')}
+      aria-label={`${a.count} need${a.count === 1 ? 's' : ''} attention`}
+      className={`h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-bg ${
+        a.state === 'bad' ? 'bg-bad' : 'bg-warn'
+      }`}
+    />
+  );
+}
 const TAB_ON = 'border-action bg-action text-on-action';
 const TAB_OFF = 'border-border bg-surface text-muted hover:bg-surface3';
 
@@ -37,6 +73,11 @@ export default function Shell({
   intro?: ReactNode;
 }) {
   const router = useRouter();
+  // 120s, not the 30s every panel uses. This is the ONE read that happens on every screen, so its
+  // cost is paid by all of them; a badge that is two minutes stale still answers "which group"
+  // faster than opening seven screens, and the screen itself is always current.
+  const { data: att } = useOps<Attention>('attention', {}, { pollMs: 120_000 });
+  const byGroup = new Map((att?.groups ?? []).map((g) => [g.group, g]));
   const here = activeScreen(router.pathname);
   const openGroup = here?.group ?? GROUPS[0];
   const showScreens = openGroup.screens.length > 1;
@@ -69,6 +110,7 @@ export default function Shell({
                     className={`${TAB_BASE} ${on ? TAB_ON : TAB_OFF}`}
                   >
                     {g.label}
+                    <Dot a={byGroup.get(g.label)} />
                   </Link>
                 </li>
               );

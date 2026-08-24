@@ -144,6 +144,21 @@ _TRANSIENT_MARKERS = (
 # Any request id, byte count or token count containing those three digits bought an hour-long
 # moat blackout. `\b429\b` matches "HTTP 429 Too Many Requests" and none of the three above.
 _HTTP_TRANSIENT_RE = re.compile(r"\b(429|503|529)\b")
+# A PER-MINUTE budget error, which several providers report with an HTTP code that means
+# something else entirely. Measured against Groq on 2026-08-21, on a six-word prompt:
+#     HTTP Error 413: Payload Too Large
+#     "Request too large for model `openai/gpt-oss-120b` ... service tier `on_demand` on
+#      tokens per minute (TPM): Limit 8000, Requested 8267"
+# Nothing above matched it. Not \b429\b, not "rate limit" (the words are not in the message),
+# not the allowance regex (which wants "<period> limit", and this says "per minute"). So it
+# classified NOT_EXHAUSTION — the dangerous half described further up this file: a failure the
+# classifier misses never becomes a ProviderExhaustedError, so verify.py takes its generic
+# exception path and a rate limit is recorded as an `unverifiable` CHECK against the candidate.
+# 413 is deliberately NOT added to _HTTP_TRANSIENT_RE: 413 really can mean an oversized body,
+# and benching a brain for a minute over a genuine payload bug would hide it. What is matched
+# is the RATE vocabulary itself, whatever code carries it.
+_PER_MINUTE_RE = re.compile(
+    r"\btpm\b|\brpm\b|\btokens per minute\b|\brequests per minute\b")
 _HTTP_PERMANENT_RE = re.compile(r"\b402\b")
 # "billing" was also a bare substring, so "billing address invalid" classified as exhaustion.
 # It only means "out of allowance" next to a word that says so.
@@ -192,7 +207,8 @@ def classify_exhaustion(text: str) -> str:
             or _BILLING_RE.search(t) or _ALLOWANCE_LIMIT_RE.search(t)
             or _USED_UP_RE.search(t)):
         return PERMANENT
-    if any(m in t for m in _TRANSIENT_MARKERS) or _HTTP_TRANSIENT_RE.search(t):
+    if (any(m in t for m in _TRANSIENT_MARKERS) or _HTTP_TRANSIENT_RE.search(t)
+            or _PER_MINUTE_RE.search(t)):
         return TRANSIENT
     return NOT_EXHAUSTION
 

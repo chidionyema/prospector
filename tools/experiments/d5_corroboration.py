@@ -33,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 # ONE definition of "publisher", shared with the gate itself — a measurement that classifies
 # domains differently from the code it prices is not a measurement of that code.
 from prospector.admissibility import host_of, registrable, tier  # noqa: E402
+from prospector.config import store_root  # noqa: E402
 
 
 def _dossier_date(js: dict, path: str) -> str:
@@ -50,7 +51,7 @@ def main() -> int:
                     help="corroboration floor to price (default 2)")
     a = ap.parse_args()
 
-    paths = sorted(glob.glob("store/dossiers/*.json"))
+    paths = sorted(glob.glob(str(store_root() / "dossiers" / "*.json")))
     if not paths:
         print("no dossiers found (run from the repo root)")
         return 1

@@ -130,6 +130,15 @@ def _calc_confidence(sources: list[Source], citations: list[str],
     # a check whose retrieval was thin. `max` never scores a check LOWER than the old formula did,
     # so this cannot make a previously-grounded check ungrounded.
     CITATION_TARGET = 3
+    # DEDUPE HERE TOO, not only in run_check's filter (2026-08-21). The arithmetic below is
+    # what actually inflates, so the guarantee belongs where the arithmetic is: every other
+    # caller — and every future one — gets it, and the function is correct read on its own.
+    # `cited` must be a count of DISTINCT passages: with repeats, `cited / total` was not a
+    # fraction and `min(1, cited / CITATION_TARGET)` counted one passage three times.
+    # Measured before this line: one source, one passage, cited 3x scored 1.00 where citing
+    # it once scored 0.63, and the internal citation term reached 3.0 against a documented
+    # 0.30 cap, hidden by the final min(1.0, ...).
+    citations = list(dict.fromkeys(citations))
     total = len(sources)
     cited = len(citations)
     fraction = (cited / total) if total > 0 else 0.0
@@ -591,6 +600,16 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     citations = [str(c) for c in (data.get("citations") or [])]
     valid_ids = {s.source_id for s in sources}
     citations = [c for c in citations if c in valid_ids]
+    # DEDUPE, order-preserving (2026-08-21). The filter above drops hallucinated ids, so a
+    # citation list could only be inflated by REAL ids repeated — and `_calc_confidence`
+    # counted every repeat. Measured before this line: one source, one passage, cited 3x
+    # scored confidence 1.00 where citing it once scored 0.63; the internal citation term
+    # reached 3.0, ten times its documented 0.30 cap, hidden only by the final min(1.0, ...).
+    # `prompts/verdict.md` says "cite the source_ids you relied on" and does not forbid
+    # repeats, so this is reachable on any well-behaved reply. Confidence is the input to
+    # confidence_floor, min_supported_confidence and the KILL branch of dense_reward, so
+    # the inflation reached every gate that consumes evidence quality.
+    citations = list(dict.fromkeys(citations))
     # source-or-die: 'supported' with no valid citation is not grounded -> unverifiable
     if verdict == Verdict.SUPPORTED and not citations:
         logger.info(f"Downgrading supported check {check_name} to unverifiable (no citations)")
@@ -711,6 +730,36 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
         # NOT `[]`. A trace that raised has not certified anything; leaving None means the pack
         # reads `untraced` at the listing fence rather than clean, which is the honest answer.
         _untraceable = None
+    # AN UNVERIFIABLE RULING CARRIES NO GROUNDING CONFIDENCE (2026-08-21).
+    # `_calc_confidence` is `citation_score + diversity_score + relevance_score` and has no
+    # verdict term (`:91-199`), so it measures how much evidence RETRIEVAL returned, not how
+    # well the claim was established. For `supported`/`refuted` those track together. For
+    # `unverifiable` they invert: a check that fetched four diverse, on-topic passages and
+    # established nothing outscored one that fetched two and proved its claim.
+    #
+    # MEASURED over 14,006 checks in 2,806 dossiers (`tools/experiments/e19_confidence_gap.py`):
+    #   unverifiable  n=9,965  mean 0.5627  MEDIAN 0.700
+    #   supported     n=3,079  mean 0.5695  median 0.600
+    #   refuted       n=662    mean 0.5418  median 0.580
+    # 7,304 of 9,965 unverifiable checks (73.3%) scored >= 0.5, and the median unverifiable
+    # check was MORE confident than the median supported one. `confidence` did not separate
+    # ruled from unruled at all (gap +0.0019), while `kill_filter.py:5` documents it as
+    # "grounding confidence" and gates on it. W0.2's standing receipt measured the same
+    # inversion at -0.0405 over a narrower window and it was never acted on.
+    #
+    # 0.0, not a smaller number: it is what the file's OTHER two unverifiable exits already
+    # write (`:857`, `:898`), so every unverifiable in the store now carries one value
+    # instead of the retrieval-failure paths saying 0.0 and the ruled path saying 0.70.
+    #
+    # NOTHING IS LOST. `_calc_confidence` is a pure function of `(sources, citations,
+    # check_name)`, and `CheckResult.to_dict` ships both `sources` and `citations`, so the
+    # retrieval measure stays recomputable from any stored record.
+    #
+    # Placed at the single computed exit rather than beside `_calc_confidence`, because the
+    # verdict is still mutated after that line (source-or-die, three admissibility gates) and
+    # a guard at the exit cannot be bypassed by a path added later.
+    if verdict == Verdict.UNVERIFIABLE:
+        confidence = 0.0
     return CheckResult(
         check_name=check_name, verdict=verdict,
         confidence=confidence,
@@ -983,7 +1032,12 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
         raise
     except Exception as e:
         logger.error(f"Adversarial call failed: {e}")
-        return AdversarialResult(kill_case="adversarial call failed", decisive=False)
+        # retrieval_failed marks this as a FAIL-SAFE, not a ruling. Without it the caller
+        # read `decisive=False` as "the case against it was not decisive" and published a
+        # candidate whose final gate never ran. Same doctrine as `run_check` above: an
+        # exception is never evidence, and a failed call DEFERS.
+        return AdversarialResult(kill_case="adversarial call failed", decisive=False,
+                                 retrieval_failed=True)
 
 
 def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
@@ -1257,6 +1311,19 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
                            extra={"candidate_id": cand.candidate_id, "provider_exhausted": str(e)[:200]})
             return checks, None, first_failing_gate or "moat_exhausted"
         
+        if getattr(adv, "retrieval_failed", False):
+            # The adversarial pass RAISED. Deliberately a distinct defer reason rather than
+            # "moat_exhausted" (the moat may be perfectly healthy — this covers a parse
+            # error or a crashed adapter too) and rather than DEFER_GATE (nothing failed to
+            # retrieve). `first_failing_gate or` preserves a real evidentiary kill that
+            # already fired upstream: a broken adversarial pass must not rescue a candidate
+            # a hard gate has already killed.
+            logger.warning(f"Adversarial pass did not run for {cand.candidate_id!r} "
+                           f"({adv.kill_case}); deferring rather than publishing an "
+                           f"unchallenged candidate",
+                           extra={"candidate_id": cand.candidate_id})
+            return checks, adv, first_failing_gate or "adversarial_unrun"
+
         if cfg.adversarial_decisive_kills and adv.decisive:
             if first_failing_gate is None:
                 first_failing_gate = "adversarial_decisive"

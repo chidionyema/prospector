@@ -108,9 +108,21 @@ on:
 #
 # Main is not a branch whose result can be superseded. Every commit on it is what production and
 # every pull request is graded against, so every commit on it gets graded.
+#
+# A pull request's run is not superseded either, and that is the change here. This used to read
+# `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`, so any push to a PR branch killed
+# that branch's in-flight run. `automerge.yml` merges a PR the moment its CI run CONCLUDES green,
+# and a cancelled run concludes nothing, so a branch pushed more often than the ~25 minute python
+# job takes could never merge. Measured 2026-08-19 over the last 60 runs: 7 success, 16 failure,
+# 16 CANCELLED, with 22 pull requests open and nothing landing. Several agents share this repo and
+# cannot see each other, so each found "CI is red", pushed a fix, and cancelled the run that was
+# about to merge someone else's fix.
+#
+# The cost of keeping runs alive is runner capacity, not money: the runners are self-hosted on
+# Fly and their minutes are free, and `ci-autoscale.yml` adds machines when the queue grows.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: false
 
 env:
   PYTHON_VERSION: "3.14"
@@ -155,7 +167,32 @@ jobs:
       dotnet: ${{ steps.filter.outputs.dotnet }}
       web: ${{ steps.filter.outputs.web }}
       console: ${{ steps.filter.outputs.console }}
+      rust: ${{ steps.filter.outputs.rust }}
     steps:
+      # ─── THE "MAIN COMES FIRST" GATE WAS REMOVED HERE ON 2026-08-20 ───────────────
+      #
+      # It refused to build a pull request while main's CI was queued, in progress, or last
+      # red, and it recorded that refusal as a FAILED check on the pull request.
+      #
+      # It could not do what it claimed. It was a check, not a reservation: it cannot hand main
+      # a runner. It can only fail every other branch while main waits for one — and main was
+      # waiting BECAUSE pull request runs held the runners.
+      #
+      # Measured 2026-08-20, 12 of 12 runners busy, main's run 32327977452 queued since 03:22:
+      # PR #517 was failed in 18 seconds with `main's CI is QUEUED at 0fa8f9a6`, having
+      # compiled nothing. Two of its jobs read `changes, ci-ok` and the rest read `skipping`.
+      #
+      # Then it fed itself. A refusal recorded as red reads like a broken branch, so somebody
+      # re-runs it, which queues another build, which takes another runner, which starves main
+      # further. Four re-runs of #500 and #495 on 2026-08-20 all failed this way without
+      # compiling a line.
+      #
+      # A refusal is not a test result. Main stays protected by main-admission-guard, which
+      # reverts a merge with no green run at its head — a rule that acts on main itself instead
+      # of on every other branch.
+      #
+      # The GitHub Actions queue already orders the work. Nothing here needs to help it.
+
       # WHY THE BOX IS SLOW, PRINTED BEFORE ANYTHING ELSE RUNS.
       #
       # On 2026-08-18 four CI jobs sat for an hour. `npm test` was at 0.0% CPU for 72 seconds,
@@ -216,10 +253,15 @@ jobs:
           # ops-console job reported `skipped`. Nothing typechecked the console, and the run was
           # green. That is the same defect the Ops.Console rule at the bottom of this block was
           # added to fix in the first place, arriving by a different door.
-          py=false; dn=false; wb=false; cn=false
+          py=false; dn=false; wb=false; cn=false; rs=false
 
-          # Python: engine sources, tests, deps, and the config/prompt files the engine reads.
-          if match '\.py$|^requirements|^pytest\.ini$|^config\.yaml$|^prompts/|^tests/|^scripts/'; then py=true; fi
+          # Python: engine sources, tests, deps, and the config/prompt files the engine reads,
+          # plus ops/config/ -- which steers the ESTATE rather than the engine, and was missed
+          # for exactly that reason. PR #645 changed ops/config/ci_capacity.yaml and this filter
+          # reported `python skipping`, so tests/unit/test_ci_capacity.py, the test written to
+          # grade that very file, did not run on the pull request that changed it. Only the
+          # unfiltered `guard` job caught it, and only after the fact.
+          if match '\.py$|^requirements|^pytest\.ini$|^config\.yaml$|^prompts/|^tests/|^scripts/|^ops/config/'; then py=true; fi
 
           if match '^store_platform/src/Store\.(Api|Catalog|Tests)/|\.cs$|\.csproj$|\.sln$'; then dn=true; fi
 
@@ -230,6 +272,12 @@ jobs:
           # console reported `nextjs skipping` and shipped with nothing typechecked. PR #289
           # changed `Ops.Console/src/pages/shelf.tsx` and CI produced no console result at all.
           if match '^store_platform/src/Ops\.Console/'; then cn=true; fi
+
+          # The Rust engine. Its own tree, its own toolchain, and no Python in it — so the
+          # python filter above cannot see it and would report `rust skipping` on a diff that
+          # is entirely Rust. That is the same hole the Ops.Console rule above was added to
+          # close, and it is worth stating once per lane rather than learning once per lane.
+          if match '^engine-rs/'; then rs=true; fi
 
           # A change to the pipeline itself used to run EVERY lane. The reasoning was that a
           # broken workflow gates itself out of the jobs that would catch it, and that part is
@@ -251,6 +299,7 @@ jobs:
             if names 'dotnet|Store\.(Api|Catalog|Tests)|\.cs\b|csproj'; then dn=true; fi
             if names 'nextjs|Store\.Web'; then wb=true; fi
             if names 'ops-console|Ops\.Console'; then cn=true; fi
+            if names 'rust|engine-rs'; then rs=true; fi
           fi
 
           {
@@ -258,6 +307,7 @@ jobs:
             echo "dotnet=$dn"
             echo "web=$wb"
             echo "console=$cn"
+            echo "rust=$rs"
           } >> "$GITHUB_OUTPUT"
 
       - name: What will run
@@ -266,6 +316,7 @@ jobs:
           echo "dotnet=${{ steps.filter.outputs.dotnet }}"
           echo "web=${{ steps.filter.outputs.web }}"
           echo "console=${{ steps.filter.outputs.console }}"
+          echo "rust=${{ steps.filter.outputs.rust }}"
 
   # ──────────────────────────────────────────────────────────────────
   # Guard — protected files (money rail, moat, identity) cannot be
@@ -305,6 +356,24 @@ jobs:
         # script grades everything, so a shallow clone cannot quietly switch the gate off.
         run: python3 scripts/doc_lint.py --check --against "origin/${{ github.base_ref }}"
 
+      # P5.3. The SAME reasoning as the step above, for the link checker, which was reachable
+      # only from `tests/unit/test_doc_lint_links.py` -- inside the path-filtered `python` lane.
+      # So the one change that can break a link, a docs-only pull request, was the one change
+      # that could not be graded for it. Measured 2026-08-21: PR #558 was green on every check,
+      # merged, turned `main` red on
+      #   docs/REQUIREMENTS.md:56: missing_link_target: ../../.claude/research/PAGING-...md
+      # and was reverted by main-green-guard in a4c39798. This step would have failed the pull
+      # request instead.
+      #
+      # IT IS REPO-WIDE AND NOT `--against`-SCOPED, deliberately, and that is safe here in a way
+      # it is not for the ratchet above: `--links` measures 0 missing on `main` (553 ok, 151
+      # external, 2026-08-21), so there is no inherited backlog for it to fail a stranger's pull
+      # request over. It also cannot acquire one, because this step is what stops a broken link
+      # reaching `main` in the first place. If that ever stops being true, scope it -- do not
+      # delete it.
+      - name: Every link in the docs points at something that exists
+        run: python3 scripts/doc_lint.py --links
+
       # CI shares a 12-CPU Mac with the production daemons. `ops/config/ci_capacity.yaml` declares
       # how much of it CI may take; this fails when a new job, a wider pytest run or a renamed job
       # stops matching that. Offline, no virtualenv, no GitHub token. `--live` also checks the
@@ -317,6 +386,63 @@ jobs:
           CI_HEAVY_RUNS_ON: ${{ vars.CI_HEAVY_RUNS_ON }}
           CI_LIGHT_RUNS_ON: ${{ vars.CI_LIGHT_RUNS_ON }}
         run: python3 scripts/ci_capacity.py
+
+      # Our runners are a container we build, not GitHub's ubuntu-latest, and it installs
+      # seventeen packages on purpose. A step written against GitHub's image therefore fails
+      # here as a MISSING COMMAND -- exit 127, and usually with no message, because the step
+      # that needed it had already redirected stderr. It has happened twice: `python3` after a
+      # successful web deploy, and `openssh-client` on 2026-08-19, which killed the whole
+      # hermes-config gate in seventeen milliseconds with no output at all.
+      #
+      # RUNNER_ENVIRONMENT is passed through so the check knows whose PATH it is grading. On a
+      # GitHub-hosted runner it grades the Dockerfile only and says so; passing on ubuntu-latest
+      # would prove nothing about the image we ship.
+      - name: The runner carries the tools our workflows run
+        run: python3 scripts/ci_runner_tools.py
+
+      # THE VENDOR RATCHET. The founder asked on 2026-08-24 to eradicate Fly.io. Measured that
+      # day: 586 references across 130 executable files, which is not one commit's worth of
+      # deletion and cannot be, because production takes money through Fly right now and its
+      # deploy path is inside that set.
+      #
+      # So the count only ever goes down. This step fails a pull request that ADDS a reference.
+      # It says nothing about the ones already there, which is the whole point: it stops the
+      # hole being dug deeper while the filling in happens at a safe pace.
+      #
+      # It is not a Fly gate. scripts/vendor_ratchet.py takes the vendor list from a table, so
+      # the next exit reuses it instead of someone writing a second copy (LAW 34).
+      - name: No new dependency on a vendor we are leaving
+        run: python3 scripts/vendor_ratchet.py --check
+      # A workflow GitHub cannot START fails with ZERO jobs, no log, no annotation and no red
+      # check anywhere. It can therefore be dead for its entire life and nothing reports it.
+      # Measured 2026-08-19: `.github/workflows/ci-autoscale.yml` had 30 runs, 30 failures and
+      # `total_count: 0` jobs on every single one, because `workflow_job` is a WEBHOOK event and
+      # not a workflow trigger. The CI runner pool had never once been scaled automatically, and
+      # the only tell was a machine stopped in the middle of PR #425's test suite.
+      #
+      # actionlint names that defect in one line:
+      #   ci-autoscale.yml:15:3: unknown Webhook event "workflow_job"  [events]
+      #
+      # IT RUNS HERE for the same reasons the doc-lint step above does: no path filter (a pull
+      # request that changes only a workflow must still be graded), no virtualenv, and no extra
+      # runner slot. Shellcheck is switched off -- ci.yml and deploy-web.yml carry info-level
+      # SC2086 that is not worth walling every open pull request over. The version is pinned and
+      # the download is checksummed, so a bad or moved release fails loudly instead of silently
+      # skipping the gate.
+      - name: Workflows GitHub can actually start
+        run: |
+          set -euo pipefail
+          ver=1.7.12
+          case "$(uname -m)" in
+            x86_64|amd64) arch=amd64; sum=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8 ;;
+            aarch64|arm64) arch=arm64; sum=325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6 ;;
+            *) echo "unsupported arch $(uname -m)"; exit 1 ;;
+          esac
+          tgz="actionlint_${ver}_linux_${arch}.tar.gz"
+          curl -sSfL -o "$tgz" "https://github.com/rhysd/actionlint/releases/download/v${ver}/${tgz}"
+          echo "${sum}  ${tgz}" | sha256sum -c -
+          tar xzf "$tgz" actionlint
+          ./actionlint -shellcheck= -color
 
   # ──────────────────────────────────────────────────────────────────
   # Python — full test suite + golden-set hard gate
@@ -348,10 +474,50 @@ jobs:
     needs: changes
     if: needs.changes.outputs.python == 'true'
     runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
-    # 40, not the 25 a shard needed. One job now runs all 352 test files instead of ~117, and
-    # a timeout is the one failure that looks exactly like the cancellations this change is
-    # fixing. Reference points: 445s for the whole suite at 12 workers on a quiet box, 1281s
-    # on a merged tree while four CI jobs shared the machine (both in CLAUDE.md).
+    # 40 minutes, and the founder ruled on why it is not 60: "thats not the fix". Raising the
+    # ceiling hides a throttled runner instead of un-throttling it. The cause is measured below
+    # so that the next session reading a cancelled `python` job does not re-diagnose it, and
+    # the actual fix is recycling the runner machines.
+    #
+    # MEASURED 2026-08-21 on the real fleet. A CI runner is a `shared-cpu-4x` Fly machine, and
+    # its share of the host collapses as the machine's uptime grows. Two 20-second samples of
+    # /proc/stat, taken in the same minute on two machines of the identical size in lhr:
+    #
+    #   7819643f1e1038, up 1d 9h, running a real pytest job:
+    #       user+sys 540 ticks, STEAL 7341, of 8182 total  ->  6.6% of its own CPU
+    #   82d1de4f022768, up 1h 30m, under an identical 4-way full-tilt burn:
+    #       user+sys 7932 ticks, STEAL 23,  of 8002 total  ->  99.1% of its own CPU
+    #
+    # 15x. The same ratio shows up in the suite itself, same command, same 7093 tests:
+    #
+    #   job 96674219824, runner-8576715b121d68 (up ~2m):  7093 passed in  155.99s
+    #   job 96658139188, runner-48e2363f565548 (up 1d9h): 7093 passed in 2126.48s
+    #
+    # Steal over lifetime busy time: 0.4% and 0.7% on the two machines rebooted at 05:04,
+    # against 281%, 365% and 433% on the three up since 2026-08-19. The machine waits three to
+    # four ticks for the host for every tick it executes.
+    #
+    # It is NOT a slow test, NOT the branch (the same sha ran 2256s and 1241s on two machines),
+    # NOT the fleet's own concurrency (the 04:56 job had the same neighbours as the 03:38 one),
+    # and NOT the two background security scans this step forks, though those do oversubscribe
+    # a 4-core box: `pytest -n 4` plus bandit plus pip-audit, with ci_capacity.yaml declaring
+    # reserved_cpus 0 and job_cpus.python 4. That is worth its own fix and it is worth ~1.5x,
+    # not 15x.
+    #
+    # The tell in a slow log is a 607-SECOND gap between `NNN test files` and xdist printing
+    # `bringing up nodes...`. Ten minutes to fork four processes is CPU starvation.
+    #
+    # What it did on 2026-08-21: every open pull request was red on `python` and not one had a
+    # failing test. Every step inside reported success; the JOB crossed 40:00 and GitHub marked
+    # it `cancelled`, which the checks API reports identically to a failure. The only command
+    # that tells the two apart, because step conclusions are not in the pull request UI:
+    #   gh api repos/OWNER/REPO/actions/jobs/<job_id> \
+    #     --jq '.conclusion, (.steps[] | "\(.number) \(.conclusion) \(.name)")'
+    # A cancelled job whose every step is `success`, with its last steps missing, is this.
+    #
+    # A raised ceiling would buy headroom over a THROTTLED run and stop the false red, without
+    # making CI any faster and without touching the cause. The ceiling stays at 40; a runner
+    # young enough to get its own CPU finishes the same 7093 tests in 156 seconds.
     timeout-minutes: 40
 
     steps:
@@ -451,6 +617,34 @@ jobs:
           echo "VIRTUAL_ENV=$VENV" >> "$GITHUB_ENV"
           "$VENV/bin/python" --version
 
+      # NODE IS PART OF THE PYTHON LANE, and that is not a mistake in the lane boundary.
+      #
+      # Two test modules prove a workflow by EXECUTING it: `test_main_admission_guard.py` and
+      # `test_pr_keeper.py` pull the `github-script` body out of the YAML and run it in node
+      # against a stubbed Octokit. Between them that is 67 tests, and they are the only
+      # executable proof that main's protection decides correctly — everything else about those
+      # two workflows is a text assertion.
+      #
+      # They were not running. `deploy/runner/Dockerfile` installs no language runtimes on
+      # purpose ("every toolchain arrives through an action that fetches its own copy"), this
+      # job never called setup-node, and both modules gated themselves on
+      # `shutil.which("node")`. So on every run since the fleet moved to our own image, 67
+      # tests SKIPPED and the job stayed green. Measured on this tree with node off PATH:
+      # `67 skipped in 10.92s`.
+      #
+      # A missing binary usually fails loudly, at exit 127. Turned into a skip by a test, it
+      # fails as nothing at all, and the greener the board looks the less it is measuring.
+      # `tests/conftest.py` now refuses that shape outright — under CI a missing tool is an
+      # ERROR, never a skip — so if this step is ever deleted the suite goes red instead of
+      # quiet. This step is what keeps it green.
+      #
+      # No `cache:`. setup-node's cache keys off a lockfile and stores node_modules; nothing in
+      # this job installs a package. The download is ~30s on a cold runner and is the whole cost.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Test suite
         # No -x. It stops at the first failure, so a run reports one problem and hides the
         # rest behind it: on 2026-07-31 four independent environment faults (a hardcoded
@@ -477,6 +671,33 @@ jobs:
         # ops/config/ci_capacity.yaml checks, and what nothing checked while CI moved hosts.
         run: |
           set -eu
+          # The two security scans used to run AFTER this step, serially: Bandit 66s and the
+          # dependency advisory scan 41s, measured on run 32327682394 in a 597s job. Neither
+          # reads anything pytest writes and neither writes anything pytest reads — Bandit
+          # reads the checkout through its own uvx environment, and the advisory scan only
+          # freezes the shared venv — so they start here and are graded in their own step
+          # after the golden gate. They cost the suite some CPU on a 4-vCPU runner; they no
+          # longer cost it 107 seconds of wall clock.
+          SCAN_PIDS=""
+          for scan in bandit dep_advisory; do
+            rm -f "/tmp/scan-$scan.rc" "/tmp/scan-$scan.log"
+            # `set +e` inside the subshell is load-bearing. This block inherits the step's
+            # `set -e`, so a scan that exits non-zero killed the subshell BEFORE it could
+            # write its `.rc` file — and the grading step then reported "recorded no exit
+            # code, so it did not finish" for a scan that finished and found something. It
+            # failed the job either way, so nothing was let through; it just named the wrong
+            # reason, on the one line anyone reads. Measured on run 32345786916.
+            ( set +e
+              bash ".github/scripts/${scan}_scan.sh" > "/tmp/scan-$scan.log" 2>&1
+              echo $? > "/tmp/scan-$scan.rc" ) &
+            SCAN_PIDS="$SCAN_PIDS $!"
+            echo "started $scan in the background (pid $!)"
+          done
+          # A scan must never outlive the step that started it. If pytest fails, `set -eu`
+          # leaves through this trap and the background jobs die with it, so the run reports
+          # the test failure rather than a scan orphaned into the next job.
+          trap 'for pid in $SCAN_PIDS; do kill "$pid" 2>/dev/null || true; done' EXIT
+
           files=$(git ls-files 'tests' \
                   | grep -E '(^|/)test_[^/]+\.py$' \
                   | grep -v -e 'tests/test_ui_theme\.py$' -e 'tests/test_golden_set\.py$')
@@ -485,7 +706,18 @@ jobs:
           if [ "$count" -eq 0 ]; then
             echo "::error::collected no test files — the pattern is wrong"; exit 1
           fi
+          # `$files` is a newline-separated list and MUST split into separate arguments
+          # here. Quoting it hands pytest one path containing newlines, which collects
+          # nothing. The `count` check three lines up is what makes the split safe.
+          # shellcheck disable=SC2086
           python -m pytest -q $files -n 4 --tb=short -p no:warnings
+
+          # The suite passed, so the scans are allowed to finish. Clearing the trap first is
+          # what makes `wait` reachable: with it still armed, the shell's normal exit would
+          # kill the jobs it is about to wait on.
+          trap - EXIT
+          for pid in $SCAN_PIDS; do wait "$pid" || true; done
+          echo "security scans finished; graded below"
 
       # ── Hard gate ──────────────────────────────────────────────
       # Block the pipeline if the golden set does not achieve 100 %
@@ -494,6 +726,59 @@ jobs:
       #
       - name: Golden-set regression gate ⛔
         run: python -m pytest tests/test_golden_set.py -v --tb=short
+      # ────────────────────────────────────────────────────────────
+
+      # ── Security: the code ─────────────────────────────────────
+      # Bandit, gated on HIGH severity only, and that threshold is a measurement rather than a
+      # preference. On origin/main at da0d9589 the full scan reported 361 findings. Fourteen were
+      # HIGH: thirteen were sha1 or md5 hashing content to make a cache key, a dedup key or an
+      # ETag, and one was real — `scripts/ops_state.py` ran `whois … | grep …` through a shell.
+      #
+      # The thirteen are fixed by saying so in code, `usedforsecurity=False`, not by switching
+      # the check off. The digest is byte-identical either way; the flag is the language's own
+      # way to state that a hash is an identifier and not a security decision. That is what
+      # leaves the rule armed: a NEW sha1 that really does authenticate something still fails
+      # here. Adding B324 to a skip list would have disarmed it permanently.
+      #
+      # The other 347 are MEDIUM and LOW and are printed, not enforced. The largest groups are
+      # B603/B404/B607 (this repo shells out to git, fly and gh by design, 189 of them) and
+      # B310 urllib (39). Walling the gate on those would mean 347 suppression comments on the
+      # first day, which teaches everyone to write `# nosec` and stops anyone reading it.
+      #
+      # --python matters and is not tidiness. uvx builds its own environment, and by default that
+      # was Python 3.11.15 while this repo runs 3.14.6. On 3.11 bandit could not parse
+      # tools/experiments/g_generation_ab.py and skipped it, reporting "syntax error while parsing
+      # AST from file" into a JSON field nothing read. A skipped file is an unscanned file, so the
+      # step now pins the interpreter AND fails if bandit's `errors` array is non-empty.
+      # ── Security: the code, and the dependencies ───────────────
+      # Both scans were STARTED by the Test suite step above and have been running alongside
+      # it. This step is where they are graded, and it is written so it cannot fail open: a
+      # scan that died without writing its exit code fails the job exactly like a scan that
+      # found something. `.rc` is deleted before each scan starts, so a stale file from an
+      # earlier job on the same runner cannot stand in for a scan that never ran.
+      #
+      # The scan bodies, and the reasoning behind each threshold, are in
+      # `.github/scripts/bandit_scan.sh` and `.github/scripts/dep_advisory_scan.sh`.
+      - name: Security scans
+        run: |
+          set -eu
+          failed=0
+          for scan in bandit dep_advisory; do
+            echo "── $scan ──────────────────────────────────────────────"
+            [ -f "/tmp/scan-$scan.log" ] && cat "/tmp/scan-$scan.log"
+            if [ ! -f "/tmp/scan-$scan.rc" ]; then
+              echo "::error::$scan recorded no exit code, so it did not finish"
+              failed=1
+              continue
+            fi
+            rc=$(cat "/tmp/scan-$scan.rc")
+            if [ "$rc" -ne 0 ]; then
+              echo "::error::$scan failed with exit $rc"
+              failed=1
+            fi
+          done
+          [ "$failed" -eq 0 ] || exit 1
+          echo "both security scans passed"
       # ────────────────────────────────────────────────────────────
 
   # ──────────────────────────────────────────────────────────────────
@@ -642,6 +927,44 @@ jobs:
       # The test project lives under store_platform/. These paths previously omitted that
       # prefix, so every run failed with MSB1009 (project file does not exist) and the job
       # had never actually executed a test.
+      # Before restore, because after restore is too late to be told.
+      #
+      # An XML comment may not contain two hyphens in a row. On 2026-08-19 a comment in
+      # Directory.Packages.props quoted a command line with long flags, the file stopped
+      # parsing, and MSBuild dropped it. That turns ManagePackageVersionsCentrally off, and a
+      # PackageReference with no Version attribute then has nothing to resolve against.
+      #
+      # The failure never names the file. Re-measured by breaking it on purpose: `dotnet
+      # restore` printed NU1604 "does not contain an inclusive lower bound" 21 times, once per
+      # centrally-versioned package across all three projects, and not one line mentioned
+      # Directory.Packages.props. `dotnet build` does name it, with MSB4024 — but restore runs
+      # first and fails first, so nobody reads that far.
+      #
+      # This cannot be a test in Store.Tests. That was tried the same day and proved inert:
+      # with the file malformed, MSBuild will not evaluate Store.Tests.csproj either, so the
+      # test assembly never loads and the assertion never runs. A step before restore is the
+      # only place that can see it.
+      - name: MSBuild props files parse
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          files = sorted(pathlib.Path("store_platform").rglob("Directory.*.props"))
+          files = [f for f in files if "bin" not in f.parts and "obj" not in f.parts]
+          if not files:
+              sys.exit("::error::found no Directory.*.props to check - the glob is wrong")
+          bad = 0
+          for f in files:
+              try:
+                  ET.parse(f)
+                  print(f"ok  {f}")
+              except ET.ParseError as exc:
+                  bad += 1
+                  print(f"::error file={f}::{exc}. An XML comment cannot contain two hyphens "
+                        f"in a row; write the flag name in prose instead.")
+          sys.exit(bad and "a build props file does not parse")
+          PY
+
       - name: Restore dependencies
         run: dotnet restore store_platform/src/Store.Tests/Store.Tests.csproj
 
@@ -656,6 +979,35 @@ jobs:
 
       - name: Test
         run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal -m:1
+
+      # Known-vulnerable dependencies, including the ones nothing here references directly.
+      #
+      # `--include-transitive` is the whole point. Both advisories this repo has carried were
+      # transitive: SQLitePCLRaw.lib.e_sqlite3 2.1.10 (GHSA-2m69-gcr7-jv3q, High) through
+      # Microsoft.EntityFrameworkCore.Sqlite, and OpenTelemetry.Api 1.11.2
+      # (GHSA-g94r-2vxg-569j, Moderate) through Crux.Observability. A top-level-only scan sees
+      # neither. Both were live on main until 2026-08-19; they are pinned in
+      # store_platform/Directory.Packages.props now.
+      #
+      # The grep is not laziness. `dotnet list package --vulnerable` exits 0 whether it finds
+      # anything or not, so a step that only ran the command would be a green check that reads
+      # nothing. The sentence it matches is NuGet's own wording for a project with findings.
+      #
+      # The solution, not the test project: this restores all three projects and reports each
+      # one by name, so an advisory that reaches only Store.Api still fails here with the
+      # project named.
+      - name: Vulnerable dependency scan
+        run: |
+          set -eu
+          dotnet restore store_platform/Store.sln
+          dotnet list store_platform/Store.sln package --vulnerable --include-transitive \
+            | tee /tmp/vuln.txt
+          if grep -q "has the following vulnerable packages" /tmp/vuln.txt; then
+            echo "::error::A dependency has a published security advisory. Pin a patched version"
+            echo "::error::in store_platform/Directory.Packages.props; transitive pinning is on."
+            exit 1
+          fi
+          echo "no vulnerable packages"
 
   # ──────────────────────────────────────────────────────────────────
   # Next.js — build check on store platform
@@ -730,6 +1082,13 @@ jobs:
       - name: Lint
         run: npm run lint -- --cache
 
+      # CSS has never had a lane. `stylelint.config.mjs` runs the possible-errors half of
+      # stylelint over the two stylesheets this repo is allowed to write (the shipped bundle
+      # mumchimp.css is byte-locked and deliberately ignored): duplicate properties, unknown
+      # units, invalid hex, a shorthand that silently wipes the longhand above it.
+      - name: Lint CSS
+        run: npm run lint:css
+
       # The 523 vitest tests had NO enforcement point anywhere: this job ran typecheck +
       # build only, and the pre-commit gate ran pytest, which cannot see a .tsx. A storefront
       # unit test could go red and reach main with every check green.
@@ -739,11 +1098,84 @@ jobs:
       # NEXT_PUBLIC_* are inlined at build time. Set placeholder https values here so the
       # build exercises the same code path as production (CSP connect-src and the sitemap
       # both derive from them) instead of silently baking in localhost defaults.
+      # `npm ci` above runs with --no-audit so that install stays fast and deterministic. That
+      # is precisely why the audit needs its own step: with the flag on install, nothing ever
+      # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
+      # goes in green.
+      #
+      # --audit-level=high, not low, and --omit=dev, not the whole tree. This comment used to
+      # promise the second half and the command did not do it, so the gate fired on exactly the
+      # build-only tooling it said it would ignore. Measured 2026-08-19: 10 high advisories, all
+      # of them under @lhci/cli or @storybook/nextjs-vite, none reachable by any request --
+      # 0 high advisories in the production tree. It had turned main red with no code change and
+      # was blocking every merge in the repository, including the fix for main's other red.
+      # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
+      - name: Dependency advisory scan
+        working-directory: store_platform/src/Store.Web
+        run: npm audit --audit-level=high --omit=dev
+
+      # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree
+      # from the gate must not drop it from view: a build tool with a known hole is still worth
+      # knowing about, it is just not worth blocking every merge in the repository over.
+      - name: Dependency advisories in build tooling (report only)
+        working-directory: store_platform/src/Store.Web
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=high > "$RUNNER_TEMP/audit-dev.txt" 2>&1 || true
+          {
+            echo "### Build-tooling advisories (not a gate)"
+            echo '```'
+            tail -20 "$RUNNER_TEMP/audit-dev.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: https://api.example.com
           NEXT_PUBLIC_SITE_URL: https://www.example.com
+
+      # THE FOURTH MISSING ENFORCEMENT POINT IN THIS JOB, and the reason is the same shape as the
+      # three above: nothing here has ever rendered a page. `npm run build` proves the app
+      # compiles; it measures no geometry and opens no viewport.
+      #
+      # What that cost. On 2026-08-19 the home page shipped with the hero figure rendering at
+      # every width. Below 901px the hero is one column (`mumchimp.css:432`), so the figure
+      # stacked under the headline and pushed the first pack card to y=1288 on a 400px phone --
+      # a shop opening with no product on screen, on every phone size we test. It was caught by
+      # `e2e/discovery.spec.ts`, which runs in `e2e-live-smoke.yml` AGAINST PRODUCTION, after the
+      # deploy. The storefront stayed red for 30 hours. A check that only runs after deployment
+      # cannot prevent a bad deployment.
+      #
+      # `e2e/fold-budget.spec.ts` is the pre-deploy half. It boots the build above and asserts
+      # the shelf reaches the first screen on three phone widths. There is no API behind that
+      # server, so every assertion anchors on chrome that renders whether or not the catalogue
+      # answers -- which is enough, because this class of defect is always "something above the
+      # shelf grew".
+      #
+      # `--only-shell` skips the ~180MB of ffmpeg and headed-mode assets; this gate never records
+      # video. Invoked by path rather than by `--project=` on purpose: #398 rewrites
+      # `playwright.config.ts`, and a path cannot conflict with a project list.
+      - name: Install Chromium for the fold gate
+        run: npx playwright install --with-deps --only-shell chromium
+
+      # `e2e/first-run.spec.ts` rides the same server, and it asks the question the fold gate
+      # cannot. Fold measures GEOMETRY -- is the shelf on screen. First-run measures what the
+      # screen SAYS. On 2026-08-21 the storefront was serving a dark strip above the header
+      # reading "Killed 7 Aug / <the killed idea> / Read the verdict ->", so the first four
+      # things a stranger read were a kill notice, and the brand was the fifth. Four gates were
+      # green on it: component_parity compares tag names and classes (a kill ribbon and a
+      # survivor ribbon are the same DOM), visual_regression compares pixels against a drawing
+      # that also shows a kill, fold-budget measures whether the shelf is visible, and
+      # site_spec_probe compares the source tree to a prose ledger. Every one grades the SHAPE
+      # of the first screen; none grades its MEANING. See docs/FIRST_RUN_AND_NAVIGATION_PROGRAM.md.
+      - name: Fold and first-run gates (pre-deploy)
+        run: |
+          npm run start -- --port 3111 &
+          for i in $(seq 1 40); do curl -sf -o /dev/null http://localhost:3111/ && break; sleep 2; done
+          npx playwright test e2e/fold-budget.spec.ts e2e/first-run.spec.ts --reporter=list
+        env:
+          WEB_BASE_URL: http://localhost:3111
 
   # ──────────────────────────────────────────────────────────────────
   # The Ops Console — the operator's admin surface, and a separate Next app from the
@@ -797,14 +1229,72 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Lint CSS
+        run: npm run lint:css
+
       - name: Unit tests (vitest)
         run: npm test
 
       # No NEXT_PUBLIC_* here on purpose. The console talks to the local Python gateway
       # through `PROSPECTOR_PYTHON`, resolved at RUN time by the `start` script, so nothing
       # about the deployment is inlined into the build.
+      # `npm ci` above runs with --no-audit so that install stays fast and deterministic. That
+      # is precisely why the audit needs its own step: with the flag on install, nothing ever
+      # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
+      # goes in green.
+      #
+      # --audit-level=high, not low, and --omit=dev, not the whole tree. This comment used to
+      # promise the second half and the command did not do it, so the gate fired on exactly the
+      # build-only tooling it said it would ignore. Measured 2026-08-19: 10 high advisories, all
+      # of them under @lhci/cli or @storybook/nextjs-vite, none reachable by any request --
+      # 0 high advisories in the production tree. It had turned main red with no code change and
+      # was blocking every merge in the repository, including the fix for main's other red.
+      # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
+      - name: Dependency advisory scan
+        working-directory: store_platform/src/Ops.Console
+        run: npm audit --audit-level=high --omit=dev
+
+      # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree
+      # from the gate must not drop it from view: a build tool with a known hole is still worth
+      # knowing about, it is just not worth blocking every merge in the repository over.
+      - name: Dependency advisories in build tooling (report only)
+        working-directory: store_platform/src/Ops.Console
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=high > "$RUNNER_TEMP/audit-dev.txt" 2>&1 || true
+          {
+            echo "### Build-tooling advisories (not a gate)"
+            echo '```'
+            tail -20 "$RUNNER_TEMP/audit-dev.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build
         run: npm run build
+
+      # axe-core against the console's own screens. It runs WITHOUT the Python gateway here, so
+      # most panels render their stated-problem branch rather than data. That is deliberate: an
+      # operator meets those states during an outage, which is the worst moment for an unreadable
+      # one. On its first run this found three serious defects -- no `lang` on <html>, a stat
+      # placeholder at 2.56:1, and scroll containers a keyboard could not enter.
+      #
+      # AFTER the build, always: the Playwright webServer runs `next start`, which serves the
+      # build directory. Before it, the server never comes up and every test errors in setup.
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Accessibility (axe-core)
+        run: npm run test:a11y
+        env:
+          CI: "true"
+
+      # The console is operated from a phone. This is the spec that caught /config
+      # scrolling 7px sideways on one unbreakable JSON value, and until now it ran
+      # on laptops only -- a gate nothing schedules is a gate that stops running.
+      - name: Phone widths (390 and 320)
+        run: npm run test:e2e
+        env:
+          CI: "true"
 
   # ──────────────────────────────────────────────────────────────────
   # The single check branch protection requires.
@@ -821,8 +1311,123 @@ jobs:
   # cancelled. A skipped job is a pass here, which is exactly what "that area was
   # not touched" means.
   # ──────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────
+  # Rust — the engine rewrite. Four gates, cheapest first, so a
+  # formatting slip fails in seconds instead of after a full build.
+  # ──────────────────────────────────────────────────────────────────
+  rust:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: engine-rs
+    # WIDTH, DECLARED AND ENFORCED. ops/config/ci_capacity.yaml says this job is 3 processes
+    # wide, and `scripts/ci_capacity.py` can only read a width off a `pytest -n N`, which this
+    # job does not run. So the number is made true here instead of trusted: cargo would
+    # otherwise default both its build jobs and its test threads to the machine's CPU count,
+    # which is 4, and the contract would be wrong by one CPU with nothing able to see it.
+    env:
+      CARGO_BUILD_JOBS: "3"
+      RUST_TEST_THREADS: "3"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # No toolchain is named here on purpose. engine-rs/rust-toolchain.toml pins the exact
+      # version, and rustup honours it, so CI and every laptop compile the same code with the
+      # same lints. Naming a version here as well would give two sources of truth that drift
+      # apart silently — the build would keep passing while grading something else.
+      - name: Show the pinned toolchain
+        run: |
+          rustup show active-toolchain
+          cargo --version && rustc --version && cargo clippy --version
+
+      # ~/.cargo/bin IS IN HERE ON PURPOSE, AND IT IS 94% OF THIS JOB.
+      #
+      # `cargo install cargo-audit cargo-deny --locked` below builds both tools from source.
+      # They land in ~/.cargo/bin, which this cache did not cover, so every single run
+      # recompiled them. Measured on the `rust` job of run 32533139696 (PR #644), by step:
+      #
+      #   Show the pinned toolchain       10s
+      #   Format                           0s
+      #   Clippy                           0s
+      #   Tests                            0s
+      #   Install supply-chain tools     311s   <-- this
+      #   Audit dependencies               3s
+      #   Supply-chain policy              0s
+      #
+      # 311 of 331 seconds compiling two tools that had not changed. `cargo install` is a
+      # no-op when the same version is already present -- it prints "already installed" and
+      # exits 0 -- so a cache hit turns that step into nothing. The restore-keys fallback
+      # means a Cargo.lock change still finds the binaries; only a genuine version bump pays
+      # the 311s again.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+            engine-rs/target
+          key: rust-${{ runner.os }}-${{ hashFiles('engine-rs/Cargo.lock', 'engine-rs/rust-toolchain.toml') }}
+          restore-keys: rust-${{ runner.os }}-
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      # -D warnings is what makes the [workspace.lints] block a gate rather than advice.
+      # Without it clippy prints and exits 0, and the whole lint stack becomes decoration.
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace --all-features
+
+      # cargo-audit answers "is a dependency known-vulnerable"; cargo-deny answers "may we
+      # legally ship it, is it banned, did it come from crates.io". Different questions, and
+      # a green audit says nothing about a licence.
+      # WHY THIS IS NOT A PLAIN `cargo install`. It was, and it broke the rust lane on
+      # 2026-08-23, run 32645534200:
+      #
+      #   error: binary `cargo-audit` already exists in destination
+      #   error: binary `cargo-deny` already exists in destination
+      #
+      # `cargo install` is a no-op only when it can SEE that it installed the crate before,
+      # and that record lives in ~/.cargo/.crates.toml, which the cache above did not carry
+      # until this commit. So a restored cache handed the job the two binaries with no record
+      # of them, and cargo refused to overwrite files it did not remember writing. The failure
+      # needs an exact cache hit, so it cannot happen on the run that changes Cargo.lock -- it
+      # happens on the NEXT run, which is why the lane went green and then red with no Rust
+      # change in between.
+      #
+      # Caching the two metadata files fixes it going forward. This step is what fixes it now,
+      # for every cache already saved without them: ask the binaries whether they are there
+      # instead of asking cargo's bookkeeping, and install only what is missing.
+      - name: Install supply-chain tools
+        run: |
+          missing=()
+          command -v cargo-audit >/dev/null 2>&1 || missing+=(cargo-audit)
+          command -v cargo-deny  >/dev/null 2>&1 || missing+=(cargo-deny)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "installing: ${missing[*]}"
+            cargo install "${missing[@]}" --locked
+          else
+            echo "cargo-audit and cargo-deny already on PATH, from the cache"
+          fi
+          cargo audit --version
+          cargo deny --version
+
+      - name: Audit dependencies
+        run: cargo audit
+
+      - name: Supply-chain policy
+        run: cargo deny --all-features check
+
   ci-ok:
-    needs: [changes, guard, python, engine, dotnet, nextjs, ops-console]
+    needs: [changes, guard, python, engine, dotnet, nextjs, ops-console, rust]
     if: always()
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 5

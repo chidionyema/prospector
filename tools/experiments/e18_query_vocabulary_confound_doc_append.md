@@ -8,3 +8,5 @@ _Run 2026-08-08T01:00:33+00:00 · `e18_query_vocabulary_confound.py`_
 - **n_checks**: 7,843
 
 Receipt: `tools/experiments/e18_query_vocabulary_confound_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E18`
+
+**Follow-through:** NO ACTION — the report's own verdict is DO_NOT_ACT: the naive association does not survive adjustment and the point estimates do not carry the naive sign. Editing the query builder here would be a blind change of unknown sign.

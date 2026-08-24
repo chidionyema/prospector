@@ -1,0 +1,10 @@
+$ node palette-test.mjs
+started  2026-08-20T17:48:13Z
+node     v26.3.0
+---
+2000 seeds x 2 themes x 20 pairs = 80000 assertions
+ALL PASS — the generator cannot emit a failing pair
+tightest margin: 1.000x required (good on ground, light, got 4.500 vs 4.5)
+---
+exit     0
+duration 18s

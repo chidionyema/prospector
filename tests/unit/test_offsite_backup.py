@@ -10,8 +10,10 @@ No network. The storage client is a stub, and the sources are throwaway files.
 
 from __future__ import annotations
 
+import io
 import json
 import sqlite3
+import tarfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -21,10 +23,13 @@ from ops.automations.offsite_backup import (
     EXIT_FINDINGS,
     EXIT_OK,
     EXIT_UNKNOWN,
+    VERIFY_KINDS,
     CannotEstablish,
     Source,
+    Watched,
     _expand,
     check,
+    check_watched,
     load_declaration,
     main,
     run,
@@ -89,7 +94,8 @@ def _declaration(tmp_path: Path, **overrides) -> Path:
             "prefix": "offsite/",
         },
         "max_age_hours": 24,
-        "sources": [{"name": "money-db", "key": "money-db/store.db", "fetch": ["true"]}],
+        "sources": [{"name": "money-db", "key": "money-db/store.db", "fetch": ["true"],
+                     "verify": "nonempty"}],
     }
     body.update(overrides)
     path = tmp_path / "decl.yaml"
@@ -209,6 +215,60 @@ def test_an_unknown_verify_kind_is_unknown_not_a_pass(tmp_path):
         verify_copy(_sqlite_file(tmp_path / "store.db"), "vibes")
 
 
+def _keyring_tgz(path: Path) -> Path:
+    """What /internal/backup/keyring returns: a gzipped tar holding the key ring XML."""
+    body = b"<key id='a5' />"
+    with tarfile.open(path, "w:gz") as archive:
+        info = tarfile.TarInfo("keys/key-a5.xml")
+        info.size = len(body)
+        archive.addfile(info, io.BytesIO(body))
+    return path
+
+
+def test_a_good_key_ring_archive_passes(tmp_path):
+    verify_copy(_keyring_tgz(tmp_path / "keyring.tgz"), "tgz")
+
+
+def test_a_truncated_key_ring_archive_is_rejected(tmp_path):
+    # The failure `nonempty` could never see: the download stopped halfway, so the file is
+    # far larger than zero bytes and completely unusable.
+    whole = _keyring_tgz(tmp_path / "keyring.tgz").read_bytes()
+    torn = tmp_path / "torn.tgz"
+    torn.write_bytes(whole[: len(whole) // 2])
+
+    with pytest.raises(CannotEstablish):
+        verify_copy(torn, "tgz")
+
+
+def test_an_archive_holding_nothing_is_not_a_key_ring(tmp_path):
+    empty = tmp_path / "empty.tgz"
+    with tarfile.open(empty, "w:gz"):
+        pass
+
+    with pytest.raises(CannotEstablish, match="no members"):
+        verify_copy(empty, "tgz")
+
+
+def test_the_key_ring_is_graded_by_opening_it_not_by_its_size():
+    """The guard on the declaration, not on the code.
+
+    A working `tgz` kind buys nothing if the key ring is declared `nonempty` again. Losing
+    the Data Protection ring does not lose data, it makes every grant token and cookie
+    undecryptable, so a restore reading from a half-downloaded archive looks successful and
+    hands every buyer a broken link.
+    """
+    import yaml
+
+    declared = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "ops/config/offsite_backup.yaml").read_text()
+    )
+    keyring = [s for s in declared["sources"] if s["name"] == "data-protection-keys"]
+    assert keyring, "the key ring source is gone from the declaration"
+    assert keyring[0]["verify"] == "tgz", (
+        "the key ring is graded by size again; a truncated download would count as a backup"
+    )
+
+
 # --- taking a backup ----------------------------------------------------------------------
 
 def test_a_failed_fetch_uploads_nothing(tmp_path):
@@ -269,6 +329,46 @@ def test_a_missing_source_key_is_unknown(tmp_path):
         load_declaration(path)
 
 
+def test_a_source_that_states_no_verify_kind_is_refused(tmp_path):
+    """The trap one level under the key ring: `verify:` used to DEFAULT to a size check, so
+    the next source anyone adds — Hermes state is the one queued — would silently be graded
+    by its byte count without anybody choosing that. There is no default now."""
+    path = _declaration(tmp_path, sources=[
+        {"name": "hermes-state", "key": "hermes/coordinator.db", "fetch": ["true"]},
+    ])
+
+    with pytest.raises(CannotEstablish, match="must state `verify:`"):
+        load_declaration(path)
+
+
+def test_a_verify_kind_the_code_cannot_perform_is_refused_at_load(tmp_path):
+    """A typo used to survive the read, download the money database, and only then fail. It
+    is refused when the declaration is parsed, before any work and before the nightly run."""
+    path = _declaration(tmp_path, sources=[
+        {"name": "money-db", "key": "money-db/store.db", "fetch": ["true"],
+         "verify": "sqllite"},
+    ])
+
+    with pytest.raises(CannotEstablish, match="cannot perform"):
+        load_declaration(path)
+
+
+def test_every_kind_the_registry_names_can_actually_be_performed(tmp_path):
+    """`VERIFY_KINDS` is what the loader accepts. If it names a kind `verify_copy` does not
+    implement, the loader waves through a source nothing can grade — the same believed-check
+    defect wearing the opposite hat."""
+    real = tmp_path / "real"
+    real.write_bytes(b"not empty")
+
+    for kind in VERIFY_KINDS:
+        try:
+            verify_copy(real, kind)
+        except CannotEstablish as exc:
+            assert "unknown verify kind" not in str(exc), (
+                f"VERIFY_KINDS names `{kind}` but verify_copy has no branch for it"
+            )
+
+
 def test_exit_codes_are_distinct(tmp_path, monkeypatch, capsys):
     # 0 fresh, 1 stale or missing, 2 could not establish. A caller that cannot tell
     # "unknown" from "clean" is the whole defect this exit code exists to prevent.
@@ -298,6 +398,54 @@ def test_json_mode_carries_what_the_console_renders(tmp_path, monkeypatch, capsy
     assert payload["automation"] == "offsite_backup"
 
 
+def test_a_source_that_cannot_be_taken_here_does_not_cancel_the_ones_after_it(tmp_path, monkeypatch):
+    """The failure that produced this test, measured 2026-08-21.
+
+    `logs` fetches /data/logs, which is a Fly volume mount that exists in the engine container
+    and on no other host. It is declared fourth. On the laptop the fetch exited non-zero, the
+    raise left the source loop, and every source declared AFTER it was cancelled by a failure
+    that had nothing to do with it -- silently, because the run's one printed line named only
+    the source that raised. The run must still end unknown. What must not happen is a source
+    losing its backup because a different source could not be taken on this host."""
+    import ops.automations.offsite_backup as engine
+
+    storage = FakeStorage()
+    monkeypatch.setattr(engine, "storage_client",
+                        lambda _s: (storage, "backup-bucket", "offsite/"))
+    seed = _sqlite_file(tmp_path / "seed.db")
+    decl = _declaration(tmp_path, sources=[
+        {"name": "cannot-be-taken-here", "key": "nope/x.db",
+         "fetch": ["sh", "-c", "echo no such directory >&2; exit 1"], "verify": "sqlite"},
+        {"name": "money-db", "key": "money-db/store.db",
+         "fetch": ["cp", str(seed), "{dest}"], "verify": "sqlite"},
+    ])
+
+    result = engine.run(decl, fix=True)
+
+    assert result["status"] == "unknown", "a source that could not be taken is never clean"
+    assert "cannot-be-taken-here" in result["reason"]
+    taken = [key for _local, key in storage.uploaded]
+    assert any(key.startswith("offsite/money-db/") for key in taken), (
+        f"the money database was cancelled by another source's failure; uploaded {taken}"
+    )
+
+
+def test_the_live_declaration_scopes_every_engine_only_source_to_the_engine(tmp_path):
+    """/data/logs exists in the engine container and nowhere else, so without `only_where` the
+    laptop's 03:50 run exits 2 every night claiming the engine's ingest wrote nothing. It had
+    written 62 MB across four files that day. `only_where` skips the FETCH on a host that cannot
+    do it; `check` still grades the prefix from both hosts, which is the signal that matters."""
+    repo = Path(__file__).resolve().parents[2]
+    decl = load_declaration(repo / "ops" / "config" / "offsite_backup.yaml")
+
+    logs = next((s for s in decl.sources if s.name == "logs"), None)
+    assert logs is not None, "the engine log archive must stay declared"
+    assert logs.only_where == "/data/logs", (
+        "a source whose fetch reads /data/logs must say so, or every host without that mount "
+        f"fails the whole run; got only_where={logs.only_where!r}"
+    )
+
+
 def test_the_live_declaration_parses():
     """The live declaration. It is the only thing standing between a Fly account loss and
     every record of who bought what."""
@@ -308,3 +456,382 @@ def test_the_live_declaration_parses():
     assert "money-db" in names, "the money database must be declared"
     money = next(s for s in decl.sources if s.name == "money-db")
     assert money.verify == "sqlite", "a database copy nobody opened is a file, not a backup"
+
+
+# --- watched prefixes: another job's output, graded on the object rather than its exit code ---
+#
+# These exist because the engine store's only offsite copy (ledger/, db/, repo/) was graded by
+# nothing at all until 2026-08-19. The evidence that the backup worked was the job's exit code
+# in its receipt, and an exit code says the job RAN, not that bytes LANDED.
+
+WATCHED = Watched(name="engine-ledger", prefix="ledger/",
+                  writer="scripts/backup_store.py", max_age_hours=30)
+
+
+def test_a_stale_watched_prefix_is_a_finding():
+    """The negative fixture. A check only ever seen to say `fresh` is not known to work."""
+    storage = FakeStorage([_obj("ledger/prospector-2026-08-10.jsonl.gz", age_hours=54)])
+    report = check_watched(storage, "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is False
+    assert "54.0h old" in report[0]["what"]
+    assert "scripts/backup_store.py" in report[0]["what"], "a finding must name who writes it"
+
+
+def test_an_empty_watched_prefix_is_a_finding():
+    report = check_watched(FakeStorage([]), "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is False
+    assert "nothing at all" in report[0]["what"]
+    assert report[0]["age_hours"] is None
+
+
+def test_a_fresh_watched_prefix_is_clean():
+    storage = FakeStorage([_obj("ledger/prospector-2026-08-19.jsonl.gz", age_hours=0.7)])
+    report = check_watched(storage, "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is True
+    assert report[0]["watched"] is True
+    assert "what" not in report[0]
+
+
+def test_a_storage_outage_on_a_watched_prefix_is_never_read_as_missing():
+    """The dangerous failure. `no backup exists` is the loudest finding there is, and an
+    outage must never be able to manufacture it."""
+    with pytest.raises(CannotEstablish):
+        check_watched(FakeStorage(list_raises=True), "backup-bucket", [WATCHED])
+
+
+def test_a_watched_prefix_grades_only_its_own_objects():
+    """`ledger/` must not be graded green by a fresh object sitting under `db/`."""
+    storage = FakeStorage([
+        _obj("ledger/prospector-2026-08-10.jsonl.gz", age_hours=54),
+        _obj("db/prospector-2026-08-19.db.gz", age_hours=0.5),
+    ])
+    report = check_watched(storage, "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is False
+
+
+def test_watch_is_optional(tmp_path):
+    """The empty case. Every declaration written before `watch:` existed still loads."""
+    decl = load_declaration(_declaration(tmp_path))
+
+    assert decl.watched == []
+
+
+def test_a_watch_entry_without_a_prefix_is_refused(tmp_path):
+    path = _declaration(tmp_path, watch=[{"name": "engine-ledger"}])
+
+    with pytest.raises(CannotEstablish, match="needs `name:` and `prefix:`"):
+        load_declaration(path)
+
+
+def test_an_empty_watch_prefix_is_refused(tmp_path):
+    """An empty prefix lists the WHOLE bucket, so every watched entry would be graded off the
+    same newest object and all of them would go green together off one healthy job."""
+    path = _declaration(tmp_path, watch=[{"name": "engine-ledger", "prefix": "  "}])
+
+    with pytest.raises(CannotEstablish, match="empty `prefix:`"):
+        load_declaration(path)
+
+
+def test_a_watched_prefix_can_never_be_fetched_or_pruned(tmp_path):
+    """The structural guard, not a convention. `take_backup` and `_prune` both take a `Source`;
+    a watched entry is a `Watched`, so it cannot reach either. `_prune` keeps the newest `keep`
+    copies and deletes the rest — aimed at `dossiers/` it would delete 4,450 of the 4,480
+    dossiers that are the engine's only offsite copy."""
+    path = _declaration(tmp_path, watch=[{"name": "engine-ledger", "prefix": "ledger/"}])
+    decl = load_declaration(path)
+
+    assert [type(s) for s in decl.sources] == [Source]
+    assert not any(isinstance(s, Watched) for s in decl.sources)
+    assert not hasattr(decl.watched[0], "fetch")
+    assert not hasattr(decl.watched[0], "keep")
+
+
+def test_the_declared_ceiling_clears_the_job_interval():
+    """A number in a plan is a claim. These jobs run on an 86400s timer, so a 24h ceiling
+    against a 24h period flickers red on ordinary drift and teaches everyone to ignore it."""
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    body = yaml.safe_load((root / "ops" / "config" / "offsite_backup.yaml").read_text())
+
+    watched = {w["name"]: w for w in body.get("watch") or []}
+    assert watched, "the engine store prefixes must stay declared"
+    for name, entry in watched.items():
+        assert entry["max_age_hours"] > 24, (
+            f"{name} has a {entry['max_age_hours']}h ceiling against a 24h job period; "
+            "it will flicker red on drift"
+        )
+        assert entry.get("writer"), f"{name} must name the job that writes it"
+
+
+def test_dossiers_and_hermes_are_not_watched():
+    """Both would be wrong, in opposite directions, and both are easy to add by accident.
+
+    `dossiers/` is a content mirror keyed by dossier id, so its newest-object age tracks ENGINE
+    OUTPUT, not backup health — it goes red on a quiet day while the backup is healthy.
+    `hermes/` holds one 313-byte `leader.json`, leader-election state that is rewritten
+    constantly and backs up nothing, so it would report GREEN forever. Hermes state is genuinely
+    not backed up; that stays open as M4 rather than being papered over here."""
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    body = yaml.safe_load((root / "ops" / "config" / "offsite_backup.yaml").read_text())
+
+    prefixes = {w["prefix"] for w in body.get("watch") or []}
+    assert "dossiers/" not in prefixes
+    assert "hermes/" not in prefixes
+
+
+# --- a declaration two different hosts read -----------------------------------------------
+#
+# `ops/config/offsite_backup.yaml` is read by the Fly engine container
+# (deploy/engine/supervisord.conf) and by the founder's laptop
+# (ops/launchd/com.prospector.offsite-backup.json), both with `--fix`. The agent estate exists on
+# one of them. Before `only_where`, a source like that failed the container's run every night and
+# turned a backup receipt red for a reason that was not a backup problem.
+
+
+def test_a_source_with_no_only_where_is_taken_everywhere():
+    """The empty case. Every source that existed before this field must be unaffected."""
+    from ops.automations.offsite_backup import takeable_here
+
+    assert takeable_here(SOURCE) is True
+
+
+def test_a_source_is_taken_where_its_path_exists(tmp_path):
+    from ops.automations.offsite_backup import takeable_here
+
+    here = Source(name="estate", key="a/b.tgz", fetch=["true"], verify="tgz",
+                  only_where=str(tmp_path))
+    assert takeable_here(here) is True
+
+
+def test_a_source_is_not_taken_where_its_path_is_absent(tmp_path):
+    from ops.automations.offsite_backup import takeable_here
+
+    elsewhere = Source(name="estate", key="a/b.tgz", fetch=["true"], verify="tgz",
+                       only_where=str(tmp_path / "not-on-this-host"))
+    assert takeable_here(elsewhere) is False
+
+
+def test_only_where_expands_a_tilde_and_never_an_env_var(monkeypatch):
+    """`~/.claude` and not `${HOME}/.claude`, deliberately.
+
+    `_expand` raises `CannotEstablish` on an unset variable, so a `${HOME}` that a container did
+    not set would report the declaration as broken rather than the source as belonging elsewhere:
+    the same red-for-the-wrong-reason this field exists to prevent.
+    """
+    from ops.automations.offsite_backup import takeable_here
+
+    monkeypatch.delenv("NO_SUCH_VARIABLE", raising=False)
+    assert takeable_here(Source(name="e", key="a/b.tgz", fetch=["true"], verify="tgz",
+                               only_where="~")) is True
+    assert takeable_here(Source(name="e", key="a/b.tgz", fetch=["true"], verify="tgz",
+                               only_where="${NO_SUCH_VARIABLE}/x")) is False
+
+
+def test_fix_skips_the_source_this_host_cannot_take_and_still_takes_the_others(
+        tmp_path, monkeypatch):
+    """The whole point. One unfetchable source must not cost the money database its backup.
+
+    Before this, `--fix` built its receipts in a list comprehension, so the first source that
+    raised ended the run — and the run then reported `unknown`, which is a non-zero exit, which is
+    a red receipt on a host that did nothing wrong.
+    """
+    import ops.automations.offsite_backup as engine
+
+    storage = FakeStorage([])
+    monkeypatch.setattr(engine, "storage_client",
+                        lambda _s: (storage, "backup-bucket", "offsite/"))
+
+    db = _sqlite_file(tmp_path / "seed.db")
+    config = _declaration(tmp_path, sources=[
+        {"name": "money-db", "key": "money-db/store.db", "verify": "sqlite",
+         "fetch": ["cp", str(db), "{dest}"]},
+        {"name": "agent-estate", "key": "agent-estate/claude.tgz", "verify": "tgz",
+         "only_where": str(tmp_path / "absent"),
+         "fetch": ["false"]},   # would fail loudly if it were ever run here
+    ])
+
+    result = engine.run(config, fix=True)
+
+    taken = {b["source"]: b for b in result["backups"]}
+    assert "skipped" in taken["agent-estate"], "the absent source must be recorded, not silent"
+    assert "key" in taken["money-db"], "the present source must still have been taken"
+    assert storage.uploaded, "nothing reached storage at all"
+
+
+def test_a_skipped_source_is_still_graded_on_the_host_that_skipped_it(tmp_path, monkeypatch):
+    """`only_where` gates TAKING, never GRADING.
+
+    The bucket is the same from every host, so the always-on container is what notices when the
+    laptop stops taking its copy. A source that were also skipped by `check` would be backed up by
+    one host and watched by nobody.
+    """
+    import ops.automations.offsite_backup as engine
+
+    storage = FakeStorage([])
+    monkeypatch.setattr(engine, "storage_client",
+                        lambda _s: (storage, "backup-bucket", "offsite/"))
+    config = _declaration(tmp_path, sources=[
+        {"name": "agent-estate", "key": "agent-estate/claude.tgz", "verify": "tgz",
+         "only_where": str(tmp_path / "absent"), "fetch": ["false"]},
+    ])
+
+    result = engine.run(config, fix=True)
+
+    assert result["status"] == "findings"
+    assert [f for f in result["findings"] if "agent-estate" in f["what"]], (
+        "a source this host cannot take must still be graded here, off the shared bucket"
+    )
+
+
+def test_repo_substitution_reaches_the_fetch_command(tmp_path):
+    """`{repo}` is how a fetch names a script in this checkout.
+
+    It cannot be relative: `take_backup` runs the command with cwd set to a scratch directory. It
+    cannot be absolute: the checkout is /app in the container and prospector-live on the laptop.
+    """
+    marker = tmp_path / "produced.tgz"
+    script = tmp_path / "tool.sh"
+    script.write_text("#!/bin/sh\ntar -czf \"$2\" -C \"$(dirname \"$0\")\" tool.sh\n",
+                      encoding="utf-8")
+    script.chmod(0o755)
+
+    source = Source(name="agent-estate", key="agent-estate/claude.tgz", verify="tgz",
+                    fetch=["{repo}/tool.sh", "--out", "{dest}"])
+    storage = FakeStorage([])
+    receipt = take_backup(storage, "backup-bucket", "offsite/", source, repo=tmp_path)
+
+    assert receipt["verified"] == "tgz"
+    assert storage.uploaded, "the substituted command produced nothing"
+    assert marker.exists() is False  # the archive is built in the scratch dir, not here
+
+
+def test_a_skipped_source_does_not_crash_the_report(tmp_path, monkeypatch, capsys):
+    """`--fix` on a host that does not own every source must still exit on its own status.
+
+    `agent-estate` is declared `only_where: ~/.claude`, which does not exist on the Fly engine
+    host. `run` records that source as skipped rather than as a receipt, and the printer read
+    `item['key']` on it: KeyError, exit 1, and none of the freshness lines. That happened on
+    every run on that host, so the automation could never report clean, and a genuine backup
+    failure was indistinguishable from a source that simply lives on the other machine.
+    """
+    import ops.automations.offsite_backup as engine
+
+    fresh = FakeStorage([
+        _obj("offsite/money-db/store-20260816T000000Z.db", age_hours=1),
+        _obj("offsite/estate/claude-20260816T000000Z.tgz", age_hours=1),
+    ])
+    monkeypatch.setattr(engine, "storage_client",
+                        lambda _s: (fresh, "backup-bucket", "offsite/"))
+    seed = _sqlite_file(tmp_path / "seed.db")
+    decl = _declaration(tmp_path, sources=[
+        {"name": "money-db", "key": "money-db/store.db", "verify": "sqlite",
+         "fetch": ["cp", str(seed), "{dest}"]},
+        {"name": "agent-estate", "key": "estate/claude.tgz", "verify": "tgz",
+         "fetch": ["false"], "only_where": str(tmp_path / "not-this-host")},
+    ])
+
+    assert main(["--fix", "--config", str(decl)]) == EXIT_OK
+
+    out = capsys.readouterr().out
+    assert "SKIPPED" in out and "agent-estate" in out
+    assert "BACKED UP money-db" in out
+    # The lines the operator actually reads come AFTER the skipped entry.
+    assert "OK  " in out, "a skipped source must not swallow the freshness report"
+    assert len(fresh.uploaded) == 1, "the skipped source must not be fetched or uploaded"
+
+
+# --- the scheduled drill must open the bucket ----------------------------------------------
+#
+# `scripts/restore_drill.py` with no --backup snapshots the LIVE store and restores that. It
+# never opens R2. Measured 2026-08-20, that was the whole of the weekly `restore-drill` program,
+# so the offsite copy -- the only thing that survives losing the machine -- had never been tested
+# by anything automatic. These read the EXECUTABLE lines, never the file text: the script's own
+# comments name every command checked for here, so a guard that greps the source would stay green
+# with the commands deleted and the comments left behind.
+
+_ENGINE_DIR = Path(__file__).resolve().parents[2] / "deploy" / "engine"
+_DRILL_SH = _ENGINE_DIR / "offsite_drill.sh"
+_SUPERVISORD = _ENGINE_DIR / "supervisord.conf"
+
+
+def _restore_drill_command() -> str:
+    import re
+    text = _SUPERVISORD.read_text()
+    block = re.search(r"^\[program:restore-drill\]\s*$(.*?)(?=^\[|\Z)", text, re.M | re.S)
+    assert block, "no [program:restore-drill] section in supervisord.conf"
+    line = re.search(r"^command=(.*)$", block.group(1), re.M)
+    assert line, "[program:restore-drill] has no command= line"
+    return line.group(1).strip()
+
+
+def _runnable_lines(path) -> list[str]:
+    """The lines a shell would actually execute: no blanks, no comments."""
+    out = []
+    for raw in path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        out.append(line)
+    return out
+
+
+def test_the_comment_stripper_actually_strips():
+    """The check that makes the three below mean anything.
+
+    Every assertion here greps the runnable lines for a command that ALSO appears in the
+    script's comments. If _runnable_lines ever returned the file verbatim, all three would pass
+    against a script whose commands had been deleted. So prove it removes something first.
+    """
+    runnable = _runnable_lines(_DRILL_SH)
+    assert runnable, "no runnable lines parsed out of the drill script"
+    assert len(runnable) < len(_DRILL_SH.read_text().splitlines())
+    assert not [ln for ln in runnable if ln.startswith("#")]
+    # The commands are named in the comments; that is the trap this test exists to disarm.
+    assert "backup_store.py --restore" in _DRILL_SH.read_text()
+
+
+def test_the_scheduled_drill_runs_the_composed_script():
+    assert "deploy/engine/offsite_drill.sh" in _restore_drill_command(), (
+        "the weekly restore-drill no longer runs the composed script, so it is back to "
+        "grading a local snapshot and proving nothing about R2"
+    )
+
+
+def test_the_drill_pulls_from_r2_and_grades_what_it_pulled():
+    runnable = _runnable_lines(_DRILL_SH)
+    pulls = [ln for ln in runnable if "backup_store.py" in ln and "--restore" in ln]
+    grades = [ln for ln in runnable if "restore_drill.py" in ln and "--backup" in ln]
+    assert pulls, "the drill never pulls from R2; only backup_store.py --restore opens the bucket"
+    assert grades, (
+        "the drill pulls from R2 and never grades the pull. backup_store.py --restore proves the "
+        "TRANSFER; only restore_drill.py --backup proves the catalogue is recoverable from it"
+    )
+
+
+def test_the_drill_keeps_the_network_free_half():
+    """Both halves, because they fail differently.
+
+    restore_drill.py:49 states the design: a drill that needs the network cannot run when the
+    network is the problem. Dropping the local half to 'simplify' would lose the only check that
+    still works during an outage.
+    """
+    runnable = _runnable_lines(_DRILL_SH)
+    local = [ln for ln in runnable if "restore_drill.py" in ln and "--backup" not in ln]
+    assert local, "the drill no longer runs the network-free local half"
+
+
+def test_the_drill_removes_its_restored_copy():
+    """~250 MB per pass onto the same volume the store lives on. A drill that fills the disk it
+    is protecting has become the outage."""
+    runnable = _runnable_lines(_DRILL_SH)
+    assert any(ln.startswith("trap ") and "cleanup" in ln for ln in runnable), (
+        "no trap installs the cleanup, so a failed pass leaves the pulled copy on the volume"
+    )
+    assert any("rm -rf" in ln for ln in runnable)

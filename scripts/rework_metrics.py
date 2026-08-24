@@ -63,7 +63,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUT = ROOT / "store" / "ops" / "rework_metrics.json"
+sys.path.insert(0, str(ROOT))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path derived from
+# __file__ follows the CODE; production moved off this checkout on 2026-08-17 and the state did
+# not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
+DEFAULT_OUT = store_root() / "ops" / "rework_metrics.json"
 
 #: How far back to measure. Longer costs nothing extra (one git call) but dilutes the trend with
 #: a period whose method no longer exists.

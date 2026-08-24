@@ -45,18 +45,28 @@ def test_console_tool_registry_has_no_drift():
     registered = {t["path"] for t in api.TOOLS}
     classified = registered | set(api.NOT_AN_OPS_TOOL)
 
+    # ONE assert, three directions. This was three sequential asserts until 2026-08-21, and the
+    # first one to fire hid the other two: CI on integrate/2026-08-20-final-3 reported only the
+    # unregistered file, so fixing that traded one red for the next red, a full CI cycle later.
+    # A grader that stops at its first finding under-reports by design.
+    problems = []
+
     unclassified = sorted(on_disk - classified)
-    assert not unclassified, (
-        "these tools are on disk but in neither TOOLS nor NOT_AN_OPS_TOOL, so the operator "
-        "cannot see them and cannot be told why:\n  " + "\n  ".join(unclassified)
-    )
+    if unclassified:
+        problems.append(
+            "these tools are on disk but in neither TOOLS nor NOT_AN_OPS_TOOL, so the operator "
+            "cannot see them and cannot be told why:\n  " + "\n  ".join(unclassified))
 
     # The other direction: an excuse for a file that no longer exists is rot of its own.
     stale = sorted(p for p in api.NOT_AN_OPS_TOOL if not (root / p).exists())
-    assert not stale, "NOT_AN_OPS_TOOL names files that are gone:\n  " + "\n  ".join(stale)
+    if stale:
+        problems.append("NOT_AN_OPS_TOOL names files that are gone:\n  " + "\n  ".join(stale))
 
     overlap = sorted(registered & set(api.NOT_AN_OPS_TOOL))
-    assert not overlap, "these are both a button and excluded:\n  " + "\n  ".join(overlap)
+    if overlap:
+        problems.append("these are both a button and excluded:\n  " + "\n  ".join(overlap))
+
+    assert not problems, "\n\n".join(problems)
 
 
 def test_every_excluded_tool_gives_a_reason():
@@ -341,9 +351,16 @@ def test_the_browser_view_allowlist_matches_the_gateway():
         pytest.skip("the Next console is not in this checkout")
     block = route.read_text(encoding="utf-8").split("export const VIEWS = [", 1)[1]
     listed = set(re.findall(r"'([a-z_]+)'", block.split("]", 1)[0]))
-    assert listed == set(api.READS), (
-        f"only in the browser: {sorted(listed - set(api.READS))}; "
-        f"only in the gateway: {sorted(set(api.READS) - listed)}")
+    # `share_open` is deliberately NOT in the browser list, and its absence is a security fence
+    # rather than drift. It is the one read reachable without a console session, so it has its own
+    # route (`pages/api/s/[token].ts`) which names it as a literal. Adding it here would put it on
+    # the authed door as well, and the console's own suite asserts it is missing
+    # (Ops.Console/tests/share.test.ts, "share_open is absent from the authed view list").
+    session_free = {"share_open"}
+    gateway = set(api.READS) - session_free
+    assert listed == gateway, (
+        f"only in the browser: {sorted(listed - gateway)}; "
+        f"only in the gateway: {sorted(gateway - listed)}")
 
 
 # --------------------------------------------------------------------------- #

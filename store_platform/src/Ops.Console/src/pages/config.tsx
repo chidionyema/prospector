@@ -60,7 +60,9 @@ type Intent = Record<string, unknown>;
 const GROUP_TITLE: Record<string, string> = {
   work: 'How much work it takes on',
   evidence: 'How it searches for evidence',
+  bar: 'How good an idea must be to sell',
   brains: 'Which brains it uses',
+  models: 'Which model version each brain runs',
   speed: 'How hard it pushes them',
   money: 'What it may spend',
 };
@@ -324,7 +326,9 @@ function KnobEditor({
       <div className="font-mono text-[11px] text-subtle">{knob.key}</div>
       <p className="mt-1 text-[13px] text-muted">{knob.help}</p>
 
-      <div className="mt-2 text-[13px]">
+      {/* wrap-any: the value is arbitrary JSON. `["searxng","ddg","exa","claude_cli"]` is one
+          unbreakable 281px word, which pushed /config 7px sideways at 320px. */}
+      <div className="wrap-any mt-2 text-[13px]">
         Now: <span className="font-mono">{JSON.stringify(knob.current)}</span>
       </div>
 
@@ -421,7 +425,7 @@ function ConfigPreview({ p }: { p: Record<string, unknown> }) {
   const diff = p.diff as unknown;
   return (
     <div className="flex flex-col gap-2">
-      <div>
+      <div className="wrap-any">
         <span className="font-mono">{String(p.key)}</span>:{' '}
         <span className="font-mono">{JSON.stringify(p.before)}</span> →{' '}
         <span className="font-mono">{JSON.stringify(p.after)}</span>

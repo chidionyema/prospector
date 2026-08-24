@@ -52,6 +52,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from .config import store_root
 from .jsonl_atomic import append_jsonl
 from .telemetry import logger
 
@@ -654,7 +655,7 @@ def resolve_log_path(cfg: Any, settings: NumericCitationSettings) -> Path:
         if store_dir is None:
             store = getattr(cfg, "store", None)
             store_dir = (store or {}).get("dir") if isinstance(store, dict) else None
-        base = Path(store_dir) if store_dir else Path("store")
+        base = Path(store_dir) if store_dir else store_root()
         base = base / _DEFAULT_LOG_SUBDIR
     return base / f"shadow-{time.strftime('%Y-%m')}.jsonl"
 

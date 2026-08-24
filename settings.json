@@ -1,6 +1,5 @@
-"model": "Gemini 3.5 Flash (High)"
-
-O  "enableTelemetry": false,
+{
+  "enableTelemetry": false,
   "model": "Gemini 3.5 Flash (Medium)",
   "permissions": {
     "allow": [

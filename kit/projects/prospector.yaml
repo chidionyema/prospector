@@ -1,0 +1,63 @@
+# The first project the kit moves.
+#
+# This file is the whole cost of adding a business to the migration kit. It does NOT
+# list resources: `resources_declaration` points at the file that describes them, and
+# `scripts/estate_inventory.py` finds what is actually running by asking the platforms.
+#
+# `names` is what clause A5 grades. Every one of these is a product name, so none of
+# them may appear anywhere under `kit/` — tests/unit/test_kit_names_no_product.py fails
+# if one does.
+
+project: prospector
+
+names:
+  - prospector
+  - mumchimp
+
+resources_declaration: ops/config/estate_resources.yaml
+
+# Which substrates each class may be moved to. A target absent from a class's list is
+# refused when the plan is COMPILED, not discovered when the run is half done.
+#
+# `datastore` and `compute` reach every substrate because the engine's state is files on
+# a mounted volume and the image is the one artifact (deploy/PORTABILITY.md).
+# `dns`, `tls_certificate`, `payment_integration` and `log_sink` are re-points: a third
+# party holds a pointer at us, and it is re-aimed rather than moved. Their target list is
+# the same, because what changes is the address, not the substrate they live on.
+classes:
+  # Everything below `targets` is an option: the kit passes it to the class adapter as
+  # OPT_<NAME> and never reads it. These are prospector's private facts, and they are here
+  # rather than in kit/ for exactly that reason -- a second business changes this file only.
+  secret:
+    targets: [fly, sshdocker, k8s, laptop]
+    # Which keys travel. An extended regex over the `KEY=` lines of the env file. Only the
+    # keys the engine actually needs: dead keys are not carried onto a new platform, where
+    # they become a credential nobody remembers issuing.
+    keep_pattern: '^(MINIMAX_API_KEY|EXA_API_KEY|STORE_INTERNAL_API_KEY|STORE_API_URL|STRIPE_LIVE_API_KEY|PROSPECTOR_ENTITLEMENTS_API_KEY|R2_ACCOUNT_ID|R2_ACCESS_KEY_ID|R2_SECRET_ACCESS_KEY|R2_BUCKET|CONTROL_CENTER_PASSWORD|FLY_API_TOKEN|TELEGRAM_[A-Z_]+)='
+  datastore:
+    targets: [fly, sshdocker, k8s, laptop]
+    # Where the store lands on the far side, and what proves it arrived whole. The verify
+    # command is given the incoming copy as its argument, before it is moved into place.
+    remote_path: /data/store
+    verify_cmd: python /app/scripts/store_migrate.py verify
+  object_storage:
+    targets: [fly, sshdocker, k8s, laptop]
+  compute:
+    targets: [fly, sshdocker, k8s, laptop]
+  scheduled_job:
+    targets: [fly, sshdocker, k8s, laptop]
+  log_sink:
+    targets: [fly, sshdocker, k8s, laptop]
+  payment_integration:
+    targets: [fly, sshdocker, k8s, laptop]
+  tls_certificate:
+    targets: [fly, sshdocker, k8s, laptop]
+  dns:
+    targets: [fly, sshdocker, k8s, laptop]
+  ci_runner:
+    targets: [fly, sshdocker, k8s, laptop]
+
+# What "fully operational, ready to sell" is checked against once the move is done.
+# The prober is slice S5; this block is the seam it reads.
+sell_check:
+  storefront_url: https://mumchimp.com/

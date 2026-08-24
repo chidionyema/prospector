@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -22,10 +23,15 @@ from ops.automations.log_rotation import (
     EXIT_UNKNOWN,
     CannotEstablish,
     Declaration,
+    PruneTarget,
     Target,
     check,
+    check_prune,
     load_declaration,
     main,
+    prune,
+    resolve,
+    resolve_prune,
     rotate,
     run,
 )
@@ -230,3 +236,365 @@ def test_the_live_declaration_parses_and_leaves_the_ledger_alone(tmp_path):
     for target in decl.targets:
         assert "prospector.jsonl" not in target.path
         assert target.why, f"{target.path} has no reason for its limit"
+
+
+# --- pruning: directories of many files ----------------------------------------------------
+#
+# Rotation truncates ONE file that grew. Most of this estate's waste is 32,415 small files
+# that add up, and the verb for those is delete, not truncate. These tests carry more weight
+# than the rotation ones above for one reason: rotation loses history, pruning loses FILES.
+
+def _aged(path: Path, days: float, size: int = 16) -> Path:
+    """A file with a chosen age. mtime is set explicitly — a test that waits is a test that
+    is skipped."""
+    import os
+    import time
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"x" * size)
+    when = time.time() - days * 86400
+    os.utime(path, (when, when))
+    return path
+
+
+def _pin_root(monkeypatch, tmp_path: Path) -> None:
+    """run() asks git for the repo root; a tmp_path is not a repo."""
+    import ops.automations.log_rotation as engine
+    monkeypatch.setattr(engine, "repo_root", lambda _start: tmp_path)
+
+
+def _prune_decl(tmp_path: Path, **entry) -> Path:
+    body = {"targets": [{"path": "noisy.log", "why": "a test log"}],
+            "prune": [{"path": "junk/*", "why": "throwaway", **entry}]}
+    path = tmp_path / "decl.yaml"
+    path.write_text(json.dumps(body), encoding="utf-8")
+    return path
+
+
+def test_age_prunes_the_old_and_spares_the_new(tmp_path):
+    _aged(tmp_path / "junk" / "old.txt", days=30)
+    _aged(tmp_path / "junk" / "new.txt", days=1)
+    decl = load_declaration(_prune_decl(tmp_path, older_than_days=14))
+
+    entry = check_prune(decl, tmp_path)[0]
+    assert entry["files"] == 2
+    assert [Path(p).name for p in entry["paths"]] == ["old.txt"]
+
+
+def test_keep_newest_bounds_a_series_that_grows_faster_than_it_ages(tmp_path):
+    """Six 51 MB snapshots in one morning is the real shape. Age cannot bound that."""
+    for i in range(6):
+        _aged(tmp_path / "junk" / f"snap-{i}.gz", days=i / 24)
+    decl = load_declaration(_prune_decl(tmp_path, keep_newest=3))
+
+    entry = check_prune(decl, tmp_path)[0]
+    assert entry["doomed"] == 3
+    kept = {Path(p).name for p in entry["paths"]}
+    assert kept == {"snap-3.gz", "snap-4.gz", "snap-5.gz"}, kept
+
+
+def test_both_bounds_together_are_a_conjunction_not_a_union(tmp_path):
+    """`older_than_days: 30, keep_newest: 5` must mean "thirty days AND never fewer than
+    five copies". Read as a union it deletes recent files the operator asked to keep."""
+    for i in range(8):
+        _aged(tmp_path / "junk" / f"f{i}.txt", days=i * 10)   # 0, 10, 20 ... 70 days
+    decl = load_declaration(_prune_decl(tmp_path, older_than_days=30, keep_newest=5))
+
+    entry = check_prune(decl, tmp_path)[0]
+    doomed = sorted(Path(p).name for p in entry["paths"])
+    # Older than 30d: f4..f7. Outside the newest five (f0..f4): f5, f6, f7. Both: f5, f6, f7.
+    assert doomed == ["f5.txt", "f6.txt", "f7.txt"], doomed
+
+
+def test_a_prune_target_with_no_bound_is_refused(tmp_path):
+    """A declaration that can express "delete everything" will eventually contain one."""
+    with pytest.raises(CannotEstablish) as exc:
+        load_declaration(_prune_decl(tmp_path))
+    assert "delete everything" in str(exc.value)
+
+
+def test_a_symlink_is_never_deleted(tmp_path):
+    """Following one deletes a file somewhere the declaration never named."""
+    outside = _aged(tmp_path / "elsewhere" / "precious.txt", days=99)
+    (tmp_path / "junk").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "junk" / "link.txt").symlink_to(outside)
+    decl = load_declaration(_prune_decl(tmp_path, older_than_days=1))
+
+    entry = check_prune(decl, tmp_path)[0]
+    assert entry["paths"] == []
+    prune({**entry, "paths": entry["paths"]})
+    assert outside.exists()
+
+
+def test_a_directory_is_never_deleted(tmp_path):
+    _aged(tmp_path / "junk" / "sub" / "leaf.txt", days=99)
+    decl = load_declaration(_prune_decl(tmp_path, older_than_days=1))
+    entry = check_prune(decl, tmp_path)[0]
+    assert entry["paths"] == [], "a glob of one level matched a directory"
+    assert (tmp_path / "junk" / "sub").is_dir()
+
+
+def test_a_git_directory_is_skipped_however_the_glob_is_written(tmp_path):
+    """A glob reaching into an object store destroys history and looks like deleting logs."""
+    _aged(tmp_path / "junk" / ".git" / "objects" / "ab" / "cd", days=99)
+    body = {"targets": [{"path": "noisy.log", "why": "t"}],
+            "prune": [{"path": "junk/**/*", "why": "t", "older_than_days": 1}]}
+    decl_path = tmp_path / "d.yaml"
+    decl_path.write_text(json.dumps(body), encoding="utf-8")
+    decl = load_declaration(decl_path)
+
+    assert check_prune(decl, tmp_path)[0]["paths"] == []
+
+
+def test_exclude_spares_the_live_file_a_daemon_is_writing(tmp_path):
+    """The live *.log files are ROTATED, never deleted underneath an open descriptor."""
+    _aged(tmp_path / "junk" / "gateway.log", days=99)
+    _aged(tmp_path / "junk" / "gateway.log.3", days=99)
+    decl = load_declaration(_prune_decl(tmp_path, older_than_days=1, exclude=["*.log"]))
+
+    entry = check_prune(decl, tmp_path)[0]
+    assert [Path(p).name for p in entry["paths"]] == ["gateway.log.3"]
+
+
+def test_over_the_blast_radius_cap_nothing_is_deleted(tmp_path):
+    """Deleting "most of it" and reporting success leaves a half-applied policy."""
+    for i in range(5):
+        _aged(tmp_path / "junk" / f"f{i}.txt", days=99)
+    decl = load_declaration(_prune_decl(tmp_path, older_than_days=1, max_delete=2))
+
+    entry = check_prune(decl, tmp_path)[0]
+    assert entry["over_cap"] is True
+    receipt = prune(entry)
+    assert receipt["deleted"] == 0
+    assert "max_delete" in receipt["refused"]
+    assert len(list((tmp_path / "junk").iterdir())) == 5
+
+
+def test_a_report_only_run_deletes_nothing(tmp_path, monkeypatch):
+    """Report mode before fix mode. The check must never be the change."""
+    for i in range(4):
+        _aged(tmp_path / "junk" / f"f{i}.txt", days=99)
+    config = _prune_decl(tmp_path, older_than_days=1)
+    _pin_root(monkeypatch, tmp_path)
+
+    result = run(config, tmp_path, fix=False)
+    assert result["status"] == "findings"
+    assert len(list((tmp_path / "junk").iterdir())) == 4
+
+
+def test_fix_deletes_and_reports_what_it_freed(tmp_path, monkeypatch):
+    for i in range(4):
+        _aged(tmp_path / "junk" / f"f{i}.txt", days=99, size=1000)
+    _aged(tmp_path / "junk" / "keep.txt", days=0)
+    config = _prune_decl(tmp_path, older_than_days=1)
+    _pin_root(monkeypatch, tmp_path)
+
+    result = run(config, tmp_path, fix=True)
+    assert result["pruned"][0]["deleted"] == 4
+    assert result["pruned"][0]["bytes_freed"] == 4000
+    assert [p.name for p in (tmp_path / "junk").iterdir()] == ["keep.txt"]
+    # Re-checked after the fix, so a green report means green NOW, not green before the work.
+    assert result["status"] == "ok"
+
+
+def test_a_prune_finding_reaches_the_same_findings_list_the_console_reads(tmp_path, monkeypatch):
+    """Consumers already read `findings`. A second list would be a second thing to teach them."""
+    _aged(tmp_path / "junk" / "old.txt", days=99)
+    _pin_root(monkeypatch, tmp_path)
+    result = run(_prune_decl(tmp_path, older_than_days=1), tmp_path, fix=False)
+    assert any("past 1d" in f["what"] for f in result["findings"]), result["findings"]
+
+
+def test_the_live_declaration_bounds_every_prune_target_and_spares_durable_state(tmp_path):
+    """The guard on the declaration itself. Everything the file says is deliberately NOT
+    pruned is named here, so adding it later fails a test rather than a disk."""
+    repo = Path(__file__).resolve().parents[2]
+    decl = load_declaration(repo / "ops" / "config" / "log_rotation.yaml")
+
+    assert decl.prunes, "the declaration must prune something"
+    for target in decl.prunes:
+        assert target.why, f"{target.path} has no reason"
+        assert target.older_than_days > 0 or target.keep_newest > 0, target.path
+        for durable in ("prospector.jsonl", "complaint_ledger", "complaint_register",
+                        "node_modules", "venv", ".git/"):
+            assert durable not in target.path, f"{target.path} names durable state"
+
+
+# ── a declared path must follow the STORE, not the checkout the process runs from ──────────
+
+def test_an_environment_variable_in_a_declared_path_expands(tmp_path, monkeypatch):
+    store = tmp_path / "canonical-store"
+    store.mkdir()
+    (store / "backup.log").write_text("x" * 2_000_000)
+    monkeypatch.setenv("PROSPECTOR_STORE_DIR", str(store))
+
+    decl = Declaration(targets=[Target(path="$PROSPECTOR_STORE_DIR/*.log", max_mb=1.0)])
+    found = resolve(decl.targets[0], tmp_path / "some-other-checkout")
+    assert found == [store / "backup.log"]
+
+
+def test_an_unset_variable_is_refused_not_silently_matched_as_nothing(tmp_path, monkeypatch):
+    """expandvars leaves an unset $VAR literal, so the glob matches nothing and the target
+    reports ABSENT. A policy that is switched off must not report as a policy with no work."""
+    monkeypatch.delenv("PROSPECTOR_STORE_DIR", raising=False)
+    with pytest.raises(CannotEstablish) as exc:
+        resolve(Target(path="$PROSPECTOR_STORE_DIR/*.log", max_mb=1.0), tmp_path)
+    assert "not set" in str(exc.value)
+
+
+def test_a_prune_target_gets_the_same_variable_guard(tmp_path, monkeypatch):
+    monkeypatch.delenv("PROSPECTOR_STORE_DIR", raising=False)
+    with pytest.raises(CannotEstablish):
+        resolve_prune(PruneTarget(path="$PROSPECTOR_STORE_DIR/**/*", older_than_days=1), tmp_path)
+
+
+def test_a_bare_run_still_works_without_the_variable_set(tmp_path, monkeypatch):
+    """The scheduled job exports it; a developer typing the command does not."""
+    monkeypatch.delenv("PROSPECTOR_STORE_DIR", raising=False)
+    _pin_root(monkeypatch, tmp_path)
+    store = tmp_path / "store"
+    store.mkdir()
+    (store / "backup.log").write_text("x" * 2_000_000)
+    config = tmp_path / "decl.yaml"
+    config.write_text("targets:\n  - path: $PROSPECTOR_STORE_DIR/*.log\n    max_mb: 1\n    keep: 2\n")
+
+    result = run(config, tmp_path)
+    assert result["status"] == "findings", result
+    assert any("backup.log" in f["where"] for f in result["findings"]), result["findings"]
+
+
+def test_a_file_git_tracks_is_never_pruned(tmp_path, monkeypatch):
+    """The first --fix run deleted six committed files: ~/.hermes/backups/*.bak are in git
+    and the declaration named them by glob. `git checkout` brought them back, so nothing was
+    lost that time. Skipping a `.git` path segment protects the object store and says nothing
+    about a tracked file in an ordinary directory."""
+    import subprocess
+
+    from ops.automations.log_rotation import _tracked_under
+    _tracked_under.cache_clear()
+
+    repo = tmp_path / "repo"
+    (repo / "backups").mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    committed = repo / "backups" / "state.db.bak"
+    scratch = repo / "backups" / "scratch.db.bak"
+    for path in (committed, scratch):
+        path.write_text("x")
+        _aged(path, days=90)
+    subprocess.run(["git", "-C", str(repo), "add", "backups/state.db.bak"], check=True)
+
+    found = resolve_prune(PruneTarget(path=str(repo / "backups" / "*.bak"),
+                                      older_than_days=30), tmp_path)
+    assert found == [scratch], found
+    _tracked_under.cache_clear()
+
+
+def test_when_git_cannot_answer_nothing_is_pruned(tmp_path, monkeypatch):
+    """Cannot-establish is a refusal, not a green light. If the tool that knows what is in
+    version control will not answer, deleting anyway is the incident this fence prevents,
+    with the evidence removed."""
+
+    from ops.automations import log_rotation as engine
+    engine._tracked_under.cache_clear()
+
+    old = tmp_path / "old.log"
+    old.write_text("x")
+    _aged(old, days=90)
+
+    def broken(*a, **kw):
+        raise OSError("git is not installed")
+    monkeypatch.setattr(engine.subprocess, "run", broken)
+
+    assert engine.resolve_prune(PruneTarget(path=str(tmp_path / "*.log"),
+                                            older_than_days=30), tmp_path) == []
+    engine._tracked_under.cache_clear()
+
+
+def test_the_tracked_file_list_is_read_once_per_repository(tmp_path, monkeypatch):
+    """One `git ls-files` per repository, however many directories the glob spans.
+
+    This is a performance fence with a real incident behind it. The first version cached the
+    tracked-file set with `@functools.lru_cache(maxsize=64)` keyed by DIRECTORY. The declared
+    prune targets span 17,065 files across far more than 64 parent directories, so the cache
+    thrashed and `git ls-files` re-ran for the same repository over and over. Measured on this
+    estate: 67.9s wall for one read-only run, against the 25s the console allows an automation,
+    so `/processes` reported log rotation `unknown` rather than clean. Splitting the cache into
+    `_repo_top` (per directory) and `_tracked_in_repo` (per repository), both unbounded, took the
+    same run to 15.8s with byte-identical output.
+
+    Counting subprocess calls is the only honest way to pin this: a wall-clock assertion would be
+    flaky on a loaded box, and it would pass again the day someone re-introduces the bug on a
+    faster machine.
+    """
+    import subprocess as sp
+
+    from ops.automations import log_rotation as engine
+    # `getattr` on purpose: the assertion below is what must fail when someone drops a cache,
+    # not an AttributeError in the setup. A guard that dies before it measures proves nothing.
+    for cache in (engine._tracked_under, engine._repo_top, engine._tracked_in_repo):
+        getattr(cache, "cache_clear", lambda: None)()
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    sp.run(["git", "init", "-q", str(repo)], check=True)
+    for n in range(200):                     # comfortably past the old maxsize of 64
+        _aged(repo / f"d{n}" / "old.log", days=90)
+
+    real_run = engine.subprocess.run
+    calls: list[str] = []
+
+    def counting(args, *a, **kw):
+        if isinstance(args, (list, tuple)) and "ls-files" in args:
+            calls.append("ls-files")
+        return real_run(args, *a, **kw)
+
+    monkeypatch.setattr(engine.subprocess, "run", counting)
+
+    found = engine.resolve_prune(PruneTarget(path=str(repo / "**" / "*.log"),
+                                             older_than_days=30), tmp_path)
+    assert len(found) == 200, len(found)
+    assert calls == ["ls-files"], f"{len(calls)} ls-files calls for one repository"
+
+    # `getattr` on purpose: the assertion below is what must fail when someone drops a cache,
+    # not an AttributeError in the setup. A guard that dies before it measures proves nothing.
+    for cache in (engine._tracked_under, engine._repo_top, engine._tracked_in_repo):
+        getattr(cache, "cache_clear", lambda: None)()
+
+
+def test_a_run_does_not_leave_prospector_store_dir_set_behind_it(tmp_path, monkeypatch):
+    """The default is scoped to one run. Setting it process-wide broke eight OTHER tests.
+
+    `run()` gives the declaration a `$PROSPECTOR_STORE_DIR` when the caller has none. That used
+    to be `os.environ.setdefault(...)`, which never puts the environment back. On 2026-08-19 CI
+    ran this file's `test_fix_rotates_what_is_over_and_leaves_the_rest` — which monkeypatches
+    `repo_root` to its own `tmp_path` — and the variable was left pointing at that tmp_path for
+    the rest of the xdist worker. `Config.store_dir` gives the variable precedence over
+    `cfg.store["dir"]`, so four tests in `test_market_threading.py`, three in `test_blue_sky.py`
+    and one in `test_audit_isolation.py` then read a dead temp directory as the catalogue. The
+    traceback named this test's tmp_path; the test itself passed.
+
+    It reproduced on no laptop, because `-n auto --dist loadfile` puts different files in the
+    same worker on a runner than on a developer box.
+    """
+    import ops.automations.log_rotation as engine
+
+    monkeypatch.delenv("PROSPECTOR_STORE_DIR", raising=False)
+    monkeypatch.setattr(engine, "repo_root", lambda _start: tmp_path)
+    _log(tmp_path / "noisy.log", 3)
+
+    assert main(["--config", str(_declaration(tmp_path))]) == EXIT_FINDINGS
+    assert "PROSPECTOR_STORE_DIR" not in os.environ, (
+        "a run left the variable set for every later caller in this process"
+    )
+
+
+def test_a_run_does_not_overwrite_a_store_dir_the_caller_already_set(tmp_path, monkeypatch):
+    """The scoping must not become a reset. The scheduled job sets the variable deliberately."""
+    import ops.automations.log_rotation as engine
+
+    theirs = str(tmp_path / "canonical-store")
+    monkeypatch.setenv("PROSPECTOR_STORE_DIR", theirs)
+    monkeypatch.setattr(engine, "repo_root", lambda _start: tmp_path)
+    _log(tmp_path / "noisy.log", 3)
+
+    assert main(["--config", str(_declaration(tmp_path))]) == EXIT_FINDINGS
+    assert os.environ["PROSPECTOR_STORE_DIR"] == theirs

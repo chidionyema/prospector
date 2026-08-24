@@ -1,0 +1,68 @@
+# cargo-deny: the supply-chain rules, enforced in CI rather than reviewed by eye.
+#
+# The three questions it answers that `cargo audit` does not: may we legally ship this
+# licence, is this crate one we have banned, and did a dependency arrive from somewhere
+# other than crates.io.
+
+[advisories]
+# Advisories are cargo-audit's job too; keeping them here means one command in CI can fail
+# for any supply-chain reason, rather than two that can drift out of sync.
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+# A permissive allow-list, not a deny-list. A deny-list passes anything nobody thought of,
+# and "nobody thought of it" is exactly how an AGPL crate ends up linked into a product we
+# sell. Anything not on this list stops the build and gets a deliberate decision.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Zlib",
+  # File-level copyleft. Safe to link against a product we do not open-source: the
+  # obligation attaches to modified MPL files, not to the binary. If we ever patch one,
+  # that patch is published — so vendoring an MPL crate is a decision, not a default.
+  "MPL-2.0",
+  # The Mozilla CA root bundle inside webpki-roots, which ureq pulls in for TLS. This is a
+  # data licence, not a code one: it permits use and redistribution of the root list with
+  # no copyleft and no obligation on the binary that carries it. Named here because the
+  # allow-list is explicit on purpose -- without this line every branch that adds an HTTP
+  # client fails the supply-chain gate on a CA bundle nobody chose directly.
+  "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.9
+
+# Our own crates carry no `license` field and never will — this is a product, not a
+# published library, and `publish = false` in [workspace.package] says so. Without this
+# cargo-deny grades them like any dependency and fails with `prospector-core = 0.1.0 is
+# unlicensed`, which reads as a policy breach rather than as "we do not license our own
+# source to ourselves".
+private = { ignore = true }
+
+# The allow-list is deliberately ahead of the dependency tree: it names licences we have
+# already decided are acceptable, so adding a crate is a build that passes rather than a
+# policy debate. That makes "allowed but not currently used" the normal state, and warning
+# about it every run would train everyone to ignore the output.
+unused-allowed-license = "allow"
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+deny = [
+  # rustls, not openssl. openssl-sys wants a C toolchain and a system libssl, which is the
+  # classic way a Rust build that works on a laptop fails inside a slim container — and the
+  # engine's deploy target is exactly that container. Keeping it out by rule means the
+  # failure happens at `cargo deny` on a laptop instead of at `fly deploy`.
+  { name = "openssl", reason = "use rustls; openssl-sys breaks the slim deploy image" },
+  { name = "openssl-sys", reason = "use rustls; openssl-sys breaks the slim deploy image" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

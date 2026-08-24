@@ -71,6 +71,27 @@ CLAUDE.md, in a file written after the trap was documented.
 **Done when.** It resolves the store via `config.store_root()` and returns a real count on the
 engine. Probe: run it on `prospector-engine`, exit 0 or 1, never 2.
 **Costs.** S.
+**LANDED 2026-08-19.** `_store()` calls `config.store_root()`, and `dossier_dir` in
+`ops/config/stranded_packs.yaml` is now declared relative to the store rather than to the
+checkout. Two tests fail if it regresses, and both were proven to fail against the old code
+before the fix went in:
+`test_stranded_packs.py::test_the_dossier_dir_follows_the_store_not_the_code` and
+`::test_the_probe_reads_the_store_the_environment_names`.
+
+Following the root cause past this one file found two more things, and only one of them is fixed:
+
+- **The guard for this class was RED on `main`.** `tests/unit/test_no_store_path_is_derived_from_file.py`
+  named `scripts/rework_metrics.py:66  ROOT / 'store'`, which arrived with PR #373. Fixed in the
+  same change; the console read a receipt the scoreboard would never have written on the engine.
+- **The guard could not have caught B3 itself.** It is an AST walk keyed on the literal segments
+  `store` and `storage`. This probe never wrote that literal: its store segment came from a YAML
+  value at runtime, so no static walk could see it. A path assembled from configuration is
+  outside what this guard can grade, and that hole is still open.
+- **`prospector/run.py:460` has the same defect and is NOT fixed here.** `_PENDING_DIR` is
+  `Path(__file__).parent.parent / "signals" / "pending"`, so on the engine a signal saved when the
+  generation chain is exhausted goes to `/app/signals/pending` — container-local, gone at the next
+  deploy, and `generate --resume` then finds nothing. Three such files exist on the laptop today,
+  so moving the path is a migration rather than an edit, and it is its own item.
 
 ### B4. Outages are reported and nobody is paged
 **Breaks today.** The engine records provider outages and writes them to a ledger. No page is

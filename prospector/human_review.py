@@ -45,9 +45,22 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-#: Per-pack receipts. One file per pack so two reviewers (or a reviewer and the daemon) cannot lose
-#: each other's writes the way a single shared queue file would.
-DEFAULT_ROOT = Path("store") / "human_review"
+from .config import store_root
+
+
+def _default_root() -> Path:
+    """Where per-pack receipts live when the caller names no root.
+
+    One file per pack so two reviewers (or a reviewer and the daemon) cannot lose each other's
+    writes the way a single shared queue file would.
+
+    Resolved on every call, never bound at import. This used to be the module constant
+    `Path("store") / "human_review"`, which names a directory relative to the process working
+    directory. The engine image sets `WORKDIR /app` and copies the repo there
+    (deploy/engine/Dockerfile:55, :68), so under the daemon that name pointed at the image layer
+    every deploy erases instead of at the mounted volume. INC-2026-08-18-store-resolver.
+    """
+    return store_root() / "human_review"
 
 logger = logging.getLogger(__name__)
 
@@ -189,11 +202,11 @@ def fingerprint(items: Sequence[Item]) -> str:
     return hashlib.sha256("\n".join(keys).encode("utf-8")).hexdigest()[:16]
 
 
-def receipt_path(pack_id: str, root: Path | str = DEFAULT_ROOT) -> Path:
-    return Path(root) / f"{pack_id}.json"
+def receipt_path(pack_id: str, root: Path | str | None = None) -> Path:
+    return Path(root if root is not None else _default_root()) / f"{pack_id}.json"
 
 
-def load_receipt(pack_id: str, root: Path | str = DEFAULT_ROOT) -> Receipt | None:
+def load_receipt(pack_id: str, root: Path | str | None = None) -> Receipt | None:
     """The receipt on disk, or None. A corrupt receipt reads as None — never as verification.
 
     The fail-closed direction is right and unchanged. What changes is that it stops being
@@ -244,7 +257,7 @@ def record_decision(pack_id: str,
                     note: str = "",
                     *,
                     now: str | None = None,
-                    root: Path | str = DEFAULT_ROOT) -> Receipt:
+                    root: Path | str | None = None) -> Receipt:
     """Append one decision and rewrite the receipt against the CURRENT item set.
 
     `items` is passed in rather than read from the receipt so the fingerprint is always recomputed
@@ -279,14 +292,14 @@ def root_for(cfg: Any) -> Path:
     `verify-pipeline-wrote-to-production-stores`), and a hardcoded `store/` here would do it again.
     """
     base = getattr(cfg, "store_dir", None) if cfg is not None else None
-    return (Path(base) / "human_review") if base else DEFAULT_ROOT
+    return (Path(base) / "human_review") if base else _default_root()
 
 
 def status(pack_id: str,
            items: Sequence[Item],
            *,
            traced: bool = False,
-           root: Path | str = DEFAULT_ROOT) -> tuple[str, list[str]]:
+           root: Path | str | None = None) -> tuple[str, list[str]]:
     """`(status, outstanding_keys)`. See the module docstring for what each status licenses.
 
     `traced` defaults to False — FAIL CLOSED. A caller who forgets it gets `untraced`, which is not
@@ -313,7 +326,7 @@ def status(pack_id: str,
 def status_for_checks(pack_id: str,
                       checks: Iterable[Any],
                       *,
-                      root: Path | str = DEFAULT_ROOT) -> tuple[str, list[str]]:
+                      root: Path | str | None = None) -> tuple[str, list[str]]:
     """`status` from ruled checks — the call every caller should be making."""
     items, traced = queue_from_checks(checks)
     return status(pack_id, items, traced=traced, root=root)
@@ -323,7 +336,7 @@ def is_sellable(pack_id: str,
                 items: Sequence[Item],
                 *,
                 traced: bool = False,
-                root: Path | str = DEFAULT_ROOT) -> bool:
+                root: Path | str | None = None) -> bool:
     """Would the human-verification fence let this pack be listed?
 
     Deliberately NOT called from `verify` or `kill_filter`: this is a revenue decision on the
@@ -335,6 +348,6 @@ def is_sellable(pack_id: str,
 def is_sellable_checks(pack_id: str,
                        checks: Iterable[Any],
                        *,
-                       root: Path | str = DEFAULT_ROOT) -> bool:
+                       root: Path | str | None = None) -> bool:
     """`is_sellable` from ruled checks. This is what `bridge.listing_gate`'s caller uses."""
     return status_for_checks(pack_id, checks, root=root)[0] in SELLABLE

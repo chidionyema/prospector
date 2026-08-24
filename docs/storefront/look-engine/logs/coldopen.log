@@ -1,0 +1,33 @@
+$ node coldopen.mjs
+started  2026-08-20T19:00:37Z
+node     v26.3.0
+---
+40 first screens graded (10 looks x 4 widths, 320px included)
+
+A46 — the cold-open test
+  a product noun a stranger knows: PASS
+  a buyer noun or a direct address: PASS
+  an outcome verb: PASS
+  the headline fits above the fold: PASS
+  the first thing to do is on the first screen: PASS
+
+A48 — no unexplained jargon above the fold
+  our words are defined where they are used: PASS
+
+A49 — the entry costs nothing
+  a whole sample within 2 clicks: PASS
+
+outcome verbs found above the fold at 320px: read/get
+
+the fold, in pixels — worst look at each width (negative = room to spare)
+  narrow-320 (fold 568px): chrome above the headline 323px; headline ends -152px (ledger), buttons end -3px (signal)
+  phone-390 (fold 844px): chrome above the headline 321px; headline ends -438px (dossier), buttons end -293px (dossier)
+  tablet-834 (fold 1194px): chrome above the headline 387px; headline ends -679px (quiet), buttons end -453px (quiet)
+  laptop-1440 (fold 900px): chrome above the headline 366px; headline ends -320px (ledger), buttons end -115px (ledger)
+
+clicks to a whole sample: 2 (target 1, ceiling 2)
+
+ALL PASS — the first screen answers Q1 and Q2 in words a stranger knows, at every width.
+---
+exit     0
+duration 10s

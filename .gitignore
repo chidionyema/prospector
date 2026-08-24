@@ -182,3 +182,16 @@ signals/discovered_*
 # referenced by nothing -- four lines between them, naming a Gemini provider this estate no
 # longer configures. Deleted 2026-08-19; ignored so a run cannot re-commit them.
 test_log*.jsonl
+
+# The encrypted secret store. This repository is PUBLIC -- `gh repo view` reports
+# visibility PUBLIC, checked 2026-08-23 -- and deploy/secrets.sh said in its own header that
+# this file "IS committed - that is the point, it is useless without the key". That is a
+# reasonable policy in a private repository and a live-credential leak in this one: the file
+# holds the Stripe live keys, the R2 keys, the Fly token and every model provider key, and
+# committing it publishes all of them, protected by one X25519 key on one laptop, to an
+# internet that keeps clones and caches forever. age is strong today; "forever" is the part
+# that is not survivable, and a public commit cannot be taken back.
+#
+# The copy that is NOT on this laptop goes to the private R2 backup bucket instead, as the
+# `secret-store` source in ops/config/offsite_backup.yaml.
+deploy/secrets.env.age

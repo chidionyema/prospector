@@ -1,0 +1,39 @@
+# Every TLS certificate the business serves, and how it comes back somewhere else.
+#
+# WHY THIS FILE EXISTS. Fly issues and renews these, so nothing in this repo knew they existed.
+# That is fine until the day the stack moves: a cutover that restores the compute, the volume,
+# the DNS and the secrets, and does not restore the certificate, ends with a storefront that
+# browsers refuse to open. The certificate is not a Fly detail, it is a resource the buyer
+# depends on, and `scripts/estate_inventory.py` grades it as one.
+#
+# WHAT A RESTORE ACTUALLY IS. Nothing here holds a private key. A certificate is re-issued, not
+# copied: point the hostname at the new target, then ask that target to issue. The command below
+# is the Fly form because Fly is where these live today; the target adapters
+# (deploy/targets/*.sh) do not yet carry a TLS verb, which is the gap this file makes visible.
+#
+# ORDER MATTERS. DNS first, always. Issuance proves control of the hostname over the public
+# internet, so a certificate asked for before the record moves fails and then rate-limits.
+
+certificates:
+  - hostname: mumchimp.com
+    app: prospector-store-web
+    why: the storefront itself. Without it there is no shop.
+    dns_record: deploy/dns/mumchimp.com.zone
+    reissue: fly certs add mumchimp.com -a prospector-store-web
+
+  - hostname: www.mumchimp.com
+    app: prospector-store-web
+    why: >-
+      the www host redirects to the apex. It needs its own certificate because the redirect is
+      served over HTTPS, and a browser validates the certificate before it ever sees a 301.
+    dns_record: deploy/dns/mumchimp.com.zone
+    reissue: fly certs add www.mumchimp.com -a prospector-store-web
+
+  - hostname: api.mumchimp.com
+    app: prospector-store-api
+    why: >-
+      the money path. Checkout, entitlements and downloads all cross this hostname, and the
+      Stripe webhook posts to it. A missing certificate here fails purchases silently from the
+      buyer's side: the browser shows a warning page, not an error we ever see.
+    dns_record: deploy/dns/mumchimp.com.zone
+    reissue: fly certs add api.mumchimp.com -a prospector-store-api

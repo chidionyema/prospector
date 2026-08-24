@@ -1,0 +1,44 @@
+{
+  "id": "INC-2026-08-19-live-storefront-red-for-30-hours",
+  "opened": "2026-08-19",
+  "title": "The live storefront smoke test went red at 07:43Z on 2026-08-18 and is still red 30 hours later, and nothing stopped a single deploy in between",
+  "severity": "high",
+  "detected_by": "issue #384, opened after the founder asked why the live site checks were failing",
+  "first_order": {
+    "what_broke": "e2e-live-smoke.yml runs Playwright against https://mumchimp.com. It was green at 2026-08-18T05:57Z with 33 passed. It has failed every run since. There are TWO separate regressions stacked inside that one red workflow, and they have different causes. (1) The 2026-08-18T07:43Z failure is a single test: discovery.spec.ts:425 'the filter is reachable from the foot of the shelf without scrolling back', error 'element(s) not found'. Same bundle as the green run — the only deploy-web run in range finished at 05:01:55Z, before it — and the same specs, unchanged since 2026-08-15 (583aa568). So that one is STATE, not code: what the page renders depends on the catalogue it fetches. (2) The 2026-08-19T09:52Z failure is 11 tests, not 1. The extra ten arrived with three web deploys that landed after the first regression: #363 (7010eb12, deployed 06:19Z), #377 (e41d9c21, deployed 09:36Z), #385 (da0d9589, deployed 10:07Z), all of them storefront redraw work. Those ten are CODE.",
+    "receipt": "gh run list --workflow e2e-live-smoke.yml: 2026-08-18T05:57:38Z 32104916767 success (33 passed) -> 2026-08-18T07:43:00Z 32112759398 failure (1 test) -> 2026-08-19T09:52:41Z 32239852032 failure (11 tests). Failing assertions in the newest run: 'first card starts at y=1363 on a 844px screen', y=1352 on 780px, y=1345 on 932px (discovery.spec.ts:76, the fold check at three phone viewports); locator('header').getByRole('button', {name: /Search the catalogue/}) — element(s) not found (discovery.spec.ts:255); three kill-log.spec.ts failures. Live page confirms the header defect independently: curl https://mumchimp.com | the string 'Search the catalogue' appears exactly once and is NOT inside <header>, so the trigger rendered by MarketingLayout.tsx / CommandPalette.tsx:138 has moved out of the header element the test looks in.",
+    "fixed_by": "not fixed. Issue #384 is open."
+  },
+  "cause_chain": [
+    "The live storefront smoke test is red.",
+    "An early hypothesis — that a bad deploy caused it — is dead for the FIRST failure: production served an identical bundle for the 05:57Z green and the 07:43Z red, and the specs did not change.",
+    "But it is the right answer for the other ten failures, which appeared only after three storefront redraw deploys landed on 2026-08-19.",
+    "Those three pull requests were each green in CI and each deployed on merge.",
+    "CI's web lane runs typecheck, vitest and next build. It runs no browser at all: rg -c playwright .github/workflows/ci.yml returns 0.",
+    "So no check that can see a rendered page ran before the deploy. The fold check, the header check and the kill-log checks exist only in e2e-live-smoke.yml, which runs against production AFTER the deploy has already happened.",
+    "And a red e2e-live-smoke run blocks nothing and reverts nothing, so the next redraw pull request deployed on top of the previous one's damage. Three deploys landed while the site was already failing its own smoke test.",
+    "CLASS: a check that only runs after deployment cannot prevent a bad deployment. Every assertion about rendered geometry in this repository lives on the wrong side of the deploy, so the storefront's only real gate is production itself, and its failure is a notification rather than a brake."
+  ],
+  "second_order": {
+    "sweep_command": "rg -c 'playwright' .github/workflows/ci.yml; ls store_platform/src/Store.Web/e2e/",
+    "siblings_found": 0,
+    "siblings_fixed": 0,
+    "note": "There is no sibling workflow with the same defect, because there is only one browser-test workflow in the repository and it is the one at fault. The sweep result is the finding: every Playwright spec this project owns runs post-deploy against production and nowhere else. Recorded so the third-order fix is scoped to moving them, not to adding a second copy."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": "PROPOSED, NOT BUILT. Run the geometry specs — the fold check and the header/palette checks in discovery.spec.ts — against a locally built Next.js server inside CI's nextjs job, so the same assertion that currently reports the defect from production instead refuses the merge. The specs already take their target from WEB_BASE_URL (playwright.config.ts:14 falls back to http://localhost:3000), so this needs a start-server step and a spec selection, not new tests. The kill-log specs and anything that asserts real catalogue content stay post-deploy, because they are genuinely about live state and would only prove the fixture in CI.",
+    "landed_on": null,
+    "why_not_higher": "heal would mean rolling the web deploy back automatically when the live smoke goes red. That is a bigger change and it is the wrong first move: the failure to fix is that the check runs too late, and an automatic rollback would still let the bad bundle serve buyers for the length of one smoke cycle. Refuse first; revisit heal after refuse is measured.",
+    "note": "This record stays open until the mechanism lands. The immediate defect — the first pack card sitting at y=1363 on an 844px phone, and the search trigger no longer inside <header> — is a separate fix tracked on issue #384 and is first-order work, not the mechanism."
+  },
+  "grade": {
+    "signature": "an e2e-live-smoke run that fails on a spec CI never ran",
+    "before": 11,
+    "after": null,
+    "window_days": 2,
+    "verdict": "unproven",
+    "note": "unproven. Baseline 2026-08-19: run 32239852032 fails 11 tests, of which 10 assert rendered geometry or DOM structure and could have been graded before the deploy. Re-measure after the nextjs job runs those specs. The record cannot close on the storefront fix alone: fixing the layout closes first_order, not the class."
+  },
+  "state": "open"
+}

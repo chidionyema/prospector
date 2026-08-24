@@ -55,6 +55,16 @@ exclude = [
     # ratchet above honest: they are not counted as debt because nobody will pay it down and no
     # import reaches them (the runner globs `*.py` one level up, never into subdirectories).
     "tools/experiments/w0_free_prescreen_auc",
+    # A MIRROR, not repo source. `scripts/claude_guards/` carries a byte-for-byte copy of the
+    # 33 hook scripts and 2 config files under `~/.claude`, so that the way this estate is worked
+    # survives a lost laptop (scripts/agent_estate_sync.py explains why). The mirror's only
+    # guarantee is that the file here IS the file the hook runs -- `--check` compares bytes, and
+    # the whole point collapses the moment ruff rewrites one side. 36 findings, every one style
+    # (E401, E702, I001, F541, F841, F401, E741); measured 2026-08-20, none of them correctness.
+    # The cost is that `idle-guard.py` and `wire-idle-guard.sh`, which were written in this repo
+    # and are symlinked OUT to `~/.claude/scripts/`, lose ruff coverage along with the copies.
+    # They are covered instead by tests/unit/test_the_agent_estate_is_tracked.py.
+    "scripts/claude_guards",
 ]
 
 [lint]

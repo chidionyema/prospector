@@ -1,0 +1,271 @@
+# The edge: TLS, and the three hostnames the world types. Fourth of the five compose services to
+# move into a manifest. Register row F-39.
+#
+# THIS IS NOT A PORT OF THE CADDY CONTAINER, AND THAT IS THE WHOLE POINT OF THE FILE.
+# deploy/compose/docker-compose.yml runs `caddy:2.10-alpine` with a 3,286-byte hand-written
+# Caddyfile. Lifting that container into a Deployment would have been the smallest diff and the
+# wrong one: routing and certificate issuance are two things Kubernetes already has owners for, and
+# LAW 43 says the research runs BEFORE the first line. It ran, and it is on the record in
+# ~/dev/code/crew/science/RESEARCH-LEDGER.jsonl, 2026-08-24. The three findings that decided it:
+#
+#   1. THE INGRESS API'S FLAGSHIP CONTROLLER IS ARCHIVED. Measured 2026-08-24:
+#      `gh api repos/kubernetes/ingress-nginx --jq .archived` returns `true`, last push
+#      2026-03-23. The Kubernetes Steering and Security Response Committees wrote, on
+#      2026-01-29: "In March 2026, Kubernetes will retire Ingress NGINX, a piece of critical
+#      infrastructure for about half of cloud native environments", and "There will be no more
+#      releases for bug fixes, security patches, or any updates of any kind after the project is
+#      retired." Its planned successor, InGate, never reached maturity and was retired too. An
+#      estate choosing its edge in August 2026 does not choose the Ingress API.
+#   2. THE COMMITTEES NAME THE REPLACEMENT: "Gateway API or one of the many third-party Ingress
+#      controllers". kubernetes-sigs/gateway-api, Apache-2.0, latest v1.6.1 on 2026-07-16. It is
+#      an API and not an implementation, which is exactly the property this estate wants:
+#      `gatewayClassName` below is the ONLY controller-specific string in this file. In the
+#      Caddyfile the routing IS the vendor's config language, so there is no seam at all.
+#   3. THE CONTROLLER IS ALREADY BOUGHT. docs/onboarding/k8s-stack.md picks k3s, and k3s ships
+#      Traefik as its default. traefik/traefik measured 2026-08-24: MIT, 64,556 stars, v3.7.11 on
+#      2026-08-19. Traefik v3 implements Gateway API. envoyproxy/gateway (Apache-2.0, v1.9.0,
+#      2026-08-15) is the named replacement if Traefik stops being viable, and swapping to it is
+#      one string on line `gatewayClassName`.
+#
+# COMPOSE KEEPS CADDY, UNCHANGED. That is not an inconsistency to clean up later. On a plain
+# Docker host with no cluster there is no Gateway API controller to talk to, and Caddy getting its
+# own certificates with no account and no dashboard is the right answer there. The two substrates
+# are allowed to differ; what may not differ is the ROUTING, and the two site blocks in
+# deploy/compose/Caddyfile and the two HTTPRoutes below say the same thing.
+#
+# WHAT THIS FILE NEEDS THAT NO CLUSTER HERE HAS YET, stated plainly because it is the difference
+# between admissible YAML and a working edge:
+#
+#   - the Gateway API CRDs. k3s does NOT install them; it ships Traefik with the Ingress API
+#     wired up. One Helm/kubectl apply of the standard channel, not a script.
+#   - cert-manager, WITH Gateway API support switched on. cert-manager.io/docs/usage/gateway/:
+#     "Since cert-manager 1.15, the Gateway API support is no longer gated behind a feature flag,
+#     but you still need to enable the Gateway API support" - the Helm install needs
+#     `config.gatewayAPI.enabled: true`. An install that skips that value produces a Gateway that
+#     silently never gets a certificate, which is the same failure shape as the empty secret mount
+#     that api.yaml refuses to start on.
+#
+# WHAT IS NOT TRUE YET:
+#
+#   1. NO CLUSTER HAS APPLIED THIS. Same sentence as the other three.
+#   2. NO CONTROLLER HAS ACCEPTED IT. A Gateway API route reports what it actually did in
+#      `status.parents[].conditions`, and a controller that does not implement an Extended field
+#      may accept the route and set `PartiallyInvalid` with reason `UnsupportedValue` rather than
+#      refusing it (apis/v1/shared_types.go:468-478). The `timeouts` block below is
+#      `Support: Extended` (apis/v1/httproute_types.go:306-311), so it is exactly the field that
+#      can be quietly dropped. Reading those conditions is the first thing to do on the first
+#      apply, and it is NOT something `kubectl apply` exiting 0 tells you.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: prospector-edge
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-edge
+    app.kubernetes.io/part-of: prospector
+  annotations:
+    # This is the whole of the certificate configuration, and it replaces the Caddyfile's global
+    # block plus the ACME_EMAIL default that existed because `email` with no argument is a Caddy
+    # parse error. cert-manager watches Gateways carrying this annotation, groups the listeners by
+    # the Secret named in their `certificateRefs`, and issues ONE certificate whose SANs are those
+    # listeners' hostnames. Three listeners, one Secret, one certificate, three SANs.
+    cert-manager.io/cluster-issuer: prospector-letsencrypt
+spec:
+  # THE ONLY CONTROLLER-SPECIFIC STRING IN THIS FILE. k3s ships Traefik; a cluster running Envoy
+  # Gateway changes this word and nothing else.
+  gatewayClassName: traefik
+  listeners:
+    # Port 80 stays, for the two reasons the Caddyfile gave: it carries the HTTP-01 challenge
+    # cert-manager solves by attaching its own temporary HTTPRoute to this listener, and it carries
+    # the redirect to 443 that prospector-edge-https-redirect below performs. It has no hostname,
+    # so it accepts all three; a listener with no hostname matches everything.
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # One HTTPS listener per hostname, because a Gateway listener carries at most one. All three
+    # name the same Secret on purpose - see the annotation above.
+    - name: https-apex
+      protocol: HTTPS
+      port: 443
+      hostname: mumchimp.com
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https-www
+      protocol: HTTPS
+      port: 443
+      hostname: www.mumchimp.com
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https-api
+      protocol: HTTPS
+      port: 443
+      hostname: api.mumchimp.com
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+# Everything on port 80 becomes a 301 to the same URL on 443. This is the `force_https` Fly used to
+# supply and the last thing Fly was still doing that the compose stack could not do for itself.
+#
+# `RequestRedirect` is Core support in Gateway API, so unlike `timeouts` below it cannot be quietly
+# dropped by a conforming controller.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: prospector-edge-https-redirect
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-edge
+    app.kubernetes.io/part-of: prospector
+spec:
+  parentRefs:
+    - name: prospector-edge
+      # Named, so this route attaches to port 80 ONLY. Without sectionName it would attach to
+      # every listener, including the three HTTPS ones, and redirect https to https forever.
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            # 301 and not 308: the Caddyfile's default was a permanent redirect and a shop's
+            # apex has been permanently on https since the certificates were issued.
+            statusCode: 301
+---
+# The storefront the buyer types. deploy/compose/Caddyfile's first site block, in Gateway API.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: prospector-store-web
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-store-web
+    app.kubernetes.io/part-of: prospector
+spec:
+  parentRefs:
+    - name: prospector-edge
+      sectionName: https-apex
+    - name: prospector-edge
+      sectionName: https-www
+  hostnames:
+    - mumchimp.com
+    - www.mumchimp.com
+  rules:
+    - filters:
+        # THE HEADER THE CADDYFILE SET, AND FOR THE REASON IT GAVE. X-Forwarded-Proto is what tells
+        # Next.js and ASP.NET they are behind TLS. Without it the API builds http:// links into
+        # verification emails while the browser is on https, and the buyer meets a mixed-content
+        # warning at the one moment they are typing a card.
+        #
+        # It is set EXPLICITLY rather than left to the controller. Traefik does populate
+        # X-Forwarded-* by default, but "the controller probably does it" is exactly the kind of
+        # claim this estate has been wrong about, and `gatewayClassName` is a string somebody may
+        # change. RequestHeaderModifier is Core support, so this survives the swap.
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Proto
+                value: https
+      backendRefs:
+        # The Service in base/web.yaml. A Service and not a published host port, which is what
+        # keeps an un-TLS'd storefront off the box's public interface.
+        - name: prospector-store-web
+          port: 3000
+---
+# The API the storefront and the engine call. The Caddyfile's second site block.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: prospector-store-api
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-store-api
+    app.kubernetes.io/part-of: prospector
+spec:
+  parentRefs:
+    - name: prospector-edge
+      sectionName: https-api
+  hostnames:
+    - api.mumchimp.com
+  rules:
+    - filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Proto
+                value: https
+      # STRIPE POSTS WEBHOOKS HERE, and a webhook that times out is a payment the shop never hears
+      # about. The Caddyfile said `response_header_timeout 60s`, which is time-to-first-response-
+      # header. This is NOT the same measurement: `backendRequest` bounds the whole backend
+      # request, so it is stricter for a slow body and looser for nothing. 60s is carried over as
+      # the number the shop has been running with rather than as a new decision.
+      #
+      # `timeouts` is Support: Extended (apis/v1/httproute_types.go:306-311), so a controller is
+      # permitted to accept this route and mark it PartiallyInvalid instead of honouring it. That
+      # is the first condition to read on the first apply.
+      timeouts:
+        backendRequest: 60s
+      backendRefs:
+        - name: prospector-store-api
+          port: 8080
+---
+# THE CERTIFICATE AUTHORITY, and the one cluster-scoped object this estate declares.
+#
+# WHY IT IS IN base/ AND NOT NEXT TO cert-manager'S INSTALL. cert-manager is a controller and gets
+# installed once per cluster like Kyverno; an Issuer is CONFIGURATION - which CA, which contact,
+# which solver - and configuration belongs in the repo the overlays build from, where a change to
+# it is a reviewed commit. The staging overlay patches `spec.acme.server` to Let's Encrypt's
+# staging directory, which is not a nicety: LE rate-limits duplicate certificates to five per week
+# per name, and a staging cluster that reissues against the production directory burns the shop's
+# real allowance.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: prospector-letsencrypt
+  labels:
+    app.kubernetes.io/name: prospector-edge
+    app.kubernetes.io/part-of: prospector
+spec:
+  acme:
+    # The production directory. deploy/k8s/overlays/staging/edge-hostnames.yaml replaces it.
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Where Let's Encrypt sends expiry warnings. Not a secret, and already in this repo:
+    # base/api.yaml carries the same address as Founder__Emails.
+    email: chidionyema@gmail.com
+    privateKeySecretRef:
+      # The ACME ACCOUNT key, created by cert-manager on first use. Losing it does not lose the
+      # certificates, but it does lose the account, so it is a Secret to back up rather than one
+      # to recreate.
+      name: prospector-letsencrypt-account
+    solvers:
+      # HTTP-01, and DNS-01 deliberately not used. DNS-01 would need a Cloudflare API token in the
+      # cluster - a new credential, a new blast radius, and a new thing to rotate - and it buys
+      # only wildcard certificates, which a three-name shop does not need. HTTP-01 needs port 80
+      # reachable, which the Gateway's `http` listener above already is.
+      - http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - name: prospector-edge
+                namespace: prospector
+                kind: Gateway
+                sectionName: http

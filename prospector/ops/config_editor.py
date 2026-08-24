@@ -133,7 +133,8 @@ def _read_config_raw() -> tuple[dict[str, Any], bool]:
         return {}, True
     try:
         with open(_config_path(), encoding="utf-8") as f:
-            return (yaml.safe_load(f) or {}), True
+            from prospector.yaml_fast import safe_load as _fast_safe_load
+            return (_fast_safe_load(f) or {}), True
     except (yaml.YAMLError, OSError) as exc:
         logger.error("control_center: %s unparseable (%s: %s)",
                      _config_path(), type(exc).__name__, exc)
@@ -148,7 +149,7 @@ def load_config_raw() -> dict[str, Any]:
 def config_hash(cfg: dict[str, Any]) -> str:
     """Stable hash of the config dict for certification tracking."""
     return hashlib.sha1(
-        yaml.safe_dump(cfg, sort_keys=True).encode()
+        yaml.safe_dump(cfg, sort_keys=True).encode(), usedforsecurity=False
     ).hexdigest()[:12]
 
 
@@ -318,7 +319,14 @@ def validate_config(cfg: dict[str, Any]) -> tuple[bool, list[str]]:
     # An empty or unbuildable chain is not a configuration; it is what a broken widget stages.
     # The engine fails LOUDLY on it at startup (`_build_operator` raises), which means the
     # damage lands on the daemon's next re-exec rather than on the person who clicked Save.
-    from prospector.operator import BUILDABLE_TIERS
+    # The BUILT-INS PLUS whatever `config.yaml providers:` declares, never the built-in table
+    # alone. `providers.buildable_tiers` is the function that answers "can this name be
+    # constructed" and its own docstring says to read it here — a validator that knows only the
+    # built-ins refuses a valid config, and the message blames the config. Measured 2026-08-21:
+    # groq and mistral were live in `operator:` and answering, and this validator called the
+    # whole file invalid, so the ops console could not save ANY config change at all.
+    from prospector.providers import buildable_tiers, declared_now
+    BUILDABLE_TIERS = buildable_tiers(declared_now())
     # `marketing_operator` was missing from this loop until 2026-08-18: it is a real chain, read by
     # `run.py`, and an unbuildable name in it raised at run time instead of at save time.
     for field in ("operator", "noncritical_operator", "artifact_operator",

@@ -1,0 +1,182 @@
+# The storefront the buyer sees, declared. The third of the five workloads in
+# deploy/compose/docker-compose.yml to move out of a shell script and into a manifest this estate's
+# own policies grade. Register row F-39.
+#
+# THIS IS THE ONE STATELESS WORKLOAD, AND EVERY DIFFERENCE FROM base/engine.yaml AND base/api.yaml
+# FOLLOWS FROM THAT. It owns no database, mounts no PersistentVolumeClaim, and carries no
+# `prospector.estate/single-writer` label, so it is the only one of the three that may run more than
+# one replica and roll rather than Recreate. Two replicas is not a capacity claim — it is the
+# difference between a node drain being invisible and a node drain being an outage on the page that
+# takes money.
+#
+# IT HAS NO RUNTIME SECRETS, AND THAT IS A PROPERTY OF THE IMAGE, NOT AN OVERSIGHT. Every
+# NEXT_PUBLIC_* value is a build argument baked in at `docker build`
+# (store_platform/src/Store.Web/Dockerfile:27-50), which is what NEXT_PUBLIC_ means: the value ships
+# to the browser, so it was never a secret. There is therefore no Secret volume here and nothing for
+# `secrets-not-from-env-vars` to refuse. The consequence worth writing down is the other one: a
+# storefront rebuilt for staging is a DIFFERENT IMAGE from the one built for production, so the
+# overlays cannot share a tag the way the engine's and the API's can.
+#
+# WHAT IS STILL NOT TRUE:
+#
+#   1. NO CLUSTER HAS EVER APPLIED THIS. Same sentence as the other two, and it stays until there
+#      is one.
+#   2. THE IMAGE HAS NOT BEEN RUN AS NON-ROOT. store_platform/src/Store.Web/Dockerfile has no USER
+#      line, and the drill that measured the engine on 2026-08-24 has not been run against this
+#      image. `runAsUser: 10001` below is declared and unproved. The engine's drill is the reason
+#      to expect trouble rather than to assume none: it found three separate blockers in an image
+#      nobody thought was root-dependent.
+#   3. THE WRITABLE PATHS BELOW ARE REASONED, NOT MEASURED. `.next/cache` is where a Next.js server
+#      writes its ISR and fetch cache, and /tmp is where node writes everything else. The engine's
+#      drill measured exactly this pair for the ops console. Whether the standalone server writes
+#      anywhere else under a read-only root is the thing item 2 would find out.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prospector-store-web
+  namespace: prospector
+  labels:
+    app: prospector-store-web
+    app.kubernetes.io/name: prospector-store-web
+    app.kubernetes.io/part-of: prospector
+spec:
+  replicas: 2
+  strategy:
+    # RollingUpdate, and unlike the engine and the API that is the RIGHT default here. Nothing is
+    # shared between replicas, so the new pod may serve while the old one drains. maxUnavailable 0
+    # is the part that matters: with the default of 25% of 2 replicas rounded down to 0 it would
+    # already hold, but writing it means a later `replicas: 4` cannot quietly start taking a
+    # quarter of the storefront out of rotation during a deploy.
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: prospector-store-web
+  template:
+    metadata:
+      labels:
+        app: prospector-store-web
+        app.kubernetes.io/name: prospector-store-web
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: ghcr.io/chidionyema/prospector-store-web:set-by-an-overlay
+          imagePullPolicy: IfNotPresent
+          env:
+            # The image already sets all three (Dockerfile:60-62). They are repeated because the
+            # containerPort, the Service and both probes below all assert 3000, and a port that is
+            # only true inside an image is a number four places are guessing at. HOSTNAME is the
+            # address the standalone server binds; 0.0.0.0 is what makes it reachable from outside
+            # the pod's own network namespace, which is where the kubelet probes from.
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            - name: HOSTNAME
+              value: 0.0.0.0
+            # readOnlyRootFilesystem means node has nowhere to write and nowhere to resolve HOME
+            # to. Both point at the emptyDir below.
+            - name: TMPDIR
+              value: /tmp
+            - name: HOME
+              value: /tmp
+          ports:
+            - name: http
+              containerPort: 3000
+          # /api/health, and store_platform/src/Store.Web/src/pages/api/health.ts says why it
+          # deliberately does not touch the Store.Api: a health check is a claim about THIS process.
+          # Making it depend on a downstream service inverts what it is for — one API blip would
+          # fail every storefront's probe at once and turn a partial fault into a total outage.
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # The Next.js server's ISR and fetch cache. The build output it SERVES is in
+            # .next/static and .next/server, which this does not cover, so nothing the image
+            # shipped is hidden by mounting over the cache directory.
+            - name: next-cache
+              mountPath: /app/.next/cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prospector-store-web
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-store-web
+    app.kubernetes.io/part-of: prospector
+spec:
+  type: ClusterIP
+  selector:
+    app: prospector-store-web
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+# WHY A PodDisruptionBudget AND WHY ONLY HERE. `maxUnavailable: 0` above governs a DEPLOY. It says
+# nothing about a node drain, a cluster upgrade or an autoscaler reclaiming a node, and those evict
+# pods directly. Without this, a single `kubectl drain` can take both storefront replicas at once
+# and the shop is down while both reschedule.
+#
+# The engine and the API do not get one, and that is deliberate rather than an omission: both are
+# `replicas: 1` single-writer workloads where `minAvailable: 1` would BLOCK a drain forever instead
+# of protecting anything. A budget that cannot be satisfied is an operator fighting the fence at
+# 3am, which LAW 38 grades as an outage.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prospector-store-web
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-store-web
+    app.kubernetes.io/part-of: prospector
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: prospector-store-web

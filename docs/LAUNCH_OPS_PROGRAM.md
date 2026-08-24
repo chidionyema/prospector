@@ -369,7 +369,7 @@ and the founder can read all six on the console without a terminal.
 2. Publish sweep every tick: any PASS without a listing gets one attempt.
 3. ~~Clear the 35 — read-only report first~~ **read-only half done 2026-08-16**: `ops/automations/stranded_packs.py` reports 38 with the blocking rule per pack. The `--fix` half is deliberately NOT in that automation (repair costs model calls; R8/P3) and is still to build.
 5. **Console:** the Catalogue screen gets a one-click 'repair and republish' on any stranded pack.
-**Done when:** stranded count is 0, the check runs per tick, and the count is a line on the console home. **The console line is NOT done** (corrected 2026-08-17): this said an automations view at `prospector/ops/automations_view.py` discovered every engine and ran its `--json`, so the check would appear with no console edit. That file has never existed and no discovery layer does. Each caller imports one automation by name — `prospector/ops/data.py` imports `ops.automations.offsite_backup`, `scripts/ops_status.py` runs `ops.automations.stranded_packs`. So a new automation still needs a console edit, and the stranded count is not on the console home.
+**Done when:** stranded count is 0, the check runs per tick, and the count is a line on the console home. **The console line is DONE (2026-08-19), and the 2026-08-17 correction above it was itself wrong.** `prospector/ops/automations_view.py` does exist. What was true is that nothing called it: it was written, tested and reachable from nothing — not `READS`, not the browser allow-list, not a page. That is why log rotation could be scheduled, running and freeing 1.0 GB a week while the console showed no sign of it. It is now wired at `prospector/ops/console_api.py::_read_automations`, listed in `READS`, allowed in `store_platform/src/Ops.Console/src/pages/api/ops/read/[view].ts`, and rendered by the Automations card on `/processes`. The view discovers its own subjects — any `ops/automations/<name>.py` with an `ops/config/<name>.yaml` beside it — so a new automation is two files and no console edit. `tests/unit/test_a_view_module_with_no_caller_is_unreachable.py` fails if the next view module is written and left unwired. Read-only and `--fix` rows for each automation are on `/tools`. Live on 2026-08-19 the card showed 5 automations, 2 needing attention.
 
 ### P2 — Make the meters honest
 1. Ledger rotation into `store/ledger/YYYY-MM.jsonl` plus a compacted `daily_totals.json` the guard
@@ -412,7 +412,7 @@ and the founder can read all six on the console without a terminal.
 3. Move superseded docs to `docs/attic/` with a one-line reason. Never delete — the incidents are
    the reasoning behind current rules.
 4. ~~Fix `RUN.md:95` (Gemini) and `RUN.md:60`~~ **DONE 2026-08-18.** Step 7 already pointed at
-   `publish/publish.py`, the real 10,627-byte module; the 0-byte `prospector/publish.py` stub it
+   `publish/publish.py`, the real 10,627-byte module. There used to be a 0-byte `prospector/publish.py` stub beside it; that file was deleted in #312 and no longer exists, which is why the shorthand it  <!-- doc-lint-ok: the sentence is about a file deleted in #312; naming it is the point -->
    used to name has no importer anywhere in the repo and is deleted. Three Gemini references
    survived the earlier pass — the retrieval line in step 4, the `generate --resume` comment and a
    heading claiming the batch command reads `GEMINI_API_KEY`. All three now name the config key

@@ -1,0 +1,75 @@
+# The prospector engine, in Rust.
+#
+# Dependency direction is strictly downward and nothing depends upward:
+#   core -> config -> {store, retrieval, brain} -> vet -> pack -> sched -> engine
+#
+# Crates are added as they are ported. An empty members list would not compile, so this
+# file grows one line at a time rather than declaring the whole tree up front.
+[workspace]
+resolver = "2"
+members = [
+  "crates/prospector-core",
+  "crates/prospector-retrieval",
+]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.98.0"
+publish = false
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "2"
+proptest = "1"
+
+# ---------------------------------------------------------------- the lint stack
+#
+# These are compile-time, so they apply to every build anyone runs — laptop, CI, the Fly
+# builder — rather than to a tool somebody remembers to invoke.
+[workspace.lints.rust]
+# FORBID, not deny. `forbid` cannot be lifted by a local #[allow], which is the entire
+# point: it converts "we try not to use unsafe" into a fact the compiler enforces.
+#
+# It also settles the Miri question. Miri is an interpreter for detecting undefined
+# behaviour, and UB in safe Rust is a compiler bug, not an application bug — so with zero
+# unsafe in the tree, Miri has nothing here to find. It is nightly-only and 10-50x slower
+# than a normal test run, and that price buys nothing until this line changes. If a crate
+# ever genuinely needs unsafe, lifting this line IS the trigger to add a Miri job for that
+# crate, and the two decisions should be made in the same commit.
+unsafe_code = "forbid"
+unused_must_use = "deny"
+unreachable_pub = "warn"
+missing_debug_implementations = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+# A panicking path in a daemon that holds leases is not a crash, it is a stuck row: the
+# worker dies, the lease is not released, and nothing else may claim that candidate until
+# the TTL expires. Denied in crate code, allowed in tests via clippy.toml.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+unwrap_in_result = "deny"
+todo = "deny"
+unimplemented = "deny"
+
+# Parity tier T1 requires bit-exact f64 against the Python implementation, so an accidental
+# `==` on a float is a real defect here rather than a style note.
+float_cmp = "deny"
+lossy_float_literal = "deny"
+
+# Silent truncation in scoring or spend arithmetic is money, so make the cast explicit.
+cast_possible_truncation = "deny"
+cast_precision_loss = "warn"
+
+# pedantic noise that is not worth the churn on this codebase
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+must_use_candidate = "allow"

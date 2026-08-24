@@ -1,0 +1,30 @@
+{
+ "id": "INC-2026-08-20-ninety-three-tests-skipped-themselves-and-ci-stayed-green",
+ "opened": "2026-08-20",
+ "title": "93 tests answered 'the tool is missing' in the same colour as 'the code is correct', including every executable proof that main's protection decides correctly",
+ "severity": "high",
+ "detected_by": "the session implementing branch protection, checking whether main-admission-guard.yml had ever actually executed in CI",
+ "first_order": {
+  "what_broke": "tests/unit/test_main_admission_guard.py and tests/unit/test_pr_keeper.py pull the `github-script` bodies out of the YAML and RUN them in node against a stubbed Octokit. Between them that is 67 tests, and they are the only executable proof that main's protection decides correctly; everything else about those workflows is a text assertion. deploy/runner/Dockerfile installs no language runtimes on purpose, ci.yml never called setup-node, and both modules gated themselves on `shutil.which(\"node\")`. So on every CI run since the fleet moved to our own image, all 67 skipped and the job stayed green. Three more modules gated node INSIDE a helper rather than at module level, for 26 more.",
+  "receipt": "Measured on this tree with node removed from every PATH entry: `67 skipped in 10.92s`. A missing binary normally fails loudly at exit 127; turned into a skip by a test, it fails as nothing at all.",
+  "fixed_by": "ci.yml sets up node 22 in the python lane, with the reason written at the step. tests/tool_gate.py holds ONE gate, `require_tool(tool)`: missing locally => skip, missing under CI => fail. It is reachable both from the `needs_tool` marker and directly from a helper, because a marker cannot see a decision a helper makes at run time. tests/unit/test_a_missing_tool_never_silently_skips_in_ci.py scans for BOTH spellings (`shutil.which(` paired with any skip, anywhere in a file) and proves the behaviour by executing a module twice with node off PATH, once with CI set and once without: skipped / error / skipped / failed."
+ },
+ "cause_chain": [
+  "main had no executable proof of its own admission guard -> the tests existed and were skipping -> they skipped because node was absent from the runner image -> the image installs no runtimes by design, so every toolchain must arrive through an action -> nothing checked that a tool a test needs is installed by the job that runs it -> a skip and a pass are the same colour, so the gap could not be seen from the board."
+ ],
+ "second_order": {
+  "the_guard_would_have_broken_main": "main-green-guard.yml's `decide` step spliced `${{ steps.cause.outputs.verdict }}` straight into its JavaScript body. Actions substitutes that before node ever sees it, so production worked while any harness parsing the raw script failed. Adding setup-node would therefore have turned main red on the very run that fixed the skips. It now passes values through `env:` and reads `process.env`.",
+  "still_open": "tests/unit/test_estate_inventory.py:285 does `fly = shutil.which(\"fly\")` then `if fly: assert ...`, which passes while asserting nothing. Making it honest needs flyctl on the runner image \u2014 a cost and credential decision, so it is recorded here rather than fixed."
+ },
+ "third_order": {
+  "why_it_matters_beyond_these_tests": "The estate had been reading a green board as evidence during a multi-day pipeline outage. Every skipped test widened the gap between what the board said and what was measured, and nothing in the pipeline reported the difference."
+ },
+ "grade": {
+  "class": "a test answering 'I could not run' in the same colour as 'this is correct'. Same class as pytest exiting 0 on a run that collected nothing, and an empty log read as a clean negative.",
+  "self_healing": "no",
+  "guard": "tests/unit/test_a_missing_tool_never_silently_skips_in_ci.py \u2014 it fails the suite for a `shutil.which` paired with a skip anywhere under tests/, and separately fails when a tool a test declares is not installed by the job that runs it",
+  "memory": "to write: a marker cannot see a decision a helper makes at run time, so a scan keyed on the marker reports the class closed while three modules still gate inside a function",
+  "founder_action": "none"
+ },
+ "state": "closed"
+}

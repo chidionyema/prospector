@@ -13,12 +13,20 @@ import json, os, math, collections, urllib.request, sys, glob, re
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# The store is wherever PROSPECTOR_STORE_DIR points, which on the engine is a mounted volume.
+# These globs were relative to the working directory, so they read whatever `store/` happened
+# to sit beside the shell. INC-2026-08-18-store-resolver.
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(HERE))))
+from prospector.config import store_root  # noqa: E402
+
 CACHE = os.path.join(HERE, 'emb_cache.json')
 rows = json.load(open(os.path.join(HERE, 'labelled.json')))
 data = [r for r in rows if r['decision'] in ('pass', 'kill')]
 
 raw = {}
-for f in glob.glob('store/dossiers/*.json'):
+for f in glob.glob(str(store_root() / 'dossiers' / '*.json')):
     try:
         d = json.load(open(f))
     except Exception:
