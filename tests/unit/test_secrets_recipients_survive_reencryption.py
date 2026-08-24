@@ -13,7 +13,6 @@ temp directory, never the real store or key, and they never assert on a secret v
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -22,11 +21,11 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SECRETS_SH = REPO_ROOT / "deploy" / "secrets.sh"
 
-pytestmark = pytest.mark.skipif(
-    shutil.which("age") is None or shutil.which("age-keygen") is None,
-    reason="needs real age: the assertion is about who can decrypt, which a fake cannot show "
-    "(the stdin/argv semantics are covered with fakes in test_secrets_set_reads_stdin.py)",
-)
+# Real age, declared: the assertion is about who can decrypt, which a fake cannot show (the
+# stdin/argv semantics are covered with fakes in test_secrets_set_reads_stdin.py). needs_tool
+# skips on a laptop without age and ERRORS on a CI runner, where ci.yml's "Install age" step
+# is the thing that puts it on PATH.
+pytestmark = pytest.mark.needs_tool("age", "age-keygen")
 
 
 def _keygen(path: Path) -> str:

@@ -523,6 +523,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # tests/unit/test_secrets_recipients_survive_reencryption.py declares needs_tool("age"):
+      # its assertion is about who can decrypt real ciphertext, which a fake binary cannot
+      # show. INSTALLED_BY in test_a_missing_tool_never_silently_skips_in_ci.py names this
+      # step, so removing it turns those tests into CI errors, not silent skips.
+      - name: Install age
+        run: |
+          command -v age >/dev/null && command -v age-keygen >/dev/null || {
+            sudo apt-get update -qq && sudo apt-get install -y -qq age
+          }
+
       # One shared uv cache and one shared venv root, both on paths that survive between jobs.
       #
       # These used to be the repo variables CI_UV_CACHE_DIR and CI_VENV_ROOT, and both held

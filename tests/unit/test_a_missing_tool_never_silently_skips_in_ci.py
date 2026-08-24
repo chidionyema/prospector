@@ -49,6 +49,10 @@ INSTALLED_BY: dict[str, str] = {
     # git is on every runner image, but the row is not a formality: the checkout step is
     # what makes the repo a git repo at all, and a test that reads the index needs both.
     "git": "actions/checkout",
+    # The apt package `age` ships both binaries. The recipients tests decrypt real
+    # ciphertext, which a fake age cannot prove.
+    "age": "Install age",
+    "age-keygen": "Install age",
 }
 
 # This file's own assertions quote both the banned spelling and the marker, and `conftest.py`
