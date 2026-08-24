@@ -263,11 +263,39 @@ jobs:
       # This grades what is actually APPLIED, which is the overlay build, not base/ and not the
       # source. The ClusterPolicy documents are filtered out first: they are the judge, not the
       # judged.
-      - name: Every workload in both overlays is admitted by its own policies
+      # THE TARGET LIST IS ENUMERATED FROM DISK, NOT TYPED HERE. This loop used to read
+      # `for env in staging production`, which graded exactly the two directories somebody
+      # remembered to name. deploy/k8s/estate/ was added on 2026-08-24 and would have been
+      # ungraded YAML that looks identical to graded YAML — the same silent-miss shape as an
+      # allow-list with a bare `return` on its unknown branch. Every kustomization.yaml under
+      # deploy/k8s is now a target, minus the two that are not workloads: policies/ builds the
+      # judge, and base/ is built by the overlays that layer on top of it.
+      - name: Every workload in every manifest directory is admitted by its own policies
         run: |
           set -euo pipefail
-          for env in staging production; do
-            kubectl kustomize "deploy/k8s/overlays/$env" > "/tmp/$env.yaml"
+          targets=$(find deploy/k8s -mindepth 2 -name kustomization.yaml \
+                    | xargs -n1 dirname | sort \
+                    | grep -vE '^deploy/k8s/(policies|base)$')
+          echo "grading: $(echo $targets | tr '\n' ' ')"
+          # A list that silently comes back empty would make every check below vacuous.
+          if [ "$(echo "$targets" | grep -c .)" -lt 3 ]; then
+            echo "FAIL: found $(echo "$targets" | grep -c .) manifest directories, expected at least 3"
+            echo "      (overlays/staging, overlays/production, estate). The enumeration is broken,"
+            echo "      so a green result below would mean nothing was graded."
+            exit 1
+          fi
+          # The label is the directory's basename, and it is also the key split_workloads.py looks
+          # its document floor up under. Two directories sharing a basename would overwrite each
+          # other's build file and grade one of them twice, which reads as two passes.
+          dupes=$(for t in $targets; do basename "$t"; done | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "FAIL: two manifest directories share the basename(s): $dupes"
+            echo "      One would overwrite the other's build and be graded twice. Rename one."
+            exit 1
+          fi
+          for target in $targets; do
+            env=$(basename "$target")
+            kubectl kustomize "$target" > "/tmp/$env.yaml"
             # A vacuous pass is the failure mode here: handed no workloads, kyverno reports
             # "pass: 0, fail: 0" and exits 0, which reads exactly like success. The splitter
             # refuses that, and it is a file rather than inline python so that
