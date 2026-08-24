@@ -118,14 +118,35 @@ CAPACITY_PROBE="${CAPACITY_PROBE:-}"
 
 measure_idle_pct() {
   if [ -n "$CAPACITY_PROBE" ]; then $CAPACITY_PROBE; return; fi
-  timeout "${CAPACITY_PROBE_TIMEOUT:-45}" docker run --rm alpine:latest sh -c '
+  local out rc
+  out="$(timeout "${CAPACITY_PROBE_TIMEOUT:-45}" docker run --rm alpine:latest sh -c '
     read_stat() { awk "/^cpu /{print \$2+\$3+\$4+\$6+\$7+\$8, \$5}" /proc/stat; }
     set -- $(read_stat); b=$1; i=$2
     sleep 4
     set -- $(read_stat); B=$1; I=$2
     db=$((B-b)); di=$((I-i)); t=$((db+di))
     if [ "$t" -gt 0 ]; then echo $((di * 100 / t)); else echo unreadable; fi
-  ' 2>/dev/null
+  ' 2>/dev/null)"; rc=$?
+
+  # A PROBE THAT TIMED OUT IS NOT AN UNREADABLE PROBE. It is the loudest capacity reading available,
+  # and conflating the two is how this guard would wave through the worst machine it will ever see.
+  #
+  # The work inside that container is `sleep 4` and two reads of /proc/stat. On a machine with
+  # headroom it returns in a few seconds. Measured 2026-08-24, on this laptop with the compose stack
+  # running: the sidecar did not return within the 45s budget at all, and `colima ssh -- head -1
+  # /proc/loadavg` -- no container involved, just a shell in the VM -- also did not return in 90s.
+  # Both came back EMPTY, which the numeric test below reads as "unreadable" and waves through BLIND.
+  # That is exactly backwards: a box that cannot run `sleep 4` in 45 seconds cannot bootstrap a
+  # control plane, and saying so needs no threshold.
+  #
+  # Both exit codes are accepted because both occur. GNU timeout returns 124; busybox timeout signals
+  # SIGTERM and the shell reports 143. A check written for 124 alone silently misses the busybox case
+  # -- three files in this estate key on 124 as the sentinel and are correct only because they run on
+  # the Mac. 137 is the same event after a SIGKILL escalation.
+  case "$rc" in
+    124|137|143) echo "timeout"; return ;;
+  esac
+  printf '%s\n' "$out"
 }
 
 # What is eating the machine, so the refusal names the cause instead of only the symptom. A refusal
@@ -174,6 +195,38 @@ top_cpu_consumers() {
 # twenty-minute job it protects will not be exercised.
 capacity_gate() {
   local idle; idle="$(measure_idle_pct)"
+
+  # The timeout branch refuses, and it is not covered by IDLE_FLOOR_PCT: there is no number to
+  # compare, so a floor cannot express the override. IDLE_PROBE_TIMEOUT_IS_FATAL=0 is the deliberate
+  # escape, separate because it is a different decision -- "I accept a machine measured below the
+  # floor" and "I accept a machine too busy to be measured at all" are not the same acceptance.
+  if [ "$idle" = "timeout" ]; then
+    if [ "${IDLE_PROBE_TIMEOUT_IS_FATAL:-1}" = "0" ]; then
+      note "CPU probe timed out; proceeding anyway because IDLE_PROBE_TIMEOUT_IS_FATAL=0 was set"
+      return 0
+    fi
+    fail \
+"the CPU probe did not finish in ${CAPACITY_PROBE_TIMEOUT:-45}s, so this machine cannot bootstrap a control plane.
+
+The probe runs \`sleep 4\` and reads /proc/stat twice. A machine that cannot do that inside
+${CAPACITY_PROBE_TIMEOUT:-45} seconds has no headroom to give a control plane, and this needs no
+threshold to say so -- the failure to measure IS the measurement.
+
+Measured 2026-08-24 on this laptop, for what this looks like when it is real: the sidecar did not
+return inside its 45s budget, and \`colima ssh -- head -1 /proc/loadavg\` -- a plain shell in the VM,
+no container -- did not return in 90s either.
+
+What is using the machine:
+$(top_cpu_consumers)
+
+The remedy is to free CPU, not to retry. Same two options as a below-floor refusal, and both are
+founder calls: stop the compose stack in deploy/compose for the rehearsal window (free, but it is
+shared estate infrastructure other sessions depend on, LAW 11), or raise the VM's vCPU count, which
+needs a colima restart that crew/STATE.md forbids outright, crew #85.
+
+To override deliberately, with a reason:   IDLE_PROBE_TIMEOUT_IS_FATAL=0 deploy/rehearse_cluster.sh up"
+  fi
+
   case "$idle" in
     ''|*[!0-9]*)
       # A guard that loses its evidence reports BLIND, never a verdict. Refusing on an unreadable
