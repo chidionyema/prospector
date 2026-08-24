@@ -262,7 +262,20 @@ services:
       # It checks /catalog rather than a static path on purpose. /catalog reads store.db, so a
       # pass means the process is up AND the database is readable, which is the thing that has
       # to be true for the shop to take money.
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /catalog HTTP/1.1\r\nHost: h\r\nConnection: close\r\n\r\n' >&3 && head -1 <&3 | grep -q ' 200 '"]
+      #
+      # THE READ IS BOUNDED BY `read -t 3`, AND THE `timeout:` BELOW IS NOT WHAT BOUNDS IT.
+      # Measured 2026-08-24: docker did not enforce `timeout: 5s`. It marked the check failed and
+      # left the processes running. 108 `head` and 109 `grep` from THIS line were still alive in the
+      # VM, the oldest for 8h22m, one pair per 30s interval since the container started. With the
+      # store-web wget check below doing the same, ~309 stuck processes were the entire runnable set of the
+      # VM (procs_running 307), which is load 466 on 4 CPUs arithmetically.
+      #
+      # `head -1 <&3` blocks forever when the server accepts the connection and then sends nothing,
+      # which is exactly what a saturated box does. `read -t` bounds that in bash itself, with no
+      # coreutils `timeout` binary to depend on, and it removes the two subprocesses per check as
+      # well -- the pipeline was what accumulated. The connect needs no bound: /dev/tcp to 127.0.0.1
+      # either succeeds or is refused at once, there is no network in between to hang on.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /catalog HTTP/1.1\r\nHost: h\r\nConnection: close\r\n\r\n' >&3 && read -t 3 -r line <&3 && [[ $line == *' 200 '* ]]"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -315,7 +328,20 @@ services:
     init: true
 
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      #
+      # `-T 2` IS THE BOUND. `timeout: 3s` BELOW IS NOT, AND `init: true` ABOVE DOES NOT HELP HERE.
+      # init reaps a wget that has already exited; it cannot end one that is still running. Measured
+      # 2026-08-24 in the colima VM: 87-89 live wget processes from this line across three samples,
+      # the oldest 30,139s (8h22m) old, under a declared 3-second timeout. Docker marked the checks
+      # failed and never killed them, so every 15s interval added another that also never exited.
+      #
+      # -T sets wget's own connect/read timeout and is supported by both busybox and GNU wget, so it
+      # needs no new binary in the image. Proved in this image against a listener that accepts and
+      # then never answers: without -T, wget ran 26s until an outer timeout killed it; with -T 2 it
+      # returned rc=1 in 2s on its own. The rule this line now follows: a healthcheck must bound
+      # itself, because `timeout:` is a label docker applies to the RESULT, not a limit it enforces
+      # on the PROCESS.
+      test: ["CMD-SHELL", "wget -T 2 -q -O- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
       interval: 15s
       timeout: 3s
       retries: 3
