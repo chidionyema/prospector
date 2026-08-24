@@ -195,3 +195,5 @@ test_log*.jsonl
 # The copy that is NOT on this laptop goes to the private R2 backup bucket instead, as the
 # `secret-store` source in ops/config/offsite_backup.yaml.
 deploy/secrets.env.age
+.venv
+store/estate_inventory.json
