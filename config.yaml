@@ -2884,7 +2884,7 @@ spend:
   # mode is silent backlog growth, not overspend. The monitor being built alongside this
   # (OPS_CONSOLE_PROGRAM R15) surfaces spend-vs-cap with a projected hit-time, which is the
   # real brake; this number is the liability ceiling behind it, not the control.
-  daily_cap_usd: 100.0
+  daily_cap_usd: 0   # DISABLED on founder instruction 2026-08-21 (was 100.0). Restore by setting the number back.
   # Held at 75% of the cap, as 15.0/20.0 was — a warn at 15% of cap fires every day and stops
   # being an early warning.
   warn_at_usd: 75.0

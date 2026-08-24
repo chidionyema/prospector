@@ -182,3 +182,5 @@ signals/discovered_*
 # referenced by nothing -- four lines between them, naming a Gemini provider this estate no
 # longer configures. Deleted 2026-08-19; ignored so a run cannot re-commit them.
 test_log*.jsonl
+.claude/worktrees/
+.claude/scheduled_tasks.lock
