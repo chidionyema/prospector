@@ -7,9 +7,32 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - engine.yaml
+  - api.yaml
+  - web.yaml
+  - edge.yaml
 
-# STILL NOT HERE, and not pretended otherwise. The engine moved on 2026-08-24 (register row F-39);
-# the shop, api, web and edge workloads are still generated inline by deploy/targets/k8s.sh and are
-# still refused by this estate's own policies. engine.yaml is the pattern the other four follow,
-# and its header lists the two things that must change in the engine itself before a pod started
-# from it can actually run.
+# THE FIFTH SERVICE IS ANSWERED AND THE ANSWER IS "NOTHING GOES HERE". The CI runner is the last
+# of the five services in deploy/compose/docker-compose.yml, and it is deliberately absent rather
+# than pending. Measured 2026-08-24 before a line was written:
+#
+#     gh api repos/chidionyema/prospector/actions/runners --jq .total_count   ->  0
+#     CI_RUNS_ON, CI_LIGHT_RUNS_ON, CI_HEAVY_RUNS_ON, CI_DEPLOY_RUNS_ON       ->  all ubuntu-latest
+#
+# Zero self-hosted runners are registered and every runner variable points at GitHub-hosted, so
+# porting deploy/runner/entrypoint.sh's 191 lines of ephemeral-runner bash into a Deployment would
+# be building infrastructure for a service with no instances and no jobs. If capacity ever argues
+# for self-hosted again the artifact is actions/actions-runner-controller's gha-runner-scale-set
+# Helm chart behind an Argo CD Application, never a hand-written Deployment, and the switch is one
+# repo variable's VALUE because every workflow's runs-on already reads one. The research is on the
+# record: crew science/RESEARCH-LEDGER.jsonl, crew PR #144.
+#
+# A CORRECTION THAT MATTERS, MEASURED RATHER THAN REMEMBERED. This comment used to say the
+# remaining services were "still generated inline by deploy/targets/k8s.sh". They are not, and were
+# never. That script emits exactly three documents — a PersistentVolumeClaim, a Deployment and a
+# Service, all for the engine — and mentions no storefront, no API, no edge and no runner. The
+# runner has no Kubernetes representation at all, which is now a decision rather than an omission.
+#
+# Each manifest carries its own header saying what about it is declared and what is measured.
+# api.yaml's and web.yaml's `runAsUser: 10001` have not been drilled the way engine.yaml's has, and
+# edge.yaml needs two cluster components — the Gateway API CRDs and cert-manager — that no cluster
+# here has.

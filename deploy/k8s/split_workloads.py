@@ -25,11 +25,20 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# The build must contain at least these, and it has since 2026-08-24 when base/engine.yaml landed:
-# the Namespace, the PersistentVolumeClaim, the Deployment and the Service. The Deployment is
-# named separately because it is the only one that most of the 26 policies have any opinion about —
-# a build that kept the Namespace and lost the workload would still clear a bare count.
-MINIMUM_DOCUMENTS = 4
+# The floor is the count the build actually produces, and it is RAISED whenever a manifest lands.
+# A floor left at the day-one number stops catching anything the day two arrives: it was 4 when
+# base/engine.yaml was the only workload, and a build that had silently dropped the store API, the
+# storefront and the edge would still have cleared it. Measured 2026-08-24 on both overlays: 15
+# non-policy documents — the Namespace, a PVC/Deployment/Service each for the engine and the store
+# API, a Deployment/Service/PodDisruptionBudget for the storefront, and a ClusterIssuer, a Gateway
+# and three HTTPRoutes for the edge.
+#
+# The Deployment is named separately because it is the only kind most of the 26 policies have any
+# opinion about — a build that kept the Namespace and lost the workload would still clear a bare
+# count. That asymmetry is worth stating for the edge documents too: Gateway, HTTPRoute and
+# ClusterIssuer contributed 0 of the 91 passes, because no policy in the set matches them. They are
+# in the count so a dropped file is caught, not because they were checked.
+MINIMUM_DOCUMENTS = 15
 REQUIRED_KIND = "Deployment"
 
 
