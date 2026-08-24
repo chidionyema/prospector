@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: prospector
+
+resources:
+  - ../../base
+  - ../../policies
+
+labels:
+  - includeSelectors: false
+    pairs:
+      prospector.estate/environment: production
+
+# Image tags are set HERE, by commit SHA, never by a moving tag. You cannot roll back to a tag that
+# moves. Promotion from staging to production is a commit that edits the line below, which makes the
+# git history the deployment audit log.
+#
+# images:
+#   - name: ghcr.io/chidionyema/prospector-engine
+#     newTag: <commit sha>

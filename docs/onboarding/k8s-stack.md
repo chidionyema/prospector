@@ -40,29 +40,57 @@ somebody else's number until a box is actually rented.
 
 ## What it watches or changes
 
-`deploy/k8s/policies/estate-standards.yaml` is seven Kyverno policies, all set to `Enforce`, and
-each one is an incident this estate has actually had rather than a best practice copied from a blog:
+**This section changed on 2026-08-24, and the change is the interesting part.** It used to describe
+seven Kyverno policies written by hand in this repo. Six of them restated something the Kyverno
+project already publishes and maintains, so those six are gone and the upstream library is pulled in
+instead, pinned to a commit. `deploy/k8s/policies/RETIRED.md` is the row-by-row account of which
+policy was replaced by what, measured with `gh api` rather than remembered.
+
+What a cluster is handed now, measured the same day:
+
+```
+$ kubectl kustomize deploy/k8s/overlays/production | grep -c '^kind: ClusterPolicy'
+26
+$ kubectl kustomize deploy/k8s/overlays/production | grep -o 'validationFailureAction: [A-Za-z]*' | sort | uniq -c
+  26 validationFailureAction: Enforce
+```
+
+24 of those 26 are maintained by the Kyverno project. Adopting the library gained three rules the
+estate had never thought to write: `require-drop-all`, `require-ro-rootfs` and
+`disallow-default-namespace`. It also cost nothing to maintain, which is the whole argument.
+
+Two policies stayed hand-written, in `deploy/k8s/policies/estate.yaml`, because each encodes
+something true about this business that no upstream library could know:
 
 1. **money-rail-single-writer** — refuses two replicas or a RollingUpdate on anything labelled
-   `prospector.estate/single-writer`. SQLite has exactly one writer. Two engines is two spend ledgers.
-2. **no-optional-secret-references** — refuses `optional: true` on a secret. This is the 2026-08-24
-   incident written as a rule: a `required: false` let the API start half-configured.
-3. **no-literal-credentials-in-pod-spec** — refuses a value under a name matching `*SECRET*`,
-   `*PASSWORD*`, `*_TOKEN` and four more. LAW 21, enforced by the API server rather than by memory.
-4. **images-must-be-traceable** — no `:latest`. You cannot roll back to a tag that moves.
-5. **workloads-declare-what-they-need** — a memory request and limit are required. A CPU limit is
-   deliberately **not** required, because a CPU limit throttles rather than protects.
-6. **secure-by-default** — no privileged containers, with a labelled escape hatch that is countable.
-7. **serving-workloads-must-be-probed** — anything serving traffic needs both probes. Without a
-   readiness probe, self-healing has nothing to act on, which is how the rehearsal box reported
-   HTTP 000 while every container claimed to be started.
+   `prospector.estate/single-writer`. SQLite has exactly one writer. Two engines is two spend ledgers,
+   each honouring the daily cap separately, so a $100 cap silently becomes $200.
+2. **no-optional-secret-references** — refuses `optional: true` on a secretRef. This is the
+   2026-08-24 incident written as a rule: compose's `required: false` let a box start carrying none
+   of its 24 settings while the deploy script reported success. Searched upstream and found no
+   equivalent; if one appears, this one retires too.
 
-Six of the seven exclude `kube-system`, `kube-public`, `kube-node-lease`, `kyverno` and
-`cert-manager`, so the fence cannot take the cluster's own components down.
+Both exclude `kube-system`, `kube-public`, `kube-node-lease`, `kyverno` and `cert-manager`, so the
+fence cannot take the cluster's own components down.
+
+Underneath all of that, `deploy/k8s/base/namespace.yaml` sets
+`pod-security.kubernetes.io/enforce: restricted`. Pod Security Admission is built into Kubernetes and
+needs no controller, so it keeps refusing privileged pods on a cluster where Kyverno is down or not
+yet installed. The overlap with Kyverno is deliberate: a fence with no moving parts, and a witness
+that says which field of which container broke the rule.
 
 ## Where it lives
 
-- `deploy/k8s/policies/estate-standards.yaml` — the standards.
+- `deploy/k8s/README.md` — the shape, the two commands, and what has NOT been proved.
+- `deploy/k8s/policies/` — the upstream library pinned to a SHA, the Enforce patch, the two estate
+  policies, and `RETIRED.md`.
+- `deploy/k8s/overlays/{staging,production}/` — the two environments. They differ on image tags and
+  hostnames, never on a policy.
+- `deploy/k8s/argocd/applicationset.yaml` — one object owning both clusters. Nothing has run it.
+- `.github/workflows/k8s-manifests.yml` — the four gates that make the above enforced rather than
+  merely written down.
+- `docs/K8S_STANDARDS_AND_WAYS_OF_WORKING.md` — the research, the CNCF measurements, and the
+  processes.
 - `deploy/rehearse_cluster.sh` — the drill that proves them.
 - `deploy/targets/k8s.sh` — the adapter that deploys the engine, written 2026-08-20 and never once
   executed against a cluster until this drill ran it.

@@ -1,0 +1,133 @@
+name: k8s manifests
+
+# THIS IS THE ENFORCEMENT, AND THAT DISTINCTION IS THE WHOLE POINT.
+#
+# Founder, 2026-08-24: "we dont eforce stadard adbest practices, this is a new funxtion, we need to
+# be ready fron day 0 thats why ii asked for research, stop naking ecuses".
+#
+# docs/K8S_STANDARDS_AND_WAYS_OF_WORKING.md is research and a written standard. A written standard
+# is a thing people agree with and then work around at 2am. This file is the same standard as
+# something a pull request cannot merge past.
+#
+# It grades the BUILT OUTPUT, never the source. The goal-guard note on this estate names the class:
+# four guards in one day graded a comment, an English word, a line prefix and a file extension
+# instead of the thing itself. A guard that greps deploy/k8s/**.yaml for the word "Enforce" is that
+# mistake again -- kustomize patches, remote bases and overlays all mean the file on disk is not
+# what reaches the cluster. Everything below runs `kubectl kustomize` first and reads the result.
+
+on:
+  push:
+    branches: [main]
+    paths: ['deploy/k8s/**', '.github/workflows/k8s-manifests.yml']
+  pull_request:
+    branches: [main]
+    paths: ['deploy/k8s/**', '.github/workflows/k8s-manifests.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: k8s-manifests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  manifests:
+    # Same convention as ci.yml: where CI runs is an ops setting, not a code change.
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # kubectl carries kustomize. No second tool to install, and nothing here needs a cluster.
+      - uses: azure/setup-kubectl@v4
+
+      - name: Build both overlays
+        run: |
+          set -euo pipefail
+          mkdir -p _build
+          for env in staging production; do
+            kubectl kustomize "deploy/k8s/overlays/$env" > "_build/$env.yaml"
+            echo "$env: $(wc -c < "_build/$env.yaml") bytes"
+          done
+
+      # GATE 1. Upstream ships every policy as Audit, which writes a report and admits the workload
+      # anyway. LAW 28: an instrument nobody reads is not an instrument. One Audit policy in the
+      # built output means a rule that has been quietly turned into a suggestion.
+      - name: Every policy enforces, none audits
+        run: |
+          set -euo pipefail
+          for env in staging production; do
+            total=$(grep -c '^kind: ClusterPolicy' "_build/$env.yaml")
+            enforce=$(grep -c 'validationFailureAction: Enforce' "_build/$env.yaml")
+            audit=$(grep -c 'validationFailureAction: Audit' "_build/$env.yaml" || true)
+            echo "$env: $total policies, $enforce Enforce, $audit Audit"
+            [ "$total" -eq "$enforce" ] || { echo "FAIL $env: $((total - enforce)) policies are not Enforce"; exit 1; }
+            [ "$audit" -eq 0 ] || { echo "FAIL $env: $audit policies still audit instead of refusing"; exit 1; }
+          done
+
+      # GATE 2. The one that actually earns the second cluster.
+      #
+      # A staging cluster with softer rules admits manifests production refuses, which converts a
+      # problem caught in staging into an outage in production. That is the single failure a staging
+      # environment exists to prevent, so it is the single thing worth a hard gate.
+      #
+      # This is a PROPERTY, not an example: "the two environments agree on policy". It does not
+      # name a policy, count them, or care which ones exist, so adding a policy tomorrow does not
+      # touch this file. Rung 2 of the test ladder in ~/AGENTS.md.
+      - name: Staging and production enforce identical policy
+        run: |
+          set -euo pipefail
+          for env in staging production; do
+            awk '/^kind: ClusterPolicy/{f=1} /^---$/{f=0} f' "_build/$env.yaml" \
+              | grep -v 'prospector.estate/environment' > "_build/$env.policy"
+            echo "$env: $(wc -l < "_build/$env.policy") policy lines"
+          done
+          if ! diff -u _build/staging.policy _build/production.policy > _build/policy.diff; then
+            echo "FAIL: the two environments do not enforce the same rules."
+            echo "An overlay may change an image tag, a replica count, a hostname or a secret"
+            echo "reference. It may never change a policy, because staging then stops rehearsing"
+            echo "production and starts rehearsing something easier. The difference:"
+            head -60 _build/policy.diff
+            exit 1
+          fi
+          echo "OK: identical policy in both environments"
+
+      # GATE 3. Pod Security Admission is built into Kubernetes and keeps working on a cluster where
+      # Kyverno is down or not yet installed. It is the cheapest rung that can express "no privileged
+      # pods here" -- one label, no controller. Losing the label is silent, so it is checked.
+      - name: The namespace carries Pod Security Admission at restricted
+        run: |
+          set -euo pipefail
+          for env in staging production; do
+            for key in enforce audit warn; do
+              grep -q "pod-security.kubernetes.io/$key: restricted" "_build/$env.yaml" \
+                || { echo "FAIL $env: namespace is missing pod-security.kubernetes.io/$key: restricted"; exit 1; }
+            done
+            echo "$env: PSA restricted on enforce, audit and warn"
+          done
+
+      # GATE 4. kyverno/policies publishes no releases -- measured 2026-08-24, GET
+      # /repos/kyverno/policies/releases/latest returns 404. So `?ref=main` would mean this cluster's
+      # admission rules change on a stranger's merge, with no review here and no way to say when they
+      # changed. Every remote kustomize resource carries a 40-character SHA or this fails.
+      #
+      # SCOPED TO kustomization.yaml `resources:`, AND THAT SCOPE IS THE POINT. The first version of
+      # this gate scanned every URL under deploy/k8s and failed on
+      # argocd/applicationset.yaml's own `repoURL: https://github.com/chidionyema/prospector.git`.
+      # That reference is correct unpinned: Argo CD tracks this repo at `targetRevision: main`, which
+      # is what continuous delivery IS. LAW 38 grades a guard that refuses correct work as an outage,
+      # so the gate now checks the thing it actually cares about -- somebody else's code entering our
+      # admission chain -- and nothing else.
+      - name: Remote kustomize resources are pinned to a commit
+        run: |
+          set -euo pipefail
+          unpinned=$(find deploy/k8s -name kustomization.yaml -print0 \
+            | xargs -0 grep -hoE '^\s*-\s*(https?://)?(raw\.githubusercontent\.com|github\.com)/\S+' \
+            | grep -vE '(ref=|/)[0-9a-f]{40}([/?]|$)' || true)
+          if [ -n "$unpinned" ]; then
+            echo "FAIL: these remote kustomize resources are not pinned to a commit SHA:"
+            echo "$unpinned"
+            echo
+            echo "A branch ref means this cluster's admission rules change on somebody else's merge."
+            exit 1
+          fi
+          echo "OK: every remote kustomize resource is pinned"
+          find deploy/k8s -name kustomization.yaml -print0 \
+            | xargs -0 grep -hoE '[0-9a-f]{40}' | sort -u | sed 's/^/  pinned at /'
