@@ -357,6 +357,31 @@ LEDGER: tuple[Mode, ...] = (
         None,
         None,
     ),
+    # ---- at the registry
+    Mode(
+        "the-cluster-runs-a-tag-that-moved",
+        "container-images.yml holds `packages: write` and pushes three images to ghcr.io. The "
+        "overlays under deploy/k8s/overlays name images by TAG, so if the tag CI publishes is a "
+        "moving one — `latest`, `main`, `edge`, or a `type=sha` whose prefix is not pinned — the "
+        "overlay names a moving target and the cluster runs whatever was pushed last rather than "
+        "the commit that was graded. Nothing downstream catches it: the manifests apply, the pods "
+        "start, and the running code is not the reviewed code. Kyverno's `disallow-latest-tag` "
+        "does not catch it either — upstream it refuses `:latest` and an untagged image, and a "
+        "moving `:main` sails past.\n\n"
+        "Not paid for by an incident here, because nothing built these images until 2026-08-24. "
+        "It is the shape of the incident this pipeline would otherwise import: a deploy path "
+        "whose artifact identity is weaker than its review gate.\n\n"
+        "The second mode in the same file is the storefront's build-time variables. NEXT_PUBLIC_* "
+        "are inlined into the bundle at build time and an empty one does not fail the build; it "
+        "ships a page that calls `undefined`. deploy-web.yml already checks this before handing "
+        "off, and the image path has to check the same thing or the k8s route reintroduces the "
+        "bug the Fly route fixed. The proof asserts the check runs BEFORE the build step and "
+        "exits non-zero.",
+        (".github/workflows/container-images.yml",),
+        "tests/unit/test_the_image_pipeline_publishes_one_immutable_tag.py",
+        None,
+        None,
+    ),
 )
 
 # The modes with no proof. This set is a RATCHET: removing an entry is the point of the

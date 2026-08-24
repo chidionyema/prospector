@@ -441,9 +441,22 @@ ALLOW_UNVERIFIED_DEPLOY = DEV / "store" / "scheduler" / "ALLOW_UNVERIFIED_DEPLOY
 #: closed the drift -- `deploy_reconcile.py` and the console's update button -- refused because
 #: main was "red". Measured 2026-08-21 on e900a9ad, with every code lane green:
 #: ('fail', 'production runs main=failure, ..., PR keeper=cancelled, ...').
+# `container images` builds and pushes the ghcr.io images. It is deliberately NOT a voter, and
+# the reason is what this gate is for rather than a convenience: the thing it grades is not the
+# thing being deployed. This gate decides whether the PYTHON checkout at
+# /Users/chidionyema/Documents/code/prospector-live may roll forward, and that daemon runs from
+# source — it pulls no image. A red image build says the Dockerfiles are wrong at that sha, which
+# is true and worth failing the PR on, but it is not evidence about the artifact this gate ships.
+# One of its three arms also fails on an unset repository variable (NEXT_PUBLIC_*), an
+# environment condition and not a code fault, which would wall every Python deploy until somebody
+# set a variable that the Python daemon never reads.
+# MOVE IT TO GRADES_THE_CODE the day the deploy target becomes the images — when this gate, or
+# whatever replaces it, rolls a cluster forward rather than a source checkout. Then the verdict
+# is about the artifact and silencing it would ship an image that never built.
 _IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel",
                       "production runs main", "pr keeper", "drill", "fleet",
-                      "weekly estate review", "approve parked runs", "merge when green")
+                      "weekly estate review", "approve parked runs", "merge when green",
+                      "container images")
 
 
 def ci_verdict(sha: str) -> tuple[str, str]:
