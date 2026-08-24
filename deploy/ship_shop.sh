@@ -24,6 +24,11 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_DIR="$REPO/deploy/compose"
 REMOTE_DIR="${SHOP_REMOTE_DIR:-/srv/mumchimp}"
 
+# The hostnames and the TLS switch. Overridable so the rehearsal box can run the SAME script
+# against the SAME compose file with the Caddyfile's local-drill mode, instead of the rehearsal
+# being a second code path that proves nothing about the real one.
+STACK_ENV="${SHOP_STACK_ENV:-$COMPOSE_DIR/stack.env}"
+
 DRY_RUN=0
 CHECK_ONLY=0
 HOST=""
@@ -42,14 +47,20 @@ done
 say()  { printf '\n== %s\n' "$*"; }
 fail() { printf '!! %s\n' "$*" >&2; exit 1; }
 
+# Extra ssh options, word-split on purpose. A non-standard port, a jump host or a specific key are
+# ordinary on a real estate, and a deploy script that cannot express them is one people work around
+# by editing it. deploy/rehearse_box.sh sets this to reach the local rehearsal box.
+# shellcheck disable=SC2206
+SSH_OPTS=( ${SHOP_SSH_OPTS:-} )
+
 # Every remote command goes through here, so --dry-run cannot miss one.
 _ssh() {
   if [ "$DRY_RUN" = 1 ]; then printf '   [dry-run] ssh %s %s\n' "$HOST" "$*"; return 0; fi
-  ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST" "$@"
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "${SSH_OPTS[@]}" "$HOST" "$@"
 }
 _push() {  # _push <local> <remote>
   if [ "$DRY_RUN" = 1 ]; then printf '   [dry-run] push %s -> %s\n' "${1#"$REPO"/}" "$2"; return 0; fi
-  ssh -o BatchMode=yes "$HOST" "cat > $2" < "$1"
+  ssh -o BatchMode=yes "${SSH_OPTS[@]}" "$HOST" "cat > $2" < "$1"
 }
 
 # ---------------------------------------------------------------------------
@@ -57,6 +68,20 @@ _push() {  # _push <local> <remote>
 #    because a missing local file is a failure worth finding before a box is rented.
 # ---------------------------------------------------------------------------
 say "local preflight"
+
+# A shop the public cannot reach on 80 is not shipped, and Caddy cannot answer an ACME
+# challenge on any other port, so a certificate never issues either. deploy/compose/stack.env
+# carried EDGE_HTTP_PORT=8080 from laptop use, measured 2026-08-24, and this script would
+# happily have shipped that to a rented box.
+EDGE_HTTP_PORT="$(grep -E '^EDGE_HTTP_PORT=' "$STACK_ENV" 2>/dev/null | cut -d= -f2 || echo 80)"
+EDGE_HTTPS_PORT="$(grep -E '^EDGE_HTTPS_PORT=' "$STACK_ENV" 2>/dev/null | cut -d= -f2 || echo 443)"
+: "${EDGE_HTTP_PORT:=80}" "${EDGE_HTTPS_PORT:=443}"
+if [ "$EDGE_HTTP_PORT" != 80 ] || [ "$EDGE_HTTPS_PORT" != 443 ]; then
+  fail "$STACK_ENV publishes the edge on ${EDGE_HTTP_PORT}/${EDGE_HTTPS_PORT}. A public box must
+   be 80/443: nothing else is reachable without a port in the URL, and Let's Encrypt answers
+   its challenge on 80. Set EDGE_HTTP_PORT=80 and EDGE_HTTPS_PORT=443 in that file."
+fi
+
 
 for f in "$COMPOSE_DIR/docker-compose.yml" "$COMPOSE_DIR/Caddyfile" "$REPO/.env"; do
   [ -f "$f" ] || fail "missing: ${f#"$REPO"/}"
@@ -66,8 +91,8 @@ done
 # stack.env is gitignored and holds the hostnames. Without it the compose defaults apply, which
 # are the production ones, so its absence is survivable -- but say so rather than silently
 # shipping a config nobody chose.
-if [ -f "$COMPOSE_DIR/stack.env" ]; then
-  printf '   ok  deploy/compose/stack.env\n'
+if [ -f "$STACK_ENV" ]; then
+  printf '   ok  %s\n' "${STACK_ENV#"$REPO"/}"
 else
   printf '   -   deploy/compose/stack.env absent; compose defaults (mumchimp.com) apply\n'
 fi
@@ -106,7 +131,7 @@ fi
 # missing variable before anything is copied anywhere.
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   ENVARGS=(--env-file "$REPO/.env")
-  [ -f "$COMPOSE_DIR/stack.env" ] && ENVARGS+=(--env-file "$COMPOSE_DIR/stack.env")
+  [ -f "$STACK_ENV" ] && ENVARGS+=(--env-file "$STACK_ENV")
   # NEVER print the output. `docker compose config` expands every env_file value inline, so its
   # stdout is the estate's entire secret set. Measured 2026-08-24, the hard way: one unredacted
   # run put the live Stripe key into a transcript. --quiet is not a preference here.
@@ -185,9 +210,9 @@ _push "$COMPOSE_DIR/Caddyfile"          "$REMOTE_DIR/compose/Caddyfile"
 
 _ssh "install -m 600 /dev/null $REMOTE_DIR/.env"
 _push "$REPO/.env" "$REMOTE_DIR/.env"
-if [ -f "$COMPOSE_DIR/stack.env" ]; then
+if [ -f "$STACK_ENV" ]; then
   _ssh "install -m 600 /dev/null $REMOTE_DIR/compose/stack.env"
-  _push "$COMPOSE_DIR/stack.env" "$REMOTE_DIR/compose/stack.env"
+  _push "$STACK_ENV" "$REMOTE_DIR/compose/stack.env"
 fi
 printf '   config and secrets in place, 0600\n'
 
@@ -203,7 +228,7 @@ for img in prospector-store-api:local prospector-store-web:local; do
   fi
   docker image inspect "$img" >/dev/null 2>&1 || fail "image $img not built locally. Build it first: docker compose -f deploy/compose/docker-compose.yml --profile store build"
   printf '   transferring %s ... ' "$img"
-  docker save "$img" | gzip -1 | ssh -o BatchMode=yes "$HOST" "gunzip | docker load" >/dev/null
+  docker save "$img" | gzip -1 | ssh -o BatchMode=yes "${SSH_OPTS[@]}" "$HOST" "gunzip | docker load" >/dev/null
   printf 'done\n'
 done
 # caddy comes from a public registry, so the box pulls it itself.
@@ -236,10 +261,50 @@ printf '   angle 1, container health:\n'
 _ssh "cd $REMOTE_DIR && docker compose -f compose/docker-compose.yml ps --format '      {{.Name}}\t{{.Status}}'" || true
 
 printf '   angle 2, through the edge:\n'
-SITE_HOST="$(grep -E '^SITE_DOMAIN=' "$COMPOSE_DIR/stack.env" 2>/dev/null | cut -d= -f2 || echo mumchimp.com)"
-API_HOST="$(grep -E '^API_DOMAIN=' "$COMPOSE_DIR/stack.env" 2>/dev/null | cut -d= -f2 || echo api.mumchimp.com)"
-_ssh "curl -s -o /dev/null -w '      storefront  HTTP %{http_code}  bytes=%{size_download}\n' -H 'Host: ${SITE_HOST}' http://127.0.0.1/ || true"
-_ssh "curl -s -o /dev/null -w '      api/catalog HTTP %{http_code}  bytes=%{size_download}\n' -H 'Host: ${API_HOST}' http://127.0.0.1/catalog || true"
+SITE_HOST="$(grep -E '^SITE_DOMAIN=' "$STACK_ENV" 2>/dev/null | cut -d= -f2 || echo mumchimp.com)"
+API_HOST="$(grep -E '^API_DOMAIN=' "$STACK_ENV" 2>/dev/null | cut -d= -f2 || echo api.mumchimp.com)"
+
+# THIS BLOCK USED TO END IN `|| true` AND THE BANNER BELOW PRINTED REGARDLESS.
+# Measured 2026-08-24 on the rehearsal box: both probes returned HTTP 000 -- the API was in a
+# restart loop and the edge was bound to a port nothing was asking on -- and this script
+# printed "the shop answered through the edge" and exited 0. A deploy tool that cannot report
+# a dead deploy is not a deploy tool, it is a log with a success message at the end.
+#
+# The port matters as much as the code. `curl http://127.0.0.1/` was hardcoded while the edge
+# publishes ${EDGE_HTTP_PORT}, so on a box where those two disagree the probe asks a port the
+# stack never bound and reports 000 for a shop that is actually fine -- or, worse, the reverse.
+probe() {  # probe <label> <host header> <path>
+  # ssh failing and the shop failing are different facts and they must not print the same word.
+  # The first version of this swallowed stderr and turned every failure into `HTTP 000`, so a
+  # loaded laptop timing out during the ssh banner exchange was reported as a dead storefront --
+  # measured 2026-08-24. curl always prints exactly three digits, so anything else on stdout
+  # means the question never reached curl at all.
+  local out
+  out="$(_ssh "curl -s -o /dev/null -m 15 -w '%{http_code}' -H 'Host: $2' http://127.0.0.1:${EDGE_HTTP_PORT}$3" 2>&1)" || true
+  out="$(printf '%s' "$out" | tr -d '[:space:]')"
+  case "$out" in
+    [0-9][0-9][0-9])
+      printf '      %-11s HTTP %s   (Host: %s, port %s)\n' "$1" "$out" "$2" "$EDGE_HTTP_PORT"
+      [ "$out" = 200 ] ;;
+    *)
+      printf '      %-11s NOT ASKED -- the box could not be reached: %s\n' "$1" "${out:-no output}"
+      return 1 ;;
+  esac
+}
+
+PROOF_OK=1
+probe storefront  "$SITE_HOST" "/"         || PROOF_OK=0
+probe api/catalog "$API_HOST"  "/catalog"  || PROOF_OK=0
+
+if [ "$PROOF_OK" != 1 ] && [ "$DRY_RUN" != 1 ]; then
+  printf '\n!! THE SHOP IS ON THE BOX BUT IT IS NOT SERVING. Nothing has been cut over, so\n'
+  printf '!! nothing is broken for customers -- Fly still holds the DNS. What to read, in order:\n\n'
+  printf '     ssh %s "cd %s && docker compose -f compose/docker-compose.yml ps"\n' "$HOST" "$REMOTE_DIR"
+  printf '     ssh %s "cd %s && docker compose -f compose/docker-compose.yml logs --tail 40 api"\n\n' "$HOST" "$REMOTE_DIR"
+  printf '   The API refuses to start when a setting is missing and names the one it wants, so\n'
+  printf '   that log usually says exactly what the box was not given.\n'
+  exit 1
+fi
 
 say "shipped to $HOST"
 cat <<EOF
@@ -250,6 +315,14 @@ cat <<EOF
        .venv/bin/python scripts/dns_zone.py --check
 
    The cutover itself is changing the A records for mumchimp.com, www and api to this box.
-   There is NO script for that yet -- scripts/dns_zone.py reads DNS and deliberately never
-   writes it. Do not let this line imply otherwise.
+   That script now exists, in the survival-stack repo, because that is where the Cloudflare
+   credential and the zone tooling already live:
+
+       node ~/dev/code/survival-stack/scripts/cutover.mjs --show
+       node ~/dev/code/survival-stack/scripts/cutover.mjs --to <this box's IP> --dry-run
+       node ~/dev/code/survival-stack/scripts/cutover.mjs --to <this box's IP>
+       node ~/dev/code/survival-stack/scripts/cutover.mjs --rollback
+
+   It refuses a box that is not answering, deletes the apex AAAA so no v6 client is left on the
+   old host, and never touches mail. scripts/dns_zone.py still only READS.
 EOF

@@ -19,6 +19,7 @@ a supplier it happens to be using this month).
     scripts/vendor_ratchet.py --check          # exit 1 if any count grew. This is the gate.
     scripts/vendor_ratchet.py --update         # lower the baseline after a real removal
     scripts/vendor_ratchet.py --vendor fly     # one vendor only
+    scripts/vendor_ratchet.py --root /tmp/x    # count some other checkout instead of this one
 """
 
 from __future__ import annotations
@@ -31,7 +32,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-BASELINE = ROOT / "ops" / "config" / "vendor_ratchet.json"
+
+#: `--root` points the counter at a different checkout. It exists so the REFUSE half of this gate
+#: can be proved against a throwaway repository instead of against this one. The first version of
+#: that test wrote its probe file into the real working tree and ran `git add -N` on it; under
+#: pytest-xdist a second test in another worker read the tree at that moment and failed, blaming a
+#: file it had never heard of. A test that mutates the estate to prove a point is a flaky test in
+#: waiting, and the fix belongs in the tool, not in the test's cleanup block.
+BASELINE_REL = Path("ops") / "config" / "vendor_ratchet.json"
 
 # Per vendor: the regex that finds a call-site, and the paths that do not count.
 #
@@ -47,9 +55,9 @@ VENDORS: dict[str, dict] = {
 }
 
 
-def tracked_files() -> list[str]:
+def tracked_files(root: Path) -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
+        ["git", "ls-files"], cwd=root, capture_output=True, text=True, check=True
     ).stdout
     return [line for line in out.splitlines() if line]
 
@@ -77,16 +85,16 @@ def strip_comments(text: str) -> str:
     return _LINE_COMMENT.sub(" ", text)
 
 
-def count(vendor: str) -> tuple[int, dict[str, int]]:
+def count(vendor: str, root: Path = ROOT) -> tuple[int, dict[str, int]]:
     """Return (total occurrences, {path: occurrences}) for one vendor."""
     spec = VENDORS[vendor]
     pat = re.compile(spec["pattern"], re.IGNORECASE)
     skip = re.compile(spec["exclude"], re.IGNORECASE)
     per_file: dict[str, int] = {}
-    for rel in tracked_files():
+    for rel in tracked_files(root):
         if skip.search(rel):
             continue
-        p = ROOT / rel
+        p = root / rel
         try:
             # A binary file is not a call-site. errors="ignore" would silently scan one, so read
             # bytes and give up on anything that is not text.
@@ -99,15 +107,17 @@ def count(vendor: str) -> tuple[int, dict[str, int]]:
     return sum(per_file.values()), per_file
 
 
-def load_baseline() -> dict:
-    if not BASELINE.exists():
+def load_baseline(root: Path = ROOT) -> dict:
+    path = root / BASELINE_REL
+    if not path.exists():
         return {}
-    return json.loads(BASELINE.read_text())
+    return json.loads(path.read_text())
 
 
-def save_baseline(data: dict) -> None:
-    BASELINE.parent.mkdir(parents=True, exist_ok=True)
-    BASELINE.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+def save_baseline(data: dict, root: Path = ROOT) -> None:
+    path = root / BASELINE_REL
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
 
 
 def main() -> int:
@@ -115,7 +125,9 @@ def main() -> int:
     ap.add_argument("--check", action="store_true", help="exit 1 if any count grew")
     ap.add_argument("--update", action="store_true", help="write the current counts as the baseline")
     ap.add_argument("--vendor", help="one vendor instead of all")
+    ap.add_argument("--root", default=str(ROOT), help="the checkout to count (default: this one)")
     args = ap.parse_args()
+    root = Path(args.root).resolve()
 
     names = [args.vendor] if args.vendor else sorted(VENDORS)
     unknown = [n for n in names if n not in VENDORS]
@@ -123,12 +135,12 @@ def main() -> int:
         print(f"unknown vendor: {', '.join(unknown)}", file=sys.stderr)
         return 2
 
-    baseline = load_baseline()
+    baseline = load_baseline(root)
     grew = False
     new_baseline = dict(baseline)
 
     for name in names:
-        total, per_file = count(name)
+        total, per_file = count(name, root)
         prev = baseline.get(name, {}).get("occurrences")
         prev_files = baseline.get(name, {}).get("files", {})
 
@@ -160,8 +172,8 @@ def main() -> int:
         new_baseline[name] = {"occurrences": total, "files": per_file}
 
     if args.update:
-        save_baseline(new_baseline)
-        print(f"baseline written: {BASELINE.relative_to(ROOT)}")
+        save_baseline(new_baseline, root)
+        print(f"baseline written: {BASELINE_REL}")
         return 0
 
     if args.check and grew:

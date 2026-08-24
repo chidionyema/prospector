@@ -4117,6 +4117,12 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                    "button, which reads /app/GIT_SHA directly",
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
+    "scripts/vendor_ratchet.py": "counts how many call-sites still name a vendor the estate "
+                                 "is leaving, and refuses a commit that adds one. It reads "
+                                 "`git ls-files`, so it needs a checkout; the engine container "
+                                 "has none and could only ever answer zero, which is the most "
+                                 "dangerous wrong answer this particular tool has. CI runs it "
+                                 "on every push",
     "scripts/green_guard_cause.py": "asks whether main was ALREADY red before a given commit "
                                    "landed, so the green guard does not revert an innocent "
                                    "one. The main-green-guard workflow runs it with the "

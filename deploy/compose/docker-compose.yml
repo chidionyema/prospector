@@ -63,6 +63,21 @@ services:
       # mapping form with "env_file.0 must be a string".
       - path: ../../.env
         required: false
+      # THE SAME FILE, ONE LEVEL UP, BECAUSE THE BOX'S LAYOUT IS NOT THE REPO'S.
+      # env_file resolves against the COMPOSE FILE's directory. In the repo that is
+      # deploy/compose/, so ../../.env is the repo root and correct. On a shipped box
+      # deploy/ does not exist -- ship_shop.sh puts the compose directory at
+      # /srv/mumchimp/compose/ and the .env beside it at /srv/mumchimp/.env -- so
+      # ../../.env resolved to /srv/.env, which was never there.
+      #
+      # `required: false` then swallowed it without a word, so the box came up carrying
+      # NONE of the 24 settings the .env holds. Measured 2026-08-24 on the rehearsal box:
+      # `printenv | grep -i stripe` inside the running container returned exactly one name,
+      # Stripe__SmokeTestPriceId, which is the only one supplied by `environment:` below.
+      # The API then refused to start -- correctly -- naming Stripe:WebhookSecret, and the
+      # deploy script reported success anyway.
+      - path: ../.env
+        required: false
 
     environment:
       PROSPECTOR_STORE_DIR: /data/store
@@ -117,6 +132,21 @@ services:
       # (`brew install docker-compose`, now 5.5.0). A box older than 2.24 rejects the
       # mapping form with "env_file.0 must be a string".
       - path: ../../.env
+        required: false
+      # THE SAME FILE, ONE LEVEL UP, BECAUSE THE BOX'S LAYOUT IS NOT THE REPO'S.
+      # env_file resolves against the COMPOSE FILE's directory. In the repo that is
+      # deploy/compose/, so ../../.env is the repo root and correct. On a shipped box
+      # deploy/ does not exist -- ship_shop.sh puts the compose directory at
+      # /srv/mumchimp/compose/ and the .env beside it at /srv/mumchimp/.env -- so
+      # ../../.env resolved to /srv/.env, which was never there.
+      #
+      # `required: false` then swallowed it without a word, so the box came up carrying
+      # NONE of the 24 settings the .env holds. Measured 2026-08-24 on the rehearsal box:
+      # `printenv | grep -i stripe` inside the running container returned exactly one name,
+      # Stripe__SmokeTestPriceId, which is the only one supplied by `environment:` below.
+      # The API then refused to start -- correctly -- naming Stripe:WebhookSecret, and the
+      # deploy script reported success anyway.
+      - path: ../.env
         required: false
 
     environment:
