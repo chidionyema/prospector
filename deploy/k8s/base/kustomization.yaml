@@ -8,9 +8,10 @@ resources:
   - namespace.yaml
   - engine.yaml
   - api.yaml
+  - web.yaml
 
-# STILL NOT HERE, and not pretended otherwise. The engine and the store API moved on 2026-08-24
-# (register row F-39); the web storefront, the edge proxy and the runner are still generated inline
-# by deploy/targets/k8s.sh and are still refused by this estate's own policies. Each manifest here
+# STILL NOT HERE, and not pretended otherwise. The engine, the store API and the storefront moved
+# on 2026-08-24 (register row F-39); the edge proxy and the CI runner are still generated inline by
+# deploy/targets/k8s.sh and are still refused by this estate's own policies. Each manifest here
 # carries its own header saying what about it is declared and what is measured — api.yaml's
 # `runAsUser: 10001`, for one, has not been drilled the way engine.yaml's has.

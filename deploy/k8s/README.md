@@ -6,7 +6,7 @@ The standards, the reasoning and the measurements behind every choice here are i
 ## The shape
 
 ```
-base/          the namespace, its security level, and the engine workload. True everywhere.
+base/          the namespace, its security level, and three of the five workloads. True everywhere.
 policies/      admission control: the upstream Kyverno library, pinned, plus two estate policies.
 overlays/      staging and production. Image tags, hostnames, secret references. Never a policy.
 argocd/        one ApplicationSet owning both clusters.
@@ -32,14 +32,15 @@ $ kubectl kustomize deploy/k8s/overlays/production | grep -c '^kind: ClusterPoli
 $ kubectl kustomize deploy/k8s/overlays/production | grep -o 'validationFailureAction: [A-Za-z]*' | sort | uniq -c
   26 validationFailureAction: Enforce
 $ kyverno apply deploy/k8s/policy-tests/policies.generated.yaml --resource /tmp/production-workloads.yaml
-Applying 87 policy rule(s) to 7 resource(s)...
-pass: 62, fail: 0, warn: 0, error: 0, skip: 0
+Applying 87 policy rule(s) to 10 resource(s)...
+pass: 91, fail: 0, warn: 0, error: 0, skip: 0
 ```
 
-The seven documents are the namespace and the two workloads `base/` now declares — a PVC, a
-Deployment and a Service each for the engine and the store API. Staging grades identically:
-`87 rules, 62 passes, 0 fails`, measured the same way on 2026-08-24. That equality is the point of
-the two overlays being the same files.
+The ten documents are the namespace and the three workloads `base/` now declares: a PVC, a
+Deployment and a Service each for the engine and the store API, and a Deployment, a Service and a
+PodDisruptionBudget for the storefront. Staging grades identically: `87 rules, 91 passes, 0 fails`,
+measured the same way on 2026-08-24. That equality is the point of the two overlays being the same
+files.
 
 26 policies. 24 of them are maintained by the Kyverno project; 2 are this estate's, and
 `policies/RETIRED.md` is the row-by-row account of which six hand-written ones were deleted and what
@@ -85,8 +86,20 @@ Honest state, so nobody reads this directory as a report of something running:
   that needs an API server: that the webhook is reachable, that the policies were installed at all,
   and that the cluster is not quietly running them in Audit. Register row F-47 stays `◐`; the
   offline half is F-55 and is `✅`.
-- **`base/` declares the namespace, the engine and the store API. The web storefront, the edge
-  proxy and the runner are still generated** inline by `deploy/targets/k8s.sh`. Register row F-39.
+- **`base/` declares the namespace, the engine, the store API and the storefront. The edge proxy
+  and the runner are still generated** inline by `deploy/targets/k8s.sh`. Register row F-39.
+- **The storefront is the only workload here that may lose a pod without losing the service, and
+  it is the only one with a PodDisruptionBudget.** It owns no database, so it runs two replicas,
+  rolls rather than Recreates, and carries no `prospector.estate/single-writer` label. The engine
+  and the API deliberately get no budget: `minAvailable: 1` on a `replicas: 1` workload blocks a
+  drain forever instead of protecting anything, which LAW 38 grades as an outage. It also mounts
+  no Secret, and that is a property of the image rather than an omission — every `NEXT_PUBLIC_*`
+  value is a build argument baked in at `docker build`, which is what `NEXT_PUBLIC_` means. The
+  consequence worth knowing: a storefront built for staging is a DIFFERENT IMAGE from the one built
+  for production, so the two overlays cannot share a tag the way the engine's and the API's can.
+  **What is NOT proved is the same sentence as the API's**: nothing has run
+  `store_platform/src/Store.Web`'s image as `runAsUser 10001` with a read-only root, and its
+  Dockerfile has no `USER` line.
 - **The store API's manifest is admitted, and the application change it needed is written and
   tested.** `secrets-not-from-env-vars` refuses a credential in the pod environment, and the compose
   file supplies all seven of the API's secrets that way, so the API had to learn to read secrets as
