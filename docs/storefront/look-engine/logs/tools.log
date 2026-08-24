@@ -1,0 +1,8 @@
+$ node tools.mjs
+started  2026-08-21T16:48:25Z
+node     v26.3.0
+---
+tools.html: 45.0 KB — 20 tools, 9 logged, 8 green, 11 not run, 4 external hosts
+---
+exit     0
+duration 0s

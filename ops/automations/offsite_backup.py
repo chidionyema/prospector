@@ -36,6 +36,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import urllib.error
@@ -72,6 +73,12 @@ class CannotEstablish(Exception):
     """The check could not run. Reported as `unknown`, never as clean."""
 
 
+# The kinds `verify_copy` can actually perform. The loader refuses anything else, so a typo
+# like `sqllite` fails when the declaration is read rather than after the money database has
+# already been downloaded at 03:00.
+VERIFY_KINDS = ("nonempty", "sqlite", "tgz")
+
+
 @dataclass
 class Source:
     """One thing that must exist in two places."""
@@ -80,8 +87,47 @@ class Source:
     key: str
     fetch: list[str]
     why: str = ""
-    verify: str = "nonempty"
+    # No default on purpose. `nonempty` was the default until 2026-08-19, so a source added
+    # without thinking about verification silently got a size check — and a size check is
+    # believed, which is worse than no check at all. Every source states its own kind.
+    verify: str = ""
     keep: int = DEFAULT_KEEP
+    max_age_hours: float = DEFAULT_MAX_AGE_HOURS
+    # A path that must exist on THIS host for this source to be taken here. Empty means every
+    # host takes it, which is what every source did before this field existed.
+    #
+    # One declaration is read by two hosts: the Fly engine container
+    # (deploy/engine/supervisord.conf [program:offsite-backup]) and the founder's laptop
+    # (ops/launchd/com.prospector.offsite-backup.json), both with `--fix`. The agent estate is
+    # ~/.claude on the laptop and does not exist in the container at all, so without this the
+    # container would fail that source every night, report the whole run `unknown`, and turn the
+    # `offsite_backup` receipt red for a reason that is not a backup problem. This file already
+    # says what happens next: "a check that goes red for the wrong reason gets muted, and a muted
+    # check is worse than none."
+    #
+    # It gates TAKING only. `check` still grades this source on every host, because it grades the
+    # bucket, and the bucket is the same everywhere — so if the laptop stops taking the copy, the
+    # container is the thing that notices.
+    only_where: str = ""
+
+
+@dataclass
+class Watched:
+    """A prefix some OTHER job writes, graded for freshness and nothing else.
+
+    Deliberately not a `Source`. `take_backup` and `_prune` both take a `Source`, so a watched
+    prefix cannot be fetched and — this is the point — cannot have its objects deleted. `prune`
+    keeps the newest `keep` copies and deletes the rest; aimed at `dossiers/` it would delete
+    4,450 of the 4,480 dossiers that are the engine's only offsite copy. The type is the guard.
+
+    `writer` names the job that fills the prefix, so a stale finding says who to go and look at
+    instead of leaving the reader to work it out.
+    """
+
+    name: str
+    prefix: str
+    why: str = ""
+    writer: str = ""
     max_age_hours: float = DEFAULT_MAX_AGE_HOURS
 
 
@@ -91,6 +137,7 @@ class Declaration:
 
     storage: dict[str, Any] = field(default_factory=dict)
     sources: list[Source] = field(default_factory=list)
+    watched: list[Watched] = field(default_factory=list)
 
 
 def load_dotenv(path: Path) -> None:
@@ -151,19 +198,56 @@ def load_declaration(path: Path) -> Declaration:
             raise CannotEstablish(
                 f"source {entry['name']} needs a `fetch:` command as a list of arguments"
             )
+        kind = str(entry.get("verify") or "")
+        if not kind:
+            raise CannotEstablish(
+                f"source {entry['name']} must state `verify:` — one of {', '.join(VERIFY_KINDS)}. "
+                "There is no default: an unstated kind used to mean a size check, and a size "
+                "check passes a download that stopped halfway."
+            )
+        if kind not in VERIFY_KINDS:
+            raise CannotEstablish(
+                f"source {entry['name']} declares `verify: {kind}`, which this automation "
+                f"cannot perform. Valid kinds: {', '.join(VERIFY_KINDS)}."
+            )
         sources.append(
             Source(
                 name=str(entry["name"]),
                 key=str(entry["key"]),
                 fetch=[str(part) for part in fetch],
                 why=str(entry.get("why") or ""),
-                verify=str(entry.get("verify") or "nonempty"),
+                verify=kind,
                 keep=int(entry.get("keep") or DEFAULT_KEEP),
+                max_age_hours=float(entry.get("max_age_hours") or default_age),
+                only_where=str(entry.get("only_where") or ""),
+            )
+        )
+
+    watched: list[Watched] = []
+    for entry in raw.get("watch") or []:
+        if not isinstance(entry, dict) or not entry.get("name") or not entry.get("prefix"):
+            raise CannotEstablish(
+                f"every `watch:` entry needs `name:` and `prefix:`: {entry!r}"
+            )
+        wprefix = str(entry["prefix"]).strip()
+        if not wprefix:
+            # An empty prefix lists the WHOLE bucket, so every watched entry would grade the
+            # same newest object and all of them would go green together off one healthy job.
+            raise CannotEstablish(
+                f"watch entry {entry['name']} has an empty `prefix:`; that lists the whole "
+                "bucket and grades every entry off the same object."
+            )
+        watched.append(
+            Watched(
+                name=str(entry["name"]),
+                prefix=wprefix,
+                why=str(entry.get("why") or ""),
+                writer=str(entry.get("writer") or ""),
                 max_age_hours=float(entry.get("max_age_hours") or default_age),
             )
         )
 
-    return Declaration(storage=storage, sources=sources)
+    return Declaration(storage=storage, sources=sources, watched=watched)
 
 
 def _endpoint_clock_offset(endpoint: str) -> float | None:
@@ -273,7 +357,34 @@ def verify_copy(path: Path, kind: str) -> None:
                 f"the copy failed PRAGMA integrity_check: {verdict[0] if verdict else 'no result'}"
             )
         return
-    raise CannotEstablish(f"unknown verify kind `{kind}` on {path.name}")
+    if kind == "tgz":
+        # `nonempty` graded the key ring until 2026-08-19, and a byte count is not a verdict.
+        # A download that stopped halfway and a gzip stream that ends mid-member are both
+        # larger than zero bytes, so both were recorded as that night's backup. Opening the
+        # archive and reading its index is what proves it can be unpacked on the day a
+        # restore needs it.
+        try:
+            with tarfile.open(path, "r:*") as archive:
+                members = archive.getnames()
+        except (tarfile.TarError, EOFError, OSError) as exc:
+            raise CannotEstablish(f"the copy does not open as a tar archive: {exc}") from exc
+        if not members:
+            raise CannotEstablish(f"the archive opened but holds no members: {path.name}")
+        return
+    raise CannotEstablish(
+        f"unknown verify kind `{kind}` on {path.name}; valid kinds: {', '.join(VERIFY_KINDS)}"
+    )
+
+
+def takeable_here(source: Source) -> bool:
+    """Can this host take this source at all?
+
+    `~` is expanded, environment variables are not. `${HOME}` would raise through `_expand` where
+    it is unset, which turns "this source belongs to another host" into "the declaration is
+    broken" — the opposite of the intent."""
+    if not source.only_where:
+        return True
+    return Path(os.path.expanduser(source.only_where)).exists()
 
 
 def _dated_key(prefix: str, source: Source, stamp: str) -> str:
@@ -283,7 +394,8 @@ def _dated_key(prefix: str, source: Source, stamp: str) -> str:
 
 
 def take_backup(client: Any, bucket: str, prefix: str, source: Source,
-                *, timeout_s: float = DEFAULT_FETCH_TIMEOUT_S) -> dict[str, Any]:
+                *, repo: Path | None = None,
+                timeout_s: float = DEFAULT_FETCH_TIMEOUT_S) -> dict[str, Any]:
     """Fetch, verify, upload, prune. Returns the receipt."""
     with tempfile.TemporaryDirectory(prefix="offsite-") as scratch:
         dest = Path(scratch) / Path(source.key).name
@@ -292,7 +404,14 @@ def take_backup(client: Any, bucket: str, prefix: str, source: Source,
         # eighteen literal characters of the variable name. The API answers 401, `--fail` turns
         # that into a non-zero exit, and the night reads as a fetch failure rather than as a
         # missing secret. `_expand` raises when the variable is unset, which is the honest answer.
-        command = [_expand(part).replace("{dest}", str(dest)) for part in source.fetch]
+        # `{repo}` as well as `{dest}`: a fetch that runs a script out of this repository cannot
+        # name it by a relative path, because the command runs with cwd set to the scratch
+        # directory, and cannot name it absolutely, because the checkout is /app in the container
+        # and prospector-live on the laptop.
+        command = [
+            _expand(part).replace("{dest}", str(dest)).replace("{repo}", str(repo or ""))
+            for part in source.fetch
+        ]
         try:
             done = subprocess.run(
                 command, capture_output=True, text=True, timeout=timeout_s, cwd=scratch
@@ -396,6 +515,46 @@ def check(client: Any, bucket: str, prefix: str, sources: list[Source]) -> list[
     return report
 
 
+def check_watched(client: Any, bucket: str, entries: list[Watched]) -> list[dict[str, Any]]:
+    """Read-only, and read-only by construction. How old is the newest object under each prefix
+    another job is supposed to be filling?
+
+    A watched prefix is graded from the bucket root, ignoring `storage.prefix` — these are not
+    this automation's own copies, they are somebody else's, and their layout is not ours to
+    assume."""
+    now = datetime.now(timezone.utc)
+    report: list[dict[str, Any]] = []
+    for item in entries:
+        copies = _list_copies(client, bucket, item.prefix)
+        writer = f" — {item.writer} writes it" if item.writer else ""
+        if not copies:
+            report.append({
+                "where": f"{bucket}/{item.prefix}*",
+                "what": f"{item.name}: nothing at all under {bucket}/{item.prefix}{writer}",
+                "source": item.name, "age_hours": None, "fresh": False, "watched": True,
+            })
+            continue
+        newest = copies[-1]
+        age_h = max(0.0, (now - newest["LastModified"]).total_seconds() / 3600.0)
+        fresh = age_h <= item.max_age_hours
+        entry: dict[str, Any] = {
+            "where": f"{bucket}/{newest['Key']}",
+            "source": item.name,
+            "age_hours": round(age_h, 2),
+            "bytes": newest.get("Size"),
+            "copies": len(copies),
+            "fresh": fresh,
+            "watched": True,
+        }
+        if not fresh:
+            entry["what"] = (
+                f"{item.name}: newest object is {age_h:.1f}h old, older than the declared "
+                f"{item.max_age_hours:.0f}h{writer}"
+            )
+        report.append(entry)
+    return report
+
+
 def run(config_path: Path, *, fix: bool = False) -> dict[str, Any]:
     ran_at = datetime.now(timezone.utc).isoformat()
     probe = f"python -m ops.automations.{AUTOMATION} --config {config_path}"
@@ -408,10 +567,36 @@ def run(config_path: Path, *, fix: bool = False) -> dict[str, Any]:
         load_dotenv(config_path.resolve().parents[2] / ".env")
         client, bucket, prefix = storage_client(decl.storage)
         if fix:
-            result["backups"] = [
-                take_backup(client, bucket, prefix, source) for source in decl.sources
-            ]
+            repo = config_path.resolve().parents[2]
+            backups: list[dict[str, Any]] = []
+            failures: list[str] = []
+            for source in decl.sources:
+                if not takeable_here(source):
+                    # Recorded, not silent. A source that quietly does nothing on every host is a
+                    # source nothing backs up, and `check` below is what catches that: it grades
+                    # this source here anyway, off the shared bucket.
+                    backups.append({
+                        "source": source.name,
+                        "skipped": f"{source.only_where} does not exist on this host",
+                    })
+                    continue
+                try:
+                    backups.append(take_backup(client, bucket, prefix, source, repo=repo))
+                except CannotEstablish as exc:
+                    # Per-source, deliberately, and this is the whole reason the laptop had no
+                    # agent-estate copy on 2026-08-20. `logs` is declared fourth; it raised on a
+                    # host with no /data/logs, the raise left this loop, and every source AFTER it
+                    # was cancelled by a failure that had nothing to do with it. The run still
+                    # ends unknown below -- the exit code does not change -- but a source that
+                    # cannot be taken here now costs only itself.
+                    failures.append(str(exc))
+                    backups.append({"source": source.name, "failed": str(exc)})
+            result["backups"] = backups
+            if failures:
+                result.update({"status": "unknown", "reason": "; ".join(failures)})
+                return result
         report = check(client, bucket, prefix, decl.sources)
+        report += check_watched(client, bucket, decl.watched)
     except CannotEstablish as exc:
         result.update({"status": "unknown", "reason": str(exc)})
         return result
@@ -454,6 +639,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"UNKNOWN: {result['reason']}")
     else:
         for item in result.get("backups") or []:
+            if item.get("skipped"):
+                # A host-scoped source (`only_where`) belongs to the host that owns it, and
+                # `check` below still grades it off the shared bucket. Printing it is not a
+                # courtesy: this loop used to read item['key'] on a skipped entry, raise
+                # KeyError and exit 1 on EVERY run on the Fly engine host, which owns none of
+                # ~/.claude. The freshness lines below never printed, and the one signal that
+                # says the offsite backup is healthy could not go green, so a real failure
+                # looked exactly like this one.
+                print(f"SKIPPED   {item['source']}: {item['skipped']}")
+                continue
             print(f"BACKED UP {item['source']} -> {item['key']} "
                   f"({item['bytes']:,} bytes, {item['verified']} verified)")
         for item in result["sources"]:

@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 
 import requests
 
-from . import facet_derive, indexnow
+from . import facet_derive, indexnow, listing_ledger
 from . import facets as facets_mod
 from .archive import archive_sources
 from .artifacts import unverified_claims_block_listing
@@ -43,6 +43,38 @@ from .trimming import cap_words
 logger = logging.getLogger("prospector.bridge")
 
 
+#: The six fences, in report order. This tuple is the ONE list of them: `listing_blockers` reads
+#: it, the ledger records the names it produces, and the report groups by them. A seventh fence
+#: added to the signature but not to this tuple would be invisible in every report, so the test
+#: `test_every_gate_operand_is_a_named_fence` compares it against the signature.
+LISTING_FENCES: Tuple[str, ...] = (
+    "uploaded", "pack_complete", "priced", "bundle_complete", "lint_ok", "figures_verified",
+)
+
+
+def listing_blockers(*, uploaded: bool, pack_complete: bool, priced: bool,
+                     bundle_complete: bool, lint_ok: bool,
+                     figures_verified: bool = True) -> Tuple[str, ...]:
+    """The NAMES of the fences refusing this pack, in `LISTING_FENCES` order. Empty means sellable.
+
+    This exists because the composition used to be a single AND returning one boolean (backlog
+    B1). Five of the six fences log a sentence when they refuse, the content one refused silently
+    until 2026-08-18, and nothing counted any of them — so `publish_pass` sent `contentKey=None`
+    and from the store's side all six failures looked identical. Answering "why is this pack not
+    on the shelf" meant reading a container filesystem by hand, 108 times over.
+
+    ALL failing fences are returned, not the first. Kill-fast is right for the moat, where each
+    check costs model spend; here every operand is already computed, and stopping at the first
+    name would hide a pack that needs two fixes behind one of them.
+    """
+    values = {
+        "uploaded": uploaded, "pack_complete": pack_complete, "priced": priced,
+        "bundle_complete": bundle_complete, "lint_ok": lint_ok,
+        "figures_verified": figures_verified,
+    }
+    return tuple(name for name in LISTING_FENCES if not values[name])
+
+
 def listing_gate(*, uploaded: bool, pack_complete: bool, priced: bool,
                  bundle_complete: bool, lint_ok: bool,
                  figures_verified: bool = True) -> bool:
@@ -51,12 +83,17 @@ def listing_gate(*, uploaded: bool, pack_complete: bool, priced: bool,
     keeping the composition in one named function makes the seam testable without the
     whole publish machinery.
 
+    Delegates to `listing_blockers` rather than repeating the AND. Two expressions of the same
+    rule drift, and the drift here is a pack that lists while a report says it is blocked, or the
+    reverse — so there is exactly one expression and this is a view of it.
+
     `figures_verified` is the §33 figure fence (item 33-D/33-G) and defaults to True — i.e. OFF —
     because barring untraceable packs is a revenue action on up to 30% of the catalogue and is the
     founder's decision, not the engine's. `publish_pass` computes it only when
     `config.yaml listing.require_figure_verification` is on; see `human_review.py`."""
-    return bool(uploaded and pack_complete and priced and bundle_complete and lint_ok
-                and figures_verified)
+    return not listing_blockers(
+        uploaded=uploaded, pack_complete=pack_complete, priced=priced,
+        bundle_complete=bundle_complete, lint_ok=lint_ok, figures_verified=figures_verified)
 
 
 # ---------------------------------------------------------------------------
@@ -1494,11 +1531,22 @@ class EngineBridge:
                     extra={"candidate_id": candidate_id, "figure_status": _fig_status,
                            "outstanding": _outstanding})
 
-        is_listed = listing_gate(
+        blockers = listing_blockers(
             uploaded=uploaded, pack_complete=pack_complete, priced=priced,
             bundle_complete=bundle_complete, lint_ok=lint_ok,
             figures_verified=figures_verified,
         )
+        is_listed = not blockers
+
+        # One row per decision, listed or not, in the store. `record` never raises: an audit
+        # trail that can break a publish turns observability into an outage. A missing row is a
+        # gap in a report; a raised exception is a pack that never reaches the shelf.
+        listing_ledger.record(candidate_id, listed=is_listed, blockers=blockers)
+        if blockers:
+            logger.warning(
+                f"EngineBridge: {candidate_id} stays UNLISTED. Fences refusing: "
+                f"{', '.join(blockers)}.",
+                extra={"candidate_id": candidate_id, "listing_blockers": list(blockers)})
 
         # The content version is the STORE's counter, and we send one only when we can actually
         # read the current value. No GET projection returns contentVersion, so computing
@@ -1848,7 +1896,11 @@ class EngineBridge:
                 # Deterministic floors, but not id-free: they embed `check.rationale`, which is
                 # verdict-brain prose and carries the same passage ids as everything else.
                 exec_summary_content = prose_pass_document(
-                    exec_summary_md(dossier.candidate, getattr(dossier, "checks", []) or []))
+                    exec_summary_md(dossier.candidate,
+                                    getattr(dossier, "checks", []) or [],
+                                    # The lede is quoted out of a passage a supported
+                                    # check cited, so the sources have to reach it.
+                                    getattr(dossier, "sources", []) or []))
                 written["00_Executive_Summary.md"] = exec_summary_content
 
                 # The action document. `pack_checklist.render` is preferred and the six-line

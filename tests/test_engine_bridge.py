@@ -24,7 +24,16 @@ class TestEngineBridge(unittest.TestCase):
     def setUp(self):
         # The bridge now fails closed without an internal key (no committed default), so the
         # publish path must be given one explicitly — exactly as production does via env.
-        os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"
+        #
+        # `patch.dict` and not a raw `os.environ[...] =`: a raw assignment in setUp survives the
+        # test and every test after it in the same xdist worker, and the test that then fails is
+        # somebody else's. That is not hypothetical — on 2026-08-19 a process-wide
+        # PROSPECTOR_STORE_DIR left behind by `ops/automations/log_rotation.py` failed eight
+        # tests in three unrelated files, on CI only. `tests/conftest.py` now fails the leaking
+        # test by name, which is how this one was found.
+        env = patch.dict(os.environ, {"STORE_INTERNAL_API_KEY": "test-internal-key"})
+        env.start()
+        self.addCleanup(env.stop)
         self.cfg = MagicMock()
         # Real numeric thresholds so the source-or-die guard runs real comparisons rather than
         # MagicMock ones. These mirror the REAL Config dataclass defaults (config.py:145, :155);

@@ -106,6 +106,23 @@ numpy>=1.26
 rapidfuzz>=3.14
 trafilatura>=2.2
 textstat>=0.7
+# ── Transitive pins that exist ONLY to clear a published advisory ──────────────
+# Nothing in this repo imports either of these directly. They are here because the
+# dependency advisory scan in CI named them, and that scan now fails the build.
+# Delete a line once the package in front of it has moved past the pin on its own.
+#
+# pillow    PYSEC-2026-3493 and PYSEC-2026-3494, first patched in 12.3.0.
+#           Arrives through fpdf2 and streamlit, neither of which constrains it.
+# pyasn1    PYSEC-2026-3455, -3456 and -3457, first patched in 0.6.4.
+#           Arrives through pyasn1_modules.
+#
+# Measured 2026-08-19: the frozen environment held pillow 12.2.0 and pyasn1 0.6.3, and
+# `pip-audit` reported six advisory rows across the two. `uv pip install --dry-run` for
+# the pinned versions resolved in 81ms with no other package moving, so neither bump
+# drags anything else with it.
+pillow>=12.3.0
+pyasn1>=0.6.4
+
 # NOTE: the LUX packages (lux-popdd / lux-spec / lux-spec-cli) are NOT listed here.
 # They were pinned to absolute file:/// paths on one developer's machine, which made this
 # file uninstallable anywhere else — including CI and any deploy host. Nothing in

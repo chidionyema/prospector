@@ -1,0 +1,42 @@
+# The four hostnames the store API puts in front of a buyer, pointed at staging.
+#
+# WHY THIS PATCH HAD TO EXIST THE MOMENT api.yaml LANDED IN base/. The base carries the production
+# values, because production is the environment those values are true in. Staging inherits every
+# resource in base/, so without this file a staging cluster would run an API that redirects a paying
+# customer to https://mumchimp.com after checkout and issues links to production in every email it
+# sends. That is not a staging defect that shows up in staging — it shows up in a real buyer's inbox.
+#
+# It is a strategic merge patch, and `env` merges by the `name` key, so only the four entries below
+# are replaced. The other thirteen environment variables in base/api.yaml are untouched and stay
+# reviewable in one place.
+#
+# THE HOSTNAME DOES NOT RESOLVE YET. There is no staging cluster and no staging DNS record, and
+# `deploy/k8s/argocd/applicationset.yaml` carries the same kind of placeholder for the same reason.
+# Naming it wrong on purpose would be worse: an origin allow-list that silently matches production
+# is how a staging box takes a real payment.
+#
+# STORE_ALLOWED_ORIGIN deliberately does NOT list the production origins. An allow-list is the one
+# place where "just add the other one too" turns a staging environment into a second production.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prospector-store-api
+  # The namespace is part of the patch TARGET, not decoration. base/api.yaml names it on every
+  # object, and kustomize matched nothing without it: `no matches for Id
+  # Deployment.v1.apps/prospector-store-api.[noNs]`, measured 2026-08-24. A patch that matches
+  # nothing is not an error at apply time in every tool, so it is worth knowing this one is.
+  namespace: prospector
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          env:
+            - name: Store__StorefrontUrl
+              value: https://staging.mumchimp.com
+            - name: STORE_STOREFRONT_URL
+              value: https://staging.mumchimp.com
+            - name: STORE_PUBLIC_URL
+              value: https://api.staging.mumchimp.com
+            - name: STORE_ALLOWED_ORIGIN
+              value: https://staging.mumchimp.com

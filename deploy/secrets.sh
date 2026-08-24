@@ -18,13 +18,28 @@
 # key. Putting a hostname in here would mean needing the private key to find out what the site is
 # called.
 #
-# THE KEY NEVER ENTERS THE REPO. It lives at ~/.config/prospector/age-key.txt, mode 600. The
-# encrypted file deploy/secrets.env.age IS committed - that is the point, it is useless without
-# the key. Losing the key means re-minting every credential, so back it up somewhere that is not
-# this laptop, which is the same reason this whole programme exists.
+# THE KEY NEVER ENTERS THE REPO. It lives at ~/.config/prospector/age-key.txt, mode 600.
+#
+# AND NEITHER DOES THE ENCRYPTED FILE. This header said the opposite until 2026-08-23 - that
+# deploy/secrets.env.age "IS committed, that is the point, it is useless without the key". That
+# is correct reasoning about a PRIVATE repository and wrong about this one. `gh repo view`
+# reports chidionyema/prospector as PUBLIC. Committing the store would publish the Stripe live
+# keys, the R2 keys, the Fly token and every model provider key to the open internet, where
+# clones and caches keep them after any deletion, leaving one X25519 key on one laptop as the
+# only thing between a stranger and the money. age is strong today and the ciphertext would be
+# public forever, which is the half that cannot be undone. .gitignore now refuses it.
+#
+# So the second copy goes somewhere private instead: the `secret-store` source in
+# ops/config/offsite_backup.yaml puts it in the R2 backup bucket on every offsite run.
+#
+# Losing the key means re-minting every credential, so back it up somewhere that is not this
+# laptop, which is the same reason this whole programme exists. Back up the R2 read credentials
+# in the SAME place while you are there: they live inside this store, so a laptop loss with only
+# the key recovered leaves you holding a key and no way to reach the file it opens.
 #
 #   bash deploy/secrets.sh init                 # make the keypair, once per machine
-#   bash deploy/secrets.sh set KEY value        # add or change one secret
+#   printf %s "$VALUE" | bash deploy/secrets.sh set KEY   # add or change one secret
+#   bash deploy/secrets.sh set KEY value                 # same, but the value lands in argv
 #   bash deploy/secrets.sh list                 # key NAMES only, never values
 #   bash deploy/secrets.sh import path/to/.env  # take a whole existing .env in one go
 #   bash deploy/secrets.sh push fly             # decrypt and hand to that target's t_secrets
@@ -80,7 +95,24 @@ cmd_init() {
 }
 
 cmd_set() {
-  local k="${1:?usage: set KEY VALUE}" v="${2:?usage: set KEY VALUE}"
+  local k="${1:?usage: set KEY [VALUE]  -- omit VALUE and it is read from stdin}" v
+  if [ "$#" -ge 2 ]; then
+    v="$2"
+  else
+    # Read the value from stdin so it never reaches argv. Two reasons, both measured rather
+    # than theoretical: `ps` shows argv to every process on the box, and an interactive shell
+    # appends argv to its history file. A live Stripe key sitting in ~/.zsh_history is a leak
+    # that outlives the terminal it was typed in. The positional form still works, because
+    # breaking it would send people back to editing the plaintext by hand, which is worse.
+    # Two traps in one line. `read` returns non-zero at EOF even when it filled the
+    # variable, which is exactly what `printf %s` with no trailing newline produces -- so
+    # test the VALUE, not the exit status. And this script runs under `set -e`, which kills
+    # it on that same non-zero return before any check can run, printing nothing at all.
+    # `|| true` is what keeps the EOF case alive long enough to be judged.
+    v=""
+    IFS= read -r v || true
+    [ -n "$v" ] || die "no value on stdin for $k -- pipe one in, or pass it as an argument"
+  fi
   local current=""
   [ -f "$STORE" ] && current="$(plaintext)"
   # Drop any existing line for this key, then append the new one. grep -v with an anchored
@@ -137,5 +169,6 @@ case "${1:-}" in
   import) shift; cmd_import "$@" ;;
   push)   shift; cmd_push "$@" ;;
   check)  shift; cmd_check ;;
-  *) die "usage: $(basename "$0") {init|set KEY VALUE|list|import <file>|push <target>|check}" ;;
+  *) die "usage: $(basename "$0") {init|set KEY [VALUE]|list|import <file>|push <target>|check}
+  set reads VALUE from stdin when you omit it, which keeps it out of argv and shell history" ;;
 esac

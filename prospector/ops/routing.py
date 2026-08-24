@@ -84,11 +84,17 @@ def routing_problems(operator_chain: Iterable[str], moat_primary: Iterable[str])
             "moat_primary is empty — `operator.moat_primary()` would fall back to "
             f"{sorted(_op.MOAT_PRIMARY_DEFAULT)} (operator.py:1405), which is not what this "
             "config says. Name the brains that may rule finally.")
-    unknown = [t for t in trusted if t not in _op.BUILDABLE_TIERS]
+    # Built-ins PLUS declared, for the same reason as config_editor: a name this refuses is a
+    # name the engine can build, so the refusal would be wrong and would read as a typo.
+    # Being SETTABLE here is not being trusted — it is the operator choosing, which is the same
+    # choice `openrouter` and `ollama` have always been offered.
+    from prospector.providers import buildable_tiers, declared_now
+    _buildable = buildable_tiers(declared_now())
+    unknown = [t for t in trusted if t not in _buildable]
     if unknown:
         problems.append(
             f"moat_primary names {unknown}, which no adapter can build "
-            f"(buildable: {', '.join(_op.BUILDABLE_TIERS)}). A tier that cannot be constructed "
+            f"(buildable: {', '.join(_buildable)}). A tier that cannot be constructed "
             "cannot rule, so trusting it trusts nothing.")
 
     if chain and trusted and chain[0] not in trusted:

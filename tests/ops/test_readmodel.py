@@ -455,3 +455,45 @@ def test_an_unreadable_heartbeat_never_breaks_the_panel(tmp_path, monkeypatch):
     out = R.consumer_now(_cfg(tmp_path))
     assert out["state"] in ("unknown", "dead")
     assert isinstance(out["says"], str)
+
+
+def _pause_scope(tmp_path, scope, text):
+    import types
+
+    from prospector.ops.readmodel import pause_view
+
+    (tmp_path / "scheduler").mkdir(parents=True, exist_ok=True)
+    names = {"all": "PAUSE", "generation": "PAUSE_GENERATION", "consumer": "PAUSE_CONSUMER"}
+    (tmp_path / "scheduler" / names[scope]).write_text(text)
+    cfg = types.SimpleNamespace(store_dir=tmp_path)
+    return [s for s in pause_view(cfg)["scopes"] if s["scope"] == scope][0]
+
+
+def test_a_hand_written_pause_reason_reaches_the_console(tmp_path):
+    row = _pause_scope(tmp_path, "generation", "token plan spent; resume when funded")
+    assert row["armed"] is True
+    assert row["reason"] == "token plan spent; resume when funded"
+    assert row["actor"] == "hand"
+
+
+def test_json_still_wins_when_the_control_wrote_it(tmp_path):
+    import json as _json
+
+    row = _pause_scope(tmp_path, "all", _json.dumps({"actor": "founder", "reason": "spend spike"}))
+    assert row["actor"] == "founder"
+    assert row["reason"] == "spend spike"
+
+
+def test_an_empty_pause_file_still_arms_with_no_reason(tmp_path):
+    """EXISTENCE is the semantic. `touch` must keep working, and must not invent a reason."""
+    row = _pause_scope(tmp_path, "consumer", "")
+    assert row["armed"] is True
+    assert row["reason"] is None
+    assert row["actor"] is None
+
+
+def test_a_json_list_is_not_mistaken_for_a_body(tmp_path):
+    """Valid JSON that is not an object is text as far as the operator is concerned."""
+    row = _pause_scope(tmp_path, "generation", "[1, 2, 3]")
+    assert row["reason"] == "[1, 2, 3]"
+    assert row["actor"] == "hand"

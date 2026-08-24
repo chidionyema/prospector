@@ -19,7 +19,7 @@ import { GROUPS, activeScreen } from '@/lib/nav';
 const PAGES_DIR = fileURLToPath(new URL('../src/pages', import.meta.url));
 
 /** Routes with no nav entry by design: the wrapper, the door, and detail routes reached by link. */
-const NOT_IN_NAV = new Set(['/_app', '/login']);
+const NOT_IN_NAV = new Set(['/_app', '/_document', '/login']);
 
 function routes(dir: string, prefix = ''): string[] {
   const out: string[] = [];
@@ -65,12 +65,26 @@ describe('neither row is long enough to scroll off a phone', () => {
   // list. The ceiling moved from six to seven when the Shop group landed: the group row WRAPS, so
   // one more short label costs a line of header, not a sideways scroll. Raise it again only with a
   // measurement at 390px, never because the list grew.
+  //
+  // The screen ceiling moved from four to five on 2026-08-20, when Reports landed beside Docs in
+  // the Data group. Measured, not assumed. Two angles, because a raised ceiling is not something
+  // this file can put back once a page depends on it:
+  //   code — `Shell.tsx:102` and `Shell.tsx:121` are both `flex flex-wrap`, so neither row can
+  //     scroll sideways at any width; a longer row costs a line of header;
+  //   browser — `e2e/mobile.spec.ts` walked eleven screens with the Data group at FIVE screens,
+  //     `/audit` and `/reports` among them, and every one measured
+  //     `documentElement.scrollWidth - clientWidth <= 0`. 6 passed, 0 failed: 390x844 in 17.6s and
+  //     320x568 in 25.3s, so the wider row holds at 320px too, not only at the 390px this comment
+  //     asks for.
+  // Read that against a fresh `next build`. An earlier run of the same spec reported `/config`
+  // overflowing by 7px at 320px; the server is `next start`, so it was serving a stale `.next` and
+  // the 7px was the old bundle, not the code. Build before you believe a phone measurement.
   it('at most seven groups', () => {
     expect(GROUPS.length).toBeLessThanOrEqual(7);
   });
 
-  it('at most four screens in a group', () => {
-    for (const g of GROUPS) expect(g.screens.length).toBeLessThanOrEqual(4);
+  it('at most five screens in a group', () => {
+    for (const g of GROUPS) expect(g.screens.length).toBeLessThanOrEqual(5);
   });
 
   it('labels stay short enough to sit on one line', () => {

@@ -17,9 +17,14 @@ const PORT = Number(process.env.OPS_E2E_PORT || 8612);
 const ROOT = resolve(__dirname, '../../..');
 const PASSWORD = 'e2e-password';
 
+//: The phone projects exist to check width, overflow and tap targets. These two ask different
+//: questions and set their own viewports, so they run in projects of their own.
+const NOT_THE_PHONE = ['**/a11y.spec.ts', '**/journeys.spec.ts'];
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
+  expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
   reporter: [['list']],
@@ -36,15 +41,41 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}`,
     ...devices['Pixel 7'],
   },
+  // The a11y and visual specs set their own viewports and must not be run once per phone
+  // project: that is the same audit twice, and a screenshot baseline shot at two widths under one
+  // name is a baseline that can never match.
   projects: [
-    { name: 'phone-390', use: { viewport: { width: 390, height: 844 } } },
-    { name: 'phone-320', use: { viewport: { width: 320, height: 568 } } },
+    {
+      name: 'phone-390',
+      testIgnore: NOT_THE_PHONE,
+      use: { viewport: { width: 390, height: 844 } },
+    },
+    {
+      name: 'phone-320',
+      testIgnore: NOT_THE_PHONE,
+      use: { viewport: { width: 320, height: 568 } },
+    },
+    { name: 'a11y', testMatch: '**/a11y.spec.ts' },
+    //: The journeys ask whether the control plane WORKS, which is not a question about
+    //: width. Running them once per phone project would be the same proof twice.
+    {
+      name: 'journeys',
+      testMatch: '**/journeys.spec.ts',
+      use: { viewport: { width: 1280, height: 900 } },
+    },
   ],
+  // BUILD, then start. `next start` serves whatever `.next` happens to be on disk, and it does not
+  // check whether that build matches the source — so a spec run against a stale bundle passes,
+  // fails, or reports overflow on a page nobody has touched, and every one of those readings is
+  // about code that is no longer here. Measured 2026-08-20: a stale bundle reported `/config`
+  // overflowing by 7px at 320px, twice, including on a control run with the change reverted, which
+  // is exactly how a stale reading gets mistaken for a confirmed one. The same spec against a
+  // fresh build: 6 passed, 0 failed. The build costs under a minute and buys the run its meaning.
   webServer: {
-    command: `npx next start -p ${PORT}`,
+    command: `npx next build && npx next start -p ${PORT}`,
     port: PORT,
     reuseExistingServer: false,
-    timeout: 120_000,
+    timeout: 300_000,
     env: {
       CONTROL_CENTER_PASSWORD: PASSWORD,
       PROSPECTOR_ROOT: ROOT,

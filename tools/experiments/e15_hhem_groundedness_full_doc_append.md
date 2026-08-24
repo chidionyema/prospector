@@ -24,3 +24,5 @@ Limitations:
 - store/dossiers is written by the live daemon; _meta.run_at_utc pins the corpus.
 
 Receipt: `tools/experiments/e15_hhem_groundedness_full_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E15 --all`
+
+**Follow-through:** TICKET #564 — 45.8% of ruled rationales do not entail from the passages they cite, and the UNCITED control arm is empty because every check cites every passage retrieved.

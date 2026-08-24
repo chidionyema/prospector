@@ -52,12 +52,22 @@ env:
   FLY_APP: prospector-engine
   CONSOLE_URL: https://prospector-engine.fly.dev
 
+# WHY THESE JOBS DO NOT RUN ON THE SELF-HOSTED FLEET.
+# On 2026-08-19 a merge to main sat undeployed for twelve hours. Nothing had failed: the deploy
+# run was QUEUED behind feature-branch CI, because deploys asked for the same `heavy` label as
+# every other job and the fleet is three machines. Sessions push branches faster than three
+# runners drain them, so a deploy is always last in a queue it shares.
+# A deploy job here is a checkout, a toolchain and `flyctl deploy`, which builds on Fly's remote
+# builder — it needs a runner, not a big one. GitHub-hosted runners are a separate queue, so a
+# deploy can no longer wait behind our own CI. Set `CI_DEPLOY_RUNS_ON` to move them back,
+# without another code change.
+# Pinned by tests/unit/test_deploys_do_not_share_the_ci_queue.py.
 jobs:
   # The image build runs `next build`, so a broken console fails the deploy on its own. What it
   # does NOT run is the console's own test suite, and that suite is the thing that pins the
   # sign-in limiter and the fail-closed default on a box that now answers the open internet.
   test:
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: store_platform/src/Ops.Console
@@ -75,12 +85,13 @@ jobs:
   deploy:
     needs: test
     if: ${{ !inputs.dry_run }}
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy
+        id: deploy
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE || secrets.FLY_API_TOKEN }}
         run: |
@@ -140,3 +151,45 @@ jobs:
             404) echo "route missing - the machine is serving an older image"; exit 1 ;;
             *)   echo "unexpected status from the crash-reporting route"; exit 1 ;;
           esac
+
+      # SELF-HEALING. Everything above this line ALERTS. `flyctl deploy` ships the image, the
+      # proof requests run, and when a proof goes red the bad image keeps serving production
+      # until a person reads the failure mail and clicks Rollback. Founder, 2026-08-20:
+      # "alerts is one thing, recovery and self healing is anither".
+      #
+      # This step is the recovery arm. It pulls the rollback that ALREADY EXISTS rather than
+      # adding a second one: scripts/rollback_now.py is the same code path the ops console's
+      # Rollback button runs. It re-deploys the previous release's image (no build, no source
+      # tree, so nothing in this commit can poison it) and probes itself afterwards.
+      #
+      # The condition is narrow on purpose. A bare `failure()` would also fire when the BUILD
+      # failed - production was never touched in that case, and rolling a healthy service back
+      # to an older image would be an outage this workflow caused rather than cured.
+      # `steps.deploy.outcome == 'success'` is what limits it to the one case that needs
+      # healing: the new image IS serving, and it does not answer.
+      #
+      # The job stays RED either way. Restoring service is not the same as the commit being
+      # good, and main still carries it, so the next merge touching these paths ships it again.
+      - name: Roll back, because this deploy does not answer
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE || secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          python3 scripts/rollback_now.py engine
+          rc=$?
+          {
+            echo "## Automatic rollback"
+            echo ""
+            if [ "$rc" = "0" ]; then
+              echo "Commit $GITHUB_SHA deployed but did not answer, so prospector-engine was rolled"
+              echo "back to its previous release, and that release passes its health checks."
+            else
+              echo "Commit $GITHUB_SHA deployed, did not answer, and THE ROLLBACK DID NOT"
+              echo "RESTORE IT (exit $rc). This needs a human now."
+            fi
+            echo ""
+            echo "This does not change main. The commit is still there and the next merge"
+            echo "touching these paths ships it again. Revert it."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"

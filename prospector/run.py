@@ -389,7 +389,7 @@ def _sync_cli_concurrency(cfg) -> None:
         return
     try:
         from .claude_cli import configure_concurrency as _claude_conc
-        _claude_conc(int(getattr(r, "claude_concurrency", 2) or 2))
+        _claude_conc(int(getattr(r, "claude_concurrency", 1) or 1))
     except Exception:
         pass
 
@@ -469,7 +469,7 @@ def _save_pending_signal(signal_text: str, cfg: Config) -> Optional[Path]:
     swallowed as if the deferral succeeded.
     """
     import hashlib
-    key = hashlib.sha1(signal_text.encode()).hexdigest()[:16]
+    key = hashlib.sha1(signal_text.encode(), usedforsecurity=False).hexdigest()[:16]
     path = _PENDING_DIR / f"{key}.json"
     try:
         _PENDING_DIR.mkdir(parents=True, exist_ok=True)
@@ -981,7 +981,7 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
         if not escalated and (breaches or any(
                 str(pb).startswith("marketing '") for pb in problems)):
             escalated = True
-            copy_op = _build_prose_chain(cfg, esc_order, quality_op,
+            copy_op = _build_prose_chain(cfg, esc_order, quality_op, component="artifact",
                                          label="Shelf-copy escalation")
             logger.warning(
                 "Escalating shelf copy for %s to %s after the cheap chain breached the "
@@ -1059,7 +1059,8 @@ def _noncritical_order(cfg: Config | None = None) -> tuple[str, ...]:
 # ---------------------------------------------------------------------------
 
 @track_latency(name="vet_candidate")
-def _build_prose_chain(cfg: Config, order, fallback_op: Operator, *, label: str) -> Operator:
+def _build_prose_chain(cfg: Config, order, fallback_op: Operator, *, label: str,
+                       component: str) -> Operator:
     """Build a prose-generation chain from a config-declared operator list.
 
     Shared by the deliverable chain and the marketing-copy chain so the two can never drift in
@@ -1076,7 +1077,7 @@ def _build_prose_chain(cfg: Config, order, fallback_op: Operator, *, label: str)
     tiers = []
     for kind in (order or []):
         try:
-            tiers.append((kind, _build_operator(kind, cfg, fast=False)))
+            tiers.append((kind, _build_operator(kind, cfg, fast=False, component=component)))
         except RuntimeError:
             pass  # CLI not on PATH / not configured — skip this tier
     if not tiers:
@@ -1107,7 +1108,7 @@ def _build_artifact_op(cfg: Config, fallback_op: Operator) -> Operator:
     `_escalation_order` — which is what "an option, not a dependency" means in code.
     """
     return _build_prose_chain(cfg, cfg.artifact_operator, fallback_op,
-                              label="Artifact deliverable")
+                              label="Artifact deliverable", component="artifact")
 
 
 def _escalation_order(cfg: Config) -> list[str]:
@@ -1160,7 +1161,8 @@ def _build_marketing_op(cfg: Config, fallback_op: Operator) -> Operator:
     # default for buyer-visible copy is the EXPENSIVE chain, because that is where it ran
     # until this directive.
     order = getattr(cfg, "marketing_operator", None) or cfg.artifact_operator
-    return _build_prose_chain(cfg, order, fallback_op, label="Marketing copy")
+    return _build_prose_chain(cfg, order, fallback_op, label="Marketing copy",
+                              component="marketing")
 
 
 def publish_and_record(dossier: Dossier, cfg: Config, store: Optional[Store] = None) -> str:
@@ -1636,7 +1638,8 @@ def run_signal(
         tiers = []
         for kind in order:
             try:
-                tiers.append((kind, _build_operator(kind, cfg, fast=fast)))
+                tiers.append((kind, _build_operator(kind, cfg, fast=fast,
+                                                    component="noncritical")))
             except RuntimeError:
                 pass  # tier not configured or missing API key
         if len(tiers) == 0:
@@ -4465,6 +4468,12 @@ def main() -> None:
     from .telemetry import route_logs_to_file
     log_path = cfg_for_log.store_dir / "prospector.jsonl"
     route_logs_to_file(str(log_path))
+    # Also ship every record to the central ingest on the engine, so "where are the logs"
+    # has one answer instead of one per process (docs/LOGGING_AND_RETENTION.md Part 4).
+    # `attach` is a no-op without STORE_INTERNAL_API_KEY, so a developer laptop and a test
+    # run ship nothing, and it can never raise: the handler does no I/O in the caller.
+    from .log_shipper import attach as _attach_central_log
+    _attach_central_log("consumer" if getattr(args, "command", "") == "consume" else "engine")
     from . import progress
     progress.note(f"audit log → {log_path}")
 

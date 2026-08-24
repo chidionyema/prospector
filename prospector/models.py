@@ -53,8 +53,15 @@ DEFER_GATE = "retrieval_unavailable"
 #: - moat_exhausted        — no trusted brain was available to rule
 #: - vet_budget_spent      — the tick's vetting clock ran out before this candidate started
 #: - queued_for_vetting    — a producer enqueued it; no consumer has taken it yet
+#: - score_failed          — the scoring call errored; the all-zero fail-safe is not a low score
+#: - adversarial_unrun     — the adversarial pass raised; the final gate never ran
+#:
+#: The last two were added 2026-08-21 after a specialist review found each one writing a
+#: FINISHED decision out of a component's own FAILURE — the same class as
+#: `store/dossiers/2102bacc6dd75cf9.kill.json`, one and two stages further down the line.
 DEFER_REASONS = frozenset({
     DEFER_GATE, "moat_exhausted", "vet_budget_spent", "queued_for_vetting",
+    "score_failed", "adversarial_unrun",
 })
 
 
@@ -116,7 +123,7 @@ SCORE_AXES = ("pain_acuity", "money_provability", "automatability",
 
 
 def _id(*parts: str) -> str:
-    return hashlib.sha1("|".join(parts).encode()).hexdigest()[:16]
+    return hashlib.sha1("|".join(parts).encode(), usedforsecurity=False).hexdigest()[:16]
 
 
 @dataclass
@@ -339,6 +346,14 @@ class AdversarialResult:
     # True when the adversarial pass was ruled by the cheap emergency fallback tail
     # (moat exhausted). Same semantics as CheckResult.provisional.
     provisional: bool = False
+    # True when the adversarial call RAISED and this object is a fail-safe, not a ruling.
+    # Same semantics — and the same reason for existing — as CheckResult.retrieval_failed:
+    # an exception is never evidence. Without this field the fail-safe was indistinguishable
+    # from a genuine "no decisive case against it", because the consumer reads `decisive`
+    # only: a candidate whose final gate never ran reached PASS with provisional=False and
+    # PUBLISHED. `kill_case` carried the string "adversarial call failed" and nothing in the
+    # repo ever read it.
+    retrieval_failed: bool = False
     # The objection MEMO (2026-08-16). `kill_case` is one paragraph, which is how the whole
     # case against an idea reached the buyer: a blob. These are the objections one at a
     # time, each with what would have to be true for it not to bite, and each carrying the

@@ -1015,6 +1015,24 @@ def _decay_sweep_budget(cfg) -> int:
 _UNLIST_TIMEOUT_S = 180
 
 
+def _proc_tail(proc) -> str:
+    """The last 300 characters a subprocess said, WITHOUT dropping the stream that says why.
+
+    This was `(proc.stdout or proc.stderr)`, which discards stderr whenever stdout is non-empty --
+    and a python script that prints progress and then raises does exactly that, so the tail logged
+    beside "killed pack(s) may still be selling" was the progress and not the traceback. Same
+    defect, same day, as `scripts/worktree_snapshot.py::git`; memory
+    `a-step-that-discards-the-stderr-explaining-its-own-death`.
+
+    On success stdout alone, because it is the report. On failure both, stderr last, because the
+    tail is cut from the END and the reason is what must survive the cut.
+    """
+    if proc.returncode == 0:
+        return (proc.stdout or "").strip()[-300:]
+    both = "\n".join(x for x in (proc.stdout, proc.stderr) if x and x.strip())
+    return both.strip()[-300:]
+
+
 def _unlist_pass(cfg) -> dict | None:
     """Drain `pending_unlist.jsonl` against Store.Api. Never raises. None if nothing is queued.
 
@@ -1062,7 +1080,7 @@ def _unlist_pass(cfg) -> dict | None:
               file=sys.stderr, flush=True)
         return out
 
-    out = {"rc": proc.returncode, "tail": (proc.stdout or proc.stderr).strip()[-300:]}
+    out = {"rc": proc.returncode, "tail": _proc_tail(proc)}
     # CRITICAL on BOTH paths: below it never reaches launchd.err.log (verified 2026-08-05), and a
     # shelf actuator whose success is invisible is how this loop stayed unwired for two months.
     if proc.returncode == 0:
@@ -1072,6 +1090,149 @@ def _unlist_pass(cfg) -> dict | None:
         logger.critical("Unlist drain rc=%d — killed pack(s) may still be selling: %s",
                         proc.returncode, out["tail"])
         print(f"🛒 unlist drain rc={proc.returncode}: {out['tail']}", file=sys.stderr, flush=True)
+    return out
+
+
+#: A re-gate makes NO model call and mints NOTHING. `--dry-run` returns at `bridge.py:1256-1272`
+#: before `price_for` (no Stripe Price, no R2 upload, no catalogue row) and its generation loop
+#: is `range(1, 1)` — empty (`tools/publish_passes.py`). What it costs is network: the linter
+#: probes the URLs each pack cites, measured at ~124s per pack on 2026-08-17.
+#:
+#: TWO CORRECTIONS ARE BAKED INTO THIS NUMBER, both from that day. The first cut said 300s, on
+#: an unmeasured guess. Then a log line reading "stored artifacts incomplete -> regenerating"
+#: was taken as proof that a rehearsal regenerates artifacts and costs model spend; it does not,
+#: the line printed on a path that never runs, and it has since been corrected at its source.
+#: 900s stands because it is generous against the real cost, not because of the wrong one:
+#: `publish_passes` now gates ~10 packs at a time on a dry run, so a full tick batch is roughly
+#: one pack's wall clock, and this ceiling is ~7x that.
+_REGATE_TIMEOUT_S = 900
+
+#: Ten per tick, ON by default.
+#:
+#: ON, because the first cut defaulted it to 0 under "report mode before fix mode", and that is
+#: the wrong reading of that rule here. Report mode is about not CHANGING things unasked, and a
+#: re-gate changes nothing a buyer can see — it replaces an out-of-date reason with a current
+#: one and lists nothing. Off by default meant the stored verdicts stayed wrong until somebody
+#: remembered a knob, which is the exact failure this whole change exists to remove.
+#:
+#: TEN, because the gate now runs concurrently. This was 2 while a re-gate was serial at ~124s a
+#: pack; ten packs then meant twenty minutes of tick. Gating in the pool makes ten cost about
+#: what one used to, so the bound can match a tick's appetite instead of the tool's old floor.
+#: The queue self-drains: a re-gate stamps the current ruleset whatever the verdict, so a
+#: still-blocked pack drops out too and the backlog converges to empty.
+_REGATE_PER_TICK_DEFAULT = 10
+
+
+def _regate_per_tick(cfg) -> int:
+    """How many stale-verdict packs one tick may re-gate. 0 disables the step.
+
+    The default is `_REGATE_PER_TICK_DEFAULT` — do not restate the number here. It moved 2 -> 10
+    when the gate learned to run concurrently, and a docstring that names the old figure is the
+    kind of drift this module's own config test exists to catch.
+    """
+    raw = _sched(cfg, "regate_unlisted_per_tick", _REGATE_PER_TICK_DEFAULT)
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        logger.warning("schedule.regate_unlisted_per_tick=%r is not an integer", raw)
+        return _REGATE_PER_TICK_DEFAULT
+
+
+def _stale_verdicts(cfg, limit: int) -> list[Path]:
+    """PASS dossiers whose stored gate verdict cannot be trusted, worst first.
+
+    Two populations, and the daemon could see neither until now:
+
+    1. A receipt from a RETIRED ruleset. `pack_linter.RULESET_VERSION` changes whenever a rule
+       changes, and editing the linter touches no dossier — every receipt stays byte-identical
+       and newer than its pack, so mtime freshness says "current" forever. On 2026-08-17 five
+       rules stopped blocking and seven stranded packs became sellable; not one receipt knew.
+    2. NO receipt at all. Nobody has ever gated the pack, so "why is it not on sale?" had no
+       answer on disk. Nine of seventeen republishable PASSes were in this state on 2026-08-09.
+
+    The selection is SELF-DRAINING, which is what makes the step safe to leave on. A re-gate
+    stamps the current ruleset whatever the verdict, so a pack that is still blocked drops out
+    of this list too. The queue empties and stays empty until the rules move again.
+    """
+    from prospector.pack_linter import receipt_is_current
+
+    retired, never = [], []
+    for pack in sorted(Path(str(cfg.store_dir), "dossiers").glob("*.pass.json")):
+        receipt = pack.with_name(pack.name[:-len(".pass.json")] + ".lint.json")
+        try:
+            rec = json.loads(receipt.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            never.append(pack)
+            continue
+        if not receipt_is_current(rec):
+            retired.append(pack)
+    # Retired first: those packs have a verdict that is demonstrably out of date, and a rules
+    # change is the event that frees them. A pack nobody ever gated has been waiting longer but
+    # is no more likely to clear, and both populations drain within a few ticks either way.
+    return (retired + never)[:limit]
+
+
+def _regate_pass(cfg, n_regate: int) -> dict | None:
+    """Re-gate up to `n_regate` packs whose stored verdict is stale. Never raises.
+
+    THE COUNTERPART TO `_unlist_pass`, and the half that did not exist. The daemon pulls a pack
+    off sale the moment a re-vet kills it, and then never looks at it again: nothing in the tick
+    re-reads an UNLISTED pass, so a pack blocked by a rule that has since been fixed stays off
+    the shelf permanently. `tools/verify_pass_shelf_coverage.py:14` records the cost of that in
+    one sentence — "Twenty-four had been published UNLISTED and forgotten."
+
+    IT LISTS NOTHING. The rehearsal refreshes the verdict on disk; putting a pack back on sale
+    is a separate, deliberate act. That asymmetry is the same one the unlist drain has, pointed
+    the other way: unlisting unattended can only cost a sale, listing unattended takes money.
+    """
+    import subprocess  # local, matching this module's existing convention
+
+    if not n_regate:
+        return None
+    stale = _stale_verdicts(cfg, n_regate)
+    if not stale:
+        return None
+
+    script = Path(__file__).resolve().parents[2] / "tools" / "publish_passes.py"
+    if not script.exists():
+        logger.warning("regate step is on but %s is missing", script)
+        return {"error": f"missing {script.name}"}
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "--dry-run", *[str(p) for p in stale]],
+            capture_output=True, text=True, timeout=_REGATE_TIMEOUT_S,
+            cwd=str(script.parent.parent))
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        out = {"error": f"{type(exc).__name__}: {exc}"}
+        logger.warning("Re-gate FAILED (tick continues): %s", out["error"])
+        print(f"⟳ re-gate FAILED (tick continues): {out['error']}", file=sys.stderr, flush=True)
+        return out
+
+    # Count from the RECEIPTS, not from the tool's stdout. The receipt is the artifact the rest
+    # of the estate reads, so counting it proves the rehearsal actually landed on disk.
+    sellable = []
+    for pack in stale:
+        try:
+            rec = json.loads(pack.with_name(
+                pack.name[:-len(".pass.json")] + ".lint.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(rec, dict) and rec.get("ok"):
+            sellable.append(pack.name[:-len(".pass.json")])
+
+    out = {"rc": proc.returncode, "regated": len(stale), "clears_the_gate": sellable,
+           # BOTH, joined. `stdout or stderr` drops stderr whenever stdout is non-empty,
+           # and a re-gate that printed progress and then died is exactly that case: the
+           # tail would carry the progress and not the reason.
+           "tail": "\n".join(x for x in (proc.stdout, proc.stderr) if x).strip()[-300:]}
+    # CRITICAL for the same reason the unlist drain is: anything below it never reaches
+    # launchd.err.log (verified 2026-08-05), and "these packs are sellable and are not on sale"
+    # is the one line an operator needs to see.
+    logger.critical("Re-gate: %d pack(s), %d now clear the gate: %s",
+                    len(stale), len(sellable), ", ".join(sellable) or "none")
+    print(f"⟳ re-gate: {len(stale)} pack(s), {len(sellable)} now clear the gate "
+          f"({', '.join(sellable) or 'none'}) — none listed, listing stays deliberate",
+          file=sys.stderr, flush=True)
     return out
 
 
@@ -1163,7 +1324,7 @@ def _recover_pass(cfg) -> dict | None:
         except OSError:
             pass                               # cadence is an optimisation, not a correctness rail
 
-    out = {"rc": proc.returncode, "tail": (proc.stdout or proc.stderr).strip()[-300:]}
+    out = {"rc": proc.returncode, "tail": _proc_tail(proc)}
     logger.info("Pack recovery: %s", out["tail"])
     return out
 
@@ -1208,6 +1369,15 @@ def _decay_pass(cfg, n_decay: int) -> dict | None:
     if unlisted is not None:
         out = dict(out or {})
         out["unlisted"] = unlisted
+
+    # The re-gate rides here, beside the unlist drain, because they are the same loop pointed in
+    # opposite directions: one takes a pack off sale when the truth turns against it, the other
+    # notices when the truth turns back. It runs even when the decay sweep is off, for the same
+    # reason the drain does — switching one step off must not strand the other.
+    regated = _regate_pass(cfg, _regate_per_tick(cfg))
+    if regated is not None:
+        out = dict(out or {})
+        out["regated"] = regated
     return out
 
 
@@ -1764,6 +1934,32 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         _emit_tick_digest(cfg, tick)
         return tick
 
+    # HEARTBEAT. Founder directive 2026-08-21: "need heatbeat", "for all nodels in platforn".
+    #
+    # It runs HERE, immediately before the moat preflight, for two reasons. The preflight reads
+    # dead marks, so anything the heartbeat learns is one line older than the decision that uses
+    # it. And a tick that is about to be skipped still leaves a fresh answer behind: the hours
+    # when nothing runs are exactly the hours somebody opens the console asking which brain is
+    # alive, and before this the honest answer was "nothing has asked since the last real call".
+    #
+    # It is BELOW the PAUSE and spend guards on purpose. PAUSE halts the entire tick and a rail
+    # with exceptions is not a rail, so a paused engine takes no rounds — the console's
+    # `providers.test` action is the manual path while paused, and it says so on the page.
+    #
+    # It never raises into the tick. A monitor that can stop the thing it monitors is worse than
+    # no monitor, and it marks nothing dead (see prospector/ops/heartbeat.py), so it cannot bench
+    # a brain or eat the half-open recovery probe the next real call is entitled to.
+    try:
+        from ..ops.heartbeat import run_heartbeat
+
+        beat = run_heartbeat(cfg)
+        if beat["probed"]:
+            tick["heartbeat"] = {"probed": beat["probed"], "alive": beat["alive"],
+                                 "down": beat["down"]}
+            logger.info("Heartbeat: %d alive, %d down", len(beat["alive"]), len(beat["down"]))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Heartbeat failed, continuing: %s", exc)
+
     # MOAT PREFLIGHT. Checked after the guard (spend/PAUSE still own the money rails) and
     # before any work, because both halves of a tick — the resume drain and generation — need a
     # trusted brain. Generating into a blind moat produces `provisional` rows that cannot
@@ -1975,6 +2171,82 @@ def _trailing_barren_count(cfg, window: int = 50) -> int:
     return streak
 
 
+def _autopause_generation_on_barren_streak(cfg, specs: list, streak: int) -> None:
+    """Arm the generation half-stop when the engine declares a barren-generation outage.
+
+    THE ALERT ALREADY EXISTED AND STOPPED NOTHING. `alerts.alerts_for_tick` has raised CRITICAL
+    `barren_streak` — "Generation DEAD: N consecutive barren ticks" — since it was written, and
+    an alert is a sentence in a file. On 2026-08-20 the founder's ops console stopped answering
+    because generation kept minting waves against a MiniMax token plan that returned HTTP 429 to
+    every call. The 429 classifies TRANSIENT (`errors.classify_exhaustion`), so the adapter slept
+    5s/10s/20s/40s and retried, no brain was ever marked dead, `_moat_blind_reason` never saw a
+    blind moat, and the next tick generated again. Measured on the container: four `claude -p`
+    runtimes, 90.7% steal, and 20 of 34 console reads hitting a 30s ceiling while generation
+    produced ZERO candidates. Founder, verbatim: "we eed it to autopause whe this happens",
+    "so we dont get into this situation again".
+
+    ONE THRESHOLD, NOT TWO. This fires exactly when that CRITICAL alert fires, by reading the
+    spec the alerter has already produced, so the number that means "outage" cannot drift away
+    from the number that means "stop". Change it in `alerts.alerts_for_tick`, once.
+
+    IT DOES NOT SELF-CLEAR, AND THAT IS THE ASK. Founder: "we can restat fron adnindashboard hwen
+    we are able to". A barren streak means something outside the engine is spent — a token plan,
+    a credential, a provider — and self-resuming would put the box straight back into the state
+    that took the console down. The `Start it again` button on `/engine` disarms it
+    (`pause.disarm`, scope `generation`; `store_platform/src/Ops.Console/src/pages/engine.tsx`).
+
+    SCOPE IS `generation`, NEVER `all`. The drain must keep running: the backlog this outage
+    created is exactly the work that still needs finishing, and CLAUDE.md's rule is that
+    generation must not outrun its own drain — stopping the drain too would be the opposite fix.
+
+    It never raises. An autopause that kills the daemon is worse than the outage it was written
+    for.
+    """
+    if not _sched(cfg, "autopause_on_barren_streak", True):
+        return
+    if not any(isinstance(s, dict) and s.get("key") == "barren_streak" for s in specs):
+        return
+    ticks = streak + 1
+    try:
+        from prospector.ops import pause
+
+        receipt = pause.arm(
+            cfg, "generation",
+            actor="autopause:barren_streak",
+            reason=(f"automatic: {ticks} consecutive barren generation ticks. Generation was "
+                    f"minting work no brain could finish, which is how the ops console was "
+                    f"starved on 2026-08-20. The drain keeps running. Resume from the admin "
+                    f"dashboard (/engine, \"Start it again\") once the provider is funded."),
+        )
+    except Exception as exc:  # noqa: BLE001 — a failed STOP must not also kill the tick
+        # A stop that fails to arm is the worst state this function can leave behind: the log
+        # says the engine paused generation, and generation is still running. Swallowing that
+        # into a bare `return` would hand the caller the same silence a healthy tick gives it
+        # (tools/audit_swallow_sites.py, tier 1). So the failure gets its own CRITICAL alert
+        # and its own named flag, and only then do we decline to take the daemon down with it.
+        from prospector.scheduler.alerts import CRITICAL, emit_alert
+
+        autopause_failed = repr(exc)
+        logger.exception("Barren-streak autopause failed to arm")
+        emit_alert(
+            cfg, severity=CRITICAL, key="autopause_failed",
+            title="Generation autopause FAILED to arm",
+            message=(f"{ticks} consecutive barren generation ticks were detected and the "
+                     f"generation half-stop could NOT be armed: {autopause_failed}. "
+                     f"Generation is STILL RUNNING and still minting work no brain can "
+                     f"finish. Arm it by hand from the admin console (/engine -> generation "
+                     f"-> Stop), or by touching store/scheduler/PAUSE_GENERATION."),
+            autopause_failed=autopause_failed, barren_ticks=ticks)
+        return
+    if not receipt.get("changed"):
+        return
+    logger.critical(
+        "AUTOPAUSED generation after %d barren ticks. The drain keeps running. "
+        "Resume from the admin console (/engine).", ticks)
+    print(f"\u23f8 generation AUTOPAUSED after {ticks} barren ticks — the drain keeps running; "
+          f"resume from the admin console (/engine)", file=sys.stderr, flush=True)
+
+
 def _emit_tick_alerts(cfg, tick: dict) -> None:
     """Fire real-time operator alerts for a bad tick (error / barren / zero-yield).
 
@@ -1996,7 +2268,10 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
     # inside the function.
     _emit_stranded_pass_alert(cfg, tick)
 
-    specs = alerts_for_tick(tick, consecutive_barren=_trailing_barren_count(cfg))
+    streak = _trailing_barren_count(cfg)
+    specs = alerts_for_tick(tick, consecutive_barren=streak)
+    # STOP, then tell. The alert below has existed all along and stopped nothing.
+    _autopause_generation_on_barren_streak(cfg, specs, streak)
     for spec in specs:
         try:
             emit_alert(cfg, **spec)
@@ -2176,8 +2451,12 @@ def _emit_tick_digest(cfg, tick: dict) -> None:
         return
     send = _load_hermes_sender()
     if send is None:
-        logger.info("Tick digest sink unavailable (no %s); digest stayed local",
-                    "estate_alert.py")
+        # WARNING, not INFO. The old line named estate_alert.py, which reads as "this machine
+        # simply has no Hermes" — and on the Fly container that was true and harmless-looking
+        # while every digest was being dropped (issue #355). There is an in-repo sender now, so
+        # None here means a real defect.
+        logger.warning("Tick digest sink unavailable (no sender could be loaded); "
+                       "digest stayed local")
         return
     try:
         sent = send(text, debounce_key="prospector:tick_digest", debounce_s=7200.0,
@@ -2438,9 +2717,13 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
 
 def _route_ledger(cfg) -> None:
     """Send telemetry to the canonical ledger so the guard's spend math sees real costs."""
+    from prospector.log_shipper import attach as attach_central_log
     from prospector.telemetry import route_logs_to_file
 
     route_logs_to_file(str(_store_dir(cfg) / "prospector.jsonl"))
+    # And to the central ingest. No-op without STORE_INTERNAL_API_KEY; cannot raise; does
+    # no I/O on the tick's own thread (docs/LOGGING_AND_RETENTION.md Part 8 step 7).
+    attach_central_log("scheduler")
 
 
 def _err_log_path(cfg) -> Path:
@@ -2538,6 +2821,11 @@ def _status_lines(cfg) -> list[str]:
     out.append(f"  guard       : {'OK' if d.can_run else 'BLOCKED'} — {pause}")
     out.append(f"  spend today : ${d.today_spend_usd:.2f} of ${d.daily_cap_usd:.2f} cap "
                f"(metered/billed, local day {d.day})")
+    if d.today_ledger_holes:
+        # Printed only when it is not zero, because a line that is always there is a line nobody
+        # reads. The figure above is a lower bound whenever this appears.
+        out.append(f"  LEDGER HOLE : {d.today_ledger_holes} unreadable line(s) today — the spend "
+                   f"above is a LOWER BOUND and the cap has less room than it shows")
     sub_cap = (f"of ${d.daily_subscription_cap_usd:.2f} cap"
                if d.daily_subscription_cap_usd > 0 else "UNCAPPED")
     out.append(f"  cli usage   : ${d.today_subscription_usd:.2f} {sub_cap} "

@@ -12,6 +12,7 @@ never crashing the run.
 """
 from __future__ import annotations
 
+import codecs
 import contextvars
 import datetime
 import hashlib
@@ -748,6 +749,46 @@ def _strip_consent_elements(doc, etree) -> None:
             continue
 
 
+#: `<meta charset=...>` and `<meta http-equiv="Content-Type" content="...charset=...">`, which
+#: is where a page that declares nothing in its headers declares its encoding.
+_META_CHARSET_RE = re.compile(rb"""<meta[^>]+charset\s*=\s*["']?\s*([A-Za-z0-9_.:-]+)""", re.I)
+_HEADER_CHARSET_RE = re.compile(r"""charset\s*=\s*["']?\s*([A-Za-z0-9_.:-]+)""", re.I)
+
+#: how far into the body to look for a `<meta charset>`. HTML5 requires the declaration in the
+#: first 1024 bytes; 4096 covers pages that ignore that and costs nothing.
+_CHARSET_SNIFF_BYTES = 4096
+
+
+def _body_encoding(content_type: str, head: bytes) -> str:
+    """Decide how to decode a page body: declared header, then declared markup, then UTF-8.
+
+    THE DEFECT THIS CLOSES. This used to be `resp.encoding or "utf-8"`. `requests` follows
+    RFC 2616 and reports ISO-8859-1 for any `text/*` that carries no charset parameter, so a
+    UTF-8 page served as bare `text/html` was decoded as Latin-1 and every non-ASCII character
+    in it turned to mojibake. Measured on doc.rust-lang.org/book/ch01-01-installation.html
+    (`Content-Type: text/html`, body UTF-8): the extracted passage contained
+    `weâ\u0080\u0099ll` where the page says `we'll`, 32 corrupted characters in 5,504. That text
+    is what the verdict brain reads and what we cite, and the corruption is invisible unless
+    you diff against a second implementation -- which is how it was found.
+
+    Never raises and never returns a codec Python cannot load: an unknown or hostile charset
+    name falls back to UTF-8 rather than reaching `.decode()` and throwing `LookupError` out
+    of `fetch_page`, which promises never to raise.
+    """
+    declared = _HEADER_CHARSET_RE.search(content_type or "")
+    candidates = [declared.group(1)] if declared else []
+    sniffed = _META_CHARSET_RE.search(head)
+    if sniffed:
+        candidates.append(sniffed.group(1).decode("ascii", errors="ignore"))
+    for name in candidates:
+        try:
+            codecs.lookup(name)
+        except (LookupError, TypeError):
+            continue
+        return name
+    return "utf-8"
+
+
 def fetch_page(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
                max_bytes: int = 400_000, query: Optional[str] = None,
                strip_consent: bool = False
@@ -800,7 +841,9 @@ def fetch_page(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
                 break
         if not buf:
             return None, published
-        raw = bytes(buf).decode(resp.encoding or "utf-8", errors="replace")
+        body = bytes(buf)
+        raw = body.decode(_body_encoding(ctype, body[:_CHARSET_SNIFF_BYTES]),
+                          errors="replace")
     except (requests.RequestException, OSError, UnicodeDecodeError, ValueError):
         # network / decode: keep the snippet. NARROWED from `except Exception` 2026-08-15 —
         # the bare form also caught our own bugs in the streaming loop above and returned the
@@ -2042,7 +2085,7 @@ class DiskCache(SearchProvider):
         base = f"{query}|{k}|{max_chars}"
         if self.key_salt:
             base = f"{base}|{self.key_salt}"
-        h = hashlib.sha1(base.encode()).hexdigest()[:20]
+        h = hashlib.sha1(base.encode(), usedforsecurity=False).hexdigest()[:20]
         return self.cache_dir / f"{h}.json"
 
     def _age_s(self, p: Path, fetched_at: float | None) -> float | None:
@@ -2411,9 +2454,23 @@ def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
         # is visible without being fatal.
         return FixtureProvider(fixtures=fixtures, raise_on_miss=False)
     if name == "claude_cli":
-        from .claude_cli import ClaudeCliGroundingProvider, configure_concurrency
+        from . import operator as _op
+        from .claude_cli import (
+            CHEAPEST_CLAUDE_MODEL,
+            ClaudeCliGroundingProvider,
+            configure_concurrency,
+        )
         configure_concurrency(r.claude_concurrency)
         return ClaudeCliGroundingProvider(
+            # Same pin as the verdict tier: unpinned, this inherits the machine's Claude Code
+            # default, measured as `opus[1m]` on 2026-08-19. Grounding is the highest-volume
+            # claude_cli caller in the estate, so it is where an unpinned default costs most.
+            # `grounding` is this chain's component name, so retrieval can run a different
+            # Claude from the one that rules verdicts. Falls through to the estate-wide
+            # claude pin and then to the cheapest tier — never to the CLI's own default.
+            model=(_op.component_pin(cfg, "grounding", "claude_cli")
+                   or (getattr(cfg, "claude_cli_model", "") or "").strip()
+                   or CHEAPEST_CLAUDE_MODEL),
             timeout=max(r.search_timeout, r.claude_min_timeout),
             timeout_max=max(r.search_timeout_max, r.claude_min_timeout),
             escalation=r.search_timeout_escalation, retries=r.search_retries,

@@ -110,7 +110,56 @@ def log_injection(repo: str, chars: int, seconds: float) -> None:
         pass
 
 
+def selftest() -> int:
+    """Check the trigger. Graded by scripts/process_audit.py.
+
+    `is_codebase_shaped` IS this hook's cost control. Every prompt it accepts pays up to
+    BUDGET_TOKENS of injected text, and every prompt it rejects gets nothing. The hook fails
+    silent by design, so a trigger that broke -- widened by a regex edit, or narrowed to never
+    fire -- looks exactly like a quiet turn. Nothing else can tell the difference, so these
+    cases do.
+
+    No graph, no subprocess, no network: the trigger is a pure function of the prompt string.
+    """
+    cases: list[tuple[str, bool]] = [
+        # -- must fire: a real question about this codebase --------------------------------
+        ("where is the scheduler wired up in run.py", True),
+        ("how does prospector/ops/console_api.py build the method payload", True),
+        ("what calls _read_rework()", True),
+        ("which file owns the retrieval provider chain", True),
+        ("trace the money rail from bridge.py to the endpoint", True),
+        ("what is the impact of changing the config schema", True),
+        ("show me the verify_moat module and its dependencies", True),
+        # -- must NOT fire -----------------------------------------------------------------
+        ("/graphify", False),                       # slash command
+        ("!ls -la", False),                         # shell passthrough
+        ("ok", False),                              # under MIN_PROMPT_CHARS
+        ("thanks, that works", False),              # conversational, no code noun or identifier
+        ("what do you think about the pricing strategy for the packs", False),
+        ("architecture", False),                    # intent word alone, no noun and no identifier
+        ("x" * (MAX_PROMPT_CHARS + 1), False),      # pasted content, not a question
+    ]
+    failures = [f"  {p[:60]!r}: want {want}, got {is_codebase_shaped(p)}"
+                for p, want in cases if is_codebase_shaped(p) is not want]
+
+    # The budget is the cost cap. If it is ever raised past graphify's own default the comment
+    # above it is wrong and the A/B in COST_PROGRAM §L8 is measuring something else.
+    if not 0 < BUDGET_TOKENS <= 2000:
+        failures.append(f"  BUDGET_TOKENS={BUDGET_TOKENS} is outside the measured 1..2000 range")
+
+    total = len(cases) + 1
+    if failures:
+        print(f"graphify query hook selftest: {len(failures)}/{total} FAILED")
+        print("\n".join(failures))
+        return 1
+    print(f"graphify query hook selftest: {total}/{total} passed")
+    return 0
+
+
 def main() -> None:
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
+
     try:
         data = json.load(sys.stdin)
     except Exception:

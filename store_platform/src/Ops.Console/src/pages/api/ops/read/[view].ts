@@ -17,9 +17,14 @@ import { logConsoleEvent } from '@/lib/oplog';
 export const VIEWS = [
   'engine_location',
   'status',
+  'attention',
   'queue',
   'drain',
   'providers',
+  // Which brains answered a real question, and when. Separate from `providers`, which
+  // reports what config DECLARES and what health marks say; this one reports what the
+  // model actually replied. Free to read: it serves the last round off disk.
+  'heartbeat',
   'routing',
   'spend',
   'money',
@@ -39,6 +44,12 @@ export const VIEWS = [
   'method',
   'docs',
   'incidents',
+  'migration',
+  // Every shareable file in the repo, grouped by folder. It is what the share page's picker
+  // reads, so the operator chooses a path instead of typing one from memory.
+  'repo_files',
+  'shares',
+  'automations',
   'content_rules',
   'orders',
   'order',
@@ -46,7 +57,9 @@ export const VIEWS = [
   'deliveries',
   'disputes',
   'console_log',
+  'logs',
   'processes',
+  'deploys',
 ] as const;
 
 /** Arguments each view accepts. Anything else in the query string is dropped, not forwarded. */
@@ -68,7 +81,9 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   deliveries: ['state', 'limit'],
   disputes: ['days'],
   docs: ['name'],
+  shares: ['files'],
   console_log: ['limit'],
+  logs: ['service', 'level', 'since', 'until', 'corr', 'q', 'limit'],
 };
 
 /**

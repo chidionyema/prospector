@@ -63,6 +63,21 @@ services:
       # mapping form with "env_file.0 must be a string".
       - path: ../../.env
         required: false
+      # THE SAME FILE, ONE LEVEL UP, BECAUSE THE BOX'S LAYOUT IS NOT THE REPO'S.
+      # env_file resolves against the COMPOSE FILE's directory. In the repo that is
+      # deploy/compose/, so ../../.env is the repo root and correct. On a shipped box
+      # deploy/ does not exist -- ship_shop.sh puts the compose directory at
+      # /srv/mumchimp/compose/ and the .env beside it at /srv/mumchimp/.env -- so
+      # ../../.env resolved to /srv/.env, which was never there.
+      #
+      # `required: false` then swallowed it without a word, so the box came up carrying
+      # NONE of the 24 settings the .env holds. Measured 2026-08-24 on the rehearsal box:
+      # `printenv | grep -i stripe` inside the running container returned exactly one name,
+      # Stripe__SmokeTestPriceId, which is the only one supplied by `environment:` below.
+      # The API then refused to start -- correctly -- naming Stripe:WebhookSecret, and the
+      # deploy script reported success anyway.
+      - path: ../.env
+        required: false
 
     environment:
       PROSPECTOR_STORE_DIR: /data/store
@@ -118,6 +133,21 @@ services:
       # mapping form with "env_file.0 must be a string".
       - path: ../../.env
         required: false
+      # THE SAME FILE, ONE LEVEL UP, BECAUSE THE BOX'S LAYOUT IS NOT THE REPO'S.
+      # env_file resolves against the COMPOSE FILE's directory. In the repo that is
+      # deploy/compose/, so ../../.env is the repo root and correct. On a shipped box
+      # deploy/ does not exist -- ship_shop.sh puts the compose directory at
+      # /srv/mumchimp/compose/ and the .env beside it at /srv/mumchimp/.env -- so
+      # ../../.env resolved to /srv/.env, which was never there.
+      #
+      # `required: false` then swallowed it without a word, so the box came up carrying
+      # NONE of the 24 settings the .env holds. Measured 2026-08-24 on the rehearsal box:
+      # `printenv | grep -i stripe` inside the running container returned exactly one name,
+      # Stripe__SmokeTestPriceId, which is the only one supplied by `environment:` below.
+      # The API then refused to start -- correctly -- naming Stripe:WebhookSecret, and the
+      # deploy script reported success anyway.
+      - path: ../.env
+        required: false
 
     environment:
       ASPNETCORE_ENVIRONMENT: Production
@@ -125,6 +155,76 @@ services:
       payments__active_provider: stripe
       # One value drives every link the API puts in an email.
       Email__WebBaseUrl: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com}
+
+      # WITHOUT THESE TWO THE API DOES NOT BOOT AT ALL. AddAuthPipeline throws
+      # `Jwt:Issuer and Jwt:Audience must both be configured`
+      # (store_platform/src/Store.Api/Auth/AuthServiceCollectionExtensions.cs:92) and the
+      # container restart-loops on exit 139. Measured 2026-08-24: five crashes in ninety
+      # seconds, which is what the escape hatch had always done -- nothing had ever started
+      # the API off Fly, so the gap had never fired.
+      #
+      # They were Fly secrets and nothing else, so the stack that was supposed to replace Fly
+      # needed Fly in order to start. The defaults below are the values the live app is
+      # running with right now, read off it with
+      # `flyctl ssh console -a prospector-store-api -C 'printenv Jwt__Issuer Jwt__Audience'`.
+      # They are claim names, not credentials: the secret is Jwt__SigningKeyPem, which stays
+      # in .env and never appears here. Changing either invalidates every refresh token that
+      # was issued under the old pair, so the cutover keeps them.
+      Jwt__Issuer: ${JWT_ISSUER:-store-api}
+      Jwt__Audience: ${JWT_AUDIENCE:-store-web}
+
+      # This one IS a secret and has no default on purpose. Empty is the honest value on a
+      # box that has not been given the key yet, and the API says so and stops
+      # (Identity/ConfigJwtSigningKeyProvider.cs:29) rather than signing with something
+      # invented. Two ways in, and neither puts the key in a tracked file:
+      #   production  Jwt__SigningKeyPem in ../../.env, which env_file above already loads
+      #   local drill JWT_SIGNING_KEY_PEM in stack.env, a throwaway generated for the drill
+      Jwt__SigningKeyPem: ${JWT_SIGNING_KEY_PEM:-}
+
+      # ------------------------------------------------------------------------------------
+      # THE REST OF WHAT FLY WAS HOLDING.
+      #
+      # `flyctl secrets list -a prospector-store-api` names 24 settings. This file supplied 5
+      # of them, so the stack whose whole job is to replace Fly could not start without Fly.
+      # It was never caught because nothing had ever started the API off Fly: the API crashed
+      # on the first missing one, the next was invisible behind it, and there were three in a
+      # row (Jwt__Issuer, then Jwt__SigningKeyPem, then STORE_STOREFRONT_URL).
+      #
+      # Split by what the value IS, because the two halves travel differently:
+      #
+      #   CONFIG below has defaults, derived from stack.env so a domain rename stays one file.
+      #   SECRETS below default to empty and come from ../../.env, which env_file already
+      #   loads. Empty is deliberate: the API refuses to start rather than run half-configured
+      #   (Payments/MoneyRailConfigGate.cs:150), and that refusal is the thing telling an
+      #   operator the box has not been given its credentials yet.
+      # ------------------------------------------------------------------------------------
+
+      # CONFIG. Where the buyer is sent back to after paying. Unset, the API refuses to boot
+      # rather than redirect every paying customer to itself and a 404.
+      Store__StorefrontUrl: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com}
+      STORE_STOREFRONT_URL: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com}
+      STORE_PUBLIC_URL: ${SITE_SCHEME:-https}://${API_DOMAIN:-api.mumchimp.com}
+      # The live app also allows https://prospector-store-web.fly.dev. That one is deliberately
+      # absent here: it is the hostname being eradicated, and an origin allow-list is exactly
+      # the place a dead vendor's name survives a migration unnoticed.
+      STORE_ALLOWED_ORIGIN: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com},${SITE_SCHEME:-https}://www.${SITE_DOMAIN:-mumchimp.com}
+      # The data-protection key ring. Same path as Fly's, inside the ./data-api mount, so the
+      # key that decrypts existing cookies and tokens travels with the database.
+      Data__KeyRingPath: ${DATA_KEYRING_PATH:-/data/keys}
+      RateLimiting__PermitPerMinute: ${RATE_LIMIT_PER_MINUTE:-600}
+      Security__KnownNetworks: ${KNOWN_NETWORKS:-::/0,0.0.0.0/0}
+      Founder__Emails: ${FOUNDER_EMAILS:-chidionyema@gmail.com}
+      Stripe__SmokeTestPriceId: ${STRIPE_SMOKE_TEST_PRICE_ID:-}
+
+      # SECRETS. Names differ between .env and the API's configuration keys, so the mapping
+      # lives here rather than in a second copy of every value.
+      Store__InternalApiKey: ${STORE_INTERNAL_API_KEY:-}
+      Store__EntitlementsApiKey: ${PROSPECTOR_ENTITLEMENTS_API_KEY:-}
+      Authentication__Google__ClientId: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      Authentication__Google__ClientSecret: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      MAILJET_API_KEY: ${MAILJET_API_KEY:-}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET:-}
+      MAILJET_FROM_EMAIL: ${MAILJET_FROM_EMAIL:-orders@${SITE_DOMAIN:-mumchimp.com}}
 
     ports:
       - "127.0.0.1:${API_PORT:-5291}:8080"
@@ -137,10 +237,45 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
 
+    # PID 1 in this container is `dotnet`, which does not reap orphaned children. The
+    # healthcheck below spawns `head` and `grep` every 15s and nothing collects them when
+    # they exit. Measured 2026-08-24 in the Colima VM: 48 zombies parented to `dotnet
+    # Store.Api.dll`, exactly 24 `head` and 24 `grep`, matching the two commands in the
+    # check. `init: true` makes Docker run its own tini as PID 1, which reaps them. This is
+    # Docker's built-in flag, not a wrapper we wrote. The engine container has never had this
+    # problem because its image already starts `/usr/bin/tini`, which is the control that
+    # proves the attribution rather than merely fitting it.
+    init: true
+
     healthcheck:
       # The same path Fly checks, so a green container here means the same thing it means
-      # there. `wget -q -O-` because the aspnet runtime image carries no curl.
-      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/catalog >/dev/null || exit 1"]
+      # NO HTTP CLIENT EXISTS IN THIS IMAGE. The line here used to be `wget -q -O-`, with a
+      # comment explaining that the aspnet runtime image carries no curl. It carries no wget
+      # either, so the check had never once passed: measured 2026-08-24, every probe since the
+      # file was written returned `/bin/sh: 1: wget: not found`, exit 1, and the container sat
+      # permanently unhealthy. Nothing noticed because compose does not act on unhealthy. An
+      # orchestrator that restarts on unhealthy would have restart-looped the money rail.
+      #
+      # bash IS in the image, so its /dev/tcp opens the socket with no package to install and
+      # no vendor to depend on. CMD, not CMD-SHELL: CMD-SHELL runs dash, which has no /dev/tcp.
+      #
+      # It checks /catalog rather than a static path on purpose. /catalog reads store.db, so a
+      # pass means the process is up AND the database is readable, which is the thing that has
+      # to be true for the shop to take money.
+      #
+      # THE READ IS BOUNDED BY `read -t 3`, AND THE `timeout:` BELOW IS NOT WHAT BOUNDS IT.
+      # Measured 2026-08-24: docker did not enforce `timeout: 5s`. It marked the check failed and
+      # left the processes running. 108 `head` and 109 `grep` from THIS line were still alive in the
+      # VM, the oldest for 8h22m, one pair per 30s interval since the container started. With the
+      # store-web wget check below doing the same, ~309 stuck processes were the entire runnable set of the
+      # VM (procs_running 307), which is load 466 on 4 CPUs arithmetically.
+      #
+      # `head -1 <&3` blocks forever when the server accepts the connection and then sends nothing,
+      # which is exactly what a saturated box does. `read -t` bounds that in bash itself, with no
+      # coreutils `timeout` binary to depend on, and it removes the two subprocesses per check as
+      # well -- the pipeline was what accumulated. The connect needs no bound: /dev/tcp to 127.0.0.1
+      # either succeeds or is refused at once, there is no network in between to hang on.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /catalog HTTP/1.1\r\nHost: h\r\nConnection: close\r\n\r\n' >&3 && read -t 3 -r line <&3 && [[ $line == *' 200 '* ]]"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -170,8 +305,13 @@ services:
     environment:
       NODE_ENV: production
 
+    # Bound to localhost like the API, and for the same reason. On a laptop this changes
+    # nothing. On a rented box the previous value published the storefront on 0.0.0.0:3000
+    # over plain HTTP next to the TLS one, so a shop that takes card details answered on an
+    # uncertificated port that no redirect covered. The `edge` service below is how the
+    # world reaches this container.
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
 
     # Only ordering, not readiness - compose will not wait for the API to be healthy unless
     # asked, and the storefront renders a degraded page rather than crashing without it.
@@ -182,8 +322,26 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
 
+    # Same defect as the API, same fix. PID 1 here is `next-server`, which does not reap
+    # either: measured 2026-08-24, 8 zombie `wget` processes parented to it, one per probe
+    # that had run since the container started.
+    init: true
+
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      #
+      # `-T 2` IS THE BOUND. `timeout: 3s` BELOW IS NOT, AND `init: true` ABOVE DOES NOT HELP HERE.
+      # init reaps a wget that has already exited; it cannot end one that is still running. Measured
+      # 2026-08-24 in the colima VM: 87-89 live wget processes from this line across three samples,
+      # the oldest 30,139s (8h22m) old, under a declared 3-second timeout. Docker marked the checks
+      # failed and never killed them, so every 15s interval added another that also never exited.
+      #
+      # -T sets wget's own connect/read timeout and is supported by both busybox and GNU wget, so it
+      # needs no new binary in the image. Proved in this image against a listener that accepts and
+      # then never answers: without -T, wget ran 26s until an outer timeout killed it; with -T 2 it
+      # returned rc=1 in 2s on its own. The rule this line now follows: a healthcheck must bound
+      # itself, because `timeout:` is a label docker applies to the RESULT, not a limit it enforces
+      # on the PROCESS.
+      test: ["CMD-SHELL", "wget -T 2 -q -O- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
       interval: 15s
       timeout: 3s
       retries: 3
@@ -217,3 +375,79 @@ services:
 
     restart: unless-stopped
     stop_grace_period: 90s
+
+  # ---------------------------------------------------------------------------------------
+  # The edge. TLS, and the two hostnames the world types.
+  #
+  # This is the service that makes the escape hatch an escape hatch rather than a demo. Fly
+  # supplied `force_https` and two issued certificates; nothing else here was ever Fly's.
+  # Caddy obtains and renews its own certificates from Let's Encrypt, so the replacement
+  # introduces no account, no dashboard and no second vendor.
+  #
+  #   docker compose --profile store --profile edge up -d     the shop, on any Docker host
+  #
+  # Ports 80 and 443 are published on ALL interfaces on purpose: this is the one service
+  # that is meant to be reachable from the internet. 80 is not optional - it carries the
+  # HTTP-01 challenge and the redirect to 443.
+  # ---------------------------------------------------------------------------------------
+  edge:
+    profiles: ['edge', 'all']
+    image: caddy:2.10-alpine
+    container_name: prospector-edge
+
+    environment:
+      # See deploy/compose/Caddyfile for what these two accept. A bare hostname means
+      # "manage the certificate"; an explicit http:// scheme means "no TLS", which is the
+      # local drill. The defaults are the local drill, so an operator who has not read
+      # stack.env cannot accidentally point a laptop at Let's Encrypt and burn a rate limit
+      # against a domain it does not control.
+      EDGE_SITE: ${EDGE_SITE:-http://localhost}
+      EDGE_API: ${EDGE_API:-http://api.localhost}
+      # `:-` and not `:` because stack.env ships `ACME_EMAIL=` -- defined and empty. Caddy's
+      # own `{$VAR:default}` only fires on UNSET, so an empty value reaches the Caddyfile,
+      # `email` gets no argument, and the edge restart-loops on a parse error. This is the
+      # layer that has to hold the default.
+      ACME_EMAIL: ${ACME_EMAIL:-ops@localhost}
+
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+      - "${EDGE_HTTPS_PORT:-443}:443"
+
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Issued certificates and the ACME account key. A named volume, so `docker compose
+      # down` keeps them: Let's Encrypt rate-limits duplicate certificates to five per
+      # week, and a stack that re-issues on every restart runs out on the sixth restart of
+      # the day it is most likely to be restarting.
+      - caddy_data:/data
+      - caddy_config:/config
+
+    depends_on:
+      web:
+        condition: service_started
+      api:
+        condition: service_started
+
+    restart: unless-stopped
+
+    # Same class as the API and the web container, applied here before it bites rather than
+    # after. Being honest about the evidence: the 2026-08-24 measurement found ZERO zombies
+    # parented to caddy, so this one is prophylactic and not a fix for something observed.
+    # It is here because the condition that produces the defect is present - a PID 1 that
+    # does not reap, and a healthcheck that runs a process every 60s - and the flag costs
+    # nothing.
+    init: true
+
+    healthcheck:
+      # Asks Caddy's own config parser, not a URL: this catches a Caddyfile that failed to
+      # substitute an environment variable, which otherwise shows up as a 404 from a site
+      # block named after an empty string.
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  caddy_data:
+  caddy_config:

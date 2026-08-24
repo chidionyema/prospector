@@ -1,0 +1,77 @@
+# DNS is the one thing in this estate with no substitute, and until now no copy.
+#
+# WHY THIS EXISTS. docs/ESTATE_CONTINUITY_PLAN.md R5 rates the registrar as the single
+# unrecoverable loss on the register, and then leaves it there. Every exit path in that document
+# ends in "repoint DNS" and none of them said to what. There was no committed copy of the zone,
+# so a deleted record, a hijacked account or a registrar outage meant nobody could say what the
+# records had been. deploy/dns/mumchimp.com.zone is that copy. This job keeps it true.
+#
+# WHAT IT WOULD CATCH. A record deleted by hand and forgotten. An MX pointed at somebody else's
+# mail server. A www CNAME still aimed at an app we have moved off. A committed file that has
+# quietly drifted from reality, which is the failure that makes the copy worthless on the one
+# day it is needed.
+#
+# WHY IT ASKS THE AUTHORITATIVE NAMESERVERS. A resolver answers from cache, so a record deleted
+# five minutes ago still resolves and a cached drill passes on a zone that is already broken.
+# scripts/dns_zone.py finds the nameservers from the parent and asks them directly.
+#
+# WHY A RED JOB IS THE ALERT. Same shape as escape-hatch-drill.yml: the scheduled run failing is
+# the page. Routing drill failures somewhere louder is task #49 and is not this file's job.
+#
+# WHAT IT DOES TO PRODUCTION. Nothing. It issues DNS queries and reads a file in the repo. There
+# is no mode in scripts/dns_zone.py that writes to DNS.
+
+name: DNS drift drill
+
+on:
+  schedule:
+    # Daily, 05:00 UTC. Daily rather than weekly because the window between a record changing
+    # and somebody noticing is the whole risk, and a week of it is too long.
+    - cron: "0 5 * * *"
+  # Also on any change to the checker or the committed zone, so a broken checker is caught by
+  # the pull request that broke it rather than by the next morning's cron.
+  pull_request:
+    paths:
+      - "scripts/dns_zone.py"
+      - "deploy/dns/**"
+      - ".github/workflows/dns-drift-drill.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: dns-drift-drill-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: dig must exist, or the drill proves nothing
+        run: |
+          set -euo pipefail
+          # A missing `dig` would make every query fail, which scripts/dns_zone.py reports as
+          # exit 2 (cannot establish) rather than exit 0. Installing it explicitly keeps the
+          # failure honest: red here means DNS drifted, not that the runner was thin.
+          command -v dig >/dev/null 2>&1 || sudo apt-get update -qq && sudo apt-get install -y -qq dnsutils
+          dig -v 2>&1 | head -1
+
+      - name: Diff live DNS against the committed zone
+        run: python3 scripts/dns_zone.py --check --zone mumchimp.com
+
+      - name: Say what was proved
+        if: success()
+        run: |
+          echo "Proved: every record in deploy/dns/mumchimp.com.zone is still live, and nothing"
+          echo "has appeared that is not in the file. NOT proved: that we still control the"
+          echo "registrar account. That needs a credential the drill deliberately does not hold."
+
+      - name: Say what was NOT proved
+        if: failure()
+        run: |
+          echo "NOT PROVED: live DNS does not match deploy/dns/mumchimp.com.zone on this run."
+          echo "Either a record drifted or the file is stale. Read the diff in the failing step"
+          echo "above; do not read the previous green run as current."

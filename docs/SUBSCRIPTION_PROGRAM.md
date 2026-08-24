@@ -1245,10 +1245,10 @@ than an oversight): A-3, B-12, B-13, D-4, D-6, E-1, E-4, E-5, F-6, G-1, G-5, H-2
 
 | Phase | Create | Modify |
 |---|---|---|
-| P1 | `Store.Api/Commerce/CommerceOptions.cs`, `CommerceEndpoints.cs`, `Store.Tests/Endpoints/CommerceModeTests.cs` | `Program.cs` (bind options, map route), `Endpoints/CheckoutEndpoints.cs:24,40` (mode refusal **and** the `SellableCountries` refusal — same place, no new file) |
-| P2 | `Store.Catalog/Migrations/*_AddEntitlementGrantSource.cs` | `Domain/Entitlement.cs`, `Persistence/StoreDbContext.cs` |
-| P3 | `Domain/Subscription.cs`, `SubscriptionInvoice.cs`, `SubscriptionStatus.cs`, `InvoiceStatus.cs`, `Store.Api/Endpoints/SubscriptionEndpoints.cs`, `Migrations/*_AddSubscriptions.cs` | `Payments/StripeProvider.cs:69,418`, `Payments/IPaymentProvider.cs` (subscription methods, default-NotSupported so Paddle needs no change), `Program.cs` |
-| P4 | `Store.Api/Services/ClaimService.cs` | `Services/FulfilmentService.cs:115-133` (fence generalises, does not fork) |
+| P1 | `Store.Api/Commerce/CommerceOptions.cs`, `CommerceEndpoints.cs`, `Store.Tests/Endpoints/CommerceModeTests.cs` | `Program.cs` (bind options, map route), `Endpoints/CheckoutEndpoints.cs:24,40` (mode refusal **and** the `SellableCountries` refusal — same place, no new file) <!-- doc-lint-ok: phase P1 creates these files; absent is the current state, not a broken link --> |
+| P2 | `Store.Catalog/Migrations/*_AddEntitlementGrantSource.cs` | `store_platform/src/Store.Catalog/Domain/Entitlement.cs`, `store_platform/src/Store.Catalog/Persistence/StoreDbContext.cs` |
+| P3 | `Domain/Subscription.cs`, `SubscriptionInvoice.cs`, `SubscriptionStatus.cs`, `InvoiceStatus.cs`, `Store.Api/Endpoints/SubscriptionEndpoints.cs`, `Migrations/*_AddSubscriptions.cs` | `Payments/StripeProvider.cs:69,418`, `Payments/IPaymentProvider.cs` (subscription methods, default-NotSupported so Paddle needs no change), `Program.cs` <!-- doc-lint-ok: phase P3 creates these files; absent is the current state, not a broken link --> |
+| P4 | `Store.Api/Services/ClaimService.cs` | `Services/FulfilmentService.cs:115-133` (fence generalises, does not fork) <!-- doc-lint-ok: phase P4 creates this file; absent is the current state, not a broken link --> |
 | P5–P7 | per §12 | — |
 
 `IPaymentProvider` additions must have **default implementations**, matching the existing file's own

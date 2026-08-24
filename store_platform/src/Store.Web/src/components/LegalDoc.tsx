@@ -166,9 +166,16 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
             <div className="space-y-8">{withAnchors}</div>
             {/* THE CLOSING BLOCK (`mockups/refund.html`, `.closing{border-top:2px solid var(--ink);
                 margin-top:46px;padding:34px 0 0}`). It was a single "Back to home" text link under
-                a hairline. The catalogue is already one click away in the crumb above and in the
-                header, so the end of a legal document is worth spending on the two things a reader
-                who got this far actually wants: the free report and the FAQ. */}
+                a hairline.
+
+                The second button pointed at `/faq` until 2026-08-21, on the reasoning that "the
+                catalogue is already one click away in the crumb above and in the header". The crumb
+                and the header both go to `/`, which is the top of a long marketing page, and the
+                header nav has no shelf link at all -- it carries Categories, How it works, Kill log,
+                FAQ, Account. So these three legal pages were the estate's only dead ends: a reader
+                who checked the refund policy before buying could reach the FAQ and the free sample
+                and no product. `/#catalog` is the shelf itself. Graded by FR3 in
+                `e2e/first-run.spec.ts`. */}
             <div className="closing">
               <h2 className="sec">
                 Read one free before you buy anything.
@@ -181,8 +188,8 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
                 <Link href="/sample" className="btn">
                   Read the free report
                 </Link>
-                <Link href="/faq" className="btn ghost">
-                  Read the FAQ
+                <Link href="/#catalog" className="btn ghost">
+                  Browse the packs
                 </Link>
               </div>
             </div>

@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import fcntl
 import json
 import os
 import re
@@ -68,6 +69,7 @@ ROOT = Path(__file__).parent.parent
 WEB_DIR = ROOT / "store_platform" / "src" / "Store.Web"
 CONSOLE_DIR = ROOT / "store_platform" / "src" / "Ops.Console"
 DOTNET_TEST_PROJ = "store_platform/src/Store.Tests/Store.Tests.csproj"
+LOOKENGINE_DIR = ROOT / "docs" / "storefront" / "look-engine"
 
 # Wall-clock ceiling per lane. This is a HANG detector, not a performance budget — set it
 # well above the real runtime so a merely-slow suite never reads as a failure. Measured
@@ -94,7 +96,7 @@ DRAIN_TIMEOUT_SECONDS = 30
 
 # Extensions that must be covered by SOME lane. A file with one of these that matches no
 # lane blocks the commit rather than sailing through unproven.
-SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csproj", ".css"}
+SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csproj", ".css", ".rs"}
 
 # Extensions the storefront's own proof (tsc + vitest) can speak to. `.json` is here for
 # package.json / tsconfig.json, which change what typecheck and vitest actually run.
@@ -121,6 +123,30 @@ OPS_REL = "store_platform/src/Ops.Console/"
 # two directories.
 CONSOLE_REL = "store_platform/src/Ops.Console/"
 
+# The look engine is the storefront redesign prototype: .mjs tools plus .js/.css parts that
+# build one self-contained page. Its extensions are all in SOURCE_EXTS, so before this lane
+# existed every one of its files read as unproven and the directory could not be committed.
+LOOKENGINE_REL = "docs/storefront/look-engine/"
+
+# The Rust engine. Its own tree, its own toolchain, no Python in it. Before this lane existed
+# a commit of nothing but .rs files reported "no source changes staged — nothing to prove" and
+# was allowed, because `.rs` was in neither SOURCE_EXTS nor any lane — so it was not even
+# recorded as unclassified. That is the same shape as the `.yaml` hole above: a gate that says
+# green while grading nothing. Measured 2026-08-21 before the fix:
+#   lanes_for(["engine-rs/crates/prospector-core/src/decision.rs"]) -> ([], [])
+RUST_REL = "engine-rs/"
+RUST_DIR = ROOT / "engine-rs"
+
+# rustup installs to ~/.cargo/bin, which a git hook's environment does not have on PATH.
+CARGO = Path.home() / ".cargo" / "bin" / "cargo"
+
+# Not source, but a change to any of them changes what every Rust build and lint does, so they
+# belong in the lane's catchment as much as a .rs file. rust-toolchain.toml is the sharpest:
+# it pins the compiler version, so editing it can turn a green tree red with no code change.
+RUST_CONFIG_FILES = frozenset({
+    "Cargo.toml", "Cargo.lock", "clippy.toml", "rustfmt.toml", "deny.toml", "rust-toolchain.toml",
+})
+
 # ── the engine lane's catchment ───────────────────────────────────────────────
 # The daemon is steered by two kinds of file, and until 2026-08-14 one of them was proven by
 # NOTHING. `.yaml` is not in SOURCE_EXTS and matched no lane, so commit 9089ebc — which raised
@@ -137,6 +163,19 @@ CONSOLE_REL = "store_platform/src/Ops.Console/"
 # daemon's own package.
 ENGINE_CONFIGS = ("config.yaml",)
 ENGINE_DIRS = ("prospector/scheduler/",)
+
+# ── the estate config catchment ──────────────────────────────────────────────
+# The same shape as ENGINE_CONFIGS above, found the same way, one week later. On 2026-08-21
+# commit c0ecb178 changed ops/config/ci_capacity.yaml -- the file that declares which runner
+# pool every CI job lands on -- and this gate printed "no source changes staged, nothing to
+# prove". `.yaml` is in no lane, so nothing ran. Hours earlier that same file had turned every
+# open pull request red: it still said `label: fly` after the four CI_*_RUNS_ON variables moved
+# to ubuntu-latest, and `guard` failed in 11s on #643 and #644.
+#
+# The catchment is the whole directory and the lane is python. Eight of the nine files in
+# ops/config/ are named by a file in tests/unit/; the ninth, prose_repair_effect.yaml, has no
+# test of its own, which is a reason to run the suite over it rather than a reason to exempt it.
+OPS_CONFIG_REL = "ops/config/"
 
 
 def _is_engine_path(path: str) -> bool:
@@ -218,6 +257,55 @@ def _parse_engine(stdout: str) -> tuple[int, int, list[str]]:
     return passed, failed, failed_checks
 
 
+def _parse_cargo(stdout: str) -> tuple[int, int, list[str]]:
+    """Read cargo's own summary lines.
+
+    `cargo test` prints one `test result:` line PER TARGET (lib, each integration test, the
+    doctests), so the counts are summed rather than taken from the last line — reading only
+    the last one reports the doctest target's 0 passed and calls a whole workspace proven.
+
+    fmt and clippy print no counts at all. That is fine and deliberate: the step loop breaks
+    on a non-zero exit, so their own status blocks the commit before this parser is reached,
+    and a `-D warnings` clippy failure is an exit code, not a number to parse.
+    """
+    passed = failed = 0
+    failures: list[str] = []
+    for line in stdout.splitlines():
+        t = line.strip()
+        if t.startswith("test result:"):
+            # The first field is "ok. 5 passed", not "5 passed" — cargo puts the verdict
+            # word in front of the count. Read the token ADJACENT to the keyword rather
+            # than the first token of the field.
+            for count, word in re.findall(r"(\d+)\s+(passed|failed)", t):
+                if word == "passed":
+                    passed += int(count)
+                else:
+                    failed += int(count)
+        elif t.startswith("test ") and t.endswith("... FAILED"):
+            failures.append(t[:120])
+    return passed, failed, failures[:50]
+
+
+def _parse_lookengine(stdout: str) -> tuple[int, int, list[str]]:
+    """Count the look-engine tools' own verdict lines ('A43 PASS — ...', 'FAIL ...').
+
+    Same shape as _parse_engine: the verdict is the exit code, and these counts exist only
+    to make the receipt legible.
+    """
+    passed = failed = 0
+    failed_checks: list[str] = []
+    for line in stdout.splitlines():
+        m = re.search(r"\b(PASS|FAIL)\b", line)
+        if not m:
+            continue
+        if m.group(1) == "PASS":
+            passed += 1
+        else:
+            failed += 1
+            failed_checks.append(line.strip()[:120])
+    return passed, failed, failed_checks[:50]
+
+
 # ── lanes ────────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
@@ -249,6 +337,35 @@ LANES: dict[str, Lane] = {
             ("pytest", [sys.executable, "-m", "pytest", "-q", "--tb=no", "-rf"]),
         ),
         parser=_parse_pytest,
+    ),
+    # The Rust engine. Three steps, cheapest first, so a formatting slip comes back in a
+    # second instead of after a full compile.
+    #
+    # cargo-audit and cargo-deny are deliberately NOT here, and they are in ci.yml's `rust`
+    # job instead. Both need the network — audit clones the RustSec advisory database, deny
+    # reads the crates.io index — and a commit hook that fails when the wifi drops is a gate
+    # that teaches people to pass --no-verify. The questions they answer ("is a dependency
+    # known-vulnerable", "may we legally ship it") also cannot be changed by an edit to a .rs
+    # file; they change when Cargo.lock changes or when the world changes, and CI sees both.
+    #
+    # CARGO is an absolute path because the hook does not inherit an interactive shell, so
+    # ~/.cargo/bin is not on PATH and `cargo` would be "command not found" — which the step
+    # loop would report as a failed proof rather than as a missing toolchain.
+    "rust": Lane(
+        key="rust",
+        label="rust — fmt + clippy -D warnings + cargo test",
+        target="prospector:rust-engine",
+        steps=(
+            ("fmt", [str(CARGO), "fmt", "--all", "--", "--check"]),
+            ("clippy", [str(CARGO), "clippy", "--workspace", "--all-targets",
+                        "--all-features", "--", "-D", "warnings"]),
+            ("test", [str(CARGO), "test", "--workspace", "--all-features"]),
+        ),
+        parser=_parse_cargo,
+        cwd=RUST_DIR,
+        # Fail closed. Without CARGO in preflight a machine with no Rust toolchain would skip
+        # the lane, and skipping is how an unproven commit reads as green.
+        preflight=(RUST_DIR / "Cargo.toml", CARGO),
     ),
     # The storefront proof CI itself does NOT fully run: ci.yml's `nextjs` job runs
     # typecheck + build but never `npm test`, so these 523 vitest tests have no other
@@ -300,6 +417,39 @@ LANES: dict[str, Lane] = {
         cwd=CONSOLE_DIR,
         preflight=(CONSOLE_DIR / "node_modules",),
     ),
+    # Two node-only proofs, and both were mutation-proved BEFORE they were put in a lane. A
+    # step that logs a fault and exits 0 makes a lane green while grading nothing, which is the
+    # same class as `cmd | tail` reporting tail's status.
+    #   check.mjs exits 1 on each of: a hex value written into a look (A43); a `[data-look=...]`
+    #   selector appended to the stylesheet (A42); a tool claiming a gate number the programme
+    #   doc does not define (the gate audit).
+    #   palette-test.mjs exits 1 when one `min:` in the palette module's own pair table is
+    #   raised — 4,000 failing pairs out of 80,000 assertions over 2,000 random seeds.
+    # Together ~3s, and neither writes a tracked file.
+    #
+    # tools.mjs WAS in this lane and was removed for failing exactly that test: given a tool
+    # whose @ledger line names a script that does not exist, it regenerated the ledger page
+    # with the lie in it and exited 0. It is a generator, not a gate.
+    #
+    # What this lane does NOT prove, said out loud rather than implied by a green tick: the
+    # five browser gates (verify.mjs — 104 cells, coldopen.mjs, overflow.mjs, persist.mjs and
+    # probe.mjs) all drive Playwright and take minutes, and a commit hook that launches a
+    # browser is the wedge this gate already has a memory file about. They are run by hand
+    # through runlog.sh, and logs/ carries their last verdict. So this is a real net over the
+    # static contracts, not the whole net. seed.mjs is excluded for a different reason: it is a
+    # one-off migration from the hand-picked palettes to seeds, so it is a tool, not a gate.
+    "lookengine": Lane(
+        key="lookengine",
+        label="look-engine — source contracts + palette contrast",
+        target="storefront:look-engine",
+        steps=(
+            ("check", ["node", "check.mjs"]),
+            ("palette", ["node", "palette-test.mjs"]),
+        ),
+        parser=_parse_lookengine,
+        cwd=LOOKENGINE_DIR,
+        preflight=(LOOKENGINE_DIR / "check.mjs",),
+    ),
     "dotnet": Lane(
         key="dotnet",
         label="dotnet — Store.Tests",
@@ -311,7 +461,10 @@ LANES: dict[str, Lane] = {
 
 # cheapest first, so a fast failure comes back fast. `engine` (~15s) leads: a change that
 # stops the daemon completing a tick should be reported before anything spends 175s.
-LANE_ORDER = ("engine", "console", "web", "dotnet", "python")
+# `lookengine` (~3s) is cheaper still and would lead on that rule alone, but
+# test_popdd_gate_lanes.py:289 pins the engine at position 0 on purpose, and 15 seconds is
+# not worth loosening a guard another session wrote.
+LANE_ORDER = ("engine", "lookengine", "rust", "console", "web", "dotnet", "python")
 
 
 def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
@@ -332,12 +485,22 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
         # can still complete one. Neither substitutes for the other.
         if _is_engine_path(path):
             lanes.add("engine")
+        # Outside the elif chain, like the engine check above: a .yaml here matches no
+        # extension rule below and would otherwise fall off the end of the loop unrecorded.
+        if path.startswith(OPS_CONFIG_REL):
+            lanes.add("python")
         if path.startswith(CONSOLE_REL) and ext in WEB_EXTS:
             lanes.add("console")
         elif path.startswith(WEB_REL) and ext in WEB_EXTS:
             lanes.add("web")
         elif path.startswith(OPS_REL) and ext in WEB_EXTS:
             lanes.add("ops")
+        elif path.startswith(LOOKENGINE_REL) and ext in SOURCE_EXTS:
+            lanes.add("lookengine")
+        elif path.startswith(RUST_REL) and (
+            ext == ".rs" or Path(path).name in RUST_CONFIG_FILES
+        ):
+            lanes.add("rust")
         elif ext == ".py":
             lanes.add("python")
         elif ext in (".cs", ".csproj"):
@@ -370,12 +533,25 @@ def scope_ruff(lane: Lane, paths: list[str]) -> Lane:
 
     When the caller does not know the paths — `--lanes`, or a bare invocation — the lane is
     returned untouched and ruff runs repo-wide. Failing safe means grading MORE, never less.
+    An empty `paths` is exactly that case and only that case: `--staged` reaches here with at
+    least one path whenever it selected a lane at all.
+
+    A diff that HAS paths and none of them Python is the other case, and until 2026-08-23 it
+    fell through to the same repo-wide run. That is not failing safe, it is the original defect
+    with a narrower trigger: a commit of one .yaml and one .sh was blocked by an unsorted import
+    block in tools/experiments/q4b_live_catalogue_exposure.py, a file the committer had never
+    opened, and the person who has to fix it is again never the person the gate stopped. There
+    is no Python in the diff, so ruff has nothing to say about it and the step is dropped. The
+    lane still runs, because a .yaml under ops/config drives Python and pytest is what proves
+    that.
     """
     if lane.key != "python":
         return lane
     py = sorted({p for p in paths if p.endswith(".py")})
     if not py:
-        return lane
+        if not paths:
+            return lane
+        return replace(lane, steps=tuple((n, a) for n, a in lane.steps if n != "ruff"))
     steps = tuple(
         (name, [*argv, "--force-exclude", *py] if name == "ruff" else argv)
         for name, argv in lane.steps
@@ -495,6 +671,104 @@ def single_flight():
             pass
 
 
+MACHINE_LOCK = Path.home() / ".estate" / "locks" / "popdd-gate-machine.lock"
+
+
+def _machine_lock_path() -> Path:
+    """Where the machine lock lives. POPDD_MACHINE_LOCK overrides it.
+
+    The override is not a convenience knob. This module's own tests prove the waiting
+    behaviour by SPAWNING gate runs, and those tests are themselves run by the gate — so
+    against a single fixed path the inner runs queue behind the outer gate that is running
+    them, and time out. Measured 2026-08-23: 4 passed standalone in 17.55s, then 2 of the
+    same 4 failed inside the gate for exactly that reason. A test that cannot run under the
+    thing it tests is not a test, so the path is a parameter.
+    """
+    override = os.environ.get("POPDD_MACHINE_LOCK")
+    return Path(override) if override else MACHINE_LOCK
+
+
+@contextlib.contextmanager
+def machine_capacity():
+    """Let only ONE gate run use this machine's cores at a time. Wait, do not refuse.
+
+    This is a different rail from single_flight() above and it is answering a different
+    question. That one protects `.git/index.lock`, which is per checkout, so it refuses in
+    under a second and tells you to get your own worktree. This one protects the CPU, which
+    is NOT per checkout, and a worktree of your own does nothing for it.
+
+    Measured 2026-08-23 on this machine: two sessions in two separate worktrees each held
+    their own single_flight lock legitimately and each ran a 6-worker pytest. 15 pytest
+    processes, load average 137 on 12 logical cores. Everything else on the machine then
+    starts timing out rather than failing: the founder board could not answer 7 of its ~40
+    rows, and 14 of 30 guard selftests exited 124. None of those were broken. They gave up
+    waiting for a machine that was thrashing.
+
+    So the advice single_flight prints -- "get your own working tree, then both sessions
+    commit concurrently" -- is correct about the index and wrong about the box. Concurrency
+    was never free here; it was being paid for out of every other instrument's timeout.
+
+    WAITING IS THE RIGHT BEHAVIOUR HERE, and it is the opposite of the choice above, because
+    the failure is the opposite. Two gates sharing one checkout queue behind a lock that one
+    of them may wedge. Two gates sharing one CPU do not queue -- they interleave, and both
+    finish LATER than if one had waited. Serialising is faster in total, not slower.
+
+    FAIL-OPEN, deliberately. This is a capacity rail, not a correctness rail: a wedged holder
+    must never be able to stop every commit on the machine, which is the exact failure the
+    2026-08-14 incident in single_flight() was about. After one full gate ceiling plus a
+    margin, we stop waiting and run anyway, saying so.
+
+    OFF SWITCH: POPDD_NO_MACHINE_LOCK=1 git commit ...
+    """
+    if os.environ.get("POPDD_NO_MACHINE_LOCK") == "1":
+        yield
+        return
+
+    try:
+        lock_path = _machine_lock_path()
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o644)
+    except OSError as e:
+        # A lock we cannot even create must not block a commit.
+        print(f"   POPDD gate: no machine lock ({e}); running without it.")
+        yield
+        return
+
+    ceiling = TEST_TIMEOUT_SECONDS + DRAIN_TIMEOUT_SECONDS + 120
+    waited = 0.0
+    held = False
+    try:
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                held = True
+                break
+            except OSError:
+                if waited == 0:
+                    print("\n⏳ POPDD gate: another gate run holds this machine's cores. "
+                          "Waiting rather than thrashing.")
+                    print("   Two full suites at once make BOTH slower and time out every "
+                          "other instrument on the box.")
+                if waited >= ceiling:
+                    print(f"   Waited {int(waited)}s, past the gate's own ceiling. The holder "
+                          f"is wedged; running anyway.")
+                    break
+                time.sleep(5)
+                waited += 5
+                if waited % 60 == 0:
+                    print(f"   still waiting, {int(waited // 60)}m")
+        if held and waited:
+            print(f"   Got the machine after {int(waited)}s.\n")
+        yield
+    finally:
+        try:
+            if held:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError:
+            pass
+        os.close(fd)
+
+
 class StepTimeout(Exception):
     """The step exceeded its wall-clock ceiling and its process group was killed.
 
@@ -584,8 +858,17 @@ def run_lane(agent: PopddAgent, lane: Lane) -> bool:
 
     print(f"\n▶ {lane.label}")
     combined, returncode = "", 0
+    # Which steps actually EXECUTED, not which were configured. The loop below breaks on the
+    # first non-zero exit, so a lane can report a verdict having run only its cheapest step --
+    # and the counts it prints come from parsing that step's output, which yields 0 passed and
+    # 0 failed. "0 passed, 0 failed" then reads as a completed clean suite. Measured 2026-08-20:
+    # a peer timed this gate at 1.0s and reported it as the gate's cost. It was ruff failing
+    # fast; pytest never started, and the real passing cost is 175-290s. The receipt said the
+    # same thing, so the misreading survived into a second session.
+    ran: list[str] = []
     for step_name, argv in lane.steps:
         print(f"   … {step_name}")
+        ran.append(step_name)
         try:
             result = _run_step(argv, lane.cwd, TEST_TIMEOUT_SECONDS)
         except StepTimeout as timed_out:
@@ -598,6 +881,8 @@ def run_lane(agent: PopddAgent, lane: Lane) -> bool:
                 **{
                     "verdict": "TIMEOUT", "lane": lane.key, "step": step_name,
                     "passed": 0, "failed": 0, "failedTests": [], "exitCode": None,
+                    "stepsRun": ran,
+                    "stepsSkipped": [n for n, _ in lane.steps if n not in ran],
                     "timeoutSeconds": TEST_TIMEOUT_SECONDS,
                     "outputDrained": timed_out.drained,
                 },
@@ -627,20 +912,54 @@ def run_lane(agent: PopddAgent, lane: Lane) -> bool:
             break
 
     passed, failed, failed_tests = lane.parser(combined)
+    skipped = [name for name, _ in lane.steps if name not in ran]
     verdict = "PASS" if returncode == 0 and failed == 0 else "FAIL"
     agent.sign_generic(
         action="test-run:complete", target=lane.target,
         **{
             "verdict": verdict, "lane": lane.key, "passed": passed, "failed": failed,
             "failedTests": failed_tests, "exitCode": returncode,
+            "stepsRun": ran, "stepsSkipped": skipped,
         },
     )
     print(f"   {'✅' if verdict == 'PASS' else '❌'} {lane.key}: {verdict} ({passed} passed, {failed} failed)")
+    if skipped:
+        print(f"      ⚠ NEVER RAN: {', '.join(skipped)} — '{ran[-1]}' failed first and stopped "
+              "the lane.\n"
+              f"      So ({passed} passed, {failed} failed) is what {ran[-1]}'s output parsed to, "
+              "NOT a suite result,\n"
+              "      and this lane's elapsed time is the cost of failing early, not the cost of "
+              "passing.")
     for nodeid in failed_tests:
         print(f"      FAILED  {nodeid}")
     if failed and not failed_tests:
         print("      (failure count reported but no ids parsed — check the runner's output format)")
     return verdict == "PASS"
+
+
+def print_summary(ran: list[str], selected: list[str], ok: bool, chain_valid: bool) -> None:
+    """Print the run summary, naming the lanes that ACTUALLY executed.
+
+    It used to print `selected`. The lane loop breaks on the first failing lane, so on a FAIL the
+    tail of `selected` never runs -- measured 2026-08-20, a merge blocked by the console lane
+    printed "Lanes run: engine, console, web, dotnet, python" and gave a verdict line for engine
+    and console only. Three lanes were reported as run and were never started.
+
+    That is the same defect as the step-level `stepsRun` receipt in `run_lane`, one level up, and
+    it is worse here because this is the block a human reads. A reader who takes that line at face
+    value concludes the dotnet and python lanes graded this diff green. They did not run at all.
+    """
+    print(f"\n{'=' * 60}")
+    print("  Prospector POPDD Run Complete")
+    print(f"{'=' * 60}")
+    print(f"  Lanes run:     {', '.join(ran) if ran else '(none)'}")
+    skipped = [k for k in selected if k not in ran]
+    if skipped:
+        print(f"  Lanes SKIPPED: {', '.join(skipped)} — kill-fast stopped at the first failing")
+        print("                 lane, so these were never graded. Not evidence that they pass.")
+    print(f"  Verdict:       {'PASS' if ok else 'FAIL'}")
+    print(f"  Chain valid:   {chain_valid}")
+    print(f"{'=' * 60}\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -699,23 +1018,28 @@ def main(argv: list[str] | None = None) -> int:
 
     agent = PopddAgent.at_path(ROOT)
     ok = True
+    # Which lanes actually EXECUTED. The loop below breaks on the first failing lane, so on a FAIL
+    # the tail of `selected` never runs. Printing `selected` there claimed five lanes had run when
+    # two had -- measured 2026-08-20, a merge blocked by the console lane printed
+    # "Lanes run: engine, console, web, dotnet, python" with a verdict line for engine and console
+    # only. Same class as the step-level `stepsRun` above: a receipt that reports what was
+    # CONFIGURED reads as coverage that never happened.
+    ran: list[str] = []
     with single_flight() as acquired:
         if not acquired:
             return 1
-        for key in selected:
-            if not run_lane(agent, scope_ruff(LANES[key], paths)):
-                ok = False
-                break   # kill-fast: a failed lane already blocks the commit
+        # Inside single_flight, not around it: the fast refusal for a same-checkout collision
+        # must still happen in under a second, before anything queues on the machine lock.
+        with machine_capacity():
+            for key in selected:
+                ran.append(key)
+                if not run_lane(agent, scope_ruff(LANES[key], paths)):
+                    ok = False
+                    break   # kill-fast: a failed lane already blocks the commit
 
     verify = agent.verify_chain()   # (auto-saved by PopddAgent)
 
-    print(f"\n{'=' * 60}")
-    print("  Prospector POPDD Run Complete")
-    print(f"{'=' * 60}")
-    print(f"  Lanes run:     {', '.join(selected)}")
-    print(f"  Verdict:       {'PASS' if ok else 'FAIL'}")
-    print(f"  Chain valid:   {verify['valid']}")
-    print(f"{'=' * 60}\n")
+    print_summary(ran, selected, ok, verify["valid"])
     return 0 if verify["valid"] and ok else 1
 
 

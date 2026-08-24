@@ -18,8 +18,11 @@ from pathlib import Path
 
 import prospector.audit as A
 
-REAL_AUDIT_DIR = Path("store/scheduler/audit")
 REPO_ROOT = Path(A.__file__).resolve().parent.parent
+# Deliberately the repo-local store, not store_root(): this fence proves the suite left THIS
+# checkout's audit trail alone, and store_root() under pytest points at a temp dir, which
+# would prove nothing. It was cwd-relative, so it graded whatever directory pytest ran from.
+REAL_AUDIT_DIR = REPO_ROOT / "store" / "scheduler" / "audit"
 
 
 def _real_log_size() -> int:

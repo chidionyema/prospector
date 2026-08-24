@@ -23,6 +23,28 @@
 app = "prospector-engine"
 primary_region = "lhr"
 
+# HOW LONG THE MACHINE GETS TO STOP. Both keys were absent until 2026-08-21, so Fly's
+# defaults applied: SIGINT, then SIGKILL five seconds later.
+#
+# Five seconds is shorter than the shutdown this image asks for. PID 1 is supervisord,
+# which forwards the signal to eleven programs and waits `stopwaitsecs` for each; the
+# consumer alone is given 30 (supervisord.conf, [program:consumer]). So the graceful path
+# could never finish, and every deploy ended with SIGKILL to the whole microVM.
+#
+# What that cost: prospector.jsonl is the spend ledger, written by a stdlib logging
+# handler that flushes to the OS and never calls fsync. A SIGKILLed VM never syncs its
+# page cache, but the inode size has already grown, so the filesystem returns NUL bytes
+# for the extent that never reached disk. Measured 2026-08-21 on the restored R2 copy:
+# 43 NUL holes, every one of them immediately followed by a `consumer: starting` line.
+# Zero holes on 16-17 August, 15 in 18 starts today. The machine was created
+# 2026-08-18T02:09:03Z and the first hole is 08:47:09 the same day.
+#
+# 45s, not longer: `[deploy] strategy = "immediate"` means a deploy replaces the machine
+# without waiting for health, so this timeout is the whole of the deploy's stop budget.
+# It must exceed the consumer's 30s and leave room for the other ten programs.
+kill_signal = "SIGTERM"
+kill_timeout = "45s"
+
 [build]
   dockerfile = "Dockerfile"
 

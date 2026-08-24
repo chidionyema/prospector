@@ -44,7 +44,11 @@ class FakeS3:
         keys = sorted(k for k in self.objects if k.startswith(Prefix))
         return {
             "Contents": [
-                {"Key": k, "ETag": '"%s"' % hashlib.md5(self.objects[k]).hexdigest()}  # noqa: S324
+                {
+                    "Key": k,
+                    "ETag": '"%s"' % hashlib.md5(self.objects[k]).hexdigest(),  # noqa: S324
+                    "Size": len(self.objects[k]),
+                }
                 for k in keys
             ],
             "IsTruncated": False,
@@ -55,6 +59,10 @@ class FakeS3:
 
     def get_object(self, Bucket, Key):  # noqa: N803
         return {"Body": io.BytesIO(self.objects[Key])}
+
+    def head_object(self, Bucket, Key):  # noqa: N803
+        return {"ContentLength": len(self.objects[Key]),
+                "ETag": '"%s"' % hashlib.md5(self.objects[Key]).hexdigest()}  # noqa: S324
 
     def delete_object(self, Bucket, Key):  # noqa: N803
         self.objects.pop(Key, None)
@@ -237,10 +245,43 @@ def test_restore_without_a_db_snapshot_still_restores_dossiers(store, tmp_path, 
     assert "no db snapshot in the bucket" in capsys.readouterr().err
 
 
-def test_restore_rejects_an_object_that_does_not_parse(store, tmp_path):
+def test_an_unparseable_object_is_reported_and_the_restore_finishes(store, tmp_path, capsys):
+    """This test asserted the opposite until 2026-08-20: that an object which does not parse
+    exits the restore. It was changed deliberately, because on a real host it made the restore
+    permanently red -- and the hard exit sat ABOVE restore_db, so the catalogue index, the half
+    of a recovery that actually matters, was never restored once.
+
+    An unparseable object whose ETag matches is a faithful copy of bytes R2 was given. It is
+    reported with a count and an example, and the restore carries on."""
     s3 = FakeS3()
     bs.sync(s3, "b")
     s3.objects["dossiers/aaa.pass.json"] = b"not json"
+
+    count = bs.restore(s3, "b", tmp_path / "restored")
+
+    assert count == 3
+    assert (tmp_path / "restored" / "prospector.db").is_file()
+    out = capsys.readouterr().out
+    assert "1 restored objects do not parse as JSON" in out
+    # The local twin still parses, so the message must NOT blame the source for this one.
+    assert "local file is unparseable too" not in out
+
+
+def test_bytes_that_disagree_with_the_stored_etag_still_fail_the_restore(store, tmp_path):
+    """The one condition that is still fatal. Everything else the restore reports; this is the
+    only check that answers the question the function exists to ask -- are the bytes in the
+    bucket the bytes we gave it."""
+
+    class LyingS3(FakeS3):
+        def list_objects_v2(self, **kw):
+            page = super().list_objects_v2(**kw)
+            for row in page["Contents"]:
+                if row["Key"] == "dossiers/aaa.pass.json":
+                    row["ETag"] = '"%s"' % ("0" * 32)
+            return page
+
+    s3 = LyingS3()
+    bs.sync(s3, "b")
     with pytest.raises(SystemExit) as exc:
         bs.restore(s3, "b", tmp_path / "restored")
     assert "RESTORE FAIL" in str(exc.value)
@@ -266,6 +307,71 @@ def test_prune_is_a_no_op_below_the_threshold_and_when_disabled(store):
     assert bs._prune_db_snapshots(s3, "b", keep=5) == []
     assert bs._prune_db_snapshots(s3, "b", keep=0) == []
     assert len(s3.objects) == 2
+
+
+def test_ledger_prune_keeps_the_newest_n(store):
+    s3 = FakeS3()
+    for i, day in enumerate(["2026-08-01", "2026-08-02", "2026-08-03", "2026-08-04"]):
+        s3.objects[f"ledger/prospector-{day}.jsonl.gz"] = b"x" * (10 + i)
+    stale = bs._prune_ledger_snapshots(s3, "b", keep=2)
+    assert stale == [
+        "ledger/prospector-2026-08-01.jsonl.gz",
+        "ledger/prospector-2026-08-02.jsonl.gz",
+    ]
+    assert sorted(s3.objects) == [
+        "ledger/prospector-2026-08-03.jsonl.gz",
+        "ledger/prospector-2026-08-04.jsonl.gz",
+    ]
+
+
+def test_ledger_prune_is_a_no_op_below_the_threshold_and_when_disabled(store):
+    s3 = FakeS3()
+    for day in ["2026-08-01", "2026-08-02"]:
+        s3.objects[f"ledger/prospector-{day}.jsonl.gz"] = b"xxx"
+    assert bs._prune_ledger_snapshots(s3, "b", keep=5) == []
+    assert bs._prune_ledger_snapshots(s3, "b", keep=0) == []
+    assert len(s3.objects) == 2
+
+
+def test_ledger_prune_refuses_when_the_newest_snapshot_shrank(store, capsys):
+    """The ledger is append-only. A snapshot smaller than one already kept means records
+    were lost, which is the one failure the older copies exist to survive."""
+    s3 = FakeS3()
+    s3.objects["ledger/prospector-2026-08-01.jsonl.gz"] = b"x" * 500
+    s3.objects["ledger/prospector-2026-08-02.jsonl.gz"] = b"x" * 900
+    s3.objects["ledger/prospector-2026-08-03.jsonl.gz"] = b"x" * 40
+    assert bs._prune_ledger_snapshots(s3, "b", keep=1) == []
+    assert len(s3.objects) == 3
+    assert s3.deleted == []
+    assert "REFUSED to prune" in capsys.readouterr().err
+
+
+def test_ledger_prune_never_touches_the_db_or_the_dossiers(store):
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+    for day in ["2026-07-01", "2026-07-02"]:
+        s3.objects[f"ledger/prospector-{day}.jsonl.gz"] = b"x"
+    bs._prune_ledger_snapshots(s3, "b", keep=1)
+    assert [k for k in s3.deleted if not k.startswith("ledger/")] == []
+    assert len([k for k in s3.objects if k.startswith("dossiers/")]) == 3
+    assert len([k for k in s3.objects if k.startswith("db/")]) == 1
+
+
+def test_sync_prunes_the_ledger_series(store):
+    """The regression this whole change exists for: before 2026-08-19 sync() pruned db/ and
+    repo/ and left ledger/ to grow without a ceiling."""
+    s3 = FakeS3()
+    for day in ["2026-07-01", "2026-07-02", "2026-07-03"]:
+        s3.objects[f"ledger/prospector-{day}.jsonl.gz"] = b"x"
+    bs.sync(s3, "b", ledger_keep=1)
+    # sync() writes today's snapshot, which sorts newest, so keep=1 keeps that one and the
+    # three seeded July keys all go.
+    assert sorted(k for k in s3.deleted if k.startswith("ledger/")) == [
+        "ledger/prospector-2026-07-01.jsonl.gz",
+        "ledger/prospector-2026-07-02.jsonl.gz",
+        "ledger/prospector-2026-07-03.jsonl.gz",
+    ]
+    assert len([k for k in s3.objects if k.startswith("ledger/")]) == 1
 
 
 def test_pruning_never_touches_the_ledger_or_the_dossiers(store):
@@ -303,3 +409,173 @@ def test_ledger_snapshot_stops_at_the_last_complete_record(store):
     captured = bs._snapshot_ledger(out)
     assert gzip.decompress(out.read_bytes()) == b'{"n": 1}\n{"n": 2}\n'
     assert captured == len(b'{"n": 1}\n{"n": 2}\n')
+
+
+def test_a_dossier_rewritten_after_upload_does_not_fail_the_restore(store, tmp_path, capsys):
+    """The live-box case, and the reason the index had never once been restored.
+
+    `restore` checks each object three ways, but only two of them ask anything about the
+    BUCKET. The third compares the restored bytes to the local file, and on a running engine
+    that file moves underneath it: the daemon rewrites `*.defer.json` as it re-vets. Measured
+    2026-08-20 on prospector-engine, 53 of 4,480 objects differed for exactly that reason,
+    with zero local files missing from the bucket and every object matching its upload ETag.
+
+    Counting that as failure hard-exited the restore before `restore_db` ever ran, so the
+    catalogue index came back not at all — and it did so on every run on a live host, which
+    made a genuine corruption look identical to a daemon doing its job.
+    """
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+
+    # The daemon re-vets and rewrites one dossier AFTER it was uploaded. The bucket copy is
+    # untouched and still matches the ETag R2 recorded; only the local original has moved on.
+    (bs.DOSSIER_DIR / "aaa.pass.json").write_text(
+        json.dumps({"id": "aaa", "verdict": "re-vetted since the upload"}), encoding="utf-8"
+    )
+
+    dest = tmp_path / "restored"
+    count = bs.restore(s3, "b", dest)
+
+    assert count == 3
+    # The diverged object must still be materialised, and from the BUCKET's bytes. Skipping it
+    # is how a restore silently comes up short of the count it just reported.
+    assert json.loads((dest / "dossiers" / "aaa.pass.json").read_text()) == {"id": "aaa"}
+    # And the restore must reach the database.
+    assert (dest / "prospector.db").is_file()
+
+    out = capsys.readouterr().out
+    assert "1 objects differ from the local copy" in out
+    assert "aaa.pass.json" in out
+
+
+def test_a_zero_byte_source_dossier_does_not_fail_the_restore(store, tmp_path, capsys):
+    """Measured on prospector-engine 2026-08-20: 5 dossiers are zero bytes in the bucket and
+    zero bytes locally. The backup copied a broken source file faithfully, which is its job.
+    Failing the restore over it makes the restore permanently red on that host, so a real
+    failure could never be told apart from this one."""
+    (bs.DOSSIER_DIR / "bbb.kill.json").write_bytes(b"")
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+    assert s3.objects[bs.DOSSIER_PREFIX + "bbb.kill.json"] == b""
+
+    dest = tmp_path / "restored"
+    count = bs.restore(s3, "b", dest)
+
+    assert count == 3
+    # The broken object is still WRITTEN. The drill reconciles the tree against the index,
+    # and a file this function silently dropped would read there as a coverage hole.
+    assert (dest / "dossiers" / "bbb.kill.json").read_bytes() == b""
+    assert (dest / "prospector.db").is_file()
+    out = capsys.readouterr().out
+    assert "1 restored objects do not parse as JSON" in out
+    assert "bbb.kill.json (0B, local file is unparseable too)" in out
+
+
+# ── The ledger had no way home until 2026-08-21 ───────────────────────────────
+# `sync()` uploaded it daily from 2026-07-31. `restore()` covered the dossiers, `restore_db()`
+# covered the index, and the audit trail -- the one artifact that cannot be rebuilt from any
+# other -- had an upload path and no download. These tests exist so it cannot go missing again.
+def _seed_ledger(store, fake, lines: list[bytes]) -> str:
+    (store / "prospector.jsonl").write_bytes(b"".join(lines))
+    bs.sync(fake, "b")
+    return sorted(k for k in fake.objects if k.startswith(bs.LEDGER_PREFIX))[-1]
+
+
+def test_the_ledger_comes_back_out_of_the_bucket(store, tmp_path, capsys):
+    """The round trip nobody could do before. Bytes in, same bytes out, records counted."""
+    fake = FakeS3()
+    body = [b'{"n": %d}\n' % i for i in range(50)]
+    key = _seed_ledger(store, fake, body)
+
+    dest = tmp_path / "restored"
+    assert bs.restore_ledger(fake, "b", dest) == key
+    out = dest / "prospector.jsonl"
+    assert out.read_bytes() == b"".join(body)
+    assert "50 records" in capsys.readouterr().out
+
+
+def test_a_download_that_stops_short_is_fatal(store, tmp_path):
+    """Truncation is the failure this whole exercise came from, so it must exit, not warn.
+
+    scripts/engine_failover.py grew 215 lines detecting short `fly ssh sftp` transfers by hand
+    because sftp exited 0 on them. Comparing bytes read to Content-Length is the two-line
+    version, and this test is what stops someone deleting it as redundant.
+    """
+    fake = FakeS3()
+    _seed_ledger(store, fake, [b'{"n": 1}\n'])
+
+    class ClaimsMore(FakeS3):
+        def head_object(self, Bucket, Key):  # noqa: N803
+            head = super().head_object(Bucket=Bucket, Key=Key)
+            head["ContentLength"] += 4096      # the bucket says more than the body delivers
+            return head
+
+    liar = ClaimsMore()
+    liar.objects = fake.objects
+    with pytest.raises(SystemExit) as exc:
+        bs.restore_ledger(liar, "b", tmp_path / "restored")
+    assert "stopped short" in str(exc.value)
+
+
+def test_a_corrupted_gzip_stream_is_fatal(store, tmp_path):
+    """The CRC32 was computed at compression time, so it is a referent outside this process."""
+    fake = FakeS3()
+    key = _seed_ledger(store, fake, [b'{"n": %d}\n' % i for i in range(200)])
+    fake.objects[key] = fake.objects[key][:-40]        # lop the CRC and some payload off
+
+    with pytest.raises(SystemExit) as exc:
+        bs.restore_ledger(fake, "b", tmp_path / "restored")
+    assert "did not decompress cleanly" in str(exc.value)
+
+
+def test_a_record_of_nul_bytes_is_reported_and_the_restore_still_finishes(store, tmp_path, capsys):
+    """Measured on the live ledger 2026-08-21: 42 records are runs of NUL bytes, and reading
+    Fly's own file at byte 275,480,676 shows the same NULs -- the engine wrote them and the
+    backup copied them faithfully. Making that fatal is the trap `restore()` already documents:
+    the run went red on every live host and `restore_db` never executed once. So the broken
+    record must come back, be counted, and not stop the restore."""
+    fake = FakeS3()
+    body = [b'{"n": 1}\n', b"\x00" * 64 + b"\n", b'{"n": 3}\n']
+    _seed_ledger(store, fake, body)
+
+    dest = tmp_path / "restored"
+    bs.restore_ledger(fake, "b", dest)             # must NOT raise
+    assert (dest / "prospector.jsonl").read_bytes() == b"".join(body)
+    out = capsys.readouterr().out
+    assert "3 records" in out
+    assert "1 of 3 records do not parse" in out
+
+
+def test_the_ledger_is_restored_before_the_index(store, tmp_path, monkeypatch):
+    """Order is load-bearing. The comment at `restore()` records that a hard exit above
+    `restore_db` meant it never ran at all; the ledger is the artifact that cannot be rebuilt,
+    so it goes first among the two."""
+    fake = FakeS3()
+    _seed_ledger(store, fake, [b'{"n": 1}\n'])
+    order: list[str] = []
+    monkeypatch.setattr(bs, "restore_ledger", lambda *a, **k: order.append("ledger") or "")
+    monkeypatch.setattr(bs, "restore_db", lambda *a, **k: order.append("db") or "")
+    bs.restore(fake, "b", tmp_path / "restored")
+    assert order == ["ledger", "db"], order
+# ── Gap 3: the ledger was uploaded every day and never read back ──────────────
+# Found 2026-08-21. `LEDGER_PREFIX` appeared at exactly three sites in the repo -- the
+# constant, the upload key, and the pruner's list call. `restore()` walked DOSSIER_PREFIX and
+# then called `restore_db`. Nothing anywhere downloaded a ledger object. The daily upload also
+# had no read-back, so the audit trail was the one artifact of the three written blind.
+def test_the_ledger_upload_is_read_back_and_a_corrupted_write_is_caught(store):
+    """The db snapshot has had this check since it was written; the ledger had none. An upload
+    nobody reads back is a write into a bucket you find out about on the day you need it."""
+    s3 = FakeS3()
+
+    real_upload = s3.upload_file
+
+    def corrupt_the_ledger(filename, Bucket, Key, ExtraArgs=None):  # noqa: N803
+        real_upload(filename, Bucket, Key, ExtraArgs)
+        if Key.startswith(bs.LEDGER_PREFIX):
+            s3.objects[Key] = b"something else entirely"
+
+    s3.upload_file = corrupt_the_ledger
+    with pytest.raises(SystemExit, match="reads back differently"):
+        bs.sync(s3, "b")
+
+
