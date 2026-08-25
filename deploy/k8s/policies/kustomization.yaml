@@ -45,3 +45,9 @@ patches:
       group: kyverno.io
       version: v1
       kind: ClusterPolicy
+  - path: admit-acme-solver.yaml
+    target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: require-pod-probes

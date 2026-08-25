@@ -33,6 +33,7 @@ policies:
   - policies.generated.yaml
 resources:
   - refused.yaml
+  - admitted.yaml
 results:
   - policy: disallow-latest-tag
     rule: autogen-validate-image-tag
@@ -50,6 +51,20 @@ results:
     rule: autogen-validate-probes
     resources: [no-probes]
     kind: Deployment
+    result: fail
+
+  # The pair for deploy/k8s/policies/admit-acme-solver.yaml: cert-manager's labelled solver pod
+  # is excluded (the CLI reports an excluded resource as skip), the same pod without the label is refused. One without the other proves nothing.
+  - policy: require-pod-probes
+    rule: validate-probes
+    resources: [cm-acme-http-solver]
+    kind: Pod
+    result: skip
+
+  - policy: require-pod-probes
+    rule: validate-probes
+    resources: [unlabelled-solver-no-probes]
+    kind: Pod
     result: fail
 
   # Two policies catch this one, and both are asserted rather than one being dropped as
