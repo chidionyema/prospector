@@ -129,7 +129,7 @@ spec:
     - name: https-catalogue
       protocol: HTTPS
       port: 443
-      hostname: catalogue.mumchimp.com
+      hostname: catalogue.${ESTATE_ZONE}
       tls:
         mode: Terminate
         certificateRefs:
@@ -144,7 +144,7 @@ spec:
     - name: https-auth
       protocol: HTTPS
       port: 443
-      hostname: auth.mumchimp.com
+      hostname: auth.${ESTATE_ZONE}
       tls:
         mode: Terminate
         certificateRefs:
