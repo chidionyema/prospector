@@ -3,8 +3,8 @@
 //!
 //! The PDF is checked through its Typst source, which is the pure function the PDF is compiled
 //! from; the compiled bytes are compressed and are not searched. Residual: a Typst layout bug
-//! that drops text would pass this gate. `typst` is deterministic, so the fixture PDF's hash in
-//! CI is the guard for that.
+//! that drops text would pass this gate. Outside the crate, the pypdf oracle in the bench chain
+//! reads the compiled PDF back (claims 112 missing 0; figures 224 missing 0); CI does not run it.
 
 use crate::ir::Pack;
 use crate::{Bundle, Error};

@@ -9,8 +9,9 @@
 # for any supply-chain reason, rather than two that can drift out of sync.
 version = 2
 yanked = "deny"
-# Each ignore names the crate, why it is here and the tracked item. Every one below arrived with
-# the typst dependency tree on 2026-08-25 (crew #230); none is a direct dependency.
+# Each ignore names the crate, why it is here and the tracked item. None is a direct dependency:
+# all but one arrived with the typst dependency tree on 2026-08-25 (crew #230); RUSTSEC-2024-0320
+# (yaml-rust via serde_yaml 0.9) is a workspace dependency that predates this crate.
 ignore = [
   { id = "RUSTSEC-2024-0436", reason = "paste: unmaintained proc-macro, compile-time only, pulled by typst" },
   { id = "RUSTSEC-2025-0141", reason = "bincode 1.x: unmaintained, pulled by typst's cache layer; no untrusted input reaches it" },
