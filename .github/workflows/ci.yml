@@ -1420,6 +1420,20 @@ jobs:
           cargo audit --version
           cargo deny --version
 
+      # Two ignore lists, one truth: cargo-audit reads .cargo/audit.toml, cargo-deny reads
+      # deny.toml, and each id ignored for audit must be in deny with its reason (deny may hold
+      # more: the unmaintained-crate warnings audit only warns on). Review note on #721.
+      - name: Audit ignores agree with deny ignores
+        working-directory: engine-rs
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          a = set(re.findall(r"RUSTSEC-\d{4}-\d{4}", open(".cargo/audit.toml").read()))
+          d = set(re.findall(r'id = "(RUSTSEC-\d{4}-\d{4})"', open("deny.toml").read()))
+          drift = sorted(a - d)
+          print(f"audit.toml ignores {len(a)}, deny.toml ignores {len(d)}, in audit but not deny: {drift}")
+          sys.exit(1 if drift else 0)
+          PY
       - name: Audit dependencies
         run: cargo audit
 
