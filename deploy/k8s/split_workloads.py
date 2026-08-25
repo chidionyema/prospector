@@ -57,6 +57,8 @@ MINIMUM_DOCUMENTS = {
     # Namespace, PersistentVolumeClaim, Deployment, Service — the Healthchecks receiver. It is
     # deliberately not in base/: the monitor must not ship inside the release it monitors.
     "estate": 4,
+    # oke: production minus the engine (Deployment, Service, PVC) and the Namespace. 41 - 4 = 37 on 2026-08-25.
+    "oke": 37,
 }
 REQUIRED_KIND = "Deployment"
 
