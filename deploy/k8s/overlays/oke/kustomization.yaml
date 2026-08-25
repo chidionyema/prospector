@@ -11,7 +11,7 @@
 #   - image tags, by commit SHA, the first commit whose images carry arm64 (the pool is Ampere A1);
 #   - imagePullSecrets, because ghcr packages on this account are private;
 #   - imagePullPolicy IfNotPresent, because the base's Never is the k3d import path;
-#   - Gateway listener ports 8000/8443, Traefik's entrypoints; the load balancer still serves 80/443.
+#   (Gateway listener ports 8000/8443 live in the base: they are Traefik's entrypoints on every cluster.)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -63,19 +63,3 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/imagePullPolicy
         value: IfNotPresent
-  - target:
-      kind: Gateway
-      name: prospector-edge
-    patch: |
-      - op: replace
-        path: /spec/listeners/0/port
-        value: 8000
-      - op: replace
-        path: /spec/listeners/1/port
-        value: 8443
-      - op: replace
-        path: /spec/listeners/2/port
-        value: 8443
-      - op: replace
-        path: /spec/listeners/3/port
-        value: 8443

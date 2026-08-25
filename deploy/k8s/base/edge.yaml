@@ -81,7 +81,7 @@ spec:
     # so it accepts all three; a listener with no hostname matches everything.
     - name: http
       protocol: HTTP
-      port: 80
+      port: 8000
       allowedRoutes:
         namespaces:
           from: Same
@@ -89,7 +89,7 @@ spec:
     # name the same Secret on purpose - see the annotation above.
     - name: https-apex
       protocol: HTTPS
-      port: 443
+      port: 8443
       hostname: mumchimp.com
       tls:
         mode: Terminate
@@ -101,7 +101,7 @@ spec:
           from: Same
     - name: https-www
       protocol: HTTPS
-      port: 443
+      port: 8443
       hostname: www.mumchimp.com
       tls:
         mode: Terminate
@@ -113,7 +113,7 @@ spec:
           from: Same
     - name: https-api
       protocol: HTTPS
-      port: 443
+      port: 8443
       hostname: api.mumchimp.com
       tls:
         mode: Terminate
@@ -128,7 +128,7 @@ spec:
     # listener hostname from the Gateway annotation above. prospector's own listeners stay `Same`.
     - name: https-catalogue
       protocol: HTTPS
-      port: 443
+      port: 8443
       hostname: catalogue.mumchimp.com
       tls:
         mode: Terminate
@@ -143,7 +143,7 @@ spec:
               idp.estate/edge-attach: "true"
     - name: https-auth
       protocol: HTTPS
-      port: 443
+      port: 8443
       hostname: auth.mumchimp.com
       tls:
         mode: Terminate
