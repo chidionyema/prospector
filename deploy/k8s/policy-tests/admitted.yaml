@@ -100,3 +100,41 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+---
+# What cert-manager creates for an http-01 challenge, as the v1.19 solver ships it: no probes,
+# because the pod lives for one challenge. The label is the only thing that lets it past
+# require-pod-probes (deploy/k8s/policies/admit-acme-solver.yaml); every other standard still
+# grades it.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cm-acme-http-solver
+  namespace: prospector
+  labels:
+    acme.cert-manager.io/http01-solver: "true"
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: acmesolver
+      image: quay.io/jetstack/cert-manager-acmesolver:v1.19.1
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
