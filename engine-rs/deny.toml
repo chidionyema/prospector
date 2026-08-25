@@ -20,6 +20,7 @@ ignore = [
   { id = "RUSTSEC-2024-0320", reason = "yaml-rust via serde_yaml 0.9, a workspace dependency that predates this crate" },
   { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.38 pinned by citationberg via hayagriva (typst); parses only the CSL styles shipped inside typst, never pack input; no safe upgrade until typst bumps hayagriva" },
   { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.38, same pin as above" },
+  { id = "RUSTSEC-2026-0235", reason = "rkyv 0.7: optional dependency of rust_decimal (workspace dependency, predates this crate) that no enabled feature builds (cargo tree -i rkyv prints nothing); 0.8 is a semver-major bump upstream" },
 ]
 
 [licenses]
