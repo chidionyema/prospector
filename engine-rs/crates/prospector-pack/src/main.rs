@@ -7,9 +7,15 @@ fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
     let (cmd, pack_path, ledger_path) = match args.as_slice() {
         [_, c, p, l, ..] => (c.as_str(), p, l),
-        _ => return Err("usage: prospector-pack build|bench <pack.json> <ledger.json> [out_dir]".into()),
+        _ => {
+            return Err(
+                "usage: prospector-pack build|bench <pack.json> <ledger.json> [out_dir]".into(),
+            )
+        }
     };
-    let ledger: FetchLedger = serde_json::from_slice(&std::fs::read(ledger_path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    let ledger: FetchLedger =
+        serde_json::from_slice(&std::fs::read(ledger_path).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
     let json = std::fs::read(pack_path).map_err(|e| e.to_string())?;
     let pack = Pack::load(&json, &ledger).map_err(|e| e.to_string())?;
     match cmd {

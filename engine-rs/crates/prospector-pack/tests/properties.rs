@@ -5,7 +5,9 @@
 //! (c) the manifest digest ignores file order; (d) an unminted source is refused at load.
 use chrono::NaiveDate;
 use proptest::prelude::*;
-use prospector_pack::ir::{Block, Claim, FetchLedger, FetchReceipt, Figure, Meta, Pack, Section, Support, Unit};
+use prospector_pack::ir::{
+    Block, Claim, FetchLedger, FetchReceipt, Figure, Meta, Pack, Section, Support, Unit,
+};
 use rust_decimal::Decimal;
 
 fn text() -> impl Strategy<Value = String> {
@@ -13,45 +15,101 @@ fn text() -> impl Strategy<Value = String> {
 }
 
 fn date() -> impl Strategy<Value = NaiveDate> {
-    (2020i32..2030, 1u32..13, 1u32..29).prop_map(|(y, m, d)| NaiveDate::from_ymd_opt(y, m, d).unwrap())
+    (2020i32..2030, 1u32..13, 1u32..29)
+        .prop_map(|(y, m, d)| NaiveDate::from_ymd_opt(y, m, d).unwrap())
 }
 
 fn unit() -> impl Strategy<Value = Unit> {
-    prop_oneof![Just(Unit::GbpPerMonth), Just(Unit::Gbp), Just(Unit::Percent), Just(Unit::Count), Just(Unit::Hours), Just(Unit::Days)]
+    prop_oneof![
+        Just(Unit::GbpPerMonth),
+        Just(Unit::Gbp),
+        Just(Unit::Percent),
+        Just(Unit::Count),
+        Just(Unit::Hours),
+        Just(Unit::Days)
+    ]
 }
 
 fn receipt() -> impl Strategy<Value = FetchReceipt> {
-    ("[a-z]{3,8}", date(), "[0-9a-f]{64}").prop_map(|(h, d, sha)| FetchReceipt { url: format!("https://{h}.example/{sha}"), fetched_at: d, body_sha256: sha })
+    ("[a-z]{3,8}", date(), "[0-9a-f]{64}").prop_map(|(h, d, sha)| FetchReceipt {
+        url: format!("https://{h}.example/{sha}"),
+        fetched_at: d,
+        body_sha256: sha,
+    })
 }
 
 /// A pack plus the ledger that minted its sources. Built through the only door: `mint`.
 fn pack() -> impl Strategy<Value = (Pack, FetchLedger)> {
-    let block = (any::<u8>(), text(), prop::collection::vec(text(), 1..4), receipt(), any::<i64>(), unit(), date(), any::<bool>());
-    (text(), text(), date(), prop::collection::vec((text(), prop::collection::vec(block, 1..6)), 1..4)).prop_map(|(title, one, verified, secs)| {
-        let mut ledger = FetchLedger::default();
-        let mut n = 0u32;
-        let sections = secs
-            .into_iter()
-            .map(|(st, blocks)| Section {
-                title: st,
-                blocks: blocks
-                    .into_iter()
-                    .map(|(kind, t, items, r, v, u, d, cited)| match kind % 5 {
-                        0 => Block::Heading { text: t },
-                        1 => Block::Paragraph { text: t },
-                        2 => Block::Bullets { items },
-                        3 => {
-                            n += 1;
-                            let support = if cited { Support::Cited { source: ledger.mint(r) } } else { Support::Unverifiable };
-                            Block::Claim(Claim { id: format!("C{n:04}"), text: t, support })
-                        }
-                        _ => Block::Figures { rows: vec![Figure::new(t, Decimal::new(v, 2), u, d, ledger.mint(r))] },
-                    })
-                    .collect(),
-            })
-            .collect();
-        (Pack { meta: Meta { pack_id: "p1".into(), title, one_liner: one, verified_at: verified }, sections }, ledger)
-    })
+    let block = (
+        any::<u8>(),
+        text(),
+        prop::collection::vec(text(), 1..4),
+        receipt(),
+        any::<i64>(),
+        unit(),
+        date(),
+        any::<bool>(),
+    );
+    (
+        text(),
+        text(),
+        date(),
+        prop::collection::vec((text(), prop::collection::vec(block, 1..6)), 1..4),
+    )
+        .prop_map(|(title, one, verified, secs)| {
+            let mut ledger = FetchLedger::default();
+            let mut n = 0u32;
+            let sections = secs
+                .into_iter()
+                .map(|(st, blocks)| Section {
+                    title: st,
+                    blocks: blocks
+                        .into_iter()
+                        .map(|(kind, t, items, r, v, u, d, cited)| match kind % 5 {
+                            0 => Block::Heading { text: t },
+                            1 => Block::Paragraph { text: t },
+                            2 => Block::Bullets { items },
+                            3 => {
+                                n += 1;
+                                let support = if cited {
+                                    Support::Cited {
+                                        source: ledger.mint(r),
+                                    }
+                                } else {
+                                    Support::Unverifiable
+                                };
+                                Block::Claim(Claim {
+                                    id: format!("C{n:04}"),
+                                    text: t,
+                                    support,
+                                })
+                            }
+                            _ => Block::Figures {
+                                rows: vec![Figure::new(
+                                    t,
+                                    Decimal::new(v, 2),
+                                    u,
+                                    d,
+                                    ledger.mint(r),
+                                )],
+                            },
+                        })
+                        .collect(),
+                })
+                .collect();
+            (
+                Pack {
+                    meta: Meta {
+                        pack_id: "p1".into(),
+                        title,
+                        one_liner: one,
+                        verified_at: verified,
+                    },
+                    sections,
+                },
+                ledger,
+            )
+        })
 }
 
 proptest! {

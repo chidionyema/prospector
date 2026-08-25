@@ -31,19 +31,29 @@ pub struct FetchLedger {
 impl FetchLedger {
     #[must_use]
     pub fn new(receipts: impl IntoIterator<Item = FetchReceipt>) -> Self {
-        Self { receipts: receipts.into_iter().collect() }
+        Self {
+            receipts: receipts.into_iter().collect(),
+        }
     }
 
     /// The fetch path mints a reference by recording the fetch. There is no other way.
     pub fn mint(&mut self, receipt: FetchReceipt) -> SourceRef {
-        let r = SourceRef { url: receipt.url.clone(), fetched_at: receipt.fetched_at, body_sha256: receipt.body_sha256.clone() };
+        let r = SourceRef {
+            url: receipt.url.clone(),
+            fetched_at: receipt.fetched_at,
+            body_sha256: receipt.body_sha256.clone(),
+        };
         self.receipts.insert(receipt);
         r
     }
 
     #[must_use]
     pub fn holds(&self, s: &SourceRef) -> bool {
-        self.receipts.contains(&FetchReceipt { url: s.url.clone(), fetched_at: s.fetched_at, body_sha256: s.body_sha256.clone() })
+        self.receipts.contains(&FetchReceipt {
+            url: s.url.clone(),
+            fetched_at: s.fetched_at,
+            body_sha256: s.body_sha256.clone(),
+        })
     }
 }
 
@@ -123,14 +133,34 @@ pub struct Figure {
 impl Figure {
     /// The only constructor, and it takes the source.
     #[must_use]
-    pub fn new(label: impl Into<String>, value: Decimal, unit: Unit, as_of: NaiveDate, source: SourceRef) -> Self {
-        Self { label: label.into(), value, unit, as_of, source }
+    pub fn new(
+        label: impl Into<String>,
+        value: Decimal,
+        unit: Unit,
+        as_of: NaiveDate,
+        source: SourceRef,
+    ) -> Self {
+        Self {
+            label: label.into(),
+            value,
+            unit,
+            as_of,
+            source,
+        }
     }
     /// The exact text every view must carry, so the gate can look for one string.
     #[must_use]
     pub fn display(&self) -> String {
         match self.unit {
-            Unit::GbpPerMonth | Unit::Gbp => format!("£{}{}", self.value, if self.unit == Unit::GbpPerMonth { "/month" } else { "" }),
+            Unit::GbpPerMonth | Unit::Gbp => format!(
+                "£{}{}",
+                self.value,
+                if self.unit == Unit::GbpPerMonth {
+                    "/month"
+                } else {
+                    ""
+                }
+            ),
             Unit::Percent => format!("{}%", self.value),
             Unit::Count => self.value.to_string(),
             Unit::Hours => format!("{} h", self.value),
@@ -186,24 +216,34 @@ impl Pack {
         let pack: Self = serde_json::from_slice(json)?;
         for s in pack.sources() {
             if !ledger.holds(s) {
-                return Err(crate::Error::UnmintedSource { url: s.url.clone(), sha256: s.body_sha256.clone() });
+                return Err(crate::Error::UnmintedSource {
+                    url: s.url.clone(),
+                    sha256: s.body_sha256.clone(),
+                });
             }
         }
         Ok(pack)
     }
 
     pub fn claims(&self) -> impl Iterator<Item = &Claim> {
-        self.sections.iter().flat_map(|s| s.blocks.iter()).filter_map(|b| match b {
-            Block::Claim(c) => Some(c),
-            _ => None,
-        })
+        self.sections
+            .iter()
+            .flat_map(|s| s.blocks.iter())
+            .filter_map(|b| match b {
+                Block::Claim(c) => Some(c),
+                _ => None,
+            })
     }
 
     pub fn figures(&self) -> impl Iterator<Item = &Figure> {
-        self.sections.iter().flat_map(|s| s.blocks.iter()).filter_map(|b| match b {
-            Block::Figures { rows } => Some(rows.iter()),
-            _ => None,
-        }).flatten()
+        self.sections
+            .iter()
+            .flat_map(|s| s.blocks.iter())
+            .filter_map(|b| match b {
+                Block::Figures { rows } => Some(rows.iter()),
+                _ => None,
+            })
+            .flatten()
     }
 
     /// Every distinct source the pack cites, in a fixed order.
@@ -224,6 +264,8 @@ impl Pack {
 
     #[must_use]
     pub fn cited_claim_count(&self) -> usize {
-        self.claims().filter(|c| matches!(c.support, Support::Cited { .. })).count()
+        self.claims()
+            .filter(|c| matches!(c.support, Support::Cited { .. }))
+            .count()
     }
 }

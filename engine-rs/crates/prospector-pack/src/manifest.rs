@@ -27,7 +27,11 @@ pub fn sha256_hex(b: &[u8]) -> String {
 pub fn build(bundle: &Bundle) -> Manifest {
     let mut files: Vec<Entry> = bundle
         .iter()
-        .map(|(name, bytes)| Entry { name: name.clone(), bytes: bytes.len(), sha256: sha256_hex(bytes) })
+        .map(|(name, bytes)| Entry {
+            name: name.clone(),
+            bytes: bytes.len(),
+            sha256: sha256_hex(bytes),
+        })
         .collect();
     files.sort_by(|a, b| a.name.cmp(&b.name));
     let mut h = Sha256::new();
@@ -37,5 +41,8 @@ pub fn build(bundle: &Bundle) -> Manifest {
         h.update(f.sha256.as_bytes());
         h.update(b"\n");
     }
-    Manifest { pack_digest: hex::encode(h.finalize()), files }
+    Manifest {
+        pack_digest: hex::encode(h.finalize()),
+        files,
+    }
 }

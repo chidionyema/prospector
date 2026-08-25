@@ -9,7 +9,13 @@
 use crate::ir::Pack;
 use crate::{Bundle, Error};
 
-const TEXT_VIEWS: [&str; 5] = ["index.html", "Complete_Pack.typ", "claims.csv", "figures.csv", "pack.json"];
+const TEXT_VIEWS: [&str; 5] = [
+    "index.html",
+    "Complete_Pack.typ",
+    "claims.csv",
+    "figures.csv",
+    "pack.json",
+];
 
 fn view_has(bundle: &Bundle, view: &str, needle: &str) -> bool {
     bundle.get(view).is_some_and(|b| {
@@ -31,7 +37,9 @@ fn html_escape(s: &str) -> String {
 }
 
 fn json_escape(s: &str) -> String {
-    serde_json::to_string(s).map(|q| q.trim_matches('"').to_owned()).unwrap_or_default()
+    serde_json::to_string(s)
+        .map(|q| q.trim_matches('"').to_owned())
+        .unwrap_or_default()
 }
 
 pub fn check(pack: &Pack, bundle: &Bundle) -> Result<(), Error> {
@@ -41,10 +49,18 @@ pub fn check(pack: &Pack, bundle: &Bundle) -> Result<(), Error> {
         if claims_view {
             for c in pack.claims() {
                 if !view_has(bundle, view, &c.id) {
-                    return Err(Error::ViewDisagrees { view: view.into(), what: "claim id".into(), value: c.id.clone() });
+                    return Err(Error::ViewDisagrees {
+                        view: view.into(),
+                        what: "claim id".into(),
+                        value: c.id.clone(),
+                    });
                 }
                 if !view_has(bundle, view, &c.text) {
-                    return Err(Error::ViewDisagrees { view: view.into(), what: "claim text".into(), value: c.text.clone() });
+                    return Err(Error::ViewDisagrees {
+                        view: view.into(),
+                        what: "claim text".into(),
+                        value: c.text.clone(),
+                    });
                 }
             }
         }
@@ -52,10 +68,18 @@ pub fn check(pack: &Pack, bundle: &Bundle) -> Result<(), Error> {
             for f in pack.figures() {
                 let v = f.value.to_string();
                 if !view_has(bundle, view, &v) {
-                    return Err(Error::ViewDisagrees { view: view.into(), what: "figure value".into(), value: v });
+                    return Err(Error::ViewDisagrees {
+                        view: view.into(),
+                        what: "figure value".into(),
+                        value: v,
+                    });
                 }
                 if !view_has(bundle, view, f.source.url()) {
-                    return Err(Error::ViewDisagrees { view: view.into(), what: "figure source".into(), value: f.source.url().into() });
+                    return Err(Error::ViewDisagrees {
+                        view: view.into(),
+                        what: "figure source".into(),
+                        value: f.source.url().into(),
+                    });
                 }
             }
         }

@@ -28,23 +28,58 @@ pub struct BlockView {
 
 #[must_use]
 pub fn view(b: &Block) -> BlockView {
-    let empty = BlockView { kind: "", text: String::new(), items: vec![], rows: vec![], claim_id: String::new(), support: String::new(), url: String::new() };
+    let empty = BlockView {
+        kind: "",
+        text: String::new(),
+        items: vec![],
+        rows: vec![],
+        claim_id: String::new(),
+        support: String::new(),
+        url: String::new(),
+    };
     match b {
-        Block::Heading { text } => BlockView { kind: "heading", text: text.clone(), ..empty },
-        Block::Paragraph { text } => BlockView { kind: "paragraph", text: text.clone(), ..empty },
-        Block::Bullets { items } => BlockView { kind: "bullets", items: items.clone(), ..empty },
+        Block::Heading { text } => BlockView {
+            kind: "heading",
+            text: text.clone(),
+            ..empty
+        },
+        Block::Paragraph { text } => BlockView {
+            kind: "paragraph",
+            text: text.clone(),
+            ..empty
+        },
+        Block::Bullets { items } => BlockView {
+            kind: "bullets",
+            items: items.clone(),
+            ..empty
+        },
         Block::Claim(c) => {
             let (support, url) = match &c.support {
                 Support::Cited { source } => ("cited".to_owned(), source.url().to_owned()),
                 Support::Unverifiable => ("unverifiable".to_owned(), String::new()),
             };
-            BlockView { kind: "claim", text: c.text.clone(), claim_id: c.id.clone(), support, url, ..empty }
+            BlockView {
+                kind: "claim",
+                text: c.text.clone(),
+                claim_id: c.id.clone(),
+                support,
+                url,
+                ..empty
+            }
         }
         Block::Figures { rows } => BlockView {
             kind: "figures",
             rows: rows
                 .iter()
-                .map(|f| [f.label.clone(), f.value.to_string(), f.unit.label().to_owned(), f.as_of.to_string(), f.source.url().to_owned()])
+                .map(|f| {
+                    [
+                        f.label.clone(),
+                        f.value.to_string(),
+                        f.unit.label().to_owned(),
+                        f.as_of.to_string(),
+                        f.source.url().to_owned(),
+                    ]
+                })
                 .collect(),
             ..empty
         },
@@ -52,7 +87,11 @@ pub fn view(b: &Block) -> BlockView {
 }
 
 pub fn render(p: &Pack) -> Result<String, Error> {
-    PackPage { pack: p, cited: p.cited_claim_count(), source_count: p.sources().len() }
-        .render()
-        .map_err(|e| Error::Template(e.to_string()))
+    PackPage {
+        pack: p,
+        cited: p.cited_claim_count(),
+        source_count: p.sources().len(),
+    }
+    .render()
+    .map_err(|e| Error::Template(e.to_string()))
 }

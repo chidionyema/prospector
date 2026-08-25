@@ -33,7 +33,11 @@ pub enum Error {
     #[error("csv: {0}")]
     Csv(String),
     #[error("view {view} is missing {what}: {value}")]
-    ViewDisagrees { view: String, what: String, value: String },
+    ViewDisagrees {
+        view: String,
+        what: String,
+        value: String,
+    },
 }
 
 /// Timings per format, milliseconds, for the bench receipt.
@@ -56,12 +60,16 @@ type Rendered = (Vec<u8>, f64);
 pub fn build(pack: &Pack) -> Result<(Bundle, Timings), Error> {
     let t0 = std::time::Instant::now();
     let jobs: Vec<(&str, Renderer)> = vec![
-        ("index.html", |p| render::html::render(p).map(String::into_bytes)),
+        ("index.html", |p| {
+            render::html::render(p).map(String::into_bytes)
+        }),
         ("Complete_Pack.pdf", render::typst::render_pdf),
         ("figures.csv", render::csv::figures),
         ("claims.csv", render::csv::claims),
         ("pack.json", render::json::render),
-        ("Complete_Pack.typ", |p| Ok(render::typst::source(p).into_bytes())),
+        ("Complete_Pack.typ", |p| {
+            Ok(render::typst::source(p).into_bytes())
+        }),
     ];
     let results: Vec<(String, Result<Rendered, Error>)> = jobs
         .into_par_iter()
