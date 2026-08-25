@@ -86,8 +86,8 @@ jobs:
       run:
         working-directory: store_platform/src/Store.Web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22"
           cache: npm
@@ -100,9 +100,9 @@ jobs:
     needs: test
     runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master as of 2026-08-25
 
       # deploy_web.sh reads its values from an env FILE rather than the environment, because the
       # laptop case is a real .env holding both Stripe pairs side by side. Compose the same shape
