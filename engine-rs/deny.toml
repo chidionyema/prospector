@@ -9,6 +9,17 @@
 # for any supply-chain reason, rather than two that can drift out of sync.
 version = 2
 yanked = "deny"
+# Each ignore names the crate, why it is here and the tracked item. Every one below arrived with
+# the typst dependency tree on 2026-08-25 (crew #230); none is a direct dependency.
+ignore = [
+  { id = "RUSTSEC-2024-0436", reason = "paste: unmaintained proc-macro, compile-time only, pulled by typst" },
+  { id = "RUSTSEC-2025-0141", reason = "bincode 1.x: unmaintained, pulled by typst's cache layer; no untrusted input reaches it" },
+  { id = "RUSTSEC-2026-0192", reason = "rustybuzz: shaper vendored by typst; typst maintains its own fork" },
+  { id = "RUSTSEC-2026-0206", reason = "ttf-parser: pulled by typst; typst maintains its own fork" },
+  { id = "RUSTSEC-2024-0320", reason = "yaml-rust via serde_yaml 0.9, a workspace dependency that predates this crate" },
+  { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.38 pinned by citationberg via hayagriva (typst); parses only the CSL styles shipped inside typst, never pack input; no safe upgrade until typst bumps hayagriva" },
+  { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.38, same pin as above" },
+]
 
 [licenses]
 version = 2
@@ -17,6 +28,7 @@ version = 2
 # sell. Anything not on this list stops the build and gets a deliberate decision.
 allow = [
   "MIT",
+  "0BSD",          # roman-numerals-rs via typst/biblatex; BSD zero clause, permissive, 2026-08-25 crew #230
   "Apache-2.0",
   "Apache-2.0 WITH LLVM-exception",
   "BSD-2-Clause",
