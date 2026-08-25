@@ -58,17 +58,17 @@ jobs:
   reconcile:
     runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: main
           # The script diffs the deployed commit against main to decide whether anything the
           # image SHIPS actually changed. A shallow clone does not contain the deployed commit,
           # so that question becomes unanswerable and every docs merge would look like a drift.
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master as of 2026-08-25
 
       - name: Is production running main?
         id: reconcile
@@ -97,7 +97,7 @@ jobs:
       # (tests/unit/test_an_alarm_must_run_when_the_thing_it_alarms_on_fails.py).
       - name: Say so, where a person will see it
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
@@ -151,7 +151,7 @@ jobs:
       # commented that production matched main when it did not.
       - name: Close the drift issue, because production matches main again
         if: steps.reconcile.outputs.outcome == 'ok'
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const {owner, repo} = context.repo
