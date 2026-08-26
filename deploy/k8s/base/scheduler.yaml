@@ -57,6 +57,55 @@ spec:
         fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
+      # Seed the store once, from the R2 backup, never from a laptop. backup_store.py --restore
+      # pulls every dossier, the ledger and prospector.db and checks each against R2's ETag
+      # (scripts/backup_store.py:972). Skipped when prospector.db is already on the claim, so a
+      # restart never overwrites live state. R2_* come from the same Secret the scheduler mounts.
+      initContainers:
+        - name: seed-store
+          image: ghcr.io/chidionyema/prospector-engine:set-by-an-overlay
+          imagePullPolicy: IfNotPresent
+          workingDir: /app
+          command: ["sh", "-c"]
+          args:
+            - |
+              if [ -f /data/store/prospector.db ]; then
+                echo "seed-store: /data/store/prospector.db present, nothing to do"
+              else
+                mkdir -p /data/store && python scripts/backup_store.py --restore /data/store
+              fi
+          envFrom:
+            - secretRef:
+                name: prospector-engine-env
+          env:
+            - name: PROSPECTOR_STORE_DIR
+              value: /data/store
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: TMPDIR
+              value: /tmp
+            - name: HOME
+              value: /tmp
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: scheduler
           image: ghcr.io/chidionyema/prospector-engine:set-by-an-overlay

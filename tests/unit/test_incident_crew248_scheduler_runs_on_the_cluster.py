@@ -74,3 +74,16 @@ def test_scheduler_owns_its_store_and_reports_its_own_liveness() -> None:
     assert spec["securityContext"]["runAsNonRoot"] is True
     assert c["securityContext"]["readOnlyRootFilesystem"] is True
     assert {"name": "ghcr-pull"} in spec["imagePullSecrets"]
+
+
+def test_scheduler_seeds_its_store_from_the_backup_never_a_laptop() -> None:
+    dep = _scheduler(_rendered())
+    spec = dep["spec"]["template"]["spec"]
+    init = next(c for c in spec["initContainers"] if c["name"] == "seed-store")
+    assert init["image"] == spec["containers"][0]["image"], "same pinned image as the scheduler"
+    script = " ".join(init["args"])
+    assert "scripts/backup_store.py --restore /data/store" in script
+    assert "-f /data/store/prospector.db" in script, "a restart never overwrites live state"
+    assert "kubectl cp" not in script
+    assert {"secretRef": {"name": "prospector-engine-env"}} in init["envFrom"]
+    assert init["securityContext"]["readOnlyRootFilesystem"] is True
