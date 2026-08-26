@@ -823,3 +823,39 @@ spec:
         - secretRef:
             name: engine-secrets
             optional: true
+---
+# The solver pod above with the cert-manager label removed. Proves the exclusion is the label
+# and not the shape: an unlabelled probe-less pod is still refused.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unlabelled-solver-no-probes
+  namespace: prospector
+  annotations:
+    prospector.estate/violation: no probes and no cert-manager label, so nothing excuses it
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: acmesolver
+      image: quay.io/jetstack/cert-manager-acmesolver:v1.19.1
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

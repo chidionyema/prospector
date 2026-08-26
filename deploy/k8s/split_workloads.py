@@ -57,6 +57,9 @@ MINIMUM_DOCUMENTS = {
     # Namespace, PersistentVolumeClaim, Deployment, Service — the Healthchecks receiver. It is
     # deliberately not in base/: the monitor must not ship inside the release it monitors.
     "estate": 4,
+    # oke: 37 documents minus 26 ClusterPolicy on 2026-08-25; production minus the engine
+    # (Deployment, Service, PersistentVolumeClaim) and the Namespace, which idp owns.
+    "oke": 11,
 }
 REQUIRED_KIND = "Deployment"
 
