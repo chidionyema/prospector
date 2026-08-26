@@ -1,0 +1,33 @@
+# Keep the pinned action SHAs moving.
+#
+# Pinning by commit SHA is what stops a repointed tag from running code we never
+# reviewed -- tj-actions/changed-files, March 2025: the v1 tag was moved to a
+# commit that dumped runner memory into the build log, and every workflow using
+# the tag picked it up on the next run. A SHA cannot be repointed.
+#
+# The cost of a SHA is that it never updates, so a pinned action keeps its
+# security fixes out. That is what this file is for. It also explains the
+# trailing `# v4.4.0` comment that pinact writes next to every hash: that
+# comment is load-bearing, not decoration. Dependabot reads it to work out which
+# release a bare hash represents, and without it the hash is opaque and never
+# gets a bump. Do not strip those comments.
+#
+# One grouped PR a week rather than one per action. Twenty separate PRs is how a
+# security feed becomes something nobody reads (LAW 28).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "security"
+    labels:
+      - security
+      - dependencies

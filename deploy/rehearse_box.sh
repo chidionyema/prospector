@@ -142,6 +142,7 @@ EDGE_SITE=http://localhost
 EDGE_API=http://api.localhost
 EDGE_HTTP_PORT=80
 EDGE_HTTPS_PORT=443
+EDGE_BIND=0.0.0.0
 EOF
 }
 

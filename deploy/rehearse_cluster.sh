@@ -481,7 +481,104 @@ route it to the founder -- an unco-ordinated restart is crew #85, load 255 on 12
     || fail "could not install kyverno ${KYVERNO_VERSION}"
   k -n kyverno rollout status deploy/kyverno-admission-controller --timeout=180s >/dev/null \
     || fail "kyverno admission controller never became ready"
-  ok "kyverno admission controller ready"
+
+  # ROLLOUT STATUS IS A PROXY, AND IT COST THIS DRILL A RUN. Measured 2026-08-24 on this laptop:
+  # the admission controller Deployment went Available=True at 21:11:20Z, this line returned, the
+  # drill applied the overlay, and the API server answered
+  #
+  #     Error from server (InternalError): failed calling webhook "validate-policy.kyverno.svc":
+  #     Post "https://kyverno-svc.kyverno.svc:443/policyvalidate?timeout=10s": context deadline exceeded
+  #
+  # at 21:13:18Z -- nearly two minutes AFTER the Deployment said Available. Probed by hand at
+  # 21:15Z the same webhook answered a server-side dry run immediately, so nothing was broken; the
+  # readiness reading was simply about something else. A Deployment being Available says its pods
+  # pass their own probes. It says nothing about the ValidatingWebhookConfiguration being
+  # registered, the CA bundle being injected, or the Service having a ready endpoint, and it is
+  # those three the API server needs before an apply can survive.
+  #
+  # So ask the webhook. A server-side dry run of a trivial ClusterPolicy goes through
+  # /policyvalidate exactly as the overlay's own policies will, and either it answers or it does
+  # not. Nothing is created: --dry-run=server means the API server runs admission and discards the
+  # object. This grades the thing, not a signal correlated with the thing.
+  say "kyverno webhook"
+  local wtmp; wtmp="$(mktemp -t kyverno-webhook-probe)"
+  cat >"$wtmp" <<'PROBE'
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: webhook-liveness-probe
+spec:
+  rules:
+    - name: noop
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: this policy is never created; it exists to make the webhook answer
+        pattern:
+          metadata:
+            name: "?*"
+PROBE
+  local wi=0 wbudget="${KYVERNO_WEBHOOK_WAIT_S:-300}" wstart werr
+  werr="$(mktemp -t kyverno-webhook-err)"
+  wstart="$(date +%s)"
+  until k apply --dry-run=server -f "$wtmp" >/dev/null 2>"$werr"; do
+    wi=$(( $(date +%s) - wstart ))
+    if [ "$wi" -ge "$wbudget" ]; then
+      note "last error from the API server:"
+      sed 's/^/       /' "$werr" | tail -4
+      rm -f "$wtmp" "$werr"
+      fail \
+"the kyverno webhook did not answer a server-side dry run within ${wbudget}s.
+
+The Deployment IS Available -- the line above proved that -- so this is not a crashing pod. The
+webhook is registered and the API server cannot reach it, or the CA bundle has not been injected.
+Look at the error above, then at:  kubectl -n kyverno get svc,endpoints kyverno-svc
+
+Raise the budget with KYVERNO_WEBHOOK_WAIT_S if this machine is simply slow, but read the error
+first: a webhook that will never answer does not answer any faster with a longer wait."
+    fi
+    sleep 3
+  done
+  rm -f "$wtmp" "$werr"
+  ok "kyverno webhook answered a server-side dry run after $(( $(date +%s) - wstart ))s (Deployment was Available before this)"
+
+  # THE OVERLAY REFERENCES KINDS THIS CLUSTER DOES NOT HAVE. Measured in the same failed run: the
+  # staging overlay carries the edge, and the edge is a Gateway, four HTTPRoutes and a ClusterIssuer.
+  # A bare k3s cluster has none of those kinds, so kubectl refused five objects with
+  # "no matches for kind ... ensure CRDs are installed first" and the whole apply exited non-zero.
+  #
+  # CRDs ONLY, AND THIS IS A DELIBERATE LIMIT ON WHAT THE DRILL CLAIMS. Installing the CRDs makes
+  # the manifests apply, which is what this step is for: it proves the overlay a real cluster would
+  # be handed is well-formed against the real schemas, and that the estate's policies admit or
+  # refuse it. It does NOT prove a certificate is ever issued or that traffic routes -- there is no
+  # cert-manager controller and no Gateway implementation running here, so a Gateway stays
+  # Programmed=False and a Certificate stays pending forever. Those need a controller, an ACME
+  # account and DNS that resolves, none of which belong in a throwaway cluster on a laptop. When
+  # the drill grows to claim routing, it installs the controllers and says so on this line.
+  #
+  # Versions are pinned rather than "latest" so two runs a week apart rehearse the same thing.
+  # gateway-api v1.6.1 is what deploy/k8s/base/edge.yaml already names; checked 2026-08-24 against
+  # the GitHub releases API, it is also the current release (2026-07-16). cert-manager v1.21.1 is
+  # the current release (2026-07-29) and ships a CRDs-only asset, which is why no chart is needed.
+  say "the CRDs the overlay's own kinds need"
+  local crd_gwapi="${GATEWAY_API_VERSION:-v1.6.1}"
+  local crd_certmgr="${CERT_MANAGER_VERSION:-v1.21.1}"
+  k apply --server-side -f \
+    "https://github.com/kubernetes-sigs/gateway-api/releases/download/${crd_gwapi}/standard-install.yaml" \
+    >/dev/null 2>&1 || fail "could not install the gateway-api ${crd_gwapi} CRDs"
+  k apply --server-side -f \
+    "https://github.com/cert-manager/cert-manager/releases/download/${crd_certmgr}/cert-manager.crds.yaml" \
+    >/dev/null 2>&1 || fail "could not install the cert-manager ${crd_certmgr} CRDs"
+  # Established, not merely created: the API server registers a CRD before it can serve the kind,
+  # and an apply in that window fails with the same "no matches for kind" this step exists to stop.
+  for crd in gateways.gateway.networking.k8s.io httproutes.gateway.networking.k8s.io \
+             clusterissuers.cert-manager.io; do
+    k wait --for=condition=Established "crd/$crd" --timeout=120s >/dev/null 2>&1 \
+      || fail "CRD $crd never became Established"
+  done
+  ok "gateway-api ${crd_gwapi} and cert-manager ${crd_certmgr} CRDs established (schemas only; no controllers run here)"
 
   say "the estate's standards"
   # APPLY THE OVERLAY, NOT THE DIRECTORY. `apply -f "$POLICY_DIR/"` read the raw yaml files and so
@@ -494,8 +591,36 @@ route it to the founder -- an unco-ordinated restart is crew #85, load 255 on 12
   #
   # --server-side because the built policy CRDs are large enough to hit the size limit on the
   # last-applied-configuration annotation that client-side apply writes.
-  k apply --server-side -k "$REPO/deploy/k8s/overlays/staging" >/dev/null \
-    || fail "the staging overlay did not apply"
+  # RETRY, BECAUSE THE WEBHOOK TIMES OUT UNDER ITS OWN LOAD AND NOT BECAUSE ANYTHING IS WRONG.
+  # Measured 2026-08-24, on a run where the webhook probe above answered in 1 second: applying the
+  # overlay still produced three
+  #     failed calling webhook "validate-policy.kyverno.svc": ... policyvalidate?timeout=10s:
+  #     context deadline exceeded
+  # while the other twenty-three policies went in. One apply hands the API server 26 ClusterPolicies
+  # at once, each of which Kyverno must validate inside a 10s webhook budget, on a laptop measured
+  # at 19% idle. The webhook is not broken -- it is queued behind itself.
+  #
+  # `apply` is idempotent, so a retry re-sends the whole overlay and only the objects that did not
+  # land have any work to do; each pass is cheaper than the last and the queue drains. This is a
+  # bounded retry with a named budget, not a loop: if the overlay still will not apply after
+  # OVERLAY_APPLY_TRIES passes, the last error is printed and the drill fails, because at that point
+  # it is not congestion.
+  local oi=1 otries="${OVERLAY_APPLY_TRIES:-4}" oerr
+  oerr="$(mktemp -t overlay-apply-err)"
+  until k apply --server-side -k "$REPO/deploy/k8s/overlays/staging" >/dev/null 2>"$oerr"; do
+    if [ "$oi" -ge "$otries" ]; then
+      note "last error from the API server, after $oi attempts:"
+      sed 's/^/       /' "$oerr" | tail -6
+      rm -f "$oerr"
+      fail "the staging overlay did not apply in $oi attempts"
+    fi
+    note "overlay apply $oi/$otries did not complete; $(grep -c 'context deadline exceeded' "$oerr" || true) webhook timeout(s), retrying"
+    oi=$((oi+1)); sleep 10
+  done
+  if [ "$oi" -gt 1 ]; then
+    note "the overlay applied on attempt $oi; the earlier failures were webhook congestion, not rejection"
+  fi
+  rm -f "$oerr"
   # `apply` returns when the API server has the object, not when the webhook is enforcing it. A
   # policy test run in that window passes because nothing is refusing yet, which is the most
   # expensive kind of green there is.
