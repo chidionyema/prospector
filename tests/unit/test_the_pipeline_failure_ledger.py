@@ -143,6 +143,15 @@ LEDGER: tuple[Mode, ...] = (
         None,
         None,
     ),
+    Mode(
+        "stale-closes-something-that-is-not-an-abandoned-pr",
+        "The stale workflow holds issues:write and pull-requests:write. A config edit could let "
+        "it close issues, close a pull request before the 14 idle days, or ignore keep-open.",
+        (".github/workflows/stale.yml",),
+        "tests/unit/test_stale_never_closes_issues_or_kept_prs.py",
+        None,
+        None,
+    ),
     # ---- observing it
     Mode(
         "a-tool-calls-main-green-from-a-stale-run",
