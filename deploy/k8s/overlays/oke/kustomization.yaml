@@ -27,6 +27,8 @@ labels:
       prospector.estate/environment: production
 
 images:
+  - name: ghcr.io/chidionyema/prospector-engine
+    newTag: f398a664d7de0db3637e41d20133a8cc29adcdbd
   - name: ghcr.io/chidionyema/prospector-store-api
     newTag: 99cdc96a341f3365916df59be4fd8f26ebf96a43
   - name: ghcr.io/chidionyema/prospector-store-web
@@ -54,7 +56,7 @@ patches:
         name: placeholder
   - target:
       kind: Deployment
-      name: prospector-store-(api|web)
+      name: prospector-(store-api|store-web|scheduler)
     patch: |
       - op: add
         path: /spec/template/spec/imagePullSecrets
