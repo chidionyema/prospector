@@ -1,0 +1,124 @@
+# The scheduler, on the cluster (crew#248). Measured 2026-08-25: no scheduler workload ran
+# anywhere, so run_decay_sweep never ran and the catalog's verifiedAt froze on 2026-08-16.
+#
+# WHY ITS OWN DEPLOYMENT AND NOT THE ENGINE. engine.yaml declares the whole supervisord tree,
+# and overlays/oke deletes it: the image's supervisord runs as root ("Can't drop privilege as
+# nonroot user", engine.yaml note 2a), so the engine pod is refused by require-run-as-nonroot.
+# This pod runs the scheduler module as PID 1 from the same image, no supervisord, so the
+# non-root and read-only-root shape engine.yaml already proved for the programs applies here.
+# One scheduler in the estate: when the engine pod is admitted, this file is deleted, not doubled.
+#
+# The dossier store is its own claim. The pre-2026-08-16 store (3,608 dossiers, newest
+# 2026-08-21T16:20Z, 917 past reverify_due_at) is seeded onto it once from the laptop copy;
+# crew#248 carries the command.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prospector-scheduler-data
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-scheduler
+    app.kubernetes.io/part-of: prospector
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prospector-scheduler
+  namespace: prospector
+  labels:
+    app: prospector-scheduler
+    app.kubernetes.io/name: prospector-scheduler
+    app.kubernetes.io/part-of: prospector
+    prospector.estate/single-writer: "true"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prospector-scheduler
+  template:
+    metadata:
+      labels:
+        app: prospector-scheduler
+        app.kubernetes.io/name: prospector-scheduler
+        prospector.estate/single-writer: "true"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: scheduler
+          image: ghcr.io/chidionyema/prospector-engine:set-by-an-overlay
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "prospector.scheduler.run_scheduled"]
+          args: ["--daemon", "--interval", "7200", "--config", "/app/config.yaml"]
+          env:
+            - name: PROSPECTOR_SECRETS_DIR
+              value: /var/run/secrets/prospector
+            - name: PROSPECTOR_STORE_DIR
+              value: /data/store
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: TMPDIR
+              value: /tmp
+            - name: HOME
+              value: /tmp
+          # --watchdog is the scheduler's own liveness verdict (heartbeat age), exit 0/1.
+          livenessProbe:
+            exec:
+              command: ["python", "-m", "prospector.scheduler.run_scheduled", "--watchdog", "--config", "/app/config.yaml"]
+            initialDelaySeconds: 120
+            periodSeconds: 300
+            timeoutSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command: ["test", "-f", "/data/store/scheduler/heartbeat.json"]
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: secrets
+              mountPath: /var/run/secrets/prospector
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: prospector-scheduler-data
+        - name: secrets
+          secret:
+            secretName: prospector-engine-env
+            optional: false
+        - name: tmp
+          emptyDir: {}
