@@ -580,7 +580,7 @@ behind, so no alert here could ever have fired on it.
 
 ### What was built
 
-`scripts/deploy_reconcile.py` plus `production-runs-main.yml (deleted 2026-08-26, crew#203)`. It asks the one
+`scripts/deploy_reconcile.py (deleted 2026-08-26, crew#203)` plus `production-runs-main.yml (deleted 2026-08-26, crew#203)`. It asks the one
 question that stays true whatever the cause: **is the image production is running the one main
 says it should be?** When it is not, and the difference is real, it dispatches
 `deploy-engine.yml`. It never builds and never pushes, so there is still exactly one route to
