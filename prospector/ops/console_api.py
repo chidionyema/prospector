@@ -4018,6 +4018,7 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/install_push_shim.sh": "the pre-push shim setup_worktree.sh installs; a developer's machine, not ops (crew#326)",
     "scripts/retrieval_parity.py": "grades the Rust retrieval port against the Python "
                                   "it replaces by fetching live pages in both. It needs "
                                   "the open web and a release-built Rust binary, and it "
