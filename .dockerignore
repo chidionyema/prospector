@@ -28,14 +28,46 @@ __pycache__/
 .env
 .env.*
 .git/
-.github/
 .claude/
 .lux/keys/
 *.log
 
-# Documentation and tests are not needed at runtime and are the bulk of the remaining
-# context. The tests still run in CI against the repo, not against the image.
-docs/
-specs/
+# .github/ used to be excluded here, on the same "not needed at runtime" grounds as docs/.
+# It is needed at runtime. scripts/deploy_status.py:55 resolves `ROOT / ".github/workflows"`
+# and reads each deploy workflow's `paths:` filter to work out what a service is running and
+# how far behind main it is; the console's /deploys tab is that function's output. Measured on
+# prospector-engine 2026-08-20:
+#
+#     $ ls /app/.github/workflows
+#     ls: cannot access '/app/.github/workflows': No such file or directory
+#
+# so every deployable rendered `state: UNKNOWN` with the reason ".github/workflows/deploy-web.yml
+# is gone — this table names a workflow that does not exist". The workflows were never gone. The
+# founder read the page as the deploy buttons not existing.
+#
+# It is 256 KB: 15 workflow files and 2 scripts, no secrets and no state.
+
+# docs/ and specs/ used to be excluded here, on the grounds that documentation is not needed
+# at runtime. That stopped being true on 2026-08-19, when the console gained a Docs tab and a
+# Share tab that both read the repo's own markdown. Measured on prospector-engine 2026-08-20:
+# `python -m prospector.ops.console_api read docs` returned count 0 with the note "there is no
+# docs/ directory in this checkout", and the tab rendered that as an empty screen. The founder
+# clicked it and reported that nothing happened.
+#
+# The screenshots still do not travel, but the text beside them now does. Excluding all of
+# docs/design/ was too wide: measured 2026-08-21, it held 43 PNGs (21.5 MB) AND 25 text
+# documents (1.1 MB of html, md, json and css) that prospector.ops.docs_view.docs_index
+# lists. Those 25 were listed by the console and absent from the image, so the founder got a
+# row that opened onto nothing. The PNGs all sit in these two directories and no console read
+# view opens them, so naming the directories ships the text and leaves the images behind.
+#
+# Name DIRECTORIES here, not a glob like docs/design/**/*.png. A plain prefix is the shape
+# every matcher agrees on; mid-pattern ** is where Docker and the guard below can differ.
+# If a new PNG directory appears under docs/design/, add it as its own line.
+#
+# tests/unit/test_the_image_ships_what_the_console_serves.py fails if a path a console read
+# view resolves under is excluded again.
+docs/design/diff/
+docs/design/visual/
 .pytest_cache/
 htmlcov/

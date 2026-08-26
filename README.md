@@ -15,6 +15,13 @@ output**: the receipt that the filter is real and grounded.
 
 ## Start here
 
+> **[THE GOLD STAR PLAN](https://claude.ai/code/artifact/ef6fe784-7f6c-4981-85cd-37dfbe40b696)** — adopted 20 August 2026 as the target the platform is
+> being built toward. The ten planes, all 55 requirements with the drill that proves each one, how
+> much of the estate can sensibly move to Kubernetes, and the tooling we standardise on. Its source
+> of truth is [docs/MIGRATION_AND_DR_PROGRAM.md](docs/MIGRATION_AND_DR_PROGRAM.md) §10 and §11 —
+> the page renders those two sections, so when they disagree the document wins and the page gets
+> republished.
+
 This README documents the **engine**. The estate is bigger than the engine, and the two doors into
 the rest of it are:
 
@@ -59,13 +66,13 @@ Two more, both estate-wide rather than engine-only:
 
 - [Start here](#start-here)
 - [The core idea](#the-core-idea)
-- [How it runs (no hosted API, no keys)](#how-it-runs-no-hosted-api-no-keys)
+- [How it runs (hosted since 2026-08-18)](#how-it-runs-hosted-since-2026-08-18)
 - [Quickstart](#quickstart)
 - [The CLI](#the-cli)
 - [The eight-step pipeline](#the-eight-step-pipeline)
 - [The six grounded checks (the moat)](#the-six-grounded-checks-the-moat)
 - [Ambition lanes — one engine, four bars](#ambition-lanes--one-engine-four-bars)
-- [Two model chains: the moat vs. the cheap stuff](#two-model-chains-the-moat-vs-the-cheap-stuff)
+- [The model chains: the moat vs. the cheap stuff](#the-model-chains-the-moat-vs-the-cheap-stuff)
 - [Resilience: failover, circuit breakers, DEFER](#resilience-failover-circuit-breakers-defer)
 - [Principal Upgrades — Architectural Resilience](#principal-upgrades--architectural-resilience)
 - [Polymorphic Vetting — The Persona System](#polymorphic-vetting--the-persona-system)
@@ -76,8 +83,10 @@ Two more, both estate-wide rather than engine-only:
 - [Module map](#module-map)
 - [Invariants (the rules the code enforces)](#invariants-the-rules-the-code-enforces)
 - [Tests](#tests)
+- [Tooling and quality gates](#tooling-and-quality-gates)
 - [Key docs](#key-docs)
-- [Pi Agent Autonomous Workflow](#pi-agent-autonomous-workflow)
+- [Research index — how the platform writes](docs/RESEARCH_INDEX.md)
+- [Pi Agent Autonomous Workflow](docs/PI_AUTONOMY.md)
 
 ---
 
@@ -101,14 +110,29 @@ the audit trail and the basis for the engine's self-tuning.
 
 ---
 
-## How it runs (no hosted API, no keys)
+## How it runs (hosted since 2026-08-18)
 
-The entire engine runs **locally or inside your Claude Code / Gemini CLI
-subscription**. There are no hosted inference calls and no API-key billing in the
-default path — the brain and grounding are driven through the installed `claude`
-CLI and the MiniMax adapter. This is an operating rule, not an accident (see
-`CLAUDE.md`). The live roster is `config.yaml operator:` and `moat_primary:`;
-read those, not this sentence. It said "the `gemini` and `claude` CLIs" until
+Production runs on **Fly, in the `prospector-engine` app** — not this checkout and not the
+laptop. The old rule ("no hosted inference, no infrastructure beyond your own server")
+was retired by founder directive on 2026-08-18: *"this is a commercial business running
+off a laptop"*, and one laptop was the risk, not the hosted box. What survives is the part
+that was load-bearing — **the repo stays the complete system**: no behaviour may live only
+in a console, a dashboard or a provider account, and a fresh clone plus an env file must
+still run the whole engine.
+
+The live answer is a command, never this paragraph:
+
+```bash
+.venv/bin/python scripts/live_checkout.py            # machine state, deployed commit, CI on it
+.venv/bin/python scripts/live_checkout.py --update   # build origin/main and release it
+```
+
+State did **not** move with the code. `PROSPECTOR_STORE_DIR` pins the catalogue, ledger,
+dossiers and scheduler files to one canonical store; `config.store_root()` is the only
+resolver. Never derive a store path from `__file__` — it follows the code, not the store.
+
+The live model roster is `config.yaml operator:` and `moat_primary:`; read those, not this
+sentence. It said "the `gemini` and `claude` CLIs" until <!-- doc-lint-ok: a record of what the roster USED to say; there is no gemini key today -->
 2026-08-16, long after any config selected Gemini. doc-lint-ok
 
 **Provider failover is built in.** Both the verdict brain and web grounding take an
@@ -226,7 +250,7 @@ procedure; the engine is the guarantee):
 
 Steps 1–3 are cheap and run on the **non-critical chain**. Step 4 — the moat — is
 the only step that produces verdicts, and it runs **exclusively on Claude/Gemini**
-(see [Two model chains](#two-model-chains-the-moat-vs-the-cheap-stuff)).
+(see [The model chains](#the-model-chains-the-moat-vs-the-cheap-stuff)).
 
 ---
 
@@ -470,7 +494,7 @@ operators (e.g. Claude Code → an API operator) needs only a config change, no 
 
 `MINIMAX_API_KEY` is the one key the default path needs. `GEMINI_API_KEY` and
 `ANTHROPIC_API_KEY` are read by API-direct adapters that no config selects — the
-paid `claude` tier was deleted on 2026-08-15, and there is no `gemini` key in
+paid `claude` tier was deleted on 2026-08-15, and there is no `gemini` key in <!-- doc-lint-ok: a record of what the roster USED to say; there is no gemini key today -->
 `config.yaml`. Setting either changes nothing. doc-lint-ok
 The CLI adapters deliberately strip `GEMINI_API_KEY` from the child env to force the
 free OAuth quota.
@@ -572,6 +596,39 @@ See **[store_platform/README.md](store_platform/README.md)** for the full launch
 
 ---
 
+## Tooling and quality gates
+
+Every gate this repo runs, and what each one **refuses**. A gate that only warns is not on
+this list.
+
+**The published ledger — [The Automation Ledger](https://claude.ai/code/artifact/ec383383-851a-41ae-8215-477d7e96244e)**
+is generated from the tools' own header lines, so it cannot list a tool that is not on disk.
+Read it for the full inventory; the table below is the spine.
+
+| Gate | What it refuses | Where |
+|---|---|---|
+| POPDD commit gate | A commit whose lane checks fail. `ruff` is scoped to the `.py` files you **staged**, so a lint error it reports is in your diff. Bounded at ~7.5 min. | `scripts/popdd_verify.py`, `.lux/hooks/pre-commit` |
+| Lane registration | A commit touching a source directory no lane claims. Register the lane; never `--no-verify`. | `scripts/popdd_verify.py` |
+| Golden-set regression | Any mixed-sector discrimination regression in the moat. | `prospector-master-spec.md` Part 13B |
+| Doc lint | A doc claim with no retrievable source. Escape a deliberate historical quote with `doc-lint-ok`. | `scripts/doc_lint.py` |
+| Jargon guard | A reply above the fold containing a word off the banned list. | `~/.claude/scripts/jargon-guard.py` |
+| Push fence | A push to a branch whose CI is still in flight — which would cancel another agent's run. | `~/.claude/scripts/push-pr-fence.py` |
+| Hang guard | An unbounded recursive grep across 169,226 files. | `~/.claude/scripts/hang-guard.py` |
+| Session check | Stopping with the first five ways-of-working rules unmet. | `scripts/session_check.py` |
+| Live-state probe | A "it is deployed" claim that the running image disagrees with. Reads the commit out of `/app/GIT_SHA`. | `scripts/live_checkout.py` |
+| Spend ceiling | Unattended generation past `spend.daily_cap_usd`, read from the persistent ledger. | `config.yaml`, `store/prospector.jsonl` |
+| Kill switch | The entire scheduler tick, generation and drain together. | `store/scheduler/PAUSE` |
+| Grounding rate gate | Generation while retrieval is **actually** degraded — one bounded live search per tick, self-clearing. | `schedule.gate_generation_on_grounding` |
+| Moat preflight | A tick that would mint work no configured brain could finish. | `scheduler/run_scheduled.py:465` |
+| Fulfilment fence | A catalogue row and a provider Price that disagree — one `PriceDecision` writes both. | `prospector/bridge.py` |
+| Worktree setup | A worktree missing `.venv`, `.lux/keys/agent.pem` or `node_modules` — each of which fails by accusing something else. | `scripts/setup_worktree.sh` |
+
+Web and accessibility lanes run under Playwright with `@axe-core/playwright`; the visual
+layer is checked against `docs/SITE_SPEC_PROGRAM.md`, which is a spec with a status ledger
+rather than a style guide.
+
+---
+
 ## Key docs
 
 **The estate, not just the engine.** Start at
@@ -599,10 +656,10 @@ See **[store_platform/README.md](store_platform/README.md)** for the full launch
 
 Engine-level contracts:
 
-- **[AGENTS.md](AGENTS.md)** — the onboarding contract for any agent working on this
-  repo: orientation order, the truth invariants, the reasoning DNA, and how to pick up
-  the handover. Read it first.
-- **[CLAUDE.md](CLAUDE.md)** — operating rules + module map (the canonical constraints).
+- **[AGENTS.md](AGENTS.md)** — the only governance file: eighteen laws in priority order,
+  then the part that is only true here (who writes code, the truth invariants, where each
+  fact lives). Read it first.
+- **[CLAUDE.md](CLAUDE.md)** — what Prospector is: the module map, the gates, the topology.
 - **[RUN.md](RUN.md)** — the eight-step per-run procedure with concrete commands.
 - **[prospector-master-spec.md](prospector-master-spec.md)** — full spec: prompts,
   golden-set acceptance tests, roadmap.
@@ -616,6 +673,10 @@ Tracked programmes — read and append there, never in CLAUDE.md:
 - **[docs/GRAPHIFY_ENFORCEMENT_SPEC.md](docs/GRAPHIFY_ENFORCEMENT_SPEC.md)** — estate-wide graph freshness.
 - **[docs/LOGGING_AND_RETENTION.md](docs/LOGGING_AND_RETENTION.md)** — logging, retention and alerting.
 - **[deploy/PORTABILITY.md](deploy/PORTABILITY.md)** — moving the stack off any one provider.
+- **[docs/CARD_IMAGERY_RESEARCH.md](docs/CARD_IMAGERY_RESEARCH.md)** — what the pack card draws,
+  why 97% of packs draw the same picture today, and the measured fix. §8 is the architecture.
+- **[docs/OPEN_WORK.md](docs/OPEN_WORK.md)** — the plate. Everything asked for and not yet
+  delivered, with its owning doc and its next action. A worklist in a chat window does not survive.
 - **[docs/RUNBOOKS.md](docs/RUNBOOKS.md)** — what to do when a specific thing is broken.
 - **[docs/INCIDENT_PROCESS.md](docs/INCIDENT_PROCESS.md)** — what to do after it is fixed, so the
   same class of thing does not break again.

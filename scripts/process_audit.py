@@ -29,7 +29,9 @@ gate CI; `--quiet` prints only the problems.
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import hashlib
+import importlib.util
 import json
 import os
 import plistlib
@@ -37,6 +39,7 @@ import re
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,6 +59,10 @@ OWNED_PREFIXES = (
 )
 
 OK, WARN, BAD = "ok", "warn", "bad"
+
+#: The Fly app that hosts the self-hosted CI runners. The three mumchimp-mac
+#: runners are OFF by founder decision, so this app IS the CI capacity.
+CI_FLY_APP = "prospector-ci"
 
 # Production is Fly, not this Mac. `deploy/engine/fly.toml` publishes one port and the image runs
 # the scheduler, consumer, watchdog and both backups under supervisord. Every local launchd job
@@ -221,6 +228,37 @@ def grade_fly() -> list[tuple[str, str, str]]:
 
 
 
+def grade_deploys() -> list[tuple[str, str, str]]:
+    """Is the live stack running what is on `main`?
+
+    The runner row above says whether a job COULD run. This says whether the thing it was
+    supposed to ship actually shipped. On 2026-08-19 those two answers came apart: every runner
+    was online and busy, so nothing looked wrong, while a merge to main sat undeployed for
+    twelve hours behind the queue. Nobody could see it, because no check compared the live Fly
+    release to origin/main.
+
+    `scripts/deploy_status.py` owns that comparison. This grades its verdict so it reaches the
+    operator on the audit's own schedule, through the audit's own alert path.
+    """
+    rc, out = sh([sys.executable, str(ROOT / "scripts/deploy_status.py"), "--json"], timeout=300)
+    if not out.strip():
+        return [(WARN, "deploys", f"deploy_status.py said nothing (rc={rc})")]
+    try:
+        report = json.loads(out)
+    except json.JSONDecodeError as exc:
+        return [(WARN, "deploys", f"deploy_status.py returned non-JSON: {exc}")]
+    # UNKNOWN grades BAD on purpose. A probe that could not measure is the shape of the failure
+    # this row exists to catch, and grading it OK would rebuild the blind spot inside the guard.
+    grade_of = {"LIVE": OK, "SHIPPING": OK, "DRIFTED": WARN,
+                "STALLED": BAD, "FAILED": BAD, "UNKNOWN": BAD}
+    rows = [(grade_of.get(d["state"], BAD), f"deploy {d['name']}", f"{d['state']} -- {d['why']}")
+            for d in report.get("deployables", [])]
+    fleet = report.get("runners") or {}
+    if fleet.get("problem"):
+        rows.append((BAD, "deploy queue", fleet["problem"]))
+    return rows
+
+
 def grade_ci_runners() -> list[tuple[str, str, str]]:
     """Ask GitHub which runners can actually take a job.
 
@@ -234,8 +272,9 @@ def grade_ci_runners() -> list[tuple[str, str, str]]:
     which sees every runner of every kind and whether it is free.
     """
     rc, out = sh(["gh", "api", "repos/chidionyema/prospector/actions/runners",
-                  "--jq", '.runners[] | "\(.name)\t\(.status)\t\(.busy)\t'
-                          '\(.labels|map(.name)|join(\",\"))"'], timeout=60)
+                  # Raw: every \( here is jq interpolation, not a Python escape.
+                  "--jq", r'.runners[] | "\(.name)\t\(.status)\t\(.busy)\t'
+                          r'\(.labels|map(.name)|join(","))"'], timeout=60)
     if rc != 0 or not out.strip():
         return [(WARN, "CI runners", "cannot ask GitHub (gh missing, unauthenticated or offline)")]
 
@@ -342,50 +381,56 @@ def grade_launchd(docs: set[str]) -> list[tuple[str, str, str]]:
 
 
 def grade_workflows(docs: set[str]) -> list[tuple[str, str, str]]:
-    """One (grade, filename, detail) row per GitHub workflow."""
-    code, out = sh(
-        ["gh", "run", "list", "--limit", "200", "--json",
-         "workflowName,conclusion,status,createdAt,event"], timeout=90)
-    runs: list[dict] = []
-    gh_error = None
-    if code != 0:
-        gh_error = (out.strip().splitlines() or ["gh failed"])[0]
-    else:
-        try:
-            runs = json.loads(out)
-        except ValueError as exc:
-            gh_error = str(exc)
+    """One (grade, filename, detail) row per GitHub workflow.
 
-    newest: dict[str, dict] = {}
-    for run in runs:
-        name = run.get("workflowName", "")
-        if name not in newest or run.get("createdAt", "") > newest[name].get("createdAt", ""):
-            newest[name] = run
+    The measurement is `scripts/workflow_health.py`, not a second count of the same fact. Two
+    things it fixes here, both of which produced wrong rows on this page.
 
+    DEAD is not FAILING. A workflow GitHub cannot START concludes instantly having run ZERO
+    jobs: no log, no annotation, no red check on any pull request. It looks exactly like a
+    workflow with a broken test, so `ci-autoscale.yml` sat in this list among the ordinary reds
+    for thirty consecutive runs and the CI pool was never scaled automatically once.
+
+    And NEVER-RAN was largely a lie. The old version read one global `gh run list --limit 200`,
+    a window that on a busy repository does not reach back to a workflow triggered weekly -- so
+    on 2026-08-19 it reported `deploy-api.yml`, `escape-hatch-drill.yml` and
+    `weekly-estate-review.yml` as never having run when all three had. Health is asked per
+    workflow now, through the workflows API, which has no such window.
+    """
+    spec = importlib.util.spec_from_file_location("workflow_health", ROOT / "scripts" / "workflow_health.py")
+    wfh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(wfh)
+    try:
+        report = wfh.grade(wfh._repo(None), 5)
+    except Exception as exc:  # noqa: BLE001 -- "could not ask GitHub" is a WARN, never a green
+        return [(WARN, f.name, f"could not ask GitHub ({type(exc).__name__}: {exc})".replace("\n", " ")[:160])
+                for f in sorted(WORKFLOW_DIR.glob("*.y*ml"))]
+
+    by_path = {r["path"]: r for r in report["workflows"]}
     rows: list[tuple[str, str, str]] = []
     for f in sorted(WORKFLOW_DIR.glob("*.y*ml")):
-        text = f.read_text(encoding="utf-8")
-        m = re.search(r"^name:\s*(.+)$", text, re.M)
-        name = m.group(1).strip().strip("\"'") if m else f.stem
-        run = newest.get(name)
-        if gh_error:
-            rows.append((WARN, f.name, f"could not ask GitHub ({gh_error})"))
+        row = by_path.get(f".github/workflows/{f.name}")
+        if row is None:
+            # GitHub does not know this file yet: a workflow added on a branch and not on main.
+            rows.append((WARN, f.name, "GitHub has no workflow for this file yet"))
             continue
-        if run is None:
-            # A workflow that never ran leaves no red run anywhere. This is the only place it shows.
-            rows.append((BAD, f.name, f"NEVER-RAN -- no run of '{name}' in the last 200"))
-            continue
-        concl = run.get("conclusion") or run.get("status") or "?"
-        detail = f"last {concl} ({run.get('event')}) {run.get('createdAt', '')[:16]}"
-        if concl in ("failure", "timed_out", "startup_failure"):
-            rows.append((BAD, f.name, f"FAILING -- {detail}"))
+        verdict, graded = row["verdict"], row["runs_graded"]
+        if verdict.startswith("DEAD"):
+            rows.append((BAD, f.name, f"DEAD -- {graded}/{graded} runs produced ZERO jobs, so "
+                                      f"GitHub could not start it. Run `actionlint {f.name}`."))
+        elif verdict == "failing every run":
+            plural = "run" if graded == 1 else "runs"
+            rows.append((BAD, f.name, f"FAILING -- the last {graded} {plural} all failed"))
+        elif "produced zero jobs" in verdict:
+            rows.append((BAD, f.name, f"DEGRADED -- {verdict}"))
+        elif verdict == "no recent runs":
+            rows.append((WARN, f.name, "no runs at all in the window"))
         elif f.name not in docs:
-            rows.append((BAD, f.name, f"UNDOCUMENTED, absent from {INVENTORY.name} -- {detail}"))
+            rows.append((BAD, f.name, f"UNDOCUMENTED, absent from {INVENTORY.name} -- "
+                                      f"{graded} recent runs, ok"))
         else:
-            rows.append((OK, f.name, detail))
+            rows.append((OK, f.name, f"{graded} recent runs, ok"))
     return rows
-
-
 
 
 # A worktree this far behind origin/main is not "a bit stale". It is a different estate: the
@@ -438,6 +483,40 @@ def grade_worktree_drift() -> list[tuple[str, str, str]]:
     return rows
 
 
+# Matches a script path inside a hook command. The optional ~ / $VAR prefix is part of the match
+# ON PURPOSE: a regex anchored at "/" pulled "/.claude/scripts/x.py" out of
+# "~/.claude/scripts/x.py", so the ~ fell OUTSIDE the match and the old token.replace("~", home)
+# was a no-op -- every hook registered with a ~ was reported missing. Measured 2026-08-21: 3 of
+# the 4 files this check named were present on disk the whole time.
+_HOOK_SCRIPT_RE = re.compile(r"((?:~|\$[A-Za-z_]\w*)?/[\w./$~-]+\.(?:py|sh))")
+# A match only counts when it STARTS a path. Without this the regex bites a fragment out of a git
+# revision spec: in `git show origin/main:scripts/checkout_currency.py` the colon is not in the
+# character class, so it matched "/checkout_currency.py" -- a string that was never a filesystem
+# path at all, reported as a missing file.
+_PATH_STARTS_AFTER = " \t'\"=("
+
+
+def scan_hook_scripts(hooks: dict) -> tuple[int, list[str]]:
+    """Return (hooks registered, script paths that do not exist on disk).
+
+    A renamed script leaves a hook that silently never runs, which is why this check exists. But
+    a check that cries wolf costs more than no check: every session that read its output went
+    looking for a file that had been there all along.
+    """
+    events, missing = 0, []
+    for _event, matchers in (hooks or {}).items():
+        for matcher in matchers or []:
+            for h in matcher.get("hooks", []) or []:
+                cmd = str(h.get("command", ""))
+                events += 1
+                for m in _HOOK_SCRIPT_RE.finditer(cmd):
+                    if m.start() and cmd[m.start() - 1] not in _PATH_STARTS_AFTER:
+                        continue
+                    if not Path(os.path.expandvars(os.path.expanduser(m.group(1)))).exists():
+                        missing.append(m.group(1))
+    return events, missing
+
+
 def grade_enforcement() -> list[tuple[str, str, str]]:
     """Grade the mechanisms that are supposed to be REFUSING bad work.
 
@@ -471,22 +550,13 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
     # Every hook the harness is configured to fire must exist. A renamed script leaves a hook that
     # silently never runs.
     settings = Path.home() / ".claude" / "settings.json"
-    missing: list[str] = []
-    events = 0
+    hooks = {}
     if settings.exists():
         try:
             hooks = json.loads(settings.read_text(encoding="utf-8")).get("hooks", {})
         except ValueError:
             hooks = {}
-        for _event, matchers in hooks.items():
-            for matcher in matchers or []:
-                for h in matcher.get("hooks", []) or []:
-                    cmd = str(h.get("command", ""))
-                    events += 1
-                    for token in re.findall(r"(/[\w./~-]+\.(?:py|sh))", cmd):
-                        target = Path(token.replace("~", str(Path.home())))
-                        if not target.exists():
-                            missing.append(token)
+    events, missing = scan_hook_scripts(hooks)
     rows.append((BAD if missing else OK, "claude hooks",
                  f"{events} registered, missing: {', '.join(missing)}" if missing
                  else f"{events} registered, all present"))
@@ -497,15 +567,74 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
     rows.append((OK if has_guard else BAD, "ci guard job",
                  "present in ci.yml" if has_guard else "MISSING from ci.yml"))
 
-    # The doc-lint ratchet only ratchets while its baseline is committed.
-    baseline = ROOT / "docs" / "doc_lint_baseline.json"
-    rows.append((OK if baseline.exists() else BAD, "doc lint baseline",
-                 "present" if baseline.exists() else "MISSING, so the ratchet cannot tighten"))
+    # The doc-lint ratchet only ratchets while its baseline is committed AND every suppression in
+    # it still has a deadline in front of it. A baseline holding every live finding with no
+    # burn-down date is green forever while every finding is real
+    # (docs/incidents/INC-2026-08-18-doc-rot-ratchet.json), so the deadline is what is graded here.
+    rows.append(_grade_doc_lint_baseline())
 
     rows.extend(_grade_state_probe())
     rows.extend(_grade_session_hooks())
+    rows.extend(_grade_agent_memory())
     rows.extend(_grade_instruction_checkouts())
+    rows.extend(_grade_scheduled_workflows())
+    rows.extend(_grade_ci_capacity())
     return rows
+
+
+def _store_root() -> str:
+    """The canonical store, asked of prospector.config rather than derived from this file's path.
+
+    A store path built from `__file__` follows the CODE. On 2026-08-17 four constants did that and
+    the health marks, the retrieval cache and the scheduler audit trail were written beside a new
+    checkout while the ledger went to the real store.
+    """
+    try:
+        sys.path.insert(0, str(ROOT))
+        from prospector.config import store_root
+        return str(store_root())
+    except Exception:  # noqa: BLE001 -- the audit must still run outside a configured checkout
+        return os.environ.get("PROSPECTOR_STORE_DIR",
+                              str(Path.home() / "Documents" / "code" / "prospector" / "store"))
+
+
+def _grade_doc_lint_baseline() -> tuple[str, str, str]:
+    """Is the doc-lint ratchet still able to go red?
+
+    Three ways it cannot: the baseline is gone, an entry has no burn-down date, or a deadline has
+    already passed and nobody burned the findings down. The last one is a real failure and reads
+    as one, because a deadline nobody is graded against is the same warning fence again.
+    """
+    baseline = ROOT / "docs" / "doc_lint_baseline.json"
+    if not baseline.exists():
+        return (BAD, "doc lint baseline", "MISSING, so the ratchet cannot tighten")
+    try:
+        raw = json.loads(baseline.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return (BAD, "doc lint baseline", f"unreadable: {exc}")
+
+    dates = {rel: v.get("expires") for rel, v in raw.items() if isinstance(v, dict)}
+    undated = sorted(set(raw) - {rel for rel, when in dates.items() if when})
+    if undated:
+        return (BAD, "doc lint baseline",
+                f"{len(undated)} suppression(s) with no burn-down date, e.g. {undated[0]} — "
+                f"run `python3 scripts/doc_lint.py --write-baseline`")
+
+    today = _dt.date.today().isoformat()
+    overdue = sorted(rel for rel, when in dates.items() if when < today)
+    if overdue:
+        return (BAD, "doc lint baseline",
+                f"{len(overdue)} suppression(s) past their burn-down date, e.g. {overdue[0]}")
+    if not dates:
+        # The empty case, and it is the BEST state the ratchet can be in: every suppression
+        # burned down, nothing left to expire. `min()` over it raised
+        # `ValueError: min() iterable argument is empty`, which killed the whole audit --
+        # see `_section` below for why one grader could do that. Measured 2026-08-20:
+        # docs/doc_lint_baseline.json is `{}` on origin/main, so this fired on every run.
+        return (OK, "doc lint baseline", "0 doc(s) suppressed -- the ratchet is fully burned down")
+    soonest = min(dates.values())
+    return (OK, "doc lint baseline",
+            f"{len(dates)} doc(s) suppressed, next burn-down due {soonest}")
 
 
 def _grade_state_probe() -> list[tuple[str, str, str]]:
@@ -535,6 +664,23 @@ def _grade_state_probe() -> list[tuple[str, str, str]]:
     else:
         rows.append((OK, "state probe", f"installed and matching source ({src[:12]})"))
 
+    # The probe installs a second file: the founder-task reader it calls. One copy graded and the
+    # other not is how the first copy came to carry 17 lines that were in no commit anywhere.
+    reader_src = ROOT / "scripts" / "founder_tasks.py"
+    reader_installed = Path.home() / ".claude" / "state-probe" / "founder_tasks.py"
+    if reader_src.exists():
+        if not reader_installed.exists():
+            rows.append((BAD, "founder task reader",
+                         "NOT INSTALLED -- every session opens without the task list; "
+                         "run bash ops/state_probe.sh --install"))
+        elif (hashlib.sha256(reader_src.read_bytes()).hexdigest()
+              != hashlib.sha256(reader_installed.read_bytes()).hexdigest()):
+            rows.append((BAD, "founder task reader",
+                         "INSTALLED COPY DRIFTED from scripts/founder_tasks.py -- re-run "
+                         "bash ops/state_probe.sh --install"))
+        else:
+            rows.append((OK, "founder task reader", "installed and matching source"))
+
     projects = Path.home() / ".claude" / "projects"
     targets = [d for d in projects.glob("*") if d.is_dir() and "-private-" not in d.name
                and (d.name.endswith("code-prospector") or "-code-wt-" in d.name)]
@@ -544,7 +690,44 @@ def _grade_state_probe() -> list[tuple[str, str, str]]:
                      f"{len(blind)} project dir(s) have no .state-probe, so sessions started "
                      f"there open blind: {', '.join(sorted(blind)[:3])}"))
     else:
-        rows.append((OK, "state probe pointers", f"{len(targets)} project dir(s) wired"))
+        # A pointer that names no checkout still briefs the session on the estate, but cannot say
+        # how stale the code and CLAUDE.md in front of it are -- which is the failure that started
+        # this work. Re-running --install matches any new project directory to a checkout on disk.
+        vague = [d.name for d in targets
+                 if "--checkout" not in (d / ".state-probe").read_text(errors="replace")]
+        if vague:
+            rows.append((WARN, "state probe pointers",
+                         f"{len(targets)} wired, but {len(vague)} name no checkout, so those "
+                         f"sessions are not told how far behind their own tree is; re-run "
+                         f"bash ops/state_probe.sh --install"))
+        else:
+            rows.append((OK, "state probe pointers",
+                         f"{len(targets)} project dir(s) wired, each naming its checkout"))
+
+    # The probe renders a snapshot. If nothing refreshes that snapshot the probe becomes the
+    # stale paragraph it replaced -- correct-looking, months old, no tell from the inside. The
+    # probe refreshes it in the background past 6h; this row is the guard on that self-healing,
+    # because a background refresh that silently stopped working looks exactly like one that has
+    # nothing to do.
+    snap = Path(_store_root()) / "ops" / "estate_map.json"
+    if not snap.exists():
+        rows.append((BAD, "estate snapshot",
+                     "MISSING -- sessions are briefed with no measured estate at all; run "
+                     ".venv/bin/python scripts/estate_map.py --snapshot"))
+    else:
+        age_h = (time.time() - snap.stat().st_mtime) / 3600
+        if age_h > 24:
+            rows.append((BAD, "estate snapshot",
+                         f"{age_h/24:.1f} DAYS old -- the probe's background refresh is not "
+                         f"running. Every session is being briefed on a stale measurement"))
+        elif age_h > 8:
+            rows.append((WARN, "estate snapshot",
+                         f"{age_h:.0f}h old -- past the probe's 6h refresh threshold, so the "
+                         f"next session start should refresh it. Still stale if this persists"))
+        else:
+            rows.append((OK, "estate snapshot",
+                         f"measured {age_h*60:.0f}m ago" if age_h < 1 else
+                         f"measured {age_h:.0f}h ago"))
     return rows
 
 
@@ -598,6 +781,79 @@ def _grade_instruction_checkouts() -> list[tuple[str, str, str]]:
 
 
 
+def _hook_staleness(path: Path) -> str:
+    """Is the hook file at this path behind what has been reviewed and merged?
+
+    A hook is executed FROM THE PATH settings.json names, not from whatever branch a session is
+    working on. Measured 2026-08-19: two hooks point into a developer checkout that was 60
+    commits behind `origin/main`, so every session in the estate was policed by unreviewed,
+    out-of-date code -- and there was no tell, because a hook that runs successfully looks the
+    same whatever version it is.
+
+    Returns a phrase to append to the row, empty when the file is current or not in a repo.
+    """
+    rc, top = sh(["git", "-C", str(path.parent), "rev-parse", "--show-toplevel"], timeout=15)
+    if rc != 0 or not top.strip():
+        return " -- not in a git repository, so nothing reviews it"
+    rc, behind = sh(["git", "-C", top.strip(), "rev-list", "--count", "HEAD..origin/main",
+                     "--", str(path)], timeout=20)
+    if rc != 0 or not behind.strip().isdigit():
+        return ""
+    n = int(behind.strip())
+    if n == 0:
+        return ""
+    return (f" -- WARNING: this file is {n} commit(s) behind origin/main in "
+            f"{Path(top.strip()).name}; sessions run THIS copy, not main")
+
+
+def _grade_agent_memory() -> list[tuple[str, str, str]]:
+    """Can a session in THIS checkout read what a session in another checkout learned?
+
+    Claude Code stores agent memory per working directory: ~/.claude/projects/<cwd-slug>/memory.
+    This estate has three prospector checkouts and about thirty-five worktrees, so it has that
+    many separate stores. Counted 2026-08-19: 390 files in one, 13 in another, 1 in a third, and
+    zero in every worktree, with no overlap but the index file. A session started anywhere but
+    the main checkout could see 13 of 391 lessons.
+
+    The cost is not hypothetical. Two sessions hit the same trap on the same day -- CI runs on
+    the Fly app prospector-ci, not on this Mac -- and each wrote its own memory file about it,
+    in its own store, neither able to see the other's.
+
+    `bash ops/share_memory.sh --apply` merges them into ~/.claude/memory/prospector and links
+    every slug at it. This row says whether that has been done, because a fix nobody applied
+    looks exactly like a fix nobody needed.
+    """
+    projects = Path.home() / ".claude" / "projects"
+    shared = Path.home() / ".claude" / "memory" / "prospector"
+    if not projects.is_dir():
+        return [(WARN, "agent memory", f"no {projects} -- cannot tell what sessions can read")]
+
+    stores = [d / "memory" for d in projects.glob("*")
+              if d.is_dir() and "-private-" not in d.name
+              and (d.name.endswith("code-prospector") or "-code-wt-" in d.name
+                   or d.name == "prospector")]
+    stores = [m for m in stores if m.exists()]
+    if not stores:
+        return [(WARN, "agent memory", "no memory store for any prospector checkout")]
+
+    linked = [m for m in stores if m.is_symlink()]
+    split = [m for m in stores if not m.is_symlink()]
+    if not split:
+        n = len(list(shared.glob("*.md"))) if shared.is_dir() else 0
+        return [(OK, "agent memory",
+                 f"{len(linked)} checkout(s) share one store of {n} memories at "
+                 f"~/.claude/memory/prospector -- a lesson learned in any checkout is readable "
+                 f"in all of them")]
+
+    sizes = sorted(((len(list(m.glob("*.md"))), m.parent.name) for m in split), reverse=True)
+    biggest = sizes[0][0]
+    smallest = sizes[-1][0]
+    return [(BAD, "agent memory",
+             f"PARTITIONED across {len(split)} store(s): {biggest} memories in one, {smallest} "
+             f"in another. A session in the smaller checkout is blind to what the other learned, "
+             f"and writes a duplicate instead. Fix: bash ops/share_memory.sh --apply")]
+
+
 def _grade_session_hooks() -> list[tuple[str, str, str]]:
     """Grade the hooks that police every agent turn, because nothing else did.
 
@@ -647,9 +903,10 @@ def _grade_session_hooks() -> list[tuple[str, str, str]]:
         except OSError as exc:
             rows.append((BAD, f"hook {name}", f"unreadable: {exc}"))
             continue
+        stale = _hook_staleness(path)
         if "--selftest" not in body:
             rows.append((WARN, f"hook {name}", f"{where}: no --selftest, so nothing checks it "
-                                               f"enforces the right thing"))
+                                               f"enforces the right thing{stale}"))
             continue
         tested += 1
         try:
@@ -662,15 +919,20 @@ def _grade_session_hooks() -> list[tuple[str, str, str]]:
         verdict = last[-1][:70] if last else "no output"
         if r.returncode == 0:
             ok += 1
-            rows.append((OK, f"hook {name}", f"{where}: {verdict}"))
+            # A passing selftest on a stale file proves the STALE file is self-consistent. It
+            # says nothing about whether main has since fixed the rule, so the row must not
+            # read green on that alone.
+            rows.append((WARN if "WARNING" in stale else OK,
+                         f"hook {name}", f"{where}: {verdict}{stale}"))
         else:
             rows.append((BAD, f"hook {name}", f"{where}: SELFTEST FAILING -- {verdict}"))
 
     head = (OK if tested and ok == tested else WARN,
             "session hooks",
             f"{len(commands)} hook file(s) across {sum(len(v) for v in commands.values())} "
-            f"registrations, {tested} carry a selftest, {ok} of those pass -- "
-            f"none of these files is in a git repository")
+            f"registrations, {tested} carry a selftest, {ok} of those pass. Most live in "
+            f"~/.claude/scripts, outside any repository, so CI never sees them; the rows below "
+            f"say which are behind main")
     return [head] + rows
 
 
@@ -734,26 +996,50 @@ def orphaned_worktrees() -> list[tuple[str, str, str]]:
     return rows
 
 
-def alert(payload: dict) -> str:
-    """Send one Telegram line through the estate's existing operator alert path.
+def alert(payload: dict, cfg=None) -> str:
+    """Raise the failing checks through the estate's own alert path, durably.
 
-    Deliberately not a new channel. `~/.hermes/scripts/estate_alert.py` is already the estate's
-    one door -- it holds the credentials, it debounces, and it is written never to raise at the
-    caller. A second notifier would mean a second thing to keep working.
+    It used to import `~/.hermes/scripts/estate_alert.py` directly. That module is outside this
+    repository, so on any host without a Hermes checkout -- which includes `prospector-engine`,
+    where production actually runs -- the import failed, this function returned the string
+    `could not alert: No module named estate_alert`, and NOTHING GRADED THAT STRING. The audit
+    printed it, exited 1 for the findings, and no operator was told. An alerting rail whose own
+    failure is invisible is worse than no rail, because the estate is then graded as watched.
+
+    `alerts.emit_alert` is this repo's one alert door and it is strictly wider: it appends the
+    record to `alerts.jsonl` with an fsync BEFORE any sink is tried, marks it active in
+    ALERT.txt, then pushes to desktop, webhook and Telegram -- and its Telegram sink loads the
+    same Hermes sender this used to import, so nothing is lost where Hermes IS present. The
+    durable record is the point. When every sink is missing there is still a receipt saying the
+    estate was failing at this time, and `active_alerts()` can still show it.
+
+    Never raises, and never returns a bland string on failure: a broken alert path says so in
+    words a reader cannot mistake for success. Observing a job must not be able to fail it.
     """
-    sys.path.insert(0, str(Path.home() / ".hermes" / "scripts"))
-    try:
-        import estate_alert
-    except ImportError as exc:
-        return f"could not alert: {exc}"
     lines = [f"{n}: {d}" for sec in payload["sections"] for g, n, d in
              ((r["grade"], r["name"], r["detail"]) for r in sec["rows"]) if g == BAD]
     if not lines:
         return "nothing to alert"
-    text = (f"process audit: {payload['failing']} failing\n" + "\n".join(lines[:12]))
-    sent = estate_alert.send_operator_alert(
-        text, debounce_key="process-audit", debounce_s=3600)
-    return "alert sent" if sent else "alert suppressed (debounce or no credentials)"
+
+    names = [ln.split(":", 1)[0] for ln in lines]
+    failing = payload["failing"]
+    try:
+        from prospector.config import load_config
+        from prospector.scheduler.alerts import emit_alert
+        emit_alert(cfg if cfg is not None else load_config(),
+                   severity="critical", key="process-audit",
+                   title=f"process audit: {failing} failing",
+                   message=f"process audit: {failing} failing\n" + "\n".join(lines[:12]),
+                   throttle_s=3600, failing=failing, checks=names[:12],
+                   # The COUNT oscillates (31 -> 32 -> 30 -> 31) as unrelated checks flap, and the
+                   # count is in both the title and the message. Digesting either would re-alert
+                   # every hour and change nothing. The identity of this condition is WHICH checks
+                   # are failing, sorted so ordering cannot fake a change; `names` is every failing
+                   # check, not the truncated 12 the message shows.
+                   identity="|".join(sorted(names)))
+    except Exception as exc:  # noqa: BLE001 -- see the docstring; this must not fail the audit
+        return f"ALERT PATH BROKEN ({type(exc).__name__}: {exc}) -- {failing} failing went unsent"
+    return f"alert recorded ({failing} failing: {', '.join(names[:4])})"
 
 
 def litter() -> list[str]:
@@ -767,6 +1053,238 @@ def litter() -> list[str]:
         if p.is_file() and p.suffix != ".plist" and not p.name.startswith("."))
 
 
+#: How long after its due time a scheduled workflow may stay silent before the audit calls it
+#: stalled. GitHub delays scheduled runs under load, routinely by minutes and occasionally by
+#: hours, so one missed slot is noise. Two in a row is not.
+_SCHEDULE_GRACE = 2.0
+
+
+def _cron_period_hours(cron: str) -> float | None:
+    """Roughly how often this cron fires, in hours. None when the shape is not one we grade.
+
+    Deliberately crude. It reads three shapes -- weekly, daily, hourly -- because those are the
+    three this estate uses, and a wrong answer here would produce a false alarm about a job that
+    is fine. Anything else returns None and the row reports the last conclusion without an age.
+    """
+    f = cron.split()
+    if len(f) != 5:
+        return None
+    minute, hour, dom, _month, dow = f
+    if dow != "*":
+        return 24 * 7
+    if dom != "*":
+        return 24 * 30
+    if hour != "*":
+        return 24
+    if minute != "*":
+        return 1
+    return None
+
+
+def _scheduled_workflows() -> list[tuple[str, str, str]]:
+    """(display name, filename, cron) for every workflow this repo schedules."""
+    out = []
+    for path in sorted(WORKFLOW_DIR.glob("*.yml")):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if not re.search(r"^\s*schedule:", text, re.M):
+            continue
+        cron = re.search(r"^\s*-\s*cron:\s*[\"\']?([^\"\'#\n]+)", text, re.M)
+        name = re.search(r"^name:\s*(.+)$", text, re.M)
+        out.append(((name.group(1).strip().strip("\"\'") if name else path.stem),
+                    path.name, (cron.group(1).strip() if cron else "")))
+    return out
+
+
+def _grade_ci_capacity() -> list[tuple[str, str, str]]:
+    """Does the CI runner capacity we PAY for match the capacity GitHub can SEE?
+
+    A self-hosted runner fails in a way no dashboard shows: the machine boots, the agent logs
+    "Listening for Jobs", and GitHub simply does not have it registered. The machine looks
+    healthy from the inside and is dark from the outside, so the only symptom is a queue.
+
+    Measured 2026-08-19 10:50Z: `prospector-ci` had 3 machines `started` and 2 runners
+    registered. Twelve runs were queued behind the two while the third idled. Restarting the
+    machine re-registered it. Nothing compared those two numbers before this row existed.
+
+    Grades what it got. No `flyctl`, no `gh`, no network -- WARN, never a false OK.
+    """
+    rows: list[tuple[str, str, str]] = []
+
+    code, out = sh(["gh", "api", "repos/chidionyema/prospector/actions/runners",
+                    "-q", '.runners[] | select(.status=="online") | .name'], timeout=45)
+    if code != 0:
+        return [(WARN, "ci runner capacity",
+                 f"`gh api actions/runners` failed, so capacity is UNKNOWN: {out.strip()[:100]}")]
+    online = {n.strip() for n in out.splitlines() if n.strip()}
+
+    code, out = sh(["flyctl", "machines", "list", "-a", CI_FLY_APP, "--json"], timeout=60)
+    if code != 0:
+        rows.append((WARN, "ci runner capacity",
+                     f"`flyctl machines list -a {CI_FLY_APP}` failed, so the Fly half of "
+                     f"capacity is UNKNOWN: {out.strip()[:100]}"))
+    else:
+        try:
+            machines = json.loads(out)
+        except ValueError:
+            machines = []
+        started = [m for m in machines if (m.get("state") or "") == "started"]
+        # The runner agent names itself `runner-<machine id>`, which is what makes the two
+        # lists comparable at all.
+        dark = [m for m in started
+                if f"runner-{m.get('id')}" not in online]
+        if dark:
+            ids = ", ".join(str(m.get("id")) for m in dark)
+            rows.append((BAD, "ci runner capacity",
+                         f"{len(dark)} of {len(started)} {CI_FLY_APP} machine(s) are started but "
+                         f"NOT registered as runners ({ids}). That capacity is paid for and "
+                         f"dark; the machine logs 'Listening for Jobs' and never gets one. "
+                         f"Fix: flyctl machine restart {dark[0].get('id')} -a {CI_FLY_APP}"))
+        else:
+            rows.append((OK, "ci runner capacity",
+                         f"{len(started)} {CI_FLY_APP} machine(s) started, all registered"))
+
+    # Queue depth is the symptom this row exists to explain, so report it next to the cause.
+    code, out = sh(["gh", "run", "list", "--limit", "100", "--json", "status"], timeout=45)
+    if code == 0:
+        try:
+            runs = json.loads(out)
+        except ValueError:
+            runs = []
+        queued = sum(1 for r in runs if r.get("status") == "queued")
+        # Two per online runner is a working queue; beyond that jobs wait longer than they run.
+        limit = max(4, 2 * len(online))
+        grade = BAD if queued > 2 * limit else (WARN if queued > limit else OK)
+        rows.append((grade, "ci queue depth",
+                     f"{queued} run(s) queued against {len(online)} online runner(s)"))
+    return rows
+
+
+def _grade_scheduled_workflows() -> list[tuple[str, str, str]]:
+    """Is anything watching the watchers?
+
+    A scheduled workflow is an enforcement that runs with nobody in the room. When it goes red
+    the only signal is a red dot on a page nobody opens, so it stays red. Measured 2026-08-19:
+    `e2e-live-smoke.yml` -- the check that a buyer can see a pack on the live site -- had failed
+    every run since 2026-08-18 07:43, 26 hours earlier, with the first pack card 1,363px below
+    the fold on a 844px phone and the search palette never opening (issue #384). Two more
+    scheduled workflows had never run at all.
+
+    Nothing in this estate looked at any of that. This row does, so a silent enforcement failure
+    reaches the ops console instead of waiting for someone to browse the Actions tab.
+
+    One `gh run list` call for the whole repo, not one per workflow, and it grades what it got:
+    with no `gh`, no network or no auth the rows read WARN, never a false OK.
+    """
+    workflows = _scheduled_workflows()
+    if not workflows:
+        return []
+
+    now = datetime.now(timezone.utc)
+    rows: list[tuple[str, str, str]] = []
+    for _name, filename, cron in workflows:
+        label = f"workflow {filename.removesuffix('.yml')}"
+        # Per workflow, not one shared `gh run list --limit 100`. A repo-wide list is cheaper
+        # by two calls and wrong: measured 2026-08-19, e2e-live-smoke had failed 6 runs in a
+        # row but only 1 of them was inside the newest 100 runs of a busy repo, so the shared
+        # query reported a streak of 1. An undercounted streak is what makes a long-running
+        # failure read as a blip.
+        code, out = sh(["gh", "run", "list", "--workflow", filename, "--limit", "20",
+                        "--json", "conclusion,status,createdAt"], timeout=45)
+        if code != 0:
+            rows.append((WARN, label,
+                         f"scheduled `{cron}` but `gh run list` failed, so its health is "
+                         f"UNKNOWN rather than fine: {out.strip()[:100]}"))
+            continue
+        try:
+            runs = json.loads(out)
+        except ValueError:
+            rows.append((WARN, label, "`gh run list` returned no JSON"))
+            continue
+        mine = [r for r in runs if r.get("status") == "completed"]
+        period = _cron_period_hours(cron)
+        if not mine:
+            # A workflow added yesterday that fires on Sundays has not failed to run; its slot
+            # has not arrived. Grading that BAD is a false alarm, and a false alarm is how an
+            # audit trains people to skim it. Measured 2026-08-19: both never-fired workflows
+            # here were added inside 33 hours and are weekly.
+            _, added = sh(["git", "log", "-1", "--format=%aI", "--diff-filter=A",
+                           "--", f".github/workflows/{filename}"], timeout=30)
+            age = None
+            if added.strip():
+                age = (now - datetime.fromisoformat(
+                    added.strip())).total_seconds() / 3600
+            if period and age is not None and age < period:
+                rows.append((WARN, label,
+                             f"never fired yet, and not yet due -- added {age:.0f}h ago and "
+                             f"scheduled `{cron}` (~{period:.0f}h). `gh workflow run "
+                             f"{filename} --ref main` proves it works without waiting."))
+            else:
+                rows.append((BAD, label,
+                             f"scheduled `{cron}` and has NEVER completed a run, though its "
+                             f"slot has passed. A drill that has never fired is a drill nobody "
+                             f"has proven works."))
+            continue
+
+        newest = mine[0]
+        age_h = (now - datetime.fromisoformat(
+            newest["createdAt"].replace("Z", "+00:00"))).total_seconds() / 3600
+        # A `skipped` run is not a green run -- the job never reported on the site at all --
+        # so it must not break a red streak. Measured 2026-08-19: e2e-live-smoke had failed 7
+        # runs in a row with one skip in the middle, and counting the skip as a break reported
+        # the streak as 4 and the onset as six hours later than it was.
+        streak = 0
+        for r in mine:
+            c = r.get("conclusion")
+            if c == "failure":
+                streak += 1
+            elif c == "skipped":
+                continue
+            else:
+                break
+
+        if streak:
+            reds = [r for r in mine if r.get("conclusion") == "failure"]
+            first = reds[streak - 1]["createdAt"]
+            red_h = (now - datetime.fromisoformat(
+                first.replace("Z", "+00:00"))).total_seconds() / 3600
+            rows.append((BAD, label,
+                         f"RED for {streak} consecutive run(s), unbroken since "
+                         f"{first[:16].replace('T', ' ')}Z -- {red_h:.0f}h. "
+                         f"Nothing alerts on this; the audit is the alert."))
+        elif period and age_h > period * _SCHEDULE_GRACE:
+            rows.append((WARN, label,
+                         f"last completed {age_h:.0f}h ago but scheduled `{cron}` "
+                         f"(~{period:.0f}h). It may have stopped firing."))
+        else:
+            rows.append((OK, label,
+                         f"last run {newest.get('conclusion')} {age_h:.0f}h ago, "
+                         f"scheduled `{cron}`"))
+    return rows
+
+
+def _section(title: str, grader) -> tuple[str, list[tuple[str, str, str]]]:
+    """Run one grader, and turn a crash into a FAIL ROW instead of a dead audit.
+
+    The section list used to call all nine graders while building itself, so the first one to
+    raise took the other eight with it and the process exited on a traceback. Measured
+    2026-08-20: `_grade_doc_lint_baseline` raised `ValueError: min() iterable argument is
+    empty` on an empty baseline, and the daily `com.prospector.process-audit` job had been
+    printing that traceback instead of grading anything -- on this Mac and on origin/main.
+
+    The reason that is worse than an ordinary bug: this script is what tells the estate its
+    docs have drifted. A crash reports nothing, and reporting nothing looks exactly like
+    reporting no problems. Both exit non-zero, so even the exit status could not tell them
+    apart. A crashing grader is now the loudest row in its own section, and the other eight
+    still run.
+    """
+    try:
+        return (title, grader())
+    except Exception as exc:  # noqa: BLE001 -- one broken grader must never silence the rest
+        return (title, [(BAD, f"{title}: grader crashed",
+                         f"{type(exc).__name__}: {exc} -- this section graded NOTHING, so treat "
+                         "its silence as unknown rather than clean")])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--quiet", action="store_true", help="print only problems")
@@ -778,14 +1296,15 @@ def main() -> int:
     docs = documented_names()
     sections = [
         # Production first, and it is not this Mac. Everything below this line is estate support.
-        ("production (Fly)", grade_fly()),
-        ("CI runners", grade_ci_runners()),
-        ("launchd jobs on this Mac", grade_launchd(docs)),
-        ("GitHub workflows", grade_workflows(docs)),
-        ("enforcement", grade_enforcement()),
-        ("specialist probes", grade_specialists()),
-        ("worktree drift", grade_worktree_drift()),
-        ("orphaned directories", orphaned_worktrees()),
+        _section("production (Fly)", grade_fly),
+        _section("CI runners", grade_ci_runners),
+        _section("deploys", grade_deploys),
+        _section("launchd jobs on this Mac", lambda: grade_launchd(docs)),
+        _section("GitHub workflows", lambda: grade_workflows(docs)),
+        _section("enforcement", grade_enforcement),
+        _section("specialist probes", grade_specialists),
+        _section("worktree drift", grade_worktree_drift),
+        _section("orphaned directories", orphaned_worktrees),
     ]
 
     if args.json:

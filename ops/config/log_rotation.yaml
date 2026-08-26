@@ -10,7 +10,7 @@ keep: 5         # Five archives at daily-ish rotation is roughly a working week 
                 # which is the window in which anybody asks "what happened on Tuesday".
 
 targets:
-  - path: store/scheduler/*.log
+  - path: $PROSPECTOR_STORE_DIR/scheduler/*.log
     why: >
       The daemon's stdout and stderr. This is the file that caused the rule: on 2026-08-16 a
       grep over an unrotated 25 MB launchd.err.log counted 97 provider failures and read as
@@ -19,7 +19,7 @@ targets:
     max_mb: 10
     keep: 7
 
-  - path: store/*.log
+  - path: $PROSPECTOR_STORE_DIR/*.log
     why: >
       Backup and offsite-backup receipts. Small, but they are the only proof a scheduled job
       ran, so they are kept longer than they are large.
@@ -33,6 +33,26 @@ targets:
     max_mb: 5
     keep: 2
 
+  # ── Beyond this repo. The estate is one machine, not one project. ──────────────────────
+  # Everything below was unmanaged until 2026-08-19: no policy named it, nothing rotated it,
+  # and it only got looked at because a disk bill did.
+
+  - path: ~/.hermes/logs/*.log
+    why: >
+      The Hermes daemons' stdout and stderr. Measured 2026-08-19: signalengine-daemon.err.log
+      19 MB and signalengine-daemon.out.log 11 MB, both past the 10 MB default and neither
+      ever rotated. Hermes is not production and carries no compliance duty, so history here
+      is for debugging this week, not for an audit.
+    max_mb: 10
+    keep: 3
+
+  - path: ~/.claude/*.log
+    why: >
+      Claude Code's own estate jobs (graphify refresh, cost sentinel). Small today at about
+      1 MB, declared so it stays that way rather than being noticed at 25 MB.
+    max_mb: 10
+    keep: 3
+
 # Deliberately NOT here, and why:
 #
 #   store/prospector.jsonl — 211 MB, 761,090 lines as of 2026-08-16. It looks like a log and
@@ -42,3 +62,115 @@ targets:
 #   `never-hand-parse-the-spend-ledger.md`), not a rotation.
 #
 #   store/scheduler/audit/*.jsonl — one file per day already, so it rotates by construction.
+
+# ── Pruning: directories of many files, bounded by age or by count ───────────────────────
+#
+# Rotation truncates ONE file that grew. It has nothing to say about 32,415 small files that
+# add up, which is the shape most of this estate's waste actually has. A prune target must
+# declare `older_than_days`, `keep_newest`, or both; with both, a file must fail BOTH to go.
+#
+# Every number below is a measurement taken on 2026-08-19, followed by the reason it is that
+# number. `max_delete` defaults to 20,000 and refuses the whole target if a glob turns out
+# broader than its author believed.
+prune:
+  - path: ~/.hermes/cron/output/**/*
+    why: >
+      Hermes cron job transcripts, one directory per run. Measured 32,415 files and 79.4 MB,
+      of which 14,981 files and 45.2 MB are older than 14 days. Nobody has ever read a
+      fortnight-old cron transcript: the coordinator reads the job's state, not this. Hermes
+      is not production and not a compliance risk, which is the founder's standing call on
+      how long anything here is worth keeping.
+    older_than_days: 14
+
+  - path: ~/.hermes/logs/**/*
+    why: >
+      Rotated and per-run Hermes logs under the daemon logs above. 3,941 files, 98.3 MB;
+      1,905 files and 6.5 MB older than 14 days. Small in bytes, large in count, and the
+      count is what makes the directory unreadable when something is actually wrong.
+    older_than_days: 14
+    exclude:
+      - "*.log"          # the live files; those are ROTATED above, never deleted underneath a
+                         # running daemon holding the descriptor.
+
+  - path: ~/.hermes/backups/state-*.db.gz
+    why: >
+      Hermes state snapshots, and the whole story of this directory: 7 files at ~51 MB each
+      are 359 MB of its 377 MB, and SIX of the seven were written on one morning between
+      05:34 and 09:25. Age retention cannot bound a series growing at ~300 MB/day; a count
+      can. Three holds it at about 154 MB steady, which is enough to roll back a state.db
+      that is 145 MB live, on a system the founder has ruled is neither production nor a
+      compliance risk.
+    keep_newest: 3
+
+  - path: ~/.hermes/backups/coordinator-*.db.gz
+    why: >
+      The coordinator's own snapshot series, same job and same cadence, roughly 3.6 MB each.
+      Kept a little deeper because it is the file that answers "what did the coordinator
+      think was running", and it is cheap.
+    keep_newest: 10
+
+  # These are git-TRACKED in ~/.hermes. The first --fix run deleted six of them and
+  # `git checkout` brought them all back, which is why resolve_prune now refuses any file
+  # git tracks. The target stays declared so an UNtracked .bak still ages out.
+  - path: ~/.hermes/backups/*.bak
+    why: >
+      One-off snapshots taken by hand during migrations. Five of them are dated 2026-06-22.
+      A backup taken to make one afternoon's change reversible has no reason to outlive the
+      change by two months.
+    older_than_days: 30
+
+  - path: ~/Library/Logs/CreativeCloud/**/*
+    why: >
+      Adobe Creative Cloud's logs: 239 files, 753.1 MB, every one of them more than 30 days
+      old. The single largest log pile on this machine, and it belongs to no part of this
+      estate — it is here because nothing was looking. 30 days is generous for an app whose
+      logs we will never read; the point is that a policy now looks at it every day.
+    older_than_days: 30
+
+  - path: ~/Library/Logs/Adobe/**/*
+    why: >
+      The same vendor's second log tree, 397 files and 40.9 MB.
+    older_than_days: 30
+
+  # ── The engine. This is the only target here that is not on this Mac. ────────────────
+  - path: /data/logs/*.jsonl
+    why: >
+      The ingested logs of every service, one file per service per day
+      (`prospector/log_ingest.py` writes `<svc>-<date>.jsonl` under `log_dir()`).
+
+      14 days is not a disk number. `docs/LOGGING_AND_RETENTION.md` §5.2 sets it as the HOT
+      window because it covers "what happened last week" across two weekends, and §5.3 makes
+      it a data-protection decision: these lines carry IP addresses, email addresses and
+      Stripe identifiers, so the period is an outer bound on how long personal data is held,
+      not a preference about storage.
+
+      Age only, no `keep_newest`. A count bound would hold a file forever on a service that
+      stopped emitting, which is the one case where a stale log still contains personal data
+      and no longer answers any question.
+
+      Why the path is absolute and not `$PROSPECTOR_LOG_DIR`: an environment variable would
+      have to be set on every host that runs this sweep, including this Mac, which has no
+      ingest at all — and `_assert_expanded` turns an unset variable into a `CannotEstablish`
+      that takes the WHOLE run to `unknown`, so a Mac that forgot the variable would stop
+      reporting on Hermes, Adobe and the daemon's own stdout as well. `/data/logs` simply
+      does not exist here, so the target reports zero files, which is the truth.
+
+      The cost of an absolute path is that it restates what `log_ingest.log_dir()` derives
+      from the store root. `tests/unit/test_log_retention_sweeps_where_the_logs_land.py`
+      fails if the two ever disagree.
+    older_than_days: 14
+
+# Deliberately NOT pruned, and why — this list is as load-bearing as the one above:
+#
+#   ~/.hermes/state/complaint_ledger.cache.json — 224 MB and it LOOKS like the obvious win.
+#   It is a byte-offset cache over 5.3 GB of transcripts, and `complaint_ledger._trim` already
+#   capped it on write: it came down from 835 MB on its own. Deleting it does not save
+#   anything durable, it just forces the next run to re-read 5.3 GB. Checked 2026-08-19.
+#
+#   ~/.hermes/state/complaint_register.json — "never overwritten by a scan: it is the only
+#   file here that remembers what was DONE" (complaint_ledger.py:40). A register is not a log.
+#
+#   ~/.hermes/hermes-agent/venv and node_modules — 1.0 GB, and they are the installed
+#   dependencies of a running service, not history. Reinstalling is not retention.
+#
+#   store/prospector.jsonl — the durable spend ledger, for the reason already given above.

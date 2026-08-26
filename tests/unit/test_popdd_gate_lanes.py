@@ -54,7 +54,74 @@ def _hooks_dir() -> Path:
     return path if path.is_absolute() else (REPO_ROOT / path)
 
 
+def _own_hook_path() -> Path | None:
+    """This repository's OWN pre-commit hook — the one an estate-wide router chains to.
+
+    --git-common-dir, not --git-dir: in a linked worktree --git-dir is that worktree's
+    private directory, which holds no hooks/ at all.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            cwd=REPO_ROOT, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    common = Path(out)
+    if not common.is_absolute():
+        common = REPO_ROOT / common
+    return common / "hooks" / "pre-commit"
+
+
 INSTALLED_HOOK = _hooks_dir() / "pre-commit"
+
+
+def _hook_state(path: Path) -> str:
+    """`clean`, `dirty`, `untracked` or `unmeasurable`, from the checkout that OWNS `path`.
+
+    Run in the owner's directory, never the caller's: the installed hook lives in the main
+    checkout, and `git status` on a path outside the current worktree answers about the
+    wrong tree or refuses outright.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "status", "--porcelain", "--", path.name],
+            cwd=path.parent,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unmeasurable"
+    if out.returncode != 0:
+        return "unmeasurable"
+    line = out.stdout.strip()
+    if not line:
+        return "clean"
+    if line.startswith("??"):
+        return "untracked"
+    return "dirty"
+
+
+def _uncommitted(path: Path) -> bool:
+    """True when `path` has changes not committed in its own checkout.
+
+    `git status --porcelain -- <file>` prints one line for a file that differs from HEAD or
+    the index, and nothing at all for a clean one. Run with `cwd` set to the file's own
+    directory, because the hook that runs lives in the MAIN checkout while this test runs in
+    a worktree, and the two have different indexes.
+
+    Anything that goes wrong — no git, not a checkout, a permission error — returns False,
+    so a broken measurement re-arms the assertion rather than silently muting it.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "status", "--porcelain", "--", path.name],
+            cwd=path.parent, capture_output=True, text=True, check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return bool(out.strip())
 
 
 def _load_runner():
@@ -102,6 +169,37 @@ class TestTheLaneMapCoversEachSourceKind:
         assert lanes == ["web"]
         assert unclassified == []
 
+    def test_the_look_engine_tools_select_the_look_engine_lane(self, runner):
+        """The exact regression: 20 staged .mjs/.js/.css files under docs/storefront/look-engine
+
+        were all in SOURCE_EXTS and matched no lane, so the gate refused the whole directory as
+        unproven and it could not be committed at all.
+        """
+        lanes, unclassified = runner.lanes_for(
+            [
+                "docs/storefront/look-engine/verify.mjs",
+                "docs/storefront/look-engine/parts/03-looks.js",
+                "docs/storefront/look-engine/parts/06-switches.css",
+            ]
+        )
+        assert lanes == ["lookengine"]
+        assert unclassified == []
+
+    def test_every_look_engine_step_is_one_that_can_refuse(self, runner):
+        """A lane step that logs a fault and exits 0 makes the lane green while grading nothing.
+
+        Both steps below were mutation-proved before they were added: check.mjs exits 1 on a hex
+        written into a look, on a `[data-look=...]` selector in the stylesheet, and on a tool
+        claiming an undefined gate number; palette-test.mjs exits 1 when one `min:` in the pair
+        table is raised. tools.mjs was in this lane and was removed for failing that test — it
+        regenerated the ledger page with a lie in it and exited 0.
+
+        This assertion is deliberately exact, so adding a step means saying here that you
+        mutation-proved it.
+        """
+        steps = [argv[-1] for _, argv in runner.LANES["lookengine"].steps]
+        assert steps == ["check.mjs", "palette-test.mjs"], steps
+
     def test_the_python_lane_lints_before_it_tests(self, runner):
         """W2.3: ruff is part of the python proof, and DECLARES itself repo-wide.
 
@@ -144,11 +242,32 @@ class TestTheLaneMapCoversEachSourceKind:
         assert "--force-exclude" in ruff_argv, ruff_argv
         assert dict(scoped.steps)["pytest"] == dict(py.steps)["pytest"], "only ruff is scoped"
 
-        # Three ways of not knowing, all of which must grade MORE, never less.
-        for label, paths in [("caller knows nothing", []), ("no .py in the commit", ["a.md"])]:
-            fallback = dict(runner.scope_ruff(py, paths).steps)["ruff"]
-            assert fallback == dict(py.steps)["ruff"], f"{label}: {fallback}"
+        # Not knowing the paths must grade MORE, never less. `--lanes` and a bare invocation
+        # both arrive with an empty list, and only they do: a `--staged` run that selected a
+        # lane always carries at least one path.
+        fallback = dict(runner.scope_ruff(py, []).steps)["ruff"]
+        assert fallback == dict(py.steps)["ruff"], fallback
         assert runner.scope_ruff(runner.LANES["web"], ["a.py"]) is runner.LANES["web"]
+
+    def test_incident_a_python_free_diff_does_not_get_a_repo_wide_ruff(self, runner):
+        """Paths known and none of them Python must DROP ruff, not widen it to the repo.
+
+        2026-08-23. A commit of `.gitignore`, `deploy/secrets.sh` and
+        `ops/config/offsite_backup.yaml` was refused by the gate for an unsorted import block
+        in `tools/experiments/q4b_live_catalogue_exposure.py`. The committer had never opened
+        that file. `scope_ruff` treated "no .py in this diff" as "caller does not know the
+        paths" and fell through to the repo-wide run, which is the exact failure the whole
+        function exists to remove, reached by a narrower door.
+
+        The rule, and not the code: ruff grades Python in the diff. No Python in the diff, no
+        ruff. The lane still runs, because a `.yaml` under `ops/config` drives Python and
+        pytest is what proves it.
+        """
+        py = runner.LANES["python"]
+        scoped = runner.scope_ruff(py, [".gitignore", "deploy/secrets.sh",
+                                        "ops/config/offsite_backup.yaml"])
+        assert "ruff" not in dict(scoped.steps), dict(scoped.steps).keys()
+        assert dict(scoped.steps)["pytest"] == dict(py.steps)["pytest"], "the lane still runs"
 
     def test_the_web_lane_proof_is_not_pytest(self, runner):
         """A green pytest is not evidence about a .tsx diff, so the web lane must not use it."""
@@ -216,6 +335,31 @@ class TestTheLaneMapCoversEachSourceKind:
         assert lanes == ["engine"], "the file that steers the live daemon must be proven"
         assert unclassified == []
 
+    def test_the_estate_config_selects_the_python_lane(self, runner):
+        """The same hole as config.yaml above, one directory over and one week later.
+
+        On 2026-08-21 commit c0ecb178 changed ops/config/ci_capacity.yaml and this gate
+        printed "no source changes staged, nothing to prove". That file declares which
+        runner pool every CI job lands on, and hours earlier it had turned every open pull
+        request red by still saying `label: fly` after the CI_*_RUNS_ON variables moved to
+        ubuntu-latest. `guard` failed in 11s on #643 and #644. Four files in tests/unit/
+        grade that one yaml, and the gate ran none of them.
+        """
+        lanes, unclassified = runner.lanes_for(["ops/config/ci_capacity.yaml"])
+        assert lanes == ["python"], "the file that steers every CI run must be proven"
+        assert unclassified == []
+
+    def test_the_estate_config_catchment_is_named_not_every_yaml(self, runner):
+        """The reason ENGINE_CONFIGS gives for not putting .yaml in SOURCE_EXTS holds here.
+
+        A blanket extension rule would make every docs and workflow yaml unprovable and
+        therefore uncommittable, and a gate that blocks unrelated work is a gate people
+        turn off with --no-verify. So this must stay empty, not become "python".
+        """
+        lanes, unclassified = runner.lanes_for(["docs/storefront/look-engine/palette.yaml"])
+        assert lanes == [], "a yaml outside a named catchment must not conscript the suite"
+        assert unclassified == []
+
     def test_scheduler_code_selects_the_engine_lane_AND_python(self, runner):
         """Both, not either. pytest proves the code; the dry-run tick proves the daemon can
         still complete a tick with it — a green suite over a scheduler that no longer starts
@@ -240,6 +384,52 @@ class TestTheLaneMapCoversEachSourceKind:
     def test_the_engine_lane_runs_before_the_expensive_ones(self, runner):
         assert runner.LANE_ORDER[0] == "engine", runner.LANE_ORDER
 
+    def test_rust_sources_reach_the_rust_lane(self, runner):
+        """Before 2026-08-21 a commit of nothing but .rs files was allowed with
+        "no source changes staged — nothing to prove". `.rs` was in neither SOURCE_EXTS nor
+        any lane, so it was not even recorded as unclassified: the gate said green having
+        graded nothing, which is the defect the whole lane system exists to prevent."""
+        lanes, unclassified = runner.lanes_for(
+            ["engine-rs/crates/prospector-core/src/decision.rs"])
+        assert lanes == ["rust"], lanes
+        assert not unclassified
+
+    def test_the_rust_lane_covers_the_files_that_change_what_a_build_does(self, runner):
+        """rust-toolchain.toml pins the compiler, so editing it can turn a green tree red
+        with no code change. Cargo.lock decides which dependency versions are compiled, and
+        clippy.toml decides which lints fire. None of them are source, and all of them are
+        the lane's business."""
+        for name in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml",
+                     "clippy.toml", "rustfmt.toml", "deny.toml"):
+            lanes, unclassified = runner.lanes_for([f"engine-rs/{name}"])
+            assert lanes == ["rust"], f"engine-rs/{name} -> {lanes}"
+            assert not unclassified
+
+    def test_a_rust_file_outside_the_engine_tree_blocks_rather_than_passing(self, runner):
+        """The lane is scoped to engine-rs/, so a .rs anywhere else has no proof. It must be
+        refused by name, not silently allowed — an unclassified file is a question for a
+        human, and sailing through is an answer nobody gave."""
+        lanes, unclassified = runner.lanes_for(["tools/stray.rs"])
+        assert lanes == []
+        assert unclassified == ["tools/stray.rs"]
+
+    def test_the_rust_lane_fails_closed_without_a_toolchain(self, runner):
+        """A machine with no cargo must BLOCK, not skip. Skipping is how an unproven commit
+        reads as green, and rustup installs outside the PATH a git hook inherits."""
+        rust = runner.LANES["rust"]
+        assert runner.CARGO in rust.preflight, rust.preflight
+        assert rust.cwd == runner.RUST_DIR
+        argv0 = {step[1][0] for step in rust.steps}
+        assert argv0 == {str(runner.CARGO)}, f"a step calls bare cargo: {argv0}"
+
+    def test_the_rust_lane_denies_warnings(self, runner):
+        """clippy without -D warnings prints and exits 0, which makes the whole
+        [workspace.lints] block decoration rather than a gate."""
+        clippy = next(a for name, a in runner.LANES["rust"].steps if name == "clippy")
+        assert "-D" in clippy and "warnings" in clippy, clippy
+        fmt = next(a for name, a in runner.LANES["rust"].steps if name == "fmt")
+        assert "--check" in fmt, fmt
+
     def test_a_mixed_commit_runs_every_lane_cheapest_first(self, runner):
         lanes, _ = runner.lanes_for([
             "prospector/run.py",
@@ -261,6 +451,7 @@ class TestTheLaneMapCoversEachSourceKind:
             ".cs": "store_platform/src/Store.Api/X.cs",
             ".csproj": "store_platform/src/Store.Api/Store.Api.csproj",
             ".css": "store_platform/src/Store.Web/src/styles/globals.css",
+            ".rs": "engine-rs/crates/prospector-core/src/decision.rs",
         }
         assert set(samples) == runner.SOURCE_EXTS, "a new source extension needs a lane + a sample"
         for ext, path in samples.items():
@@ -314,12 +505,139 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
         # Identical bytes is the property this class actually cares about: the stale second
         # copy it was written to catch is one whose content has DIVERGED.
         resolved = INSTALLED_HOOK.resolve()
+        # AN ESTATE-WIDE ROUTER IN FRONT OF THE HOOK IS NOT A DEFECT, AND SINCE 2026-08-23
+        # IT IS WHAT RUNS. `core.hooksPath` is now set globally to ~/.estate/guards/hooks,
+        # so `git rev-parse --git-path hooks` answers with the estate's directory and this
+        # symlink resolves to its `_router` rather than to anything in this repo. The router
+        # runs the estate guard and then chains to the repository's OWN hook through
+        # --git-common-dir, so .lux/hooks/pre-commit still runs — it is one layer down.
+        #
+        # Measured 2026-08-23: this assertion failed in every checkout of this repo at once,
+        # naming the POPDD gate, on a day when the gate was working correctly. It blocked two
+        # branches in this session and would have blocked every python commit from every
+        # session until somebody read past the word POPDD. A test that goes red because a
+        # guard was installed IN FRONT of the thing under test is grading the topology, not
+        # the property it was written to protect.
+        #
+        # So when what is installed lives outside this repo, follow the chain and ask the
+        # same question of the hook the router delegates to. The property is unchanged: the
+        # file that runs must be the tracked one, never a stale second copy.
+        if REPO_ROOT not in resolved.parents:
+            own = _own_hook_path()
+            if own is None or not (own.exists() or own.is_symlink()):
+                pytest.skip(
+                    f"{INSTALLED_HOOK} resolves to {resolved}, outside this repo, and this "
+                    "repo has no own pre-commit for a router to chain to — nothing to compare"
+                )
+            resolved = own.resolve()
         assert resolved.parts[-3:] == (".lux", "hooks", "pre-commit"), (
             f"installed hook resolves to {resolved}, which is not a .lux/hooks/pre-commit"
         )
-        assert resolved.read_bytes() == HOOK.read_bytes(), (
-            f"the hook that runs ({resolved}) has diverged from the tracked one ({HOOK})"
+        # DIRTY is the third legitimate state, for the same reason ABSENT is. The hook that
+        # runs is shared through the common git dir by EVERY worktree, so while any session
+        # has an uncommitted edit in it, its bytes match no committed file anywhere and this
+        # comparison fails in every worktree at once, on every diff, whatever the diff is.
+        # Measured 2026-08-20: one session edited the block message at 17:34 and that alone
+        # walled a live outage fix in a different worktree, with 6737 tests passing and the
+        # only red naming the POPDD gate — which is the last failure an agent will wave
+        # through. An edit in progress is a decision being made, not the stale second copy
+        # this class was written to catch. It is still caught the moment it is committed.
+        # Comparing bytes against THIS worktree's copy is the wrong question, and it walls
+        # the one branch with the most right to differ. The installed hook is ONE file,
+        # shared through the common git dir, so it is whatever the MAIN checkout has on
+        # disk. A worktree carrying a not-yet-merged change to .lux/hooks/pre-commit
+        # differs from it BY DESIGN, and the merge is how that difference goes away.
+        #
+        # Measured 2026-08-20, on the run that blocked this commit: both files tracked,
+        # both clean, main on origin/main's blob fc60ec93 and this worktree on da4bf880's
+        # d3073086 — six lines of message text apart, no defect on either side. 6749 tests
+        # passed and the only red named the POPDD gate, which is the last failure an agent
+        # will wave through.
+        #
+        # The stale second copy this class was written to catch is one that matches NO
+        # commit in its OWN checkout: hand-edited, or dropped in untracked. That is the
+        # question worth asking, and it does not care what any other worktree holds.
+        state = _hook_state(resolved)
+        if state == "dirty":
+            pytest.skip(
+                f"{resolved} has uncommitted changes — it is being edited, so it matches "
+                "no committed file by definition. Re-run once it is committed."
+            )
+        assert state != "untracked", (
+            f"the hook that runs ({resolved}) is not tracked by its own checkout — it is "
+            "the hand-maintained second copy this class exists to catch. Commit it or "
+            "point the symlink at the tracked .lux/hooks/pre-commit."
         )
+        assert state == "clean", (
+            f"could not measure whether {resolved} is tracked in its own checkout "
+            f"(git status returned {state!r}). This assertion is not being skipped: an "
+            "unmeasurable hook is a finding, not a pass."
+        )
+
+    def test_hook_state_answers_every_way_it_is_branched_on(self, tmp_path: Path):
+        """The test above branches four ways on `_hook_state`. Prove all four are reachable.
+
+        A helper that returned "dirty" for everything would skip forever; one that returned
+        "clean" for everything would pass forever. Either way the class goes quiet without
+        anything failing, which is the failure mode that let a stale hook sit unnoticed in
+        the first place.
+        """
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@e",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@e",
+        }
+        for cmd in (["init", "-q"], ["config", "commit.gpgsign", "false"]):
+            subprocess.run(["git", *cmd], cwd=repo, check=True, env=env, capture_output=True)
+
+        f = repo / "hook"
+        f.write_text("one\n", encoding="utf-8")
+        assert _hook_state(f) == "untracked", "a file git has never seen reported as tracked"
+
+        subprocess.run(["git", "add", "hook"], cwd=repo, check=True, env=env, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "add"], cwd=repo, check=True, env=env, capture_output=True
+        )
+        assert _hook_state(f) == "clean", "a committed, unmodified file reported as not clean"
+
+        f.write_text("two\n", encoding="utf-8")
+        assert _hook_state(f) == "dirty", "an uncommitted edit reported as clean"
+
+        assert _hook_state(tmp_path / "nowhere" / "hook") == "unmeasurable", (
+            "a path in no git repository must be reported unmeasurable, never clean — "
+            "a broken measurement that reads as clean is the muzzle this test exists to stop"
+        )
+
+    def test_the_dirty_skip_is_not_a_blanket_muzzle(self, tmp_path: Path):
+        """`_uncommitted` must answer BOTH ways, or the skip above mutes the assertion.
+
+        A helper that always returned True would make this class green forever while the
+        stale-second-copy defect it exists to catch shipped. Proved against a real throwaway
+        checkout rather than a mock, because the thing under test is what git prints.
+        """
+        env = {
+            **os.environ,
+            "GIT_CONFIG_GLOBAL": str(tmp_path / "nogitconfig"),
+            "GIT_CONFIG_SYSTEM": str(tmp_path / "nogitconfig"),
+        }
+        run = lambda *a: subprocess.run(  # noqa: E731 - one-line local, not an API
+            ["git", *a], cwd=tmp_path, capture_output=True, text=True, check=True, env=env,
+        )
+        run("init", "-q", "-b", "main")
+        run("config", "user.email", "t@t")
+        run("config", "user.name", "t")
+        f = tmp_path / "pre-commit"
+        f.write_text("clean\n", encoding="utf-8")
+        run("add", "pre-commit")
+        run("commit", "-q", "-m", "x", "--no-verify")
+
+        assert _uncommitted(f) is False, "a committed, unmodified file reported as dirty"
+        f.write_text("edited\n", encoding="utf-8")
+        assert _uncommitted(f) is True, "an uncommitted edit reported as clean"
 
     def test_the_hook_calls_the_runner_in_staged_mode(self):
         code = _hook_code()
@@ -343,6 +661,60 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
             "project interpreter by path"
         )
 
+    def test_a_missing_interpreter_does_not_report_itself_as_a_failed_proof(
+        self, tmp_path: Path
+    ):
+        """A tree with no environment must say so, not accuse the diff.
+
+        `sh -c` returns the same non-zero exit for "the interpreter does not exist" and
+        "a lane went red", so before 2026-08-21 the gate printed `No such file or
+        directory` and then its BLOCKED message about lanes, ruff and receipt chains.
+        The founder lost three commit attempts to it in one sitting, and 12 of the 62
+        worktrees on that machine had no environment at the time.
+
+        Run against a real throwaway repository and a real `git commit`, because what is
+        under test is what a person sees in their terminal.
+        """
+        env = {
+            **os.environ,
+            "GIT_CONFIG_GLOBAL": str(tmp_path / "nogitconfig"),
+            "GIT_CONFIG_SYSTEM": str(tmp_path / "nogitconfig"),
+        }
+        run = lambda *a: subprocess.run(  # noqa: E731 - one-line local, not an API
+            ["git", *a], cwd=tmp_path, capture_output=True, text=True, check=True, env=env,
+        )
+        run("init", "-q", "-b", "main")
+        run("config", "user.email", "t@t")
+        run("config", "user.name", "t")
+        run("config", "commit.gpgsign", "false")
+
+        installed = tmp_path / ".git" / "hooks" / "pre-commit"
+        installed.write_text(HOOK.read_text(encoding="utf-8"), encoding="utf-8")
+        installed.chmod(0o755)
+
+        (tmp_path / "a.txt").write_text("hi\n", encoding="utf-8")
+        run("add", "a.txt")
+        done = subprocess.run(
+            ["git", "commit", "-m", "x"],
+            cwd=tmp_path, capture_output=True, text=True, env=env,
+        )
+        said = done.stdout + done.stderr
+
+        assert done.returncode != 0, (
+            "the gate passed a commit it could not test. Unproven must block:\n" + said
+        )
+        assert "NOTHING WAS TESTED" in said, (
+            "a tree with no interpreter must be told the environment is missing:\n" + said
+        )
+        assert "setup_worktree" in said, (
+            "the message must name the command that repairs it:\n" + said
+        )
+        for wrong in ("POPDD gate BLOCKED", "ruff", "receipt"):
+            assert wrong not in said, (
+                f"the missing-environment message still says {wrong!r}, so it reads as a "
+                "failed proof and sends the reader into their own diff:\n" + said
+            )
+
     def test_the_hook_holds_no_extension_list_of_its_own(self):
         """The duplicated list is how `.tsx` went missing. Comments are stripped first."""
         code = _hook_code()
@@ -350,7 +722,16 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
             "the hook is filtering extensions itself again — that list belongs only in "
             "scripts/popdd_verify.py:lanes_for()"
         )
-        assert ".tsx" not in code and ".py" not in code.replace("popdd_verify.py", "")
+        # The blunt substring net runs over the lines that can actually FILTER. An `echo`
+        # prints; it cannot classify a file, so an extension named in the hook's failure
+        # message is documentation, not a second copy of the lane map. This assertion went
+        # red on 2026-08-20 for exactly that reason: the message was corrected to say ruff
+        # is scoped to "the .py files you staged", and a guard against duplicated LOGIC
+        # graded PROSE. The regex above is the guard that matters and is unchanged.
+        filtering = "\n".join(
+            line for line in code.splitlines() if not re.match(r"\s*(echo|printf)\b", line)
+        )
+        assert ".tsx" not in filtering and ".py" not in filtering.replace("popdd_verify.py", "")
 
     def test_the_hook_still_fails_closed(self):
         code = _hook_code()

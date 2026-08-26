@@ -11,11 +11,15 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from prospector import prose_target
+from prospector import config, prose_target
 from prospector.register_lint import measurable_prose
 
 PROSE = ("build_spec", "gtm_plan", "ops_plan")
-root = pathlib.Path("/Users/chidionyema/Documents/code/prospector/store/dossiers")
+# NEVER hardcode a store path. `config.store_root()` honours PROSPECTOR_STORE_DIR, which is
+# what pins the catalogue; the path this line used to carry held 0 pass dossiers on
+# 2026-08-21, so the baseline printed "0 documents, 0.0% outside" and exited clean. An audit
+# that grades nothing must say so, not report a perfect score.
+root = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else config.store_root() / "dossiers"
 
 docs = 0
 with_findings = 0
@@ -51,7 +55,13 @@ for f in sorted(root.glob("*.pass.json")):
                 per_measure[fi["measure"]] += 1
 
 print("########## REGISTER BASELINE (draft one, on disk, no model calls)")
+print(f"store                  : {root}")
 print(f"prose documents graded : {docs}")
+if not docs:
+    print("NOTHING GRADED. This store holds no prose artifacts, so the figures below are "
+          "not a clean baseline -- they are an empty one. Point it at a store that has "
+          "them: python register_baseline.py <store>/dossiers")
+    raise SystemExit(2)
 print(f"grade failed           : {unreadable}")
 pct = (100.0 * with_findings / docs) if docs else 0.0
 print(f"outside human range    : {with_findings}  ({pct:.1f}%)")

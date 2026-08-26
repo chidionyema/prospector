@@ -24,3 +24,5 @@ Limitations:
 - store/dossiers is written by the live daemon, so a later re-run shifts counts by a few dossiers. _meta.run_at_utc and dossier_files_globbed pin this run.
 
 Receipt: `tools/experiments/e12_adversarial_groundedness_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E12`
+
+**Follow-through:** SHIPPED prospector/verify.py — the `_dangling` filter closes the class this report named as the hole the guard did not close: adversarial citations resolving to no retrieved passage are stripped, and the filter's own comment cites these receipts. No line number on purpose; grep `_dangling`.

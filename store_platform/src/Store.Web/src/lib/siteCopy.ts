@@ -33,17 +33,28 @@ export const SITE_COPY = {
    */
   heroH1: 'Business ideas with the research already done.',
 
+  /* WHAT THESE THREE MAY CLAIM, AND WHY.
+     Every one of them read "a full pack free" until 2026-08-21. /sample stopped being a full
+     pack on 2026-08-15, when the founder settled it as a true excerpt: `data/sample-report.json`
+     ships `sectionsShown: 3` against `sectionsTotal: 14`, and names the other eleven in
+     `withheld`. `pages/sample.tsx` was rewritten that day and its own headline says so -- "The
+     opening of a real pack, in full." The three links INTO the page were not rewritten, so
+     every route to the sample promised fourteen sections and delivered three, and the break
+     landed on the first click a stranger makes.
+     `__tests__/sampleOfferIsTrue.test.ts` reads the fixture and fails if any string here claims
+     a whole pack while the fixture withholds one. Widen the sample and the test lets the claim
+     back in by itself. */
   /**
    * D6: an em dash, no trailing full stop, and the arrow removed so the line cannot wrap onto a
    * glyph of its own at 390px. `mockups/index.html`.
    * The `dash-free-ignore` pragma must sit on the same line as the character it exempts
    * (`src/__tests__/dashFree.test.ts:68` tests `line.includes(IGNORE)`).
    */
-  /* dash-free-ignore */ sampleLinkHero: 'Read a full pack free — no email needed',
+  /* dash-free-ignore */ sampleLinkHero: 'Read the opening of a real pack free — no email needed',
 
   /** `mockups/pack-detail.html:529`, the buy rail's link under the button. */
-  sampleLinkPanel: 'Read a full pack free first',
+  sampleLinkPanel: 'Read the opening of a real pack free first',
 
   /** Every other entry point: /faq, /ideas, the pack page's mobile bar. */
-  sampleLink: 'Read a full pack free',
+  sampleLink: 'Read the opening of a real pack, free',
 } as const;

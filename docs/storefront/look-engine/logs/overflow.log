@@ -1,0 +1,15 @@
+$ node overflow.mjs
+started  2026-08-20T19:01:43Z
+node     v26.3.0
+---
+ALL PASS — no sideways scroll and no escaping element at 7 widths (320, 390, 744, 834, 1024, 1440, 2560)
+   320px  scrollWidth 320  escaping 0
+   390px  scrollWidth 390  escaping 0
+   744px  scrollWidth 744  escaping 0
+   834px  scrollWidth 834  escaping 0
+  1024px  scrollWidth 1024  escaping 0
+  1440px  scrollWidth 1440  escaping 0
+  2560px  scrollWidth 2560  escaping 0
+---
+exit     0
+duration 9s

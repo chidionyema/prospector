@@ -67,17 +67,27 @@ concurrency:
   group: deploy-web
   cancel-in-progress: false
 
+# WHY THESE JOBS DO NOT RUN ON THE SELF-HOSTED FLEET.
+# On 2026-08-19 a merge to main sat undeployed for twelve hours. Nothing had failed: the deploy
+# run was QUEUED behind feature-branch CI, because deploys asked for the same `heavy` label as
+# every other job and the fleet is three machines. Sessions push branches faster than three
+# runners drain them, so a deploy is always last in a queue it shares.
+# A deploy job here is a checkout, a toolchain and `flyctl deploy`, which builds on Fly's remote
+# builder — it needs a runner, not a big one. GitHub-hosted runners are a separate queue, so a
+# deploy can no longer wait behind our own CI. Set `CI_DEPLOY_RUNS_ON` to move them back,
+# without another code change.
+# Pinned by tests/unit/test_deploys_do_not_share_the_ci_queue.py.
 jobs:
   # The image build runs `next build`, which typechecks — so a type error already fails the deploy.
   # It does NOT run vitest, so the unit suite is gated here rather than discovered in production.
   test:
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: store_platform/src/Store.Web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
@@ -88,11 +98,11 @@ jobs:
 
   deploy:
     needs: test
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master as of 2026-08-25
 
       # deploy_web.sh reads its values from an env FILE rather than the environment, because the
       # laptop case is a real .env holding both Stripe pairs side by side. Compose the same shape
@@ -131,6 +141,7 @@ jobs:
           cut -d= -f1 "$RUNNER_TEMP/deploy.env" | sed 's/^/  var /'
 
       - name: Deploy
+        id: deploy
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           ENV_FILE: ${{ runner.temp }}/deploy.env
@@ -139,6 +150,10 @@ jobs:
         run: |
           set -euo pipefail
           : "${FLY_API_TOKEN:?set repo secret FLY_API_TOKEN (flyctl tokens create deploy)}"
+          # `$DRY` is either empty or the single word `--dry-run`, and must vanish when
+          # empty. Quoting it passes an empty string as a second argument, which the
+          # deploy script reads as an unknown flag.
+          # shellcheck disable=SC2086
           bash store_platform/scripts/deploy_web.sh "$TARGET" $DRY
 
       # `flyctl deploy` exiting 0 means the machines took the image, not that the site serves.
@@ -153,3 +168,45 @@ jobs:
                    --retry-all-errors "$SITE_URL/")
           echo "GET $SITE_URL/ -> $code"
           [ "$code" = "200" ] || { echo "site did not return 200 after deploy"; exit 1; }
+
+      # SELF-HEALING. Everything above this line ALERTS. `flyctl deploy` ships the image, the
+      # proof requests run, and when a proof goes red the bad image keeps serving production
+      # until a person reads the failure mail and clicks Rollback. Founder, 2026-08-20:
+      # "alerts is one thing, recovery and self healing is anither".
+      #
+      # This step is the recovery arm. It pulls the rollback that ALREADY EXISTS rather than
+      # adding a second one: scripts/rollback_now.py is the same code path the ops console's
+      # Rollback button runs. It re-deploys the previous release's image (no build, no source
+      # tree, so nothing in this commit can poison it) and probes itself afterwards.
+      #
+      # The condition is narrow on purpose. A bare `failure()` would also fire when the BUILD
+      # failed - production was never touched in that case, and rolling a healthy service back
+      # to an older image would be an outage this workflow caused rather than cured.
+      # `steps.deploy.outcome == 'success'` is what limits it to the one case that needs
+      # healing: the new image IS serving, and it does not answer.
+      #
+      # The job stays RED either way. Restoring service is not the same as the commit being
+      # good, and main still carries it, so the next merge touching these paths ships it again.
+      - name: Roll back, because this deploy does not answer
+        if: ${{ failure() && steps.deploy.outcome == 'success' && !inputs.dry_run }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          python3 scripts/rollback_now.py store-web
+          rc=$?
+          {
+            echo "## Automatic rollback"
+            echo ""
+            if [ "$rc" = "0" ]; then
+              echo "Commit $GITHUB_SHA deployed but did not answer, so prospector-store-web was rolled"
+              echo "back to its previous release, and that release passes its health checks."
+            else
+              echo "Commit $GITHUB_SHA deployed, did not answer, and THE ROLLBACK DID NOT"
+              echo "RESTORE IT (exit $rc). This needs a human now."
+            fi
+            echo ""
+            echo "This does not change main. The commit is still there and the next merge"
+            echo "touching these paths ships it again. Revert it."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"

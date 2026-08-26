@@ -5,7 +5,6 @@
     engine_failover.py check                      one poll; what the watchdog job runs
     engine_failover.py arm  / disarm              turn automatic failover on and off
     engine_failover.py switch --to laptop|fly     move the engine, by hand
-    engine_failover.py sync                       pull Fly's money files down to the standby
 
 WHY THIS FILE EXISTS
 --------------------
@@ -47,8 +46,10 @@ should be looked at, not assumed.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -65,9 +66,26 @@ ACTIVE_F = CTRL / "ACTIVE"
 ARMED_F = CTRL / "AUTOFAILOVER"
 FAILS_F = CTRL / "failcount"
 EVENTS_F = CTRL / "events.jsonl"
-STANDBY = CTRL / "standby"          # the pulled copy of Fly's money files
+STANDBY = CTRL / "standby"          # where a failover restores the money files TO
+#: The checkout a failback would start FROM. A different axis from the money files above:
+#: those carry the DATA, this carries the CODE, and the two rot independently and for
+#: unrelated reasons. Reporting one and calling it "the exposure" is what let the code axis
+#: reach 81 commits behind unnoticed.
+STANDBY_CHECKOUT = Path(os.environ.get(
+    "PROSPECTOR_STANDBY_CHECKOUT", "/Users/chidionyema/Documents/code/prospector-live"))
 
 FLY_APP = os.environ.get("PROSPECTOR_FLY_APP", "prospector-engine")
+#: The ONE backup system. Until 2026-08-21 this file carried a second one: 220 lines that
+#: pulled both money files off Fly over `fly ssh sftp` every 15 minutes, with its own
+#: size check, partial-tail trimmer, shrink-refusal switch and stderr parser. It produced
+#: four distinct failures in one day - out of disk, a 600s timeout, a flyctl metrics
+#: WARNING parsed as "the file did not arrive", and a 1970 timestamp in its own log - while
+#: scripts/backup_store.py was already putting the same two files in R2 and getting it
+#: right. Measured the day it was deleted: R2's ledger snapshot was 2 minutes old and
+#: 34,687,133 bytes; the last thing the sftp path landed was 9,240,576 bytes of a
+#: 455,787,146-byte file, promoted as if it were complete.
+BACKUP_PY = REPO / "scripts" / "backup_store.py"
+VENV_PY = Path(os.environ.get("PROSPECTOR_VENV_PYTHON", str(REPO / ".venv" / "bin" / "python")))
 LAPTOP_STORE = Path(os.environ.get("PROSPECTOR_STORE_DIR",
                                    "/Users/chidionyema/Documents/code/prospector/store"))
 NEEDED_AGREEING_POLLS = int(os.environ.get("PROSPECTOR_FAILOVER_POLLS", "5"))
@@ -78,8 +96,8 @@ HEARTBEAT_STALE_S = int(os.environ.get("PROSPECTOR_HEARTBEAT_STALE_S", "300"))
 
 # The two files that carry money. The spend ledger decides whether the daily cap has been hit;
 # the database carries the catalogue and the entitlements. Everything else - dossiers, logs,
-# caches - is reproducible, so the standby copy does not carry it and the sync stays cheap
-# enough to run every fifteen minutes.
+# caches - is reproducible. scripts/backup_store.py puts both in R2 continuously; this file
+# no longer copies them itself, it restores them from there when a failover needs them.
 MONEY_FILES = ("prospector.jsonl", "prospector.db")
 
 
@@ -247,22 +265,194 @@ def probe_laptop(deep: bool = False) -> dict:
     return out
 
 
-def probe_standby() -> dict:
-    """How stale is the copy a failover would start from? This number IS the exposure."""
-    out: dict = {"files": {}}
-    oldest = None
-    for name in MONEY_FILES:
-        f = STANDBY / name
-        if not f.exists():
-            out["files"][name] = None
-            oldest = -1
-            continue
-        age = round((time.time() - f.stat().st_mtime) / 60, 1)
-        out["files"][name] = {"bytes": f.stat().st_size, "age_min": age}
-        oldest = age if oldest is None else max(oldest, age)
-    out["staleness_min"] = oldest
-    out["usable"] = oldest is not None and oldest >= 0
+def probe_standby_code() -> dict:
+    """How many commits behind origin/main is the failback checkout?
+
+    Deliberately does NOT fetch. This runs on every console status poll, and a probe that
+    reaches the network is a probe that hangs when the network does.
+
+    The cost of not fetching is the trap this estate already has a law about: `git rev-list
+    --count HEAD..origin/main` reports 0 against an `origin/main` nobody has fetched today, so
+    a 0 means EITHER "current" OR "nobody has looked in a week", and the two are the opposite
+    of each other. So the age of the ref the count was taken against is reported beside it,
+    and neither number means anything alone. A reader who sees behind=0 with ref_age_min=4300
+    is looking at an instrument that has not been told anything for three days.
+    """
+    out: dict = {"checkout": str(STANDBY_CHECKOUT)}
+    if not (STANDBY_CHECKOUT / ".git").exists():
+        out["error"] = f"no checkout at {STANDBY_CHECKOUT}"
+        return out
+    git = ["git", "-C", str(STANDBY_CHECKOUT)]
+    rc, head, err = sh(git + ["rev-parse", "--short", "HEAD"], timeout=20)
+    if rc != 0:
+        out["error"] = (err or "git rev-parse HEAD failed").strip()[:200]
+        return out
+    out["head"] = head.strip()
+    rc, count, err = sh(git + ["rev-list", "--count", "HEAD..origin/main"], timeout=20)
+    if rc != 0:
+        out["error"] = (err or "git rev-list failed").strip()[:200]
+        return out
+    try:
+        out["behind"] = int(count.strip())
+    except ValueError:
+        out["error"] = f"unreadable commit count: {count.strip()[:80]}"
+        return out
+    fetch_head = STANDBY_CHECKOUT / ".git" / "FETCH_HEAD"
+    try:
+        out["ref_age_min"] = round((time.time() - fetch_head.stat().st_mtime) / 60, 1)
+    except OSError:
+        # No FETCH_HEAD at all means nothing has ever fetched here, so `behind` was counted
+        # against whatever the clone was born with. Say so rather than reporting a number.
+        out["ref_age_min"] = None
     return out
+
+
+def standby_code_line(code: dict) -> str:
+    """One line an operator can act on: how far back a failover would start, CODE axis.
+
+    Separate from probe_standby_code() so the wording is testable without a git repo, and so
+    the number cannot be computed and then never printed - which is what happened for the
+    whole of the period it was 81 commits behind.
+
+    behind==0 is only good news when the ref it was counted against is fresh. A zero taken
+    against a ref nobody has fetched in three days is the same reading as a zero taken one
+    minute after a deploy, and they mean opposite things, so an old ref never prints OK.
+    """
+    if code.get("error"):
+        return f"standby CODE: UNKNOWN - {code['error']}"
+    behind = code.get("behind")
+    head = code.get("head", "?")
+    age = code.get("ref_age_min")
+    age_txt = "ref NEVER fetched" if age is None else f"ref {age}m old"
+    fresh = age is not None and age < 60
+    mark = "OK" if behind == 0 and fresh else "!!"
+    return (f"standby CODE: {mark} {behind} commits behind origin/main at {head} "
+            f"({age_txt}) - a failover starts from THIS commit")
+
+
+def probe_running_code() -> dict:
+    """Is the file running RIGHT NOW the same bytes as the checkout's copy?
+
+    A different axis again from `probe_standby_code`, and the one that was missing. That
+    function grades the CHECKOUT a failback starts from. This one grades the copy of this
+    script that launchd is actually executing, and the two are different files.
+
+    Measured 2026-08-21. `~/.prospector/bin/engine_failover.frozen.py` was the 2026-08-18 copy,
+    594 lines behind `scripts/engine_failover.py`. The launcher runs the frozen copy on purpose
+    -- a disaster-recovery tool that reads out of a git worktree dies when someone deletes the
+    worktree -- and it is refreshed only by `deploy/install_failover_watch.sh`, which nobody had
+    run in three days. So commit 3f7550e5, which refuses a standby pull that did not reach the
+    end of the source, was merged to main and never reached the job that does the pulling.
+    Three short pulls were promoted over the good copy and the standby spend ledger fell to
+    1,572,864 bytes against a source of 454,701,248. The checkout was 0 commits behind the
+    whole time, and that line printed OK.
+    """
+    out: dict = {"running": None, "checkout_copy": None}
+    try:
+        running = Path(__file__).resolve()
+        out["running"] = str(running)
+        mirror = (STANDBY_CHECKOUT / "scripts" / "engine_failover.py").resolve()
+        out["checkout_copy"] = str(mirror)
+        if running == mirror:
+            # Running straight out of the checkout. There is no second copy to drift, and
+            # saying "matches" here would invent a comparison that did not happen.
+            out["same_file"] = True
+            return out
+        out["same_file"] = False
+        out["digest"] = hashlib.sha256(running.read_bytes()).hexdigest()[:12]
+        out["checkout_digest"] = hashlib.sha256(mirror.read_bytes()).hexdigest()[:12]
+    except OSError as exc:
+        out["error"] = str(exc)[:200]
+    return out
+
+
+def running_code_line(run: dict) -> str:
+    """One line an operator can act on: is the failover code that RUNS the code that was fixed?
+
+    Split from the probe for the same reason `standby_code_line` is: so the wording is testable
+    without two copies of the file on disk, and so the comparison cannot be computed and then
+    never printed -- which is the shape of every defect this pair of lines exists to catch.
+    """
+    if run.get("error"):
+        return f"failover CODE: UNKNOWN - {run['error']}"
+    if run.get("same_file"):
+        return f"failover CODE: OK running from the checkout ({run.get('running', '?')})"
+    if run.get("digest") == run.get("checkout_digest"):
+        return f"failover CODE: OK frozen copy matches the checkout at {run.get('digest', '?')}"
+    return (f"failover CODE: !! the running copy is NOT the checkout copy "
+            f"({run.get('digest', '?')} vs {run.get('checkout_digest', '?')}) - "
+            f"re-run deploy/install_failover_watch.sh, or a merged fix is not what runs")
+
+
+def probe_standby() -> dict:
+    """How far back would a failover start? Two axes, and BOTH of them are the exposure.
+
+    This docstring used to read "How stale is the copy a failover would start from? This
+    number IS the exposure", and it was false in the way that matters most: it described only
+    the money files. Measured 2026-08-21, the code axis it never looked at was 81 commits
+    behind origin/main, on the day that checkout was the failover target - so a failover would
+    have rolled production back 81 commits while `staleness_min` reported minutes and `usable`
+    reported True. An instrument that reports green on one axis while the other one is the
+    actual exposure is worse than no instrument, because it is the one the console prints.
+
+    `usable` deliberately still grades the DATA only. Code drift must not block a failover:
+    failing over to a checkout four commits behind beats staying down, and that is a decision
+    for the operator reading `code`, not for this function. Anything that folds `code` into
+    `usable` is changing what the estate does in an outage, which is not a refactor.
+    """
+    out: dict = {"files": {}, "code": probe_standby_code(),
+                 "running_code": probe_running_code()}
+    state = backup_state()
+    out["backup"] = state
+    if state.get("error"):
+        out["staleness_min"] = -1
+        out["usable"] = False
+        return out
+    for name, label in ((MONEY_FILES[0], "ledger"), (MONEY_FILES[1], "db")):
+        rec = state.get(label)
+        out["files"][name] = None if not rec else {
+            "bytes": rec["bytes"], "age_min": round(rec["age_h"] * 60, 1), "key": rec["key"]}
+    oldest = state.get("oldest_age_h")
+    out["staleness_min"] = -1 if oldest is None else round(oldest * 60, 1)
+    out["usable"] = bool(state.get("complete"))
+    return out
+
+
+def backup_state() -> dict:
+    """What the ONE backup system holds, asked of it rather than reimplemented.
+
+    Shelled out to the repo's venv on purpose. This file also runs as a frozen copy under
+    /usr/bin/python3, which has no venv and no boto3 (deploy/install_failover_watch.sh) -- an
+    `import boto3` at module scope would make the whole failover watchdog unimportable on the
+    one machine it exists to protect.
+
+    Only cmd_status and do_failover reach this. cmd_check, which runs every 60 seconds, does
+    not, so the watchdog costs no network calls.
+    """
+    if not VENV_PY.exists():
+        return {"error": f"no venv python at {VENV_PY}"}
+    rc, so, se = sh([str(VENV_PY), str(BACKUP_PY), "--money-state"], timeout=120)
+    if rc != 0:
+        return {"error": (se or so or "no output").strip()[:300]}
+    try:
+        return json.loads(so)
+    except ValueError as exc:
+        return {"error": f"unreadable money-state: {exc}"}
+
+
+def restore_money(dest: Path) -> tuple[bool, str]:
+    """Bring both money files back from R2 into `dest`. Returns (ok, what happened).
+
+    The whole restore lives in scripts/backup_store.py, which verifies the round trip against
+    Content-Length and the gzip CRC written at compression time. Duplicating any of that here
+    is what produced the 220 lines this function replaced.
+    """
+    if not VENV_PY.exists():
+        return False, f"no venv python at {VENV_PY}"
+    dest.mkdir(parents=True, exist_ok=True)
+    rc, so, se = sh([str(VENV_PY), str(BACKUP_PY), "--restore-money", str(dest)], timeout=1800)
+    tail = (so or se or "").strip().splitlines()
+    return rc == 0, (tail[-1] if tail else f"rc={rc}")
 
 
 # --------------------------------------------------------------------------- commands
@@ -310,6 +500,8 @@ def cmd_status(args) -> int:
     print(line(lap))
     sb = report["standby"]
     print(f"  standby copy: {'stale by %s min' % sb['staleness_min'] if sb['usable'] else 'MISSING - a failover would start from the laptop own store'}")
+    print("  " + standby_code_line(sb.get("code", {})))
+    print("  " + running_code_line(sb.get("running_code", {})))
     if report["consecutive_failed_polls"]:
         print(f"  !! {report['consecutive_failed_polls']} consecutive failed polls of the active side")
     # An unknown active side is not a side, so it cannot be indexed into `sides`. This used to
@@ -392,23 +584,29 @@ def do_failover() -> int:
     # on the laptop's own store, and say so loudly - a stale engine beats no engine, but the
     # operator has to be told which one they got.
     sb = probe_standby()
-    if sb["usable"]:
+    ok, detail = restore_money(STANDBY)
+    if ok and sb["usable"]:
         for name in MONEY_FILES:
-            src = STANDBY / name
-            if not src.exists():
+            pulled = STANDBY / name
+            if not pulled.exists():
                 continue
             dst = LAPTOP_STORE / name
             if dst.exists():
                 # Keep what the laptop had. A failover that turns out to have restored the wrong
                 # thing must be undoable, and the laptop's own copy is the only other candidate.
                 shutil.copy2(dst, dst.with_name(dst.name + ".pre-failover"))
-            shutil.copy2(src, dst)
-        event("restored", staleness_min=sb["staleness_min"], files=list(MONEY_FILES))
-        print(f"restored standby copy (stale by {sb['staleness_min']} min)", file=sys.stderr)
-    else:
-        event("restore_skipped", reason="no standby copy")
-        print("NO standby copy - starting the laptop on its own store, which may be old",
+            shutil.copy2(pulled, dst)
+        event("restored", staleness_min=sb["staleness_min"], files=list(MONEY_FILES),
+              detail=detail)
+        print(f"restored from R2 (snapshot {sb['staleness_min']} min old): {detail}",
               file=sys.stderr)
+    else:
+        # Never abandon the failover for this. A stale engine beats no engine; what must not
+        # happen is the operator not being told which one they got.
+        event("restore_skipped", reason=detail if not ok else "backup incomplete",
+              backup=sb.get("backup"))
+        print(f"COULD NOT RESTORE FROM R2 ({detail}) - starting the laptop on its own store, "
+              f"which may be old", file=sys.stderr)
 
     rc, so, se = call_adapter("laptop", "t_start")
     print(so, se, file=sys.stderr)
@@ -422,31 +620,6 @@ def do_failover() -> int:
     event("failover_done", frm="fly", to="laptop", staleness_min=sb.get("staleness_min"))
     print("FAILED OVER to laptop. Automatic failover is now disarmed.", file=sys.stderr)
     return 2
-
-
-def cmd_sync(args) -> int:
-    """Pull Fly's money files down to the standby copy. Bounds what a failover would lose."""
-    if active_side() != "fly":
-        print("active side is not fly - nothing to pull")
-        return 0
-    CTRL.mkdir(parents=True, exist_ok=True)
-    STANDBY.mkdir(parents=True, exist_ok=True)
-    ok = True
-    for name in MONEY_FILES:
-        tmp = STANDBY / (name + ".partial")
-        rc, so, se = sh(["fly", "ssh", "sftp", "get", "-a", FLY_APP,
-                         f"/data/store/{name}", str(tmp)], timeout=600)
-        # `fly ssh sftp` has exited 0 on a failed transfer before (it cost cutover attempt 6),
-        # so the size is what is trusted, never the exit status.
-        if not tmp.exists() or tmp.stat().st_size == 0:
-            print(f"sync: {name} did not arrive ({(se or so).strip()[:120]})", file=sys.stderr)
-            tmp.unlink(missing_ok=True)
-            ok = False
-            continue
-        tmp.replace(STANDBY / name)     # atomic: a half-pulled file is never the standby copy
-        print(f"sync: {name} {(STANDBY / name).stat().st_size:,} bytes")
-    event("sync", ok=ok, staleness_min=probe_standby()["staleness_min"])
-    return 0 if ok else 1
 
 
 def cmd_arm(args) -> int:
@@ -498,10 +671,46 @@ STORE_LEAF = LAPTOP_STORE.name
 
 HERMES_RECEIPTS = Path.home() / ".hermes" / "state" / "capability_receipts.jsonl"
 
-# The container writes one receipt file per job onto the volume. These are the two Hermes grades
-# from them today; the key on the left is the file name, and it must equal `observable.script` in
-# ~/.hermes/capabilities.json or the audit will not join them up.
-CONTAINER_RECEIPTS = ("backup_store.py", "prospector.scheduler.run_scheduled")
+#: The file that decides which jobs the container runs, and therefore which receipts exist.
+SUPERVISORD_CONF = REPO / "deploy" / "engine" / "supervisord.conf"
+
+#: `receipt.sh <key> <command...>` - the key is the argument straight after the wrapper.
+_RECEIPT_KEY_RE = re.compile(r"receipt\.sh\s+(\S+)")
+
+
+def container_receipt_keys(conf: Path = SUPERVISORD_CONF) -> tuple[str, ...]:
+    """Every receipt key the engine container writes, read from the file that writes them.
+
+    This used to be a hand-written tuple of two, and that is what went wrong. supervisord wraps
+    four jobs in receipt.sh; the tuple named `backup_store.py` and
+    `prospector.scheduler.run_scheduled`. So `offsite_backup` and `restore_drill.py` wrote a
+    receipt onto the volume on schedule and nothing ever collected it - the offsite backup and the
+    restore drill, which are the two jobs that exist to prove the business can be recovered.
+
+    Reading the list means a new receipt-wrapped job ships without a second edit. One list, in the
+    file that already had to be right, instead of two that must agree and nothing compares.
+
+    The key must still equal `observable.script` in ~/.hermes/capabilities.json, which is a
+    different repository; `tests/unit/test_container_receipts_are_shipped_and_graded.py` is what
+    fails when the two drift.
+
+    Order follows the file and duplicates collapse, so a key wrapped twice is fetched once.
+    """
+    try:
+        text = conf.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"cannot read {conf}: {exc}", file=sys.stderr)
+        return ()
+    keys: dict[str, None] = {}
+    for line in text.splitlines():
+        if line.lstrip().startswith(";"):
+            # A commented-out program runs nothing and writes no receipt. This matters: the
+            # comments in that file discuss the receipt keys by name.
+            continue
+        m = _RECEIPT_KEY_RE.search(line)
+        if m:
+            keys.setdefault(m.group(1), None)
+    return tuple(keys)
 
 
 def cmd_receipts(args) -> int:
@@ -535,7 +744,7 @@ def cmd_receipts(args) -> int:
             print(f"could not read the Hermes ledger: {exc}", file=sys.stderr)
             return 1
 
-    for key in CONTAINER_RECEIPTS:
+    for key in container_receipt_keys():
         rc, so, se = sh(["fly", "ssh", "console", "-a", FLY_APP, "-C",
                          f"cat /data/{STORE_LEAF}/ops/receipts/{key}.json"], timeout=120)
         if rc != 0:
@@ -691,6 +900,34 @@ def cmd_drain(args) -> int:
     return 0 if data["ok"] else 1
 
 
+def deploy_targets() -> list[str]:
+    """Every platform the engine can be moved to, DISCOVERED from deploy/targets/*.sh.
+
+    Not a list typed out here. deploy/cutover.sh already answers this question by looking for the
+    file — `[ -f "$HERE/targets/$side.sh" ]` — so a second list is a second answer that drifts the
+    moment an adapter lands. Measured 2026-08-20: `deploy/targets/k8s.sh` was written, and both
+    this script and the ops console would still have refused `--to k8s` with the adapter sitting
+    on disk beside the three names they had memorised. Same rule as the estate inventory: read the
+    running world, never the declaration.
+
+    `tests/unit/test_every_deploy_target_implements_the_contract.py` fails if either caller starts
+    keeping its own list again.
+    """
+    here = Path(__file__).resolve().parents[1] / "deploy" / "targets"
+    return sorted(f.stem for f in here.glob("*.sh"))
+
+
+def cmd_targets(args) -> int:
+    """The console asks this rather than globbing the directory itself: one implementation, three
+    callers, exactly as _failover() in prospector/ops/console_api.py already assumes."""
+    names = deploy_targets()
+    if getattr(args, "json", False):
+        print(json.dumps(names))
+    else:
+        for n in names:
+            print(n)
+    return 0
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -702,9 +939,6 @@ def main() -> int:
 
     s = sub.add_parser("check", help="one poll; what the watchdog job runs")
     s.set_defaults(fn=cmd_check)
-
-    s = sub.add_parser("sync", help="pull Fly's money files to the standby copy")
-    s.set_defaults(fn=cmd_sync)
 
     s = sub.add_parser("receipts", help="sign the container's job receipts into Hermes")
     s.set_defaults(fn=cmd_receipts)
@@ -722,8 +956,12 @@ def main() -> int:
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_drain)
 
+    s = sub.add_parser("targets", help="every platform the engine can be moved to")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_targets)
+
     s = sub.add_parser("switch", help="move the engine to the other side, deliberately")
-    s.add_argument("--to", required=True, choices=["fly", "laptop", "sshdocker"])
+    s.add_argument("--to", required=True, choices=deploy_targets())
     s.add_argument("--from", dest="frm", default=None)
     s.set_defaults(fn=cmd_switch)
 

@@ -102,8 +102,8 @@ def test_the_two_chains_are_read_from_two_different_keys():
     sentinel = object()
     seen = []
 
-    def fake_chain(_cfg, order, fallback, *, label):
-        seen.append((label, tuple(order)))
+    def fake_chain(_cfg, order, fallback, *, label, component):
+        seen.append((label, tuple(order), component))
         return sentinel
 
     orig = run_mod._build_prose_chain
@@ -116,8 +116,15 @@ def test_the_two_chains_are_read_from_two_different_keys():
     finally:
         run_mod._build_prose_chain = orig
 
-    orders = {label: order for label, order in seen}
+    orders = {label: order for label, order, _comp in seen}
     assert set(orders.values()) == {("alpha",), ("beta",)}, orders
+
+    # The two chains must also pin models separately: a component name shared between them
+    # would make one console pin move both, which is the coupling this split exists to break.
+    components = {comp for _label, _order, comp in seen}
+    assert components == {"artifact", "marketing"}, (
+        f"the two prose chains named {components}; each must carry its own component so a "
+        "model pin on one does not move the other")
 
 
 def test_a_config_predating_the_split_falls_back_to_the_expensive_chain():
@@ -130,7 +137,8 @@ def test_a_config_predating_the_split_falls_back_to_the_expensive_chain():
     cfg = SimpleNamespace(artifact_operator=["alpha"], retrieval=load_config().retrieval)
     seen = []
     orig = run_mod._build_prose_chain
-    run_mod._build_prose_chain = lambda _c, order, fb, *, label: seen.append(tuple(order))
+    run_mod._build_prose_chain = (
+        lambda _c, order, fb, *, label, component: seen.append(tuple(order)))
     try:
         run_mod._build_marketing_op(cfg, object())
     finally:

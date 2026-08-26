@@ -77,7 +77,7 @@ def _topic(signal_text: str = "", sector: str = "", audience: str = "") -> str:
 
 def _cache_key(topic: str, market: str) -> str:
     """A stable cache key for (topic, market). Lowercased so casing never splits the cache."""
-    return hashlib.sha1(f"{topic.lower()}|{market.lower()}".encode("utf-8")).hexdigest()
+    return hashlib.sha1(f"{topic.lower()}|{market.lower()}".encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 def _providers(icfg: dict) -> list[str]:

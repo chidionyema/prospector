@@ -3,6 +3,8 @@
 #
 #   deploy/runners.sh up 4          # build, push, and run four runners
 #   deploy/runners.sh status        # what GitHub thinks it has, and what the platform is running
+#   deploy/runners.sh autoscale     # start/stop machines to match the queue depth
+#   deploy/runners.sh heal          # start any machine whose runner still holds a job
 #   deploy/runners.sh down          # stop them all; the repo falls back to whatever is left
 #   deploy/runners.sh laptop-off    # unload the four Mac runners, after Fly's have taken jobs
 #
@@ -103,9 +105,26 @@ cmd_up() {
   local n="${1:?usage: runners.sh up <count>}"
   command -v fly >/dev/null || { echo "fly CLI not installed" >&2; exit 1; }
 
-  grep -q '^GITHUB_RUNNER_PAT=' "$ENV_FILE" || {
+  # NO PAT, NO PERSON. GitHub has no API that creates a fine-grained PAT, so standing a fleet
+  # up for a NEW repository used to stop here and wait for someone to visit a web form. A
+  # REGISTRATION token needs no form: anything that can already administer the repo can mint
+  # one, including the `gh` CLI. It expires in an hour, which is enough - entrypoint.sh keeps
+  # the .credentials that first registration writes and never needs the token again.
+  #
+  # This is the SMALLER credential, not a shortcut around the PAT: the container ends up able
+  # to be one runner on one repository, and unable to add or remove runners at all. What it
+  # gives up is per-job re-registration, so the runner is not --ephemeral; the workspace wipe
+  # between jobs, which is what stops one job inheriting another, still runs.
+  local reg_token=""
+  if ! grep -q '^GITHUB_RUNNER_PAT=' "$ENV_FILE" && command -v gh >/dev/null; then
+    reg_token="$(gh api -X POST "repos/$GH_REPO/actions/runners/registration-token" \
+                   --jq .token 2>/dev/null || true)"
+    [ -n "$reg_token" ] && say "no PAT on file - registering $APP with a one-hour registration token"
+  fi
+
+  [ -n "$reg_token" ] || grep -q '^GITHUB_RUNNER_PAT=' "$ENV_FILE" || {
     cat >&2 <<'MSG'
-No GITHUB_RUNNER_PAT in the env file.
+No GITHUB_RUNNER_PAT in the env file, and `gh` could not mint a registration token either.
 
 A runner registers itself, and registration tokens last an hour, so they cannot be baked into
 an image. The container needs a credential that can mint them. Create a FINE-GRAINED personal
@@ -131,20 +150,225 @@ MSG
   say "pushing the runner credential"
   # Only the two keys the runner needs. A CI runner must never hold the money keys: it runs
   # code from every pull request, including one an outsider opened.
-  grep -E '^(GITHUB_RUNNER_PAT|RUNNER_LABELS)=' "$ENV_FILE" > "$REPO_ROOT/.runner.env"
+  : > "$REPO_ROOT/.runner.env"
   chmod 600 "$REPO_ROOT/.runner.env"
+  if [ -n "$reg_token" ]; then
+    # Written to a 600 file and piped straight into fly, so the value is never an argument and
+    # never reaches a terminal. GITHUB_REPO rides along because a token-only runner has no way
+    # to ask which repository it belongs to.
+    printf 'RUNNER_TOKEN=%s\nGITHUB_REPO=%s\n' "$reg_token" "$GH_REPO" >> "$REPO_ROOT/.runner.env"
+    grep -E '^RUNNER_LABELS=' "$ENV_FILE" >> "$REPO_ROOT/.runner.env" || true
+  else
+    grep -E '^(GITHUB_RUNNER_PAT|RUNNER_LABELS)=' "$ENV_FILE" >> "$REPO_ROOT/.runner.env"
+  fi
   fly secrets import -a "$APP" --stage < "$REPO_ROOT/.runner.env"
   rm -f "$REPO_ROOT/.runner.env"
 
   say "building and deploying the runner image"
-  fly deploy "$REPO_ROOT" --config "$HERE/runner/fly.toml" -a "$APP" \
-    --dockerfile "$HERE/runner/Dockerfile" --strategy immediate --yes
+  # One image, one config per fleet. A second repository needs a different GITHUB_REPO in
+  # [env], and that is the only difference, so it gets its own file rather than a flag.
+  local cfg="$HERE/runner/fly.$APP.toml"
+  [ -f "$cfg" ] || cfg="$HERE/runner/fly.toml"
+
+  # STAMP THE IMAGE WITH THE COMMIT IT WAS BUILT FROM.
+  #
+  # Fly reports a deployment id and a layer digest. Neither maps back to a commit, so nothing
+  # could answer "is the fleet running the image this repository describes?" without opening an
+  # SSH session to a machine and looking. On 2026-08-19 that gap cost a day: openssh-client was
+  # added to the Dockerfile, the fleet went on running the image without it, and the hermes
+  # gate kept dying at exit 127 with no output while every screen showed a healthy fleet.
+  #
+  # `-dirty` is deliberate. This deploys the WORKING TREE, so a stamp naming a clean commit
+  # that the tree does not match would be a lie, and scripts/ci_fleet_probe.py would report a
+  # fleet as current that nobody can reproduce.
+  local image_sha
+  image_sha="$(git -C "$REPO_ROOT" log -1 --format=%H -- deploy/runner 2>/dev/null || echo unknown)"
+  if [ -n "$(git -C "$REPO_ROOT" status --porcelain -- deploy/runner 2>/dev/null)" ]; then
+    image_sha="${image_sha}-dirty"
+  fi
+  say "stamping the image RUNNER_IMAGE_SHA=$image_sha"
+
+  fly deploy "$REPO_ROOT" --config "$cfg" -a "$APP" \
+    --dockerfile "$HERE/runner/Dockerfile" --strategy immediate --yes \
+    --env "RUNNER_IMAGE_SHA=$image_sha"
 
   say "scaling to $n"
   fly scale count "$n" -a "$APP" -r "$REGION" --yes
+  # `fly scale count` leaves the machines it keeps in whatever state they were in, and a machine
+  # that has just been created by `fly deploy` can be stopped. A stopped runner is invisible in
+  # every screen that counts runners, so the fleet reads as "1 machine" and takes no jobs.
+  # Measured 2026-08-19 standing hermes-ci up: scale reported success, GitHub showed 0 runners.
+  fly machine list -a "$APP" --json 2>/dev/null \
+    | jq -r '.[] | select(.state != "started") | .id' \
+    | while read -r mid; do
+        [ -n "$mid" ] && { say "starting stopped machine $mid"; fly machine start "$mid" -a "$APP" >/dev/null; }
+      done
   echo "  runners will appear at https://github.com/$GH_REPO/settings/actions/runners"
   echo "  they carry the label 'self-hosted', which is what vars.CI_RUNS_ON asks for, so they"
   echo "  start taking jobs immediately alongside the Macs. Nothing in .github/ changes."
+}
+
+cmd_heal() {
+  # START ANY MACHINE WHOSE RUNNER GITHUB STILL BELIEVES IS RUNNING A JOB.
+  #
+  # THE FAILURE THIS REPAIRS. A GitHub runner registration outlives the machine it runs on.
+  # Stop the machine and GitHub keeps the runner on its books with the last state it saw --
+  # `status: offline, busy: true`. GitHub does not reassign that job. It holds it against a
+  # runner that is gone, waits out the timeout, and marks it failed WITH NO LOG, because no
+  # runner ever wrote one. Measured 2026-08-19: 7 of 9 registrations offline and busy, 17 runs
+  # queued, and the founder watching jobs die with no output while nothing had been pushed.
+  #
+  # The runner is NOT --ephemeral here (see cmd_up: a registration token buys a smaller
+  # credential than a PAT and costs per-job re-registration), so nothing deregisters it on the
+  # way down. That is the whole gap.
+  #
+  # WHY START AND NOT DELETE. `DELETE /actions/runners/<id>` refuses a busy runner outright:
+  #   "Runner runner-<id> is currently running a job and cannot be deleted." (HTTP 422)
+  # Proven 2026-08-19 against runner 772. Starting its machine instead brought the runner back
+  # online and its job ran. Starting RECOVERS the job; deleting could not even be attempted.
+  #
+  # This is a reconciler and it is safe to run at any time. It reads live state on both sides
+  # and starts machines that are already paid for. If either side cannot be read it does
+  # nothing, because acting on half a picture is how the gap opened.
+  command -v fly >/dev/null || { echo "fly CLI not installed" >&2; exit 1; }
+
+  local busy machines healed=0
+  busy="$(gh api "repos/$GH_REPO/actions/runners" \
+            --jq '.runners[] | select(.busy) | .name' 2>/dev/null || true)"
+  if [ -z "$busy" ]; then
+    echo "  no busy runners on GitHub; nothing to heal"
+    return 0
+  fi
+  machines="$(fly machines list -a "$APP" --json 2>/dev/null || echo '[]')"
+  if [ "$machines" = "[]" ]; then
+    echo "  could not read the machine list; not healing on half a picture"
+    return 0
+  fi
+
+  local id
+  for name in $busy; do
+    # The entrypoint names itself `runner-<machine id>`; that is the only join between the
+    # two lists. A registration with any other shape is a Mac runner and not ours to start.
+    case "$name" in runner-*) id="${name#runner-}" ;; *) continue ;; esac
+    printf '%s' "$machines" | jq -e --arg i "$id" \
+      '[.[] | select(.id == $i and .state == "started")] | length > 0' >/dev/null 2>&1 && continue
+    printf '%s' "$machines" | jq -e --arg i "$id" '[.[] | select(.id == $i)] | length > 0' \
+      >/dev/null 2>&1 || continue
+    if fly machine start "$id" -a "$APP" >/dev/null 2>&1; then
+      echo "  healed $id (its runner was busy while the machine was stopped)"
+      healed=$(( healed + 1 ))
+    else
+      echo "  could not start $id, whose runner is busy"
+    fi
+  done
+  [ "$healed" -eq 0 ] && echo "  every busy runner has a started machine"
+  return 0
+}
+
+cmd_autoscale() {
+  # Match the number of STARTED machines to the number of queued runs, inside the bounds
+  # declared in ops/config/ci_capacity.yaml. Start/stop, never create/destroy: a stopped Fly
+  # machine bills no CPU and no RAM, and starting one takes seconds because the image is
+  # already on the host.
+  #
+  # SAFETY: a machine is only stopped when GitHub says its runner is NOT busy. The runners are
+  # --ephemeral, so a machine between jobs is idle and safe; one mid-job is never touched.
+  # If GitHub cannot be reached the verb scales UP only, because the failure mode of scaling
+  # down on bad data is killing a build.
+  command -v fly >/dev/null || { echo "fly CLI not installed" >&2; exit 1; }
+
+  # Reconcile before sizing. A machine stopped while its runner holds a job is a job that will
+  # die with no log, and it is also capacity the queue reading below cannot see -- the run is
+  # not `queued`, it is assigned to a runner that is gone. Healing first means the scaler never
+  # sizes the pool against a queue that is short by however many jobs are stranded.
+  cmd_heal
+
+  local min max
+  min="$(_cfg_num autoscale_min 1)"
+  max="$(_cfg_num autoscale_max 3)"
+
+  local queued=""
+  queued="$(gh api "repos/$GH_REPO/actions/runs?status=queued&per_page=100" \
+              --jq '.workflow_runs | length' 2>/dev/null || true)"
+
+  local machines
+  machines="$(fly machines list -a "$APP" --json 2>/dev/null || echo '[]')"
+
+  # THE BUSY LIST IS THE ONLY THING STANDING BETWEEN THIS AND A KILLED BUILD, so its exit status
+  # is captured separately. This used to end in `|| true`, which made an empty result ambiguous:
+  # "nobody is busy" and "the call failed" produced the same empty string, and the scale-down
+  # branch below reads an absent name as safe to stop. The call fails easily -- `actions/runners`
+  # needs admin scope, and GITHUB_TOKEN does not have it -- so the ambiguous case was the LIKELY
+  # one, not the rare one. The function's own comment already promised "a machine is only stopped
+  # when GitHub says its runner is NOT busy"; this is what makes that true.
+  local busy_names="" busy_ok=1
+  if busy_names="$(gh api "repos/$GH_REPO/actions/runners" \
+                     --jq '.runners[] | select(.busy) | .name' 2>/dev/null)"; then
+    busy_ok=0
+  else
+    busy_names=""
+  fi
+
+  local started stopped
+  started="$(printf '%s' "$machines" | jq -r '[.[] | select(.state=="started")] | .[].id')"
+  stopped="$(printf '%s' "$machines" | jq -r '[.[] | select(.state!="started")] | .[].id')"
+
+  local n_started
+  n_started="$(printf '%s\n' "$started" | grep -c . || true)"
+
+  local want
+  if [ -z "$queued" ]; then
+    # No reading from GitHub. Hold at least `min` and never scale down on a guess.
+    want="$min"
+    [ "$n_started" -gt "$want" ] && want="$n_started"
+    echo "  could not read the queue; holding at $want (scale-down needs real data)"
+  else
+    want="$queued"
+    [ "$want" -lt "$min" ] && want="$min"
+    [ "$want" -gt "$max" ] && want="$max"
+  fi
+
+  say "queue=${queued:-unknown} started=$n_started want=$want (min=$min max=$max)"
+
+  if [ "$want" -gt "$n_started" ]; then
+    local need=$(( want - n_started ))
+    for id in $stopped; do
+      [ "$need" -gt 0 ] || break
+      fly machine start "$id" -a "$APP" >/dev/null 2>&1 \
+        && { echo "  started $id"; need=$(( need - 1 )); } \
+        || echo "  could not start $id"
+    done
+    [ "$need" -gt 0 ] && echo "  wanted $need more machine(s) than the pool holds; raise the" \
+                              "pool with: deploy/runners.sh up $max"
+  elif [ "$want" -lt "$n_started" ] && [ -n "$queued" ] && [ "$busy_ok" -ne 0 ]; then
+    echo "  $(( n_started - want )) machine(s) look spare, but GitHub would not say which runners"
+    echo "  are busy, so none are stopped. Scale-down needs that list; without it a stop can kill"
+    echo "  a running job. Fix: give this caller a token that can read repo runners (admin scope)."
+  elif [ "$want" -lt "$n_started" ] && [ -n "$queued" ]; then
+    local excess=$(( n_started - want ))
+    for id in $started; do
+      [ "$excess" -gt 0 ] || break
+      # `runner-<machine id>` is how the entrypoint names itself, which is the only thing that
+      # makes the two lists comparable.
+      printf '%s\n' "$busy_names" | grep -qx "runner-$id" && continue
+      fly machine stop "$id" -a "$APP" >/dev/null 2>&1 \
+        && { echo "  stopped $id (idle)"; excess=$(( excess - 1 )); } \
+        || echo "  could not stop $id"
+    done
+  else
+    echo "  nothing to do"
+  fi
+}
+
+_cfg_num() {
+  # One key out of ops/config/ci_capacity.yaml without adding a YAML dependency to a shell
+  # script. The keys are plain `name: number` at the top level of the autoscale block.
+  local key="$1" fallback="$2" val
+  val="$(awk -v k="$key" '$1 == k":" {print $2; exit}' "$REPO_ROOT/ops/config/ci_capacity.yaml" 2>/dev/null)"
+  case "$val" in
+    ''|*[!0-9]*) echo "$fallback" ;;
+    *) echo "$val" ;;
+  esac
 }
 
 cmd_status() {
@@ -200,6 +424,8 @@ case "${1:-}" in
   up)         shift; cmd_up "$@" ;;
   down)       cmd_down ;;
   status)     cmd_status ;;
+  autoscale)  cmd_autoscale ;;
+  heal)       cmd_heal ;;
   laptop-off) cmd_laptop_off ;;
   laptop-on)  cmd_laptop_on ;;
   *) sed -n '2,20p' "$0"; exit 2 ;;

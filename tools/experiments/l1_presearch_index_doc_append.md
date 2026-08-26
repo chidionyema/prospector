@@ -11,3 +11,5 @@ _Run 2026-08-07T22:17:45+00:00 · `l1_presearch_index.py` · registered docs/COM
 - **entries**: 16,167
 
 Receipt: `tools/experiments/l1_presearch_index_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run L1`
+
+**Follow-through:** NO ACTION — the report's own verdict is DO NOT BUILD: 0.1191 strict hit against a 0.2 bar. Document-level reuse is measured separately in l1_corpus_reuse_overlap, which is where the ticket lives.

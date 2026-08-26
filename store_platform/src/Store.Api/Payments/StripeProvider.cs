@@ -1,5 +1,6 @@
 using Stripe;
 using Stripe.Checkout;
+using Store.Api.Common;
 using Store.Api.Services;
 
 namespace Store.Api.Payments;
@@ -31,6 +32,12 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
     /// ten £49 packs is already far outside any observed order.
     /// </summary>
     public const int MaxCheckoutLines = 10;
+
+    /// <summary>
+    /// The session-metadata key carrying the correlation id. One constant because the writer
+    /// and the reader are 350 lines apart, and a typo in either would break the chain silently.
+    /// </summary>
+    internal const string CorrelationMetadataKey = "corr";
 
     public string Name => "stripe";
 
@@ -135,7 +142,14 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
             Country: session.CustomerDetails?.Address?.Country ?? "",
             TotalAmountPence: session.AmountTotal ?? 0,
             OccurredAt: stripeEvent.Created,
-            Items: await ExtractItemsAsync(session, ct).ConfigureAwait(false));
+            Items: await ExtractItemsAsync(session, ct).ConfigureAwait(false),
+            // Sanitised on the way back in as well as on the way out. A value read off a
+            // provider is no more trustworthy than one read off a request header: it reaches
+            // fulfilment log lines, where an unescaped newline would forge a second line.
+            CorrelationId: session.Metadata is not null
+                && session.Metadata.TryGetValue(CorrelationMetadataKey, out var corr)
+                    ? HttpContextExtensions.Sanitize(corr)
+                    : null);
 
     /// <summary>
     /// Resolve which packs were bought and — critically — how much was actually paid for each.
@@ -304,9 +318,9 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
         return new ProviderProduct(product.Id, price.Id);
     }
 
-    public async Task<CheckoutHandle> CreateCheckoutAsync(IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string successUrl, string cancelUrl, CancellationToken ct)
+    public async Task<CheckoutHandle> CreateCheckoutAsync(IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string successUrl, string cancelUrl, string? correlationId, CancellationToken ct)
     {
-        var options = BuildSessionOptions(lines, buyerEmail);
+        var options = BuildSessionOptions(lines, buyerEmail, correlationId);
         // Stripe substitutes the literal {CHECKOUT_SESSION_ID} template on redirect. The
         // storefront uses it to resolve the buyer's entitlement and render a real download
         // link on the success page, so fulfilment no longer depends on an email arriving.
@@ -339,9 +353,10 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
     /// </para>
     /// </remarks>
     public async Task<CheckoutHandle?> CreateEmbeddedCheckoutAsync(
-        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string returnUrl, CancellationToken ct)
+        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string returnUrl, string? correlationId,
+        CancellationToken ct)
     {
-        var options = BuildSessionOptions(lines, buyerEmail);
+        var options = BuildSessionOptions(lines, buyerEmail, correlationId);
         options.UiMode = "embedded";
         options.ReturnUrl = AppendSessionIdTemplate(returnUrl);
 
@@ -384,7 +399,8 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
     /// hosted and embedded paths so a change to tax, metadata or the statement descriptor cannot
     /// apply to one and not the other.
     /// </summary>
-    private SessionCreateOptions BuildSessionOptions(IReadOnlyList<CheckoutLine> lines, string? buyerEmail)
+    private SessionCreateOptions BuildSessionOptions(
+        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string? correlationId)
     {
         EnsureStripeConfigured();
 
@@ -399,7 +415,7 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
         }
 
         var currency = SingleCurrency(lines);
-        var metadata = BuildCheckoutMetadata(lines);
+        var metadata = BuildCheckoutMetadata(lines, correlationId);
 
         return new SessionCreateOptions
         {
@@ -500,7 +516,8 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
     /// seen that key, and every existing session in flight uses it.
     /// </para>
     /// </remarks>
-    internal static Dictionary<string, string> BuildCheckoutMetadata(IReadOnlyList<CheckoutLine> lines)
+    internal static Dictionary<string, string> BuildCheckoutMetadata(
+        IReadOnlyList<CheckoutLine> lines, string? correlationId = null)
     {
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -510,6 +527,18 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
         if (lines.Count == 1)
         {
             metadata["pack_id"] = lines[0].PackId;
+        }
+
+        // `corr` is what makes one purchase greppable end to end. It is written here rather
+        // than by the caller so the hosted and embedded surfaces cannot carry different ids.
+        // Sanitised again on the way in: this value reaches Stripe, and Stripe refuses to
+        // create a session whose metadata value exceeds 500 characters, which would turn a
+        // hostile header into a refusal to sell. HttpContextExtensions.Sanitize caps it at 64
+        // and drops anything outside [A-Za-z0-9._-]. An absent or unusable id writes no key at
+        // all rather than an empty one, so `corr` present always means `corr` usable.
+        if (HttpContextExtensions.Sanitize(correlationId) is { Length: > 0 } corr)
+        {
+            metadata[CorrelationMetadataKey] = corr;
         }
         return metadata;
     }

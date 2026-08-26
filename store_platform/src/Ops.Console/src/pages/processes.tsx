@@ -17,6 +17,7 @@
  * renders that, and the same script sends the same verdict to Telegram when it fails.
  */
 import Shell from '@/components/Shell';
+import SnapshotBar, { type Snapshot } from '@/components/SnapshotBar';
 import { AsOf, Card, Empty, Note, Pill, Problem, Scroll } from '@/components/ui';
 import { useOps } from '@/lib/useOps';
 
@@ -31,6 +32,7 @@ type ProcessesView = {
   failing: number;
   warnings: number;
   ok: boolean;
+  snapshot?: Snapshot;
 };
 
 /** The audit's grades and the console's tones are the same three words, deliberately. */
@@ -71,8 +73,106 @@ function Section({ title, rows }: { title: string; rows: ProcessRow[] }) {
   );
 }
 
+type AutomationRow = {
+  automation: string;
+  status: 'ok' | 'findings' | 'unknown';
+  findings: number;
+  summary: string;
+  probe: string;
+  took_ms: number;
+  error?: string | null;
+};
+
+type AutomationsView = {
+  count: number;
+  needs_attention: number;
+  automations: AutomationRow[];
+  note?: string;
+  snapshot?: Snapshot;
+};
+
+/** `unknown` is not `ok`. An automation that could not answer sorts and colours with the failures. */
+const AUTO_TONE: Record<AutomationRow['status'], 'ok' | 'warn' | 'bad'> = {
+  ok: 'ok',
+  findings: 'warn',
+  unknown: 'bad',
+};
+
+/**
+ * The declared automations, each one run for real — as of the last measurement, not this render.
+ *
+ * `prospector/ops/automations_view.py` discovers every engine that has a declaration and runs its
+ * `--json`, so this card needs no edit when the next automation lands. Retention (`log_rotation`)
+ * is one of these: it freed 1,044 MB on its first scheduled run and nothing on this console showed
+ * that it existed.
+ *
+ * It used to run all of them at the moment you opened the tab, for 10.16s measured. That was never
+ * the right price for opening a tab, and the card above says how old the answer is instead.
+ */
+function Automations() {
+  const { data, error, refresh } = useOps<AutomationsView>('automations', {}, { pollMs: 300_000 });
+  if (error) return <Problem>{error}</Problem>;
+  if (!data) return <Note>reading the last run of every automation</Note>;
+
+  const rows = data.automations ?? [];
+  const bar = (
+    <SnapshotBar
+      view="automations"
+      snapshot={data.snapshot}
+      what="every declared automation, run for real"
+      onRefreshed={refresh}
+    />
+  );
+  if (!data.snapshot?.have_snapshot) return bar;
+  return (
+    <>
+      {bar}
+    <Card
+      title={`Automations (${data.count})`}
+      tone={data.needs_attention ? 'warn' : 'ok'}
+      right={
+        data.needs_attention ? (
+          <Pill tone="warn">{data.needs_attention} need attention</Pill>
+        ) : (
+          <Pill tone="ok">clean</Pill>
+        )
+      }
+    >
+      {rows.length === 0 ? (
+        <Empty>{data.note ?? 'no automation has both an engine and a declaration here'}</Empty>
+      ) : (
+        <Scroll>
+          <table className="w-full text-sm">
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.automation} className="border-b border-border last:border-0 align-top">
+                  <td className="py-2 pr-3 whitespace-nowrap">
+                    <Pill tone={AUTO_TONE[r.status]}>{r.status}</Pill>
+                  </td>
+                  <td className="py-2 pr-3 font-mono text-xs whitespace-nowrap">{r.automation}</td>
+                  <td className="py-2 text-subtle">
+                    {r.error ? r.error : r.summary}
+                    <div className="font-mono text-[11px] text-subtle/70 mt-1">{r.probe}</div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Scroll>
+      )}
+      <Note>
+        Every one of these reads by default and takes <code>--fix</code> as a second, explicit run.
+        Both are on <code>/tools</code>, behind the same preview and rollback as everything else.
+      </Note>
+    </Card>
+    </>
+  );
+}
+
 export default function Processes() {
-  const { data, envelope, error } = useOps<ProcessesView>('processes', {}, { pollMs: 300_000 });
+  const { data, envelope, error, refresh } = useOps<ProcessesView>('processes', {}, {
+    pollMs: 300_000,
+  });
 
   return (
     <Shell
@@ -80,9 +180,36 @@ export default function Processes() {
       intro="Everything scheduled on this estate, and whether it ran. Includes the guards themselves: a check that has been switched off is the one failure nothing else reports."
     >
       {error && <Problem>{error}</Problem>}
-      {!data && !error && <Note>reading the audit — it asks launchd, GitHub and every probe</Note>}
+      {!data && !error && <Note>reading the last audit</Note>}
 
       {data && (
+        <SnapshotBar
+          view="processes"
+          snapshot={data.snapshot}
+          what="the estate audit — launchd, Fly, GitHub and every probe"
+          onRefreshed={refresh}
+        />
+      )}
+
+      {/*
+        * Everything below is gated on there being a snapshot, and the "read N ago" stamp was
+        * inside that gate. So the one page state where an operator most needs to know whether the
+        * estate was heard from — no audit yet — was the state that would not tell them. Measured
+        * 2026-08-21 by the e2e journey "every screen reads real data".
+        */}
+      {data && !data.snapshot?.have_snapshot && (
+        <Card
+          title="No audit has been taken yet"
+          right={<AsOf asOf={envelope?.as_of} tookMs={envelope?.took_ms} />}
+        >
+          <Note>
+            The view answered and has no audit to show. That is not the same as the read failing:
+            the stamp above says when this page last heard from the estate.
+          </Note>
+        </Card>
+      )}
+
+      {data?.snapshot?.have_snapshot && (
         <>
           <Card
             title="Verdict"
@@ -100,6 +227,8 @@ export default function Processes() {
               </Note>
             )}
           </Card>
+
+          <Automations />
 
           {data.sections.map((s) => (
             <Section key={s.title} title={s.title} rows={s.rows} />

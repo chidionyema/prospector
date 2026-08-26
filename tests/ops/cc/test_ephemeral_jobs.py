@@ -77,7 +77,10 @@ class TestDaemonCannotClobberProduction:
         runner._RING_BUFFERS.clear()
         runner._JOB_STATUS.clear()
 
-        prod = Path("store/control_center/jobs.json")
+        # The repo-local production file on purpose: the fence is that this test did not
+        # touch it. Cwd-relative, it graded whatever directory pytest happened to run from.
+        prod = (Path(runner.__file__).resolve().parents[2]
+                / "store" / "control_center" / "jobs.json")
         before = prod.read_text(encoding="utf-8") if prod.exists() else None
 
         job_id = runner.launch([sys.executable, "-c", "print('ok')"])

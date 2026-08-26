@@ -75,6 +75,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
+from .config import store_root
 from .dedup import _content_tokens
 from .models import Candidate
 from .novelty import cosine_similarity
@@ -427,7 +428,7 @@ def resolve_log_path(cfg: Any, settings: PrefilterSettings) -> Path:
         base = Path(os.environ["PROSPECTOR_PRESCREEN_SHADOW_LOG_DIR"].strip())
     else:
         store_dir = getattr(cfg, "store_dir", None)
-        base = Path(store_dir) if store_dir else Path("store")
+        base = Path(store_dir) if store_dir else store_root()
         base = base / _DEFAULT_LOG_SUBDIR
     return base / f"shadow-{time.strftime('%Y-%m')}.jsonl"
 

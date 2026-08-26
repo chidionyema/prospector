@@ -53,10 +53,19 @@ export function pythonBin(): string {
 /**
  * TWO CEILINGS, BECAUSE A READ AND A TOOL RUN ARE DIFFERENT JOBS.
  *
- * A read is a panel waiting on a number. `read metrics` scans the diagnostics window and is the
- * slow one; everything else measured under 400ms. A request that outlives this is reported as a
- * TIMEOUT, never as an empty result — an outage is the end of a measurement, not a datum, and a
- * swallowed one returns `[]` and reads as "nothing to show".
+ * A read is a panel waiting on a number. A request that outlives this is reported as a TIMEOUT,
+ * never as an empty result — an outage is the end of a measurement, not a datum, and a swallowed
+ * one returns `[]` and reads as "nothing to show".
+ *
+ * THE CEILING IS 120s AND NOTHING SHOULD GO ANYWHERE NEAR IT. Measured 2026-08-21 by running all
+ * 40 reads through this same path, one fresh interpreter each: slowest 5.61s, nothing over 10s.
+ * The three that used to are served from a snapshot now — `processes` 125.01s TIMEOUT -> 2.33s,
+ * `deploys` 12.45s -> 1.68s, `automations` 10.16s -> 1.32s. See prospector/ops/slow_read.py; the
+ * fix is that they measure the network on a schedule instead of while an operator waits.
+ *
+ * A read that starts creeping toward this ceiling is a defect in the read, not a reason to raise
+ * the number. This block used to say `read metrics` was the slow one and everything else was
+ * under 400ms; when it was checked, `metrics` was 1.59s and three OTHER views were the problem.
  */
 export const OPS_READ_TIMEOUT_MS = Number(process.env.OPS_TIMEOUT_MS || 120_000);
 

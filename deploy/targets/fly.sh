@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Fly.io adapter. Everything in this repo that knows the word "fly" is in this file.
 #
-# Read deploy/PORTABILITY.md first. This implements the eight-verb contract described there.
-# A second platform is a copy of this file with different commands in the same eight functions.
+# Read deploy/PORTABILITY.md first. This implements the twelve-function contract described
+# there. A second platform is a copy of this file with different commands in the same twelve
+# functions. It said "eight" until 2026-08-20, when there had been twelve for weeks.
 
 set -euo pipefail
 
@@ -19,9 +20,25 @@ ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../engine" && pwd)"
 # file rather than a wrong context. It cost one cutover attempt at 02:27 on 2026-08-18.
 REPO_ROOT="$(cd "$ENGINE_DIR/../.." && pwd)"
 
+# The CLI answers to two names and the environment decides which one exists. Homebrew's
+# `flyctl` formula installs both `flyctl` and a `fly` symlink; the `superfly/flyctl-actions/
+# setup-flyctl` action used by .github/workflows/escape-hatch-drill.yml and deploy-engine.yml
+# puts only `flyctl` on PATH. Every call below says `fly`, so on 2026-08-19 the weekly escape
+# hatch drill died at its first step with `deploy/targets/fly.sh: line 106: fly: command not
+# found`, exit 127 — the portability drill could not run because of the name of a binary.
+#
+# One shim rather than renaming twenty-five call sites: if `fly` is missing and `flyctl` is
+# present, define `fly` as a function that forwards. It is defined before any function that
+# calls it, and bash resolves functions at call time, so every `fly ...` below is covered.
+if ! command -v fly >/dev/null 2>&1 && command -v flyctl >/dev/null 2>&1; then
+  fly() { flyctl "$@"; }
+fi
+
 t_name() { echo "fly:${APP}"; }
 
 t_preflight() {
+  # `command -v` is true for the shim above as well as for a real binary, which is the point:
+  # preflight asks whether the CLI is REACHABLE, not what it is called.
   command -v fly >/dev/null || { echo "fly CLI not installed: brew install flyctl" >&2; return 1; }
   fly auth whoami >/dev/null 2>&1 || { echo "fly CLI not logged in: fly auth login" >&2; return 1; }
   # `fly auth whoami` passes on a dead token in some versions, so make one real API call.
@@ -129,11 +146,123 @@ EOF
   echo "fly: uploaded $2 ($want bytes, confirmed on the VM)"
 }
 
+# Portable sha256 of a local file. GitHub runners have sha256sum; macOS has shasum only.
+_sha256_local() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+  else shasum -a 256 "$1" | cut -d' ' -f1; fi
+}
+
 # $1 = local .tar.gz to write. Used when Fly is the SOURCE, i.e. when we leave.
+#
+# WHY THIS IS CHUNKED AND CHECKSUMMED RATHER THAN ONE `get` WITH A RETRY.
+#
+# `fly ssh sftp get` truncates and exits 0. Measured 2026-08-23: 112,474,776 bytes packed on
+# the VM, 12,779,520 bytes received (11.4%), flyctl printed "12779520 bytes written" and
+# returned success. Two 100 MB control transfers the same day came back byte-exact, so the
+# truncation is intermittent, not a size ceiling.
+#
+# An intermittent silent truncation cannot be handled by retrying the whole file: each attempt
+# is unbounded, nothing proves which attempt was honest, and a run that happens to succeed says
+# nothing about the next one. The export is the one path we take when we leave the platform, so
+# it does not get to be probabilistic.
+#
+# So the transfer is split into fixed 16 MB parts. Every part carries its own sha256 taken on
+# the VM, is verified on arrival, and is re-fetched on its own if it does not match. The
+# reassembled file is then checked against the whole-file sha256 taken on the VM before
+# anything downstream is allowed to read it, and `tar -tzf` proves it opens. Failure is loud
+# and the target file is removed, so a partial export can never be mistaken for a good one.
+#
+# t_put already confirmed its byte count on the VM. t_pack did not confirm anything, and that
+# asymmetry was the defect: the direction we depend on in order to LEAVE was the unchecked one.
 t_pack() {
-  t_exec "python /app/scripts/store_migrate.py pack /data/handover.tar.gz --store /data/store"
-  fly ssh sftp get -a "$APP" /data/handover.tar.gz "$1"
-  t_exec "rm -f /data/handover.tar.gz"
+  local want sum parts part got attempt ok tmpdir
+  # Remove any previous export FIRST. Every abort path below returns non-zero, but a caller
+  # that ignores the status must not find last week's archive sitting at the target path and
+  # read it as this run's output. Absent is the honest result of a failed export.
+  rm -f "$1"
+  # PROSPECTOR_PACK_FORCE=1 is for the weekly drill, and only for the drill.
+  #
+  # store_migrate.py's pack refuses to run while the scheduler or the consumer is up, which is
+  # right for a cutover: at cutover, phase 4 has already stopped the engine, so a live writer
+  # there means something is wrong and stopping is the correct answer. It is wrong for a drill.
+  # The drill rehearses leaving without taking production down, so the engine is up by design and
+  # the refusal fires every time. Three drills, three failures, all `exit 2` from that check,
+  # never once a real defect in the exit path.
+  #
+  # Forcing it is safe here because the manifest hashes the bytes as they enter the tar rather
+  # than stat-ing the tree beforehand (scripts/store_migrate.py, cmd_pack). The payload proves
+  # itself even when the store is being appended to underneath it. Measured 2026-08-23 against a
+  # copy of the store with a writer appending to prospector.jsonl every 20ms: pack PASS 34 files,
+  # verify PASS 34/34 hashed, db_integrity=ok.
+  local force=""
+  [ "${PROSPECTOR_PACK_FORCE:-0}" = "1" ] && force=" --force"
+  t_exec "python /app/scripts/store_migrate.py pack /data/handover.tar.gz --store /data/store$force"
+
+  # The marker matters: t_exec's output carries `Connecting to fdaa:73:...` on stderr and that
+  # line is full of digits and hex. Grepping for a bare number would read the IPv6 address.
+  want="$(t_exec "echo PACKSIZE=\$(wc -c < /data/handover.tar.gz | tr -d ' ')" 2>/dev/null \
+          | grep -o 'PACKSIZE=[0-9]*' | head -1 | cut -d= -f2)"
+  sum="$(t_exec "echo PACKSHA=\$(sha256sum /data/handover.tar.gz | cut -d' ' -f1)" 2>/dev/null \
+          | grep -o 'PACKSHA=[0-9a-f]\{64\}' | head -1 | cut -d= -f2)"
+  { [ -n "$want" ] && [ "$want" -gt 0 ] 2>/dev/null && [ -n "$sum" ]; } \
+    || { echo "fly: cannot read the packed size and sha256 on the VM; refusing to claim an export" >&2
+         t_pack_cleanup; return 1; }
+  echo "fly: packed on the VM — $want bytes, sha256 $sum"
+
+  # 16 MB parts. Small enough that a truncation is bounded and cheap to refetch, large enough
+  # that a 112 MB store is 8 transfers rather than hundreds of round trips. The size is a
+  # variable only so tests/unit/test_fly_pack_refuses_a_truncated_export.py can drive the
+  # split with a small archive; nothing in production sets it.
+  local partbytes="${PROSPECTOR_PACK_PART_BYTES:-16777216}"
+  t_exec "rm -f /data/handover.part.* && split -b $partbytes -d -a 3 /data/handover.tar.gz /data/handover.part." >/dev/null
+  parts="$(t_exec "ls -1 /data/handover.part.* | sed 's#.*/##'" 2>/dev/null | grep -o 'handover\.part\.[0-9]\{3\}' | sort -u)"
+  [ -n "$parts" ] || { echo "fly: the VM produced no parts to transfer" >&2; t_pack_cleanup; return 1; }
+  echo "fly: $(echo "$parts" | wc -l | tr -d ' ') parts to fetch"
+
+  tmpdir="$(mktemp -d)"
+  for part in $parts; do
+    local psum
+    psum="$(t_exec "echo PARTSHA=\$(sha256sum /data/$part | cut -d' ' -f1)" 2>/dev/null \
+            | grep -o 'PARTSHA=[0-9a-f]\{64\}' | head -1 | cut -d= -f2)"
+      [ -n "$psum" ] || { echo "fly: no sha256 for $part on the VM" >&2
+                        rm -f "$1"; rm -rf "$tmpdir"; t_pack_cleanup; return 1; }
+
+    ok=0
+    for attempt in 1 2 3; do
+      rm -f "$tmpdir/$part"
+      fly ssh sftp get -a "$APP" "/data/$part" "$tmpdir/$part" >/dev/null 2>&1 || true
+      got="$(_sha256_local "$tmpdir/$part" 2>/dev/null)"
+      if [ "$got" = "$psum" ]; then ok=1; break; fi
+      echo "fly: $part sha mismatch on attempt $attempt ($(wc -c < "$tmpdir/$part" 2>/dev/null | tr -d ' ') bytes) — refetching" >&2
+    done
+    [ "$ok" = "1" ] || { echo "fly: $part failed 3 attempts; EXPORT ABORTED" >&2
+                         rm -f "$1"; rm -rf "$tmpdir"; t_pack_cleanup; return 1; }
+  done
+
+  # Reassemble in the order split produced, never in shell glob order on a different locale.
+  rm -f "$1"
+  for part in $parts; do cat "$tmpdir/$part" >> "$1"; done
+  rm -rf "$tmpdir"
+
+  got="$(wc -c < "$1" | tr -d ' ')"
+  [ "$got" = "$want" ] || { echo "fly: reassembled $got bytes, VM had $want; EXPORT ABORTED" >&2
+                            rm -f "$1"; t_pack_cleanup; return 1; }
+  got="$(_sha256_local "$1")"
+  [ "$got" = "$sum" ] || { echo "fly: reassembled sha256 $got, VM had $sum; EXPORT ABORTED" >&2
+                           rm -f "$1"; t_pack_cleanup; return 1; }
+  # A file can match its checksum and still be an archive nobody can open if the VM packed it
+  # wrong. This is the cheapest structural proof, and it is the check that caught the 11% payload.
+  tar -tzf "$1" >/dev/null 2>&1 || { echo "fly: the archive does not open; EXPORT ABORTED" >&2
+                                     rm -f "$1"; t_pack_cleanup; return 1; }
+
+  echo "fly: exported $1 — $want bytes, sha256 $sum, byte-exact against the VM, archive opens"
+  t_pack_cleanup
+  return 0
+}
+
+# Always runs, on every exit path, so a failed export never leaves the Fly volume filling up.
+t_pack_cleanup() {
+  t_exec "rm -f /data/handover.tar.gz /data/handover.part.*" >/dev/null 2>&1 || true
 }
 
 t_logs() { fly logs -a "$APP"; }

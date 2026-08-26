@@ -19,8 +19,26 @@ using Store.Api.Payments;
 using Crux.Storage;
 using Crux.Resilience;
 using Crux.Observability;
+using Store.Api.Infrastructure.CentralLog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// SECRETS ARRIVE AS FILES, NOT AS ENVIRONMENT VARIABLES, WHEN PROSPECTOR_SECRETS_DIR IS SET.
+// The estate's own admission policy `secrets-not-from-env-vars` refuses a pod spec that puts a
+// credential in the container environment, so on a cluster this is the only way the seven secrets
+// in deploy/compose/docker-compose.yml reach this process. Unset — every laptop, every test run,
+// every compose stack — this is a no-op and configuration behaves exactly as it did.
+//
+// It is added FIRST, before anything below reads a key, and the source it registers is added LAST
+// in the provider chain, so a mounted file beats a leftover environment variable of the same name.
+// Store.Api.Infrastructure.FileSecrets says why that direction and not the other.
+var fileSecretNames = builder.Configuration.AddFileSecrets();
+if (fileSecretNames.Count > 0)
+{
+    // NAMES ONLY. LAW 21. Without this line an operator has no way to tell a mount that arrived
+    // from a mount that arrived empty, and the difference surfaces hours later as an auth failure.
+    Console.WriteLine($"[config] {fileSecretNames.Count} setting(s) read from {FileSecrets.DirectoryVariable}: {string.Join(", ", fileSecretNames)}");
+}
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=store.db";
@@ -70,6 +88,11 @@ if (storageOverrides.Count > 0)
 builder.Services.AddCruxStorage(builder.Configuration);
 builder.Services.AddCruxResilience();
 builder.Services.AddCorrelationId();
+
+// Every log line this API writes also goes to the estate's central ingest, so an operator reads
+// one place instead of ssh-ing to the box. It is off unless both the URL and the key are set, it
+// never blocks a request, and it drops on the floor rather than failing one.
+builder.Services.AddCentralLog(builder.Configuration);
 
 // Correlation-id propagation on all outbound HTTP calls.
 builder.Services.ConfigureHttpClientDefaults(http =>

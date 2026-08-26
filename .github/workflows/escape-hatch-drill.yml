@@ -38,15 +38,18 @@ jobs:
   drill:
     runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master as of 2026-08-25
 
       - name: Pack the live store off Fly
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE || secrets.FLY_API_TOKEN }}
+          # The engine stays up through the drill, so store_migrate's live-writer refusal has to
+          # be told this is a drill. See deploy/targets/fly.sh, t_pack, for why that is safe.
+          PROSPECTOR_PACK_FORCE: "1"
         run: |
           set -euo pipefail
           : "${FLY_API_TOKEN:?set repo secret FLY_API_TOKEN_ENGINE}"
@@ -60,10 +63,15 @@ jobs:
         run: |
           set -euo pipefail
           bytes=$(wc -c < "$RUNNER_TEMP/handover.tar.gz" | tr -d ' ')
-          echo "payload: $bytes bytes"
-          # A tarball that exists but is tiny is the failure mode a size check catches and a
-          # `test -f` does not. One megabyte is far below the real store and far above an empty
-          # or truncated archive.
+          echo "payload: $bytes bytes  sha256: $(sha256sum "$RUNNER_TEMP/handover.tar.gz" | cut -d' ' -f1)"
+
+          # A BYTE FLOOR IS NOT A VERIFICATION, AND THIS DRILL LEARNED IT THE EXPENSIVE WAY.
+          # On 2026-08-23 `fly ssh sftp get` delivered 12,779,520 of 112,474,776 bytes and
+          # exited 0. The old check here was `[ "$bytes" -gt 1000000 ]`, which an 11% payload
+          # passes comfortably. t_pack now proves the transfer with a per-part and whole-file
+          # sha256 taken on the VM, so the size question is settled before this step runs.
+          # What is left for this step is the question t_pack cannot answer: does the archive
+          # restore into a store the engine would actually accept.
           [ "$bytes" -gt 1000000 ] || { echo "payload is too small to be the store"; exit 1; }
 
           mkdir -p "$RUNNER_TEMP/restored"
@@ -73,12 +81,63 @@ jobs:
           # allowed to start on the far side.
           python3 scripts/store_migrate.py verify "$RUNNER_TEMP/restored" --sample 50
 
+      - name: Prove the restored store is not a smaller copy of itself
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE || secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The failure this catches: an export that is internally consistent - it opens, the
+          # manifest matches, 50 sampled rows re-hash - and is still missing most of the store,
+          # because it was packed from a partial volume rather than truncated in flight. The
+          # manifest's own census cannot catch that: the census is computed at pack time on the
+          # VM and travels inside the archive, so it describes what was packed, not what was
+          # there. Counting the live ledger separately is the only reading that is independent
+          # of the payload.
+          live=$(bash deploy/targets/fly.sh t_exec \
+                   "echo LIVEROWS=\$(wc -l < /data/store/prospector.jsonl | tr -d ' ')" 2>/dev/null \
+                 | grep -o 'LIVEROWS=[0-9]*' | head -1 | cut -d= -f2 || true)
+          got=$(wc -l < "$RUNNER_TEMP/restored/prospector.jsonl" 2>/dev/null | tr -d ' ' || true)
+          echo "live ledger rows: ${live:-unknown}   restored ledger rows: ${got:-unknown}"
+
+          if [ -z "${live:-}" ] || [ -z "${got:-}" ]; then
+            echo "NOT PROVED: could not count /data/store/prospector.jsonl on one or both sides."
+            echo "The export verified structurally; its completeness is unproven, and an unproven"
+            echo "exit is the thing this drill exists to refuse."
+            exit 1
+          fi
+
+          # The store is live and rows arrive while the drill runs, so the restored copy may be
+          # a few rows behind. It may never be AHEAD, and it may never be materially short.
+          [ "$got" -le "$live" ] \
+            || { echo "restored has MORE rows than live - this archive is not of this store"; exit 1; }
+          floor=$(( live * 99 / 100 ))
+          [ "$got" -ge "$floor" ] \
+            || { echo "restored $got rows against $live live - short by $(( live - got ))."
+                 echo "This is the silent partial export the 2026-08-23 truncation produced."
+                 exit 1; }
+          echo "complete: $got/$live ledger rows, within the 1% the live store drifts during a drill"
+
+      # This step used to run under `if: always()`, so it printed the sentence below on runs
+      # where "Pack the live store off Fly" had FAILED and "Verify the payload is intact" had
+      # been SKIPPED. Measured 2026-08-23 on run 32618271131: pack failure, verify skipped,
+      # and the log still read "Proved: the live store can be extracted from Fly". The drill
+      # announced a proof it never obtained, on every run from 2026-08-19 onward. Anyone
+      # reading the log rather than the job's colour would have concluded the exit was drilled.
       - name: Say what was proved
-        if: always()
+        if: success()
         run: |
           echo "Proved: the live store can be extracted from Fly through the adapter, and the"
           echo "payload verifies. NOT proved: a second machine is running it today. That is"
           echo "deliberate - see this workflow's header."
+
+      # A red drill has to say what it means, in the log, and not leave the reader to work it
+      # out from a step name. LAW 19: an exit that has never been drilled is not portable.
+      - name: Say what was NOT proved
+        if: failure()
+        run: |
+          echo "NOT PROVED: the store could not be extracted from Fly on this run."
+          echo "The exit is undrilled until this workflow goes green. Read the failing step"
+          echo "above; do not read the previous green run as current."
 
       - name: Leave nothing behind
         if: always()

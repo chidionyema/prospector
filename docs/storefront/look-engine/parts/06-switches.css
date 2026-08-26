@@ -1,0 +1,151 @@
+<style>
+/* ============================================================================
+   THE STRUCTURAL SWITCHES — the differences a token cannot express.
+
+   A colour is a token. A masthead that centres, a headline that sets in caps, a
+   card that loses its box: those are STRUCTURE, and no amount of palette states
+   them. They used to be stated as `[data-look="ledger"] .masthead { ... }` —
+   seventeen rules, each naming one of the ten looks.
+
+   Naming a look in CSS is what gate A42 forbids, and the reason is the eleventh
+   look: a rule addressed to `ledger` is a rule the next look cannot have without
+   a deploy, which makes the ops console (C23/C24) a liar. The console can write
+   a seed and a switch into a row; it cannot write a stylesheet.
+
+   So each rule below is keyed on WHAT IT DOES, and any look may ask for it by
+   setting the switch. Same seventeen declarations, no look named. Adding the
+   eleventh look is now a row of data, and a look that asks for a switch nobody
+   implemented fails the gate rather than silently doing nothing.
+   ========================================================================== */
+
+/* A masthead set like a front page: centred, and the wordmark as big as the
+   sheet allows. */
+[data-masthead="centred"] .masthead__dateline { justify-content: center; text-align: center; }
+[data-masthead-rule="double"] .masthead { border-bottom: 3px double var(--hair-strong); padding-bottom: var(--s3); }
+[data-wordmark="sheet"] .wordmark { font-size: clamp(2.6rem, 9vw, 6rem); }
+
+/* A readout: a boxed panel on its own surface, the way an instrument frames a
+   measurement rather than letting it sit on the page. */
+[data-readout="boxed"] .readout { border: 1px solid var(--hair); border-radius: var(--radius); padding: var(--s2) var(--s3); background: var(--surface); }
+
+/* How a plate meets the text under it: an underline in the accent, or capped
+   corners that carry the card's radius across the top only. */
+[data-plate-edge="underline"] .plate { border-bottom: 2px solid var(--accent); }
+[data-plate-edge="capped"] .plate { border-radius: var(--radius) var(--radius) 0 0; }
+
+/* Navigation set in spaced capitals — a filing label rather than a link. */
+[data-nav="filed"] nav.bar a { text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* A section head ruled above and below, as a prospectus rules its headings. */
+[data-section-head="ruled"] .section__head { border-block: 1px solid var(--hair-strong); padding-block: var(--s2); }
+
+/* The dropped capital that opens an almanac's first paragraph. */
+[data-dropcap="on"] .hero__deck::first-letter { float: left; font-family: var(--display); font-size: 3.4em; line-height: 0.78; padding: 0.08em 0.1em 0 0; }
+
+/* Registration marks at the corners of a figure, as a workbench drawing carries
+   crop marks. */
+[data-figure-marks="corners"] .figure { position: relative; }
+[data-figure-marks="corners"] .figure::before, [data-figure-marks="corners"] .figure::after { content: ""; position: absolute; width: 14px; height: 14px; border: 1px solid var(--accent); }
+[data-figure-marks="corners"] .figure::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+[data-figure-marks="corners"] .figure::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+/* Headlines in capitals, the voice of a broadside. */
+[data-headline-case="upper"] .hero__head, [data-headline-case="upper"] .close h2 { text-transform: uppercase; }
+
+/* Panels with no box at all: a single rule on top, the page's own ground, no
+   shadow and no radius. The quietest a card can be while still being a card. */
+[data-panel="flat"] .pack, [data-panel="flat"] .close, [data-panel="flat"] .panel { border: 0; border-top: 1px solid var(--hair-strong); border-radius: 0; background: var(--ground); box-shadow: none; }
+[data-panel="flat"] .packs, [data-panel="flat"] .docs { background: var(--ground); border: 0; }
+[data-panel="flat"] .panel__bar { background: var(--ground); }
+
+/* ── LAYOUT ARCHETYPES ────────────────────────────────────────────────────────
+   The switch that answers "they all look the same".
+
+   A palette and a typeface change what a page is MADE OF. Only this changes what
+   it IS. Until now every one of the ten rendered the same first screen -- wordmark,
+   dateline, nav, eyebrow, headline left, plate right -- so ten looks read as one
+   composition in ten costumes, which is exactly what the founder saw and said.
+
+   Each value below is a DIFFERENT first screen built from the SAME markup: the
+   grid changes, the paint order changes, the measure changes. No look is named,
+   so the eleventh look can ask for any of them from a data row (gate A42).
+
+   None of them overlaps text with the canvas. That is deliberate: the verify gate
+   compares painted leaves and would call an overlap a collision, and it would be
+   right -- a headline sitting on a plotted field is a legibility risk that no
+   contrast token can measure.
+   ────────────────────────────────────────────────────────────────────────────── */
+
+/* STACK — the evidence first, the argument under it. */
+[data-layout="stack"] .figure { order: -1; }
+[data-layout="stack"] .hero__lead { max-width: 70ch; }
+[data-layout="stack"] .figure canvas { max-height: 148px; object-fit: cover; object-position: center; }
+
+/* FRIEZE — the argument first, the evidence as a band beneath it. The mirror of
+   stack, and the reason both exist: which comes first is a claim about what the
+   page thinks the reader wants. */
+[data-layout="frieze"] .figure { order: 9; }
+[data-layout="frieze"] .hero__lead { max-width: 70ch; }
+[data-layout="frieze"] .figure canvas { max-height: 132px; object-fit: cover; object-position: center; }
+
+/* POSTER — no plate in the first screen at all. The headline is the page. */
+[data-layout="poster"] .hero__head { font-size: clamp(2.6rem, 9.4vw + 0.4rem, 7rem); }
+[data-layout="poster"] .hero__deck { max-width: 58ch; }
+[data-layout="poster"] .figure { order: 9; }
+
+/* MEMO — one narrow measure, nothing centred, the plate no wider than the prose.
+   A document that was typed rather than designed. */
+[data-layout="memo"] .hero__lead { max-width: 54ch; }
+[data-layout="memo"] .figure { order: 9; max-width: 54ch; }
+[data-layout="memo"] .hero__head { font-size: clamp(1.9rem, 3.4vw + 0.8rem, 3.1rem); }
+
+/* READOUT-FIRST — the numbers above the headline, the way an almanac opens on its
+   table and explains afterwards. */
+[data-layout="readout-first"] .hero__lead { display: flex; flex-direction: column; }
+[data-layout="readout-first"] .hero__lead .readouts { order: -1; margin-top: 0; margin-bottom: var(--s3); }
+[data-layout="readout-first"] .hero__lead .label { order: -2; }
+[data-layout="readout-first"] .readout__n { font-size: 1.6em; }
+
+@media (min-width: 64rem) {
+  /* PLATE-LEFT — the drawing, then the notes. */
+  [data-layout="plate-left"] .hero { grid-template-columns: minmax(0,1fr) minmax(0,1.02fr); }
+  [data-layout="plate-left"] .figure { order: -1; }
+
+  /* COLUMN — the headline spans the sheet, the deck sets in two columns beneath it,
+     the plate takes a narrow outer column. */
+  [data-layout="column"] .hero { grid-template-columns: minmax(0,1.45fr) minmax(0,0.9fr); align-items: start; }
+  [data-layout="column"] .hero__deck { columns: 2; column-gap: var(--s4); max-width: none; }
+  [data-layout="column"] .hero__head { max-width: 26ch; }
+
+  /* RAIL — a rule down the outside of the lead, the plate narrow beside it. An
+     instrument's scale, printed. */
+  [data-layout="rail"] .hero { grid-template-columns: minmax(0,1.5fr) minmax(0,0.86fr); align-items: start; }
+  [data-layout="rail"] .hero__lead { border-left: 6px solid var(--accent); padding-left: var(--s4); padding-block: var(--s3); }
+
+  /* FRIEZE at width: the numbers stand in the right-hand column beside the deck rather than
+     leaving half the screen empty, and the band sits under both. Quiet is meant to read as
+     air, not as an unfinished page. */
+  [data-layout="frieze"] .hero__lead { display: grid; grid-template-columns: minmax(0,1.16fr) minmax(0,0.72fr);
+    column-gap: var(--s5); row-gap: 0; align-items: start; max-width: none; }
+  [data-layout="frieze"] .hero__lead > .label,
+  [data-layout="frieze"] .hero__lead > .hero__head { grid-column: 1 / -1; }
+  [data-layout="frieze"] .hero__lead > .hero__deck,
+  [data-layout="frieze"] .hero__lead > .actions { grid-column: 1; }
+  [data-layout="frieze"] .hero__lead > .readouts { grid-column: 2; grid-row: 3 / span 2;
+    margin-top: 0; grid-template-columns: repeat(2, minmax(0,1fr)); }
+
+  /* SPLIT — two even columns with the gutter drawn, as a prospectus rules its page. */
+  [data-layout="split"] .hero { grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
+  [data-layout="split"] .figure { border-left: 1px solid var(--hair-strong); padding-left: var(--s4); border-radius: 0; background: transparent; box-shadow: none; border-block: 0; border-right: 0; }
+
+  /* The one-column archetypes must beat the two-column base rule at this width. */
+  [data-layout="stack"] .hero,
+  [data-layout="frieze"] .hero,
+  [data-layout="poster"] .hero,
+  [data-layout="memo"] .hero,
+  [data-layout="readout-first"] .hero { grid-template-columns: minmax(0,1fr); }
+  /* One column means the row gap is now vertical rhythm rather than a gutter. */
+  [data-layout="stack"] .hero,
+  [data-layout="frieze"] .hero { gap: var(--s4); }
+}
+</style>

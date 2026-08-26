@@ -57,6 +57,7 @@ import mistune  # noqa: E402
 from make_sample_report import report_fields  # noqa: E402
 
 from prospector import bridge, pack_field, pack_floors, pack_manifest, pack_offer  # noqa: E402
+from prospector.config import store_root  # noqa: E402
 from prospector.plain_text import publish_pass_document  # noqa: E402
 
 #: The three sections the sample shows, in reading order. Named by FILENAME so this list and
@@ -372,7 +373,7 @@ def build(pack_id: str, dossier_dir: Path) -> Dict[str, Any]:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("pack_id")
-    ap.add_argument("--dossier-dir", type=Path, default=Path("store/dossiers"))
+    ap.add_argument("--dossier-dir", type=Path, default=store_root() / "dossiers")
     ap.add_argument("--out", type=Path)
     args = ap.parse_args()
 

@@ -20,7 +20,7 @@ import json
 import sys
 from pathlib import Path
 
-from prospector.config import load_config
+from prospector.config import load_config, store_root
 from prospector.pack_validation import validate_pack
 from publish.publish import publish
 from tools.publish_passes import reconstruct  # reconstruct preserves tags (artifacts/marketing)
@@ -31,7 +31,8 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 2
 
-    paths = sorted(glob.glob("store/dossiers/*.pass.json")) if argv == ["--all"] else argv
+    paths = (sorted(glob.glob(str(store_root() / "dossiers" / "*.pass.json")))
+             if argv == ["--all"] else argv)
     cfg = load_config()
 
     ok = 0

@@ -1,0 +1,175 @@
+name: container images
+
+# THE MANIFESTS NAMED THREE IMAGES THAT NOTHING BUILT.
+#
+# Measured on origin/main, 2026-08-24, before this file existed:
+#
+#   $ grep -rn 'build-push-action\|docker push\|docker buildx' .github/workflows/
+#   (no output)
+#
+# deploy/k8s/base names ghcr.io/chidionyema/prospector-engine, -store-api and -store-web. No
+# workflow on any branch had ever built or published one of them. The k8s-manifests workflow
+# graded those manifests clean and would keep grading them clean forever, because a manifest that
+# names an image nobody has built is still valid YAML admitted by every policy. The first thing to
+# find out would have been a cluster pulling and failing.
+#
+# The Fly deploy workflows next door are not this. They hand a source tree to Fly's own remote
+# builder, so the artifact never exists as an image anyone else can pull. Kubernetes pulls; there
+# has to be something in a registry to pull.
+#
+# THE TAG IS THE COMMIT SHA AND THERE IS NO MOVING TAG. Not `latest`, not `main`. A moving tag
+# means the cluster's running version is whatever won a race, and a rollback has nothing to roll
+# back to. The estate already enforces this at admission -- upstream disallow-latest-tag is in
+# deploy/k8s/policies at Enforce -- but that rule only refuses `:latest` and untagged images, so a
+# moving `:main` tag would sail past it. The rule this file follows is stricter than the policy on
+# purpose: publish exactly one immutable tag per commit, and let promotion be a commit that names
+# it (deploy/k8s/README.md, register row F-54).
+#
+# The last step prints the two lines to paste into an overlay's `images:` block. That is the whole
+# handover between this file and a deploy: no automation writes back to the repository, because a
+# CI job that commits to main is a second way to change what production runs.
+
+on:
+  push:
+    branches: [main]
+    # No paths filter on main, deliberately. The engine's build context is the repository root, so
+    # almost any commit can change its image. A filter that guesses wrong does not fail -- it
+    # silently leaves main's published image behind main, which is the failure nobody notices.
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/engine/**'
+      - 'store_platform/**'
+      - 'prospector/**'
+      - 'requirements.txt'
+      - '.github/workflows/container-images.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: container-images-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+
+    permissions:
+      contents: read
+      packages: write       # push to ghcr.io
+      id-token: write       # provenance attestation signs with the job's OIDC token
+      attestations: write
+
+    strategy:
+      # One broken image must not hide the state of the other two.
+      fail-fast: false
+      matrix:
+        include:
+          - name: prospector-engine
+            context: .
+            file: deploy/engine/Dockerfile
+          - name: prospector-store-api
+            context: store_platform
+            file: store_platform/src/Store.Api/Dockerfile
+          - name: prospector-store-web
+            context: store_platform/src/Store.Web
+            file: store_platform/src/Store.Web/Dockerfile
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Store.Web inlines NEXT_PUBLIC_* into the client bundle at BUILD time. A missing one does
+      # not fail the build; it ships a storefront that calls `undefined` and looks fine until a
+      # buyer clicks. deploy-web.yml learned this and checks it before handing off to
+      # store_platform/scripts/deploy_web.sh. The image build has to check the same thing, or the
+      # k8s path reintroduces the bug the Fly path already fixed.
+      - name: the storefront's build-time variables are present
+        if: matrix.name == 'prospector-store-web'
+        env:
+          API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+        run: |
+          missing=0
+          for v in API_URL SITE_URL; do
+            if [ -z "${!v}" ]; then
+              echo "::error::repository variable NEXT_PUBLIC_${v} is empty. It is inlined into the public bundle at build time, so an image built without it is silently broken. Set it with: gh variable set NEXT_PUBLIC_${v} --body '<value>'"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
+            echo "NEXT_PUBLIC_API_URL and NEXT_PUBLIC_SITE_URL are both set (names only; no value is printed)"
+          fi
+          exit "$missing"
+
+      # R24 (2026-08-24): every image is built for amd64 and arm64. The OKE worker pool is
+      # Ampere A1 (arm64); an amd64-only image lands there as exec format error.
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: log in to ghcr.io
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: tags and labels
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
+          # The bare 40-character commit SHA, and nothing else. See the header.
+          tags: type=sha,format=long,prefix=
+
+      - name: build and push
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          # A pull request builds to prove the Dockerfile still works and publishes nothing. Only
+          # a commit that is on main earns a tag in the registry.
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.STRIPE_LIVE_PUBLISHABLE_KEY }}
+
+      # Who built this, from which commit, with which workflow -- verifiable later with
+      # `gh attestation verify oci://ghcr.io/<owner>/<name>:<sha> --repo <owner>/<repo>`.
+      # An image in a registry is otherwise just bytes somebody pushed.
+      - name: attest provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      # The handover to a deploy, in the form it is consumed: the exact two lines an overlay's
+      # `images:` block needs. Promotion stays a human commit on purpose.
+      - name: what to put in an overlay
+        if: github.event_name != 'pull_request'
+        run: |
+          {
+            echo "### ${{ matrix.name }}"
+            echo
+            echo "Published \`ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ github.sha }}\`"
+            echo "at digest \`${{ steps.build.outputs.digest }}\`."
+            echo
+            echo "To promote it, add to an overlay's \`images:\` block and commit:"
+            echo
+            echo '```yaml'
+            echo "  - name: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}"
+            echo "    newTag: ${{ github.sha }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

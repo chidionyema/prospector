@@ -24,30 +24,37 @@ worse than no backup, because you stop looking. This module fails loudly instead
 
 Verification, not optimism
 --------------------------
-Uploading is not backing up. This re-downloads a random sample of what it just wrote plus the
-whole ledger object, and compares SHA-256 against the local file. `--restore` performs the
-real thing end to end into a directory you name, so recovery is something that has been done
-rather than something believed.
+Uploading is not backing up. This re-downloads a random sample of the dossiers it just wrote
+and the ledger snapshot it just wrote, and compares SHA-256 against what was uploaded.
+
+That sentence used to say the ledger was verified too, and it was false. Until 2026-08-21 the
+ledger was the only one of the three artifacts uploaded with NO read-back at all: dossiers were
+sampled, the db snapshot was fetched and hashed, and the audit trail -- the one file that cannot
+be rebuilt from anything else -- got nothing. A docstring is not a check. If the daily upload
+had been writing truncated objects, every run would still have printed a clean probe line.
 
 Usage
 -----
     python3 scripts/backup_store.py                 # sync + verify a sample, print a probe line
     python3 scripts/backup_store.py --verify-only   # touch nothing; prove the remote matches
-    python3 scripts/backup_store.py --restore DIR   # pull everything back into DIR and check it
+    python3 scripts/backup_store.py --restore DIR   # pull dossiers and the index into DIR
 """
 from __future__ import annotations
 
 import argparse
 import gzip
 import hashlib
+import json
 import os
 import random
+import re
 import shutil
 import sqlite3
 import subprocess
 import sys
 import tempfile
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -87,6 +94,19 @@ DEFAULT_DB_KEEP = 30
 # after-readback rule as DEFAULT_DB_KEEP: only after the current run's bundle has been
 # confirmed on R2, so a sick git cannot delete the good copies on its way past.
 DEFAULT_BUNDLE_KEEP = 14
+
+# How many dated ledger snapshots to keep. Until 2026-08-19 the answer was "all of them":
+# db/ had DEFAULT_DB_KEEP and repo/ had DEFAULT_BUNDLE_KEEP, and the one series that grows
+# every single day had no ceiling at all. Measured on the bucket that morning, 19 days in:
+#
+#   ledger/     17 objects   220.4 MB      db/      9 objects     6.1 MB
+#
+# About 13 MB a day, so 4.7 GB a year, in a bucket whose whole point is that nobody turns
+# it off. 30 is generous rather than tight, because the ledger is APPEND-ONLY: every
+# snapshot is a superset of the one before it, so the newest copy alone reconstructs the
+# whole log. The older copies buy exactly one thing — a window in which a truncation that
+# nobody noticed can still be undone — and a month is that window.
+DEFAULT_LEDGER_KEEP = 30
 
 # A DIFFERENT bucket from R2_BUCKET (prospector-packs), on purpose. The delivery bucket is
 # reachable by the storefront's credentials and could have a public r2.dev domain attached in
@@ -375,7 +395,7 @@ def _remote_index(s3, bucket: str, prefix: str) -> dict[str, str]:
 
 
 def _md5(path: Path) -> str:
-    h = hashlib.md5()  # noqa: S324 - matching R2's ETag, not a security decision
+    h = hashlib.md5(usedforsecurity=False)  # matching R2's ETag, not a security decision
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
@@ -401,7 +421,8 @@ def _dossier_key(path: Path) -> str:
 
 
 def sync(s3, bucket: str, *, dry_run: bool = False,
-         db_keep: int = DEFAULT_DB_KEEP) -> tuple[int, int, str, str]:
+         db_keep: int = DEFAULT_DB_KEEP,
+         ledger_keep: int = DEFAULT_LEDGER_KEEP) -> tuple[int, int, str, str]:
     """Mirror dossiers, append a dated ledger snapshot and a dated db snapshot.
 
     Returns (uploaded, skipped, ledger_key, db_key).
@@ -435,11 +456,26 @@ def sync(s3, bucket: str, *, dry_run: bool = False,
             with tempfile.NamedTemporaryFile(suffix=".gz", delete=False) as tmp:
                 tmp_path = Path(tmp.name)
             try:
-                _snapshot_ledger(tmp_path)
+                ledger_bytes = _snapshot_ledger(tmp_path)
                 s3.upload_file(str(tmp_path), bucket, ledger_key,
                                ExtraArgs={"ContentType": "application/gzip"})
+                # Read back HERE, for the same reason the db snapshot does: this object is a
+                # point-in-time artifact of an APPEND-ONLY file, so the bytes it captured stop
+                # existing as a standalone thing the moment `tmp_path` is unlinked. Until
+                # 2026-08-21 the ledger was the only one of the three artifacts uploaded with
+                # no read-back at all -- dossiers get sampled, the db gets this check, the
+                # audit trail got nothing.
+                body = s3.get_object(Bucket=bucket, Key=ledger_key)["Body"].read()
+                if _sha256_bytes(body) != _sha256(tmp_path):
+                    sys.exit(f"STORE_BACKUP FAIL {ledger_key} reads back differently "
+                             "than it was written")
+                print(f"  ledger {ledger_key} {ledger_bytes} bytes gz, read back and matched")
             finally:
                 tmp_path.unlink(missing_ok=True)
+            # After the upload, never before — the same prune-after-write rule the db
+            # snapshots follow, so a bad local file cannot delete the good copies on its
+            # way past. _prune_ledger_snapshots adds a size check on top of it.
+            _prune_ledger_snapshots(s3, bucket, keep=ledger_keep)
 
     # The catalogue index. Until 2026-08-07 this file was in the backup ONLY as ad-hoc
     # migration copies somebody made by hand before a schema change (.pre-market.bak,
@@ -548,6 +584,53 @@ def _prune_db_snapshots(s3, bucket: str, *, keep: int) -> list[str]:
     return stale
 
 
+def _prune_ledger_snapshots(s3, bucket: str, *, keep: int) -> list[str]:
+    """Delete all but the newest `keep` dated ledger snapshots. `keep<=0` disables pruning.
+
+    Same dated-key sort as the db snapshots, and one guard they do not need.
+
+    THE SHRINK GUARD. The ledger is append-only, so a snapshot that is SMALLER than one it
+    is about to replace means the local file lost records — the exact failure this copy
+    exists to survive, and the reason these keys are dated instead of overwritten. Pruning
+    on that day would delete the good copies while the short one arrives. So when the newest
+    object is smaller than the largest object queued for deletion, nothing is deleted and
+    the run says why. The bucket grows for a day; it does not lose the only good copy.
+    """
+    if keep <= 0:
+        return []
+    sizes: dict[str, int] = {}
+    token = None
+    while True:
+        kwargs = {"Bucket": bucket, "Prefix": LEDGER_PREFIX, "MaxKeys": 1000}
+        if token:
+            kwargs["ContinuationToken"] = token
+        page = s3.list_objects_v2(**kwargs)
+        for obj in page.get("Contents", []):
+            sizes[obj["Key"]] = int(obj.get("Size") or 0)
+        if not page.get("IsTruncated"):
+            break
+        token = page.get("NextContinuationToken")
+
+    keys = sorted(sizes)
+    if len(keys) <= keep:
+        return []
+    stale = keys[:-keep]
+    newest = sizes[keys[-1]]
+    biggest_doomed = max(sizes[k] for k in stale)
+    if newest < biggest_doomed:
+        print(
+            f"  REFUSED to prune {len(stale)} ledger snapshot(s): the newest is "
+            f"{newest} bytes but {biggest_doomed} bytes was kept earlier. The ledger is "
+            "append-only, so it has lost records. Nothing deleted.",
+            file=sys.stderr,
+        )
+        return []
+    for key in stale:
+        s3.delete_object(Bucket=bucket, Key=key)
+    print(f"  pruned {len(stale)} ledger snapshot(s), keeping the newest {keep}")
+    return stale
+
+
 def _snapshot_ledger(out: Path) -> int:
     """Gzip a whole-lines prefix of the ledger into `out`. Returns bytes captured.
 
@@ -600,6 +683,36 @@ def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[st
     stamp = time.strftime("%Y-%m-%dT%H%M%SZ", time.gmtime())
     key = f"{REPO_PREFIX}{stamp}.bundle"
 
+    # A SHALLOW REPOSITORY CANNOT PRODUCE A USABLE BUNDLE, AND NOTHING DOWNSTREAM CAN TELL.
+    # This is checked first because it is the only failure here that cannot be repaired by
+    # trying again. `git bundle create --all` from a shallow clone walks to the grafted
+    # boundary and stops. The bundle declares no prerequisites, because as far as it knows
+    # the boundary commits are roots, so it looks self-contained and complete.
+    #
+    # Measured 2026-08-23. `prospector-live` has been shallow since 2026-08-18 16:56 (7
+    # boundary commits in .git/shallow) and the nightly mirror has run from it ever since.
+    # Every bundle it produced — 14 objects in the bucket, the newest three each exactly
+    # 71,176,969 bytes — is unrestorable. All three restore paths die the same way:
+    #     git clone --bare  ->  error: Could not read 788dca7d...
+    #                           fatal: Failed to traverse parents of commit d932e28e
+    #                           fatal: remote did not send all necessary objects
+    #     git clone --mirror -> identical
+    #     git init + git fetch '+refs/*:refs/*' -> 0 refs recovered
+    # `git fsck --connectivity-only` on the source exits 0 the whole time, because a shallow
+    # repo IS internally consistent. The damage only exists in the bundle's consumer.
+    shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+    )
+    if shallow.stdout.strip() == "true":
+        raise RuntimeError(
+            f"{REPO_ROOT} is a shallow clone, so no bundle taken from it can be restored: "
+            "the history stops at the graft boundary and every clone dies traversing past "
+            "it. Repair the source before backing it up — `git -C "
+            f"{REPO_ROOT} fetch --unshallow origin` — rather than storing another unusable "
+            "copy. Refusing to upload."
+        )
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp_bundle = Path(tmp) / "mirror.bundle"
         # `git bundle create` --all walks every ref under REPO_ROOT. The exit code is the
@@ -616,14 +729,30 @@ def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[st
 
         # Verify BEFORE uploading: uploading an unreadable bundle is the same failure as not
         # backing up at all, and it would look green because the upload itself succeeded.
-        verify = subprocess.run(
-            ["git", "bundle", "verify", str(tmp_bundle)],
-            cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+        #
+        # THE CHECK IS A CLONE, NOT `git bundle verify`. Verify reads the bundle header and
+        # asks whether this repository already holds the prerequisites it names. It never
+        # reads the pack. Measured 2026-08-23: it exits 0 on a bundle truncated to 300 bytes,
+        # and it exited 0 on all fourteen shallow bundles described above, printing "The
+        # bundle contains these 169 refs" about a file from which zero refs can be recovered.
+        # Cloning into a throwaway directory is the only check that reads every object, and
+        # it is the operation a restore actually performs.
+        probe = Path(tmp) / "probe.git"
+        clone = subprocess.run(
+            ["git", "clone", "--bare", "--quiet", str(tmp_bundle), str(probe)],
+            capture_output=True, text=True, check=False,
         )
-        if verify.returncode != 0:
+        if clone.returncode != 0:
             raise RuntimeError(
-                f"git bundle verify failed (rc={verify.returncode}): "
-                f"{verify.stderr.strip() or '<no stderr>'}"
+                f"the bundle cannot be cloned, so it is not a backup (rc={clone.returncode}): "
+                f"{clone.stderr.strip() or '<no stderr>'}"
+            )
+        refs = subprocess.run(
+            ["git", "-C", str(probe), "show-ref"], capture_output=True, text=True, check=False,
+        ).stdout.splitlines()
+        if not refs:
+            raise RuntimeError(
+                "the bundle cloned to zero refs, so it carries no history worth storing"
             )
 
         size = tmp_bundle.stat().st_size
@@ -649,6 +778,173 @@ def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[st
             print(f"  pruned {len(stale)} repo bundle(s), keeping the newest {keep}")
 
     return key, size, local_sha
+
+
+# ------------------------------------------------------------------------- the log cold tier
+#: Where a closed day file lands: `logs/<svc>-<day>.jsonl.gz`, one object per service per day.
+#: Dated keys sort chronologically, so the prune below needs no metadata call and no clock.
+LOGS_PREFIX = "logs/"
+
+#: A cold-tier key this cannot parse is never deleted. That is the safe direction for the one
+#: place in this file that copies the writer's naming rule instead of importing it: the reader
+#: below imports `log_ingest.day_files` for the FILENAMES, but an object key is this script's
+#: own construction and the prune has to be able to read it back without a round trip.
+_LOG_KEY_RE = re.compile(
+    r"^" + re.escape(LOGS_PREFIX) + r"(?P<svc>[a-z][a-z0-9-]{0,31})-(?P<day>\d{4}-\d{2}-\d{2})\.jsonl\.gz$"
+)
+
+#: How long the cold tier keeps a day file. 90 days against the 14 the hot tier keeps
+#: (`ops/config/log_rotation.yaml`), because the two answer different questions: the hot tier
+#: answers "what happened this morning" and is read constantly; the cold tier answers "what
+#: happened the week that order was placed" and is read once a year.
+#:
+#: PRUNED HERE, not by an R2 lifecycle rule, and that is a deliberate cost. A lifecycle rule is
+#: cheaper — no LIST, no DELETE, and it keeps working while this job is off. It is also a fact
+#: that would live in a provider account and nowhere in this repository, and the platform rule is
+#: that a fresh clone plus an env file is the whole system. The three series already here prune
+#: in code for the same reason; a fourth pruning somewhere else is the one nobody remembers when
+#: this estate leaves Fly.
+DEFAULT_LOGS_KEEP_DAYS = 90
+
+#: Fields the ingest guarantees on every line it writes. `svc` and `evt` are refused outright
+#: without them, `ts` and `lvl` are repaired when absent, and `host` is overwritten from the
+#: connection (`prospector/log_ingest.py`, `normalise`). A restored line missing any of them did
+#: not survive the round trip.
+_LOG_REQUIRED = ("ts", "svc", "lvl", "evt", "host")
+
+
+def _verify_log_archive(s3, bucket: str, key: str) -> str:
+    """Open one uploaded object and prove its records survived. Returns "" or one problem.
+
+    Reads back over the network rather than re-checking the local file, because what a restore
+    will have is the bytes on R2, and those are the only bytes worth proving. Streamed through
+    `GzipFile` a line at a time: a day file is capped at 200 MB (§4.6) and this runs on a
+    machine with 512 MB of memory, so decompressing the whole object into a string would trade
+    a backup check for an OOM.
+    """
+    number = 0
+    try:
+        body = s3.get_object(Bucket=bucket, Key=key)["Body"]
+        with gzip.GzipFile(fileobj=body) as raw:
+            for number, raw_line in enumerate(raw, start=1):
+                line = raw_line.decode("utf-8").strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    return (f"log archive {key} line {number} restored as "
+                            f"{type(record).__name__}, not an object")
+                missing = [f for f in _LOG_REQUIRED if f not in record]
+                if missing:
+                    return f"log archive {key} line {number} lost {', '.join(missing)}"
+    except Exception as exc:
+        where = f" at line {number}" if number else ""
+        return f"log archive {key} did not read back{where}: {type(exc).__name__}: {exc}"
+    if number == 0:
+        return f"log archive {key} restored to zero records"
+    return ""
+
+
+def _prune_log_archives(s3, bucket: str, *, keep_days: int, today: str) -> list[str]:
+    """Delete cold-tier objects whose DAY is more than `keep_days` before `today`.
+
+    The bound is read out of the KEY, never out of the object's `LastModified`. An object that
+    is re-uploaded, or copied inside the bucket during a provider move, gets a fresh
+    `LastModified` while still holding a log from March; a prune that trusted it would keep that
+    object forever and delete nothing. The key names the day the records are from.
+    """
+    if keep_days <= 0:
+        return []
+    cutoff = (datetime.strptime(today, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+              - timedelta(days=keep_days)).strftime("%Y-%m-%d")
+    stale = []
+    for key in sorted(_remote_index(s3, bucket, LOGS_PREFIX)):
+        match = _LOG_KEY_RE.match(key)
+        if match and match.group("day") < cutoff:
+            stale.append(key)
+    for key in stale:
+        s3.delete_object(Bucket=bucket, Key=key)
+    if stale:
+        print(f"  pruned {len(stale)} log archive(s) older than {cutoff}")
+    return stale
+
+
+def archive_logs(s3, bucket: str, *, keep_days: int = DEFAULT_LOGS_KEEP_DAYS,
+                 today: str | None = None) -> tuple[list[str], int, list[str]]:
+    """Gzip every CLOSED day file to `logs/` on R2, read each one back, then prune.
+
+    Returns `(keys uploaded, bytes uploaded, problems)`. A non-empty `problems` fails the run.
+
+    This is step 12 of `docs/LOGGING_AND_RETENTION.md` Part 8, and it closes the gap the whole
+    document is named after: everything the ingest receives lives on one Fly volume, and
+    `ops/automations/log_rotation.py` deletes it at 14 days. Without this, losing the volume
+    loses every log the estate ever collected, and keeping the volume loses them anyway.
+
+    **Only files whose day is strictly before `today` are touched.** The ingest names a file from
+    its OWN clock at write time and appends to today's file continuously, so today's file is the
+    one file guaranteed to be mid-write. Capturing it would upload a torn tail and then have to
+    be replaced tomorrow. Yesterday's file has been closed since the clock rolled over.
+
+    **Every new object is read back and opened before the run counts.** `verify: nonempty` was
+    removed from `ops/config/offsite_backup.yaml` on 2026-08-19 because a size cannot tell a
+    whole file from a download that stopped halfway. §6.4 draws the same line: until something
+    has been restored, the honest word is "copies", not "backups".
+
+    **Nothing is pruned in a run that had a problem.** The prune deletes the oldest copies, and
+    a run that could not verify what it just uploaded is exactly the run that must not.
+    """
+    # Imported here, not at module scope, because `log_ingest` imports starlette and this
+    # script's real job is the money database, the ledger and the repo mirror. It is a declared
+    # dependency (requirements.txt), so a failure to import is a broken environment and is
+    # reported as a problem rather than swallowed as "no logs today".
+    try:
+        from prospector.log_ingest import day_files, log_dir
+    except Exception as exc:
+        return [], 0, [f"log archive could not read the ingest's own naming rule: "
+                       f"{type(exc).__name__}: {exc}"]
+
+    directory = log_dir()
+    day = today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not directory.is_dir():
+        # The truth on any machine that does not run the ingest, and stated rather than silent:
+        # a reader who sees `logs=0` needs to know whether there were none or nobody looked.
+        print(f"  log archive: {directory} does not exist, nothing to copy")
+        return [], 0, []
+
+    closed = sorted((d, svc, path) for d, svc, path in day_files(directory) if d < day)
+    existing = _remote_index(s3, bucket, LOGS_PREFIX)
+    uploaded: list[str] = []
+    total = 0
+    problems: list[str] = []
+
+    for file_day, svc, path in closed:
+        key = f"{LOGS_PREFIX}{svc}-{file_day}.jsonl.gz"
+        if key in existing:
+            continue
+        handle = tempfile.NamedTemporaryFile(suffix=".jsonl.gz", delete=False)
+        handle.close()
+        gz = Path(handle.name)
+        try:
+            with path.open("rb") as src, gzip.open(gz, "wb", compresslevel=6) as dst:
+                shutil.copyfileobj(src, dst, 1 << 20)
+            size = gz.stat().st_size
+            s3.upload_file(str(gz), bucket, key)
+        finally:
+            gz.unlink(missing_ok=True)
+        problem = _verify_log_archive(s3, bucket, key)
+        if problem:
+            # The object stays. It is still the only copy of that day that has ever left the
+            # machine, and deleting it to keep the bucket tidy would turn a doubt into a loss.
+            problems.append(problem)
+            continue
+        uploaded.append(key)
+        total += size
+
+    if problems:
+        print(f"  log archive: {len(problems)} problem(s), nothing pruned", file=sys.stderr)
+    else:
+        _prune_log_archives(s3, bucket, keep_days=keep_days, today=day)
+    return uploaded, total, problems
 
 
 def verify_sample(s3, bucket: str, n: int = DEFAULT_SAMPLE) -> tuple[int, int, list[str]]:
@@ -682,10 +978,23 @@ def restore(s3, bucket: str, dest: Path) -> int:
     the ETag R2 computed at upload time, the local file where one still exists, and whether
     the bytes actually parse as the dossier JSON a restore is supposed to yield.
 
-    Layout: `dest/dossiers/<relative path>` plus `dest/prospector.db`. That is exactly what
-    `scripts/restore_drill.py --backup DIR` consumes, so a pull from R2 can be handed straight
-    to the drill and checked row-by-row against the live index — the two halves of recovery
-    stop being separate rituals that have never been run end to end.
+    Only ONE of those three can fail the restore, and it is the ETag. That is the only check
+    that asks the question this function exists to ask -- are the bytes in the bucket the bytes
+    we put there. The other two are reported with counts and examples and are never fatal,
+    because neither of them is a statement about the bucket: a difference from the local file
+    means the local file moved on, and bytes that do not parse mean the source file was already
+    broken when it was uploaded. Letting either one exit non-zero is what stopped this function
+    ever reaching `restore_db`, and a restore that always fails cannot report a real failure.
+
+    Whether the catalogue is RECOVERABLE is a separate and larger question, and it belongs to
+    `scripts/restore_drill.py`, which parses sampled rows and reconciles the restored tree
+    against the index.
+
+    Layout: `dest/dossiers/<relative path>` and `dest/prospector.db`.
+    The first two are exactly what `scripts/restore_drill.py --backup DIR` consumes, so a pull
+    from R2 can be handed straight to the drill and checked row-by-row against the live index —
+    the two halves of recovery stop being separate rituals that have never been run end to end.
+    The third is the audit ledger, which had no restore path at all until 2026-08-21.
     """
     dest.mkdir(parents=True, exist_ok=True)
     remote = _remote_index(s3, bucket, DOSSIER_PREFIX)
@@ -695,26 +1004,62 @@ def restore(s3, bucket: str, dest: Path) -> int:
     import json
 
     bad: list[str] = []
+    diverged: list[str] = []
+    unparseable: list[str] = []
     compared_to_local = 0
     for key, etag in sorted(remote.items()):
         body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
         rel = key[len(DOSSIER_PREFIX):]
 
-        if hashlib.md5(body).hexdigest() != etag:  # noqa: S324 - matching R2's ETag
+        if hashlib.md5(body, usedforsecurity=False).hexdigest() != etag:  # R2's ETag
             bad.append(f"{rel}: bytes differ from the ETag R2 recorded at upload")
             continue
         try:
             json.loads(body)
         except ValueError:
-            bad.append(f"{rel}: restored bytes are not valid JSON")
-            continue
+            # Also not a bucket failure, for the same reason. The ETag above already proved
+            # these are the bytes R2 was given, so bytes that do not parse mean the SOURCE FILE
+            # did not parse when it was uploaded. A backup that faithfully copies a broken file
+            # has done its job; it is not the thing that broke it.
+            #
+            # Measured 2026-08-20 on prospector-engine: 5 of 4,480 objects, every one a
+            # zero-byte `*.kill.json` that is zero bytes locally too, all five written inside
+            # one 2.4-hour window, all five with a live index row pointing at them.
+            #
+            # Making this fatal keeps the restore permanently red on that host over a defect
+            # the restore neither caused nor can fix -- the same trap as the divergence below.
+            # Whether the catalogue is RECOVERABLE is the drill's question, and it asks it
+            # properly: scripts/restore_drill.py parses sampled rows and compares the restored
+            # tree against the index. This function's question is narrower -- did the bytes
+            # survive the round trip -- and the ETag is what settles it.
+            twin = DOSSIER_DIR / rel
+            source_too = False
+            if twin.is_file():
+                try:
+                    json.loads(twin.read_bytes())
+                except ValueError:
+                    source_too = True
+            unparseable.append(
+                f"{rel} ({len(body)}B" + (", local file is unparseable too" if source_too else "")
+                + ")"
+            )
 
         local = DOSSIER_DIR / rel
         if local.is_file():
             if _sha256_bytes(body) != _sha256(local):
-                bad.append(f"{rel}: differs from the local original")
-                continue
-            compared_to_local += 1
+                # Not a bucket failure, and it must not stop the restore. The ETag check above
+                # already proved these bytes are exactly what R2 was given, so the only thing a
+                # local difference can mean is that the LOCAL file moved on after upload. On a
+                # live box that is constant and normal: the daemon rewrites `*.defer.json` as it
+                # re-vets. Measured 2026-08-20 on prospector-engine, 53 of 4,480 objects differed
+                # for exactly that reason, with 0 local files missing from the bucket.
+                #
+                # Counting it as failure is what made this exit 1 on every run on a live host,
+                # and the hard exit below meant `restore_db` NEVER RAN -- so the index, the half
+                # of a recovery that actually matters, had never once been restored.
+                diverged.append(rel)
+            else:
+                compared_to_local += 1
 
         out = dest / "dossiers" / rel
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -726,8 +1071,153 @@ def restore(s3, bucket: str, dest: Path) -> int:
         sys.exit(f"STORE_BACKUP RESTORE FAIL {len(bad)}/{len(remote)} objects failed")
 
     print(f"  checked {len(remote)} against R2's ETag, {compared_to_local} against local originals")
+    if unparseable:
+        print(f"  {len(unparseable)} restored objects do not parse as JSON. Each matched the "
+              f"ETag R2 recorded at upload, so these are faithful copies of source files that "
+              f"were already broken: {', '.join(sorted(unparseable)[:5])}")
+    if diverged:
+        print(f"  {len(diverged)} objects differ from the local copy. The bucket holds the bytes "
+              f"it was given (ETag verified above); these local files changed after upload, "
+              f"which is what a live daemon does. e.g. {', '.join(sorted(diverged)[:3])}")
+    # Ledger first. It is the only artifact here that cannot be rebuilt from
+    # another, and the comment 25 lines up records what a hard exit above a
+    # restore step costs: `restore_db` never ran at all.
+    restore_ledger(s3, bucket, dest)
     restore_db(s3, bucket, dest)
     return len(remote)
+
+
+def money_state(s3, bucket: str) -> dict:
+    """What the bucket holds for the two money files: newest key, size and age in hours.
+
+    One seam, two callers, and that is the point. `scripts/engine_failover.py` asks it how far
+    back a failover would start; the ops console asks it whether the backup is still running.
+    Before this existed the console showed nothing about the store backup at all -- its only
+    output was store/offsite_backup.log, which nothing read -- so the backup could have stopped
+    for a week and the first sign would have been a failed restore.
+    """
+    now = datetime.now(timezone.utc)
+    out: dict = {"bucket": bucket, "checked_at": now.isoformat()}
+    for label, prefix in (("ledger", LEDGER_PREFIX), ("db", DB_PREFIX)):
+        newest = None
+        token = None
+        while True:
+            kwargs = {"Bucket": bucket, "Prefix": prefix, "MaxKeys": 1000}
+            if token:
+                kwargs["ContinuationToken"] = token
+            page = s3.list_objects_v2(**kwargs)
+            for obj in page.get("Contents", []):
+                if newest is None or obj["Key"] > newest["Key"]:
+                    newest = obj
+            if not page.get("IsTruncated"):
+                break
+            token = page.get("NextContinuationToken")
+        if newest is None:
+            out[label] = None
+            continue
+        out[label] = {
+            "key": newest["Key"],
+            "bytes": newest["Size"],
+            "age_h": round((now - newest["LastModified"]).total_seconds() / 3600, 2),
+        }
+    ages = [v["age_h"] for v in (out.get("ledger"), out.get("db")) if v]
+    out["oldest_age_h"] = max(ages) if ages else None
+    out["complete"] = out.get("ledger") is not None and out.get("db") is not None
+    return out
+
+
+class _CountingReader:
+    """Wrap a boto3 StreamingBody and count what was actually read off the wire.
+
+    The point is the truncation check below. `fly ssh sftp` exited 0 on a short transfer often
+    enough that scripts/engine_failover.py grew 215 lines trying to detect it by hand; a
+    download that compares bytes-read to Content-Length settles the same question in two lines,
+    and gzip's own CRC settles whether they are the RIGHT bytes.
+    """
+
+    def __init__(self, body):
+        self._body = body
+        self.count = 0
+
+    def read(self, size=-1):
+        chunk = self._body.read(size)
+        self.count += len(chunk)
+        return chunk
+
+
+def restore_ledger(s3, bucket: str, dest: Path) -> str:
+    """Pull the newest ledger snapshot into `dest/prospector.jsonl` and report what came back.
+
+    This function did not exist until 2026-08-21. `sync()` had been uploading the ledger daily
+    since 2026-07-31, `restore()` covered the dossiers and `restore_db()` covered the index, and
+    the audit trail -- the one artifact here that cannot be rebuilt from any other -- had an
+    upload path and no way home. A backup nothing can restore is not a backup.
+
+    WHAT IS FATAL, and it is only ever a statement about the round trip:
+      * fewer bytes arrive than Content-Length says exist, i.e. the download stopped short;
+      * the gzip CRC32, written at compression time, does not match the bytes decompressed.
+    Both have an outside referent, which is the test the rest of this file applies.
+
+    WHAT IS NOT FATAL: a record that does not parse. The CRC above already proved these are the
+    bytes we uploaded, so an unparseable record means the SOURCE was already broken -- and the
+    file records at `restore()` what making that fatal costs: the run went red on every live
+    host and `restore_db` never executed once. Measured here on 2026-08-21: 42 records in the
+    live ledger are runs of NUL bytes, 81,809 bytes across 1,469,219 records, and reading Fly's
+    own file at byte 275,480,676 shows the same NULs, so the engine wrote them and the backup
+    copied them faithfully. A restore that refuses to run until they are gone is a restore that
+    never runs.
+
+    Streamed, never read whole. The uncompressed file is 453 MB and the machine running a
+    restore is by definition already having a bad day.
+    """
+    keys = sorted(_remote_index(s3, bucket, LEDGER_PREFIX))
+    if not keys:
+        print("  no ledger snapshot in the bucket -- restore is dossiers and index only",
+              file=sys.stderr)
+        return ""
+    dest.mkdir(parents=True, exist_ok=True)
+    key = keys[-1]
+    out = dest / LEDGER.name
+    expected = s3.head_object(Bucket=bucket, Key=key)["ContentLength"]
+
+    records = 0
+    broken: list[str] = []
+    reader = _CountingReader(s3.get_object(Bucket=bucket, Key=key)["Body"])
+    try:
+        with gzip.GzipFile(fileobj=reader) as gz, out.open("wb") as fh:
+            for line in gz:
+                fh.write(line)
+                text = line.strip()
+                if not text:
+                    continue
+                records += 1
+                try:
+                    json.loads(text.decode("utf-8"))
+                except (ValueError, UnicodeDecodeError) as exc:
+                    # Decode utf-8 explicitly. Handed raw bytes, json guesses the encoding from
+                    # the first four, so a record of NULs reports itself as a utf-32-be codec
+                    # error and sends the reader looking for an encoding bug that is not there.
+                    if len(broken) < 20:
+                        broken.append(f"record {records} ({len(text)}B): {str(exc)[:70]}")
+                    else:
+                        broken.append("")
+    except (OSError, EOFError) as exc:
+        sys.exit(f"STORE_BACKUP RESTORE FAIL {key}: the gzip stream did not decompress "
+                 f"cleanly ({type(exc).__name__}: {str(exc)[:120]}). "
+                 f"{reader.count} of {expected} bytes had been read.")
+    if reader.count != expected:
+        sys.exit(f"STORE_BACKUP RESTORE FAIL {key}: {reader.count} bytes arrived of the "
+                 f"{expected} R2 reports -- the download stopped short.")
+
+    print(f"  restored {key} -> {out.name}, {records} records, {out.stat().st_size} bytes, "
+          f"{reader.count} compressed bytes, gzip CRC ok")
+    if broken:
+        shown = [b for b in broken if b]
+        print(f"  {len(broken)} of {records} records do not parse. The gzip CRC above proves "
+              f"these are the bytes that were uploaded, so they were already broken in the "
+              f"source file -- restoring them is correct and losing them would be the bug. "
+              f"e.g. {'; '.join(shown[:3])}")
+    return key
 
 
 def restore_db(s3, bucket: str, dest: Path) -> str:
@@ -776,13 +1266,28 @@ def main() -> int:
                         help="upload nothing; just prove the remote copy matches local")
     parser.add_argument("--restore", metavar="DIR",
                         help="download every backed-up dossier into DIR and verify each")
+    parser.add_argument("--money-state", action="store_true",
+                        help="print JSON describing the newest ledger and index snapshots in "
+                             "the bucket, and how old they are. Uploads nothing")
+    parser.add_argument("--restore-money", metavar="DIR",
+                        help="download ONLY the ledger and the index into DIR and verify both. "
+                             "What a failover needs: the 1,581 dossiers are a catalogue that can "
+                             "wait, the ledger and the db are the business")
     parser.add_argument("--sample", type=int, default=DEFAULT_SAMPLE,
                         help=f"how many objects to read back and check (default {DEFAULT_SAMPLE})")
     parser.add_argument("--db-keep", type=int, default=DEFAULT_DB_KEEP,
                         help=f"dated db snapshots to retain, 0 = keep every one "
                              f"(default {DEFAULT_DB_KEEP})")
+    parser.add_argument("--ledger-keep", type=int, default=DEFAULT_LEDGER_KEEP,
+                        help="how many dated ledger snapshots to keep; 0 disables pruning "
+                             f"(default {DEFAULT_LEDGER_KEEP})")
     parser.add_argument("--skip-mirror", action="store_true",
                         help="do not push the git mirror")
+    parser.add_argument("--skip-logs", action="store_true",
+                        help="do not copy the ingest's closed day files to the cold tier")
+    parser.add_argument("--logs-keep-days", type=int, default=DEFAULT_LOGS_KEEP_DAYS,
+                        help="how many days of cold-tier log archives to keep; 0 disables "
+                             f"pruning (default {DEFAULT_LOGS_KEEP_DAYS})")
     parser.add_argument("--mirror-only", action="store_true",
                         help="push the git mirror and nothing else; for a checkout whose store "
                              "lives on another machine")
@@ -792,6 +1297,21 @@ def main() -> int:
     args = parser.parse_args()
 
     s3, bucket = _client()
+
+    if args.money_state:
+        print(json.dumps(money_state(s3, bucket), indent=2))
+        return 0
+
+    if args.restore_money:
+        # Deliberately not a subset flag on --restore. A failover restores two files onto a
+        # machine that is about to start an engine; making it walk 1,581 dossiers first is how
+        # a recovery path becomes too slow to use, and an unused recovery path is an absent one.
+        dest = Path(args.restore_money)
+        ledger_key = _retry_on_skew(restore_ledger, s3, bucket, dest)
+        db_key = _retry_on_skew(restore_db, s3, bucket, dest)
+        print(f"STORE_BACKUP RESTORE_MONEY PASS ledger={ledger_key or '(none)'} "
+              f"db={db_key or '(none)'} dest={dest}")
+        return 0
 
     if args.restore:
         count = _retry_on_skew(restore, s3, bucket, Path(args.restore))
@@ -812,10 +1332,20 @@ def main() -> int:
     uploaded = skipped = 0
     ledger_key = db_key = mirror_key = ""
     mirror_bytes = 0
+    log_keys: list[str] = []
+    log_bytes = 0
+    log_problems: list[str] = []
     if not args.verify_only:
         uploaded, skipped, ledger_key, db_key = _retry_on_skew(
-            sync, s3, bucket, db_keep=args.db_keep
+            sync, s3, bucket, db_keep=args.db_keep, ledger_keep=args.ledger_keep
         )
+        # After the store, before the mirror. The mirror is the only step that can be absent on
+        # a legitimate host (a container ships code, not a checkout), so putting the logs after
+        # it would make them the thing that silently stops running wherever the mirror does.
+        if not args.skip_logs:
+            log_keys, log_bytes, log_problems = _retry_on_skew(
+                archive_logs, s3, bucket, keep_days=args.logs_keep_days
+            )
         if args.skip_mirror:
             pass
         elif not _is_git_worktree(REPO_ROOT):
@@ -835,6 +1365,7 @@ def main() -> int:
             )
 
     ok, total, problems = _retry_on_skew(verify_sample, s3, bucket, args.sample)
+    problems.extend(log_problems)
     for problem in problems:
         print(f"  {problem}", file=sys.stderr)
 
@@ -845,6 +1376,9 @@ def main() -> int:
         + (f" ledger={ledger_key}" if ledger_key else "")
         + (f" db={db_key}" if db_key else "")
         + (f" mirror={mirror_key} bytes={mirror_bytes}" if mirror_key else "")
+        # Always printed, even at zero. "logs=0" on a host with no ingest is an answer; a
+        # missing word is indistinguishable from a step that stopped running.
+        + (f" logs={len(log_keys)} bytes={log_bytes}" if not args.verify_only else "")
     )
     return 0 if verdict == "PASS" else 1
 

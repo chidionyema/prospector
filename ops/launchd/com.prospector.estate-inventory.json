@@ -1,0 +1,23 @@
+{
+  "EnvironmentVariables": {
+    "HOME": "/Users/chidionyema",
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  },
+  "Label": "com.prospector.estate-inventory",
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "com.prospector.estate-inventory",
+    "--",
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
+    "/Users/chidionyema/Documents/code/prospector-live/scripts/estate_inventory.py",
+    "--out",
+    "/Users/chidionyema/Documents/code/prospector-live/store/estate_inventory.json"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector-live/store/estate_inventory.log",
+  "StandardOutPath": "/Users/chidionyema/Documents/code/prospector-live/store/estate_inventory.log",
+  "StartInterval": 86400,
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live"
+}

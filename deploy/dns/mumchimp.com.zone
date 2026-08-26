@@ -1,0 +1,17 @@
+; mumchimp.com -- the committed copy of the zone.
+;
+; Regenerate:  .venv/bin/python scripts/dns_zone.py --export --zone mumchimp.com
+; Check drift: .venv/bin/python scripts/dns_zone.py --check  --zone mumchimp.com
+;
+; TTLs are not recorded on purpose. Lowering a TTL before a cutover is a routine act and
+; must not read as drift. See docs/MIGRATION_AND_DR_PROGRAM.md M9.
+
+_dmarc.mumchimp.com   TXT    "v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:support@mumchimp.com;"
+api.mumchimp.com      CNAME  prospector-store-api.fly.dev.
+mumchimp.com          A      66.241.124.37
+mumchimp.com          AAAA   2a09:8280:1::130:427c:0
+mumchimp.com          MX     5 smtp.google.com.
+mumchimp.com          NS     danica.ns.cloudflare.com.
+mumchimp.com          NS     tony.ns.cloudflare.com.
+mumchimp.com          TXT    "v=spf1 include:_spf.google.com include:spf.mailjet.com ~all"
+www.mumchimp.com      CNAME  prospector-store-web.fly.dev.
