@@ -43,6 +43,227 @@ note() { printf '   -   %s\n' "$*"; }
 bad()  { printf '   BAD %s\n' "$*"; }
 fail() { printf '!! %s\n' "$*" >&2; exit 1; }
 
+# CAN THE DAEMON ACTUALLY START A CONTAINER? `docker info` cannot answer that question.
+#
+# THE INCIDENT, 2026-08-24. cmd_up's only daemon check was `docker info >/dev/null || fail`. It
+# passed. `docker ps`, `docker version` and `docker context ls` all passed too. Meanwhile a no-op
+# container -- `docker run --rm alpine echo ok` -- did not return in 90 seconds, `docker stop`
+# reported "tried to kill container, but did not receive an exit event", and `docker rm -f` removed
+# nothing. The containerd shim in the colima VM was wedged while every status command answered
+# normally.
+#
+# What that cost: this script ran anyway, got far enough to create the k3d containers and not far
+# enough to write the serverlb's confd config, and left a half-built cluster whose load balancer
+# crash-looped 19 times on `stat /etc/confd/values.yaml: no such file or directory`. The wreckage
+# then sat on the machine holding CPU. The half-cluster looked like a k3d bug and was not one.
+#
+# THE CLASS, not the instance: a preflight that asks an instrument for a STATUS instead of asking
+# the system to DO THE WORK. `docker info` reports a shape. Starting a container is the work. This
+# is the same family docs/CI_DEBUG_RUNBOOK.md is written about, and the rule there is the rule here.
+#
+# DAEMON_PROBE exists so this check can be proved BOTH ways without needing a broken daemon to hand
+# (LAW 38: a guard only ever seen refusing has never been shown to permit):
+#   DAEMON_PROBE=/usr/bin/true  ./rehearse_cluster.sh up   # must get past this line
+#   DAEMON_PROBE=/usr/bin/false ./rehearse_cluster.sh up   # must stop on this line
+# Unset, it runs the real thing. alpine is 3MB and pulling it also proves the daemon can pull, which
+# cluster creation needs a few lines later anyway.
+DAEMON_PROBE="${DAEMON_PROBE:-docker run --rm alpine:latest true}"
+
+daemon_can_start_a_container() {
+  timeout "${DAEMON_PROBE_TIMEOUT:-60}" $DAEMON_PROBE >/dev/null 2>&1
+}
+
+# HAS THE MACHINE GOT THE CAPACITY TO FINISH WHAT THIS SCRIPT IS ABOUT TO START?
+#
+# THE SECOND INCIDENT, 2026-08-24, an hour after the first. The guard above was in place and it
+# PASSED -- the daemon started a container in under a second, correctly. The boot then ran for 20
+# minutes and got nowhere. Measured while it was stuck:
+#
+#   CPU utilisation      98% busy, 1% idle over a 5s sample of /proc/stat, on 4 vCPUs
+#   CPU pressure         /proc/pressure/cpu some avg10=91.85
+#   IO pressure          some avg10=0.71     memory pressure  some avg10=0.00
+#   k3s server's share   28% of the whole machine
+#   kine SQL             a single indexed SELECT taking 1.7-1.9s; it is milliseconds when idle
+#   k3s uptime           1205s without ever writing its own /etc/rancher/k3s/k3s.yaml
+#
+# The apiserver could not answer its OWN client inside the client's timeout, so k3s never finished
+# bootstrapping, k3d never got a kubeconfig, and the serverlb never got its confd config. The
+# wreckage is byte-identical to the wreckage the wedged daemon produced, which is the trap: the
+# same symptom, a completely different cause, and the guard above says the runtime is fine because
+# the runtime IS fine.
+#
+# THE CLASS, which is one step out from the class above: a preflight that proves a dependency
+# RESPONDS but not that the machine has the CAPACITY to complete the work it is about to begin.
+# Responding is cheap. Bootstrapping a control plane is not. A one-second container start is not
+# evidence about a twenty-minute job, and treating it as evidence is how this script burned twenty
+# minutes and left a half-built cluster for the second time in one afternoon.
+#
+# THE FLOOR IS A JUDGEMENT, AND IT IS LABELLED AS ONE. It is anchored on exactly one measured
+# failure -- 1% idle did not boot -- and there is no measured success yet to bound it from the
+# other side, so 10% is chosen to refuse only the case that is already known to fail. When a boot
+# does succeed, put its idle figure in this comment and re-derive the floor from two points instead
+# of one. Do not raise it on a hunch: LAW 38, a guard that refuses correct work is an outage.
+#
+# CAPACITY_PROBE is the seam that lets this be proved both ways with no need to saturate a laptop:
+#   CAPACITY_PROBE='echo 90' ./rehearse_cluster.sh up   # must get past this line
+#   CAPACITY_PROBE='echo 1'  ./rehearse_cluster.sh up   # must stop on this line
+#   CAPACITY_PROBE='echo x'  ./rehearse_cluster.sh up   # unreadable => BLIND, proceeds, says so
+#
+# It measures inside a container on purpose: /proc/stat is not namespaced, so the container reads
+# the kernel that will actually run k3s -- the colima VM here, the LinuxKit VM under Docker Desktop,
+# the host itself on native Linux. Reading the Mac's own load would answer about the wrong machine,
+# which is the mistake made earlier today when a listener started on the Mac was unreachable from a
+# container because the container's gateway is the bridge inside the VM.
+CAPACITY_PROBE="${CAPACITY_PROBE:-}"
+
+measure_idle_pct() {
+  if [ -n "$CAPACITY_PROBE" ]; then $CAPACITY_PROBE; return; fi
+  local out rc
+  out="$(timeout "${CAPACITY_PROBE_TIMEOUT:-45}" docker run --rm alpine:latest sh -c '
+    read_stat() { awk "/^cpu /{print \$2+\$3+\$4+\$6+\$7+\$8, \$5}" /proc/stat; }
+    set -- $(read_stat); b=$1; i=$2
+    sleep 4
+    set -- $(read_stat); B=$1; I=$2
+    db=$((B-b)); di=$((I-i)); t=$((db+di))
+    if [ "$t" -gt 0 ]; then echo $((di * 100 / t)); else echo unreadable; fi
+  ' 2>/dev/null)"; rc=$?
+
+  # A PROBE THAT TIMED OUT IS NOT AN UNREADABLE PROBE. It is the loudest capacity reading available,
+  # and conflating the two is how this guard would wave through the worst machine it will ever see.
+  #
+  # The work inside that container is `sleep 4` and two reads of /proc/stat. On a machine with
+  # headroom it returns in a few seconds. Measured 2026-08-24, on this laptop with the compose stack
+  # running: the sidecar did not return within the 45s budget at all, and `colima ssh -- head -1
+  # /proc/loadavg` -- no container involved, just a shell in the VM -- also did not return in 90s.
+  # Both came back EMPTY, which the numeric test below reads as "unreadable" and waves through BLIND.
+  # That is exactly backwards: a box that cannot run `sleep 4` in 45 seconds cannot bootstrap a
+  # control plane, and saying so needs no threshold.
+  #
+  # Both exit codes are accepted because both occur. GNU timeout returns 124; busybox timeout signals
+  # SIGTERM and the shell reports 143. A check written for 124 alone silently misses the busybox case
+  # -- three files in this estate key on 124 as the sentinel and are correct only because they run on
+  # the Mac. 137 is the same event after a SIGKILL escalation.
+  case "$rc" in
+    124|137|143) echo "timeout"; return ;;
+  esac
+  printf '%s\n' "$out"
+}
+
+# What is eating the machine, so the refusal names the cause instead of only the symptom. A refusal
+# that says "the machine is full" and nothing else sends the reader back to the same measuring this
+# guard just did.
+#
+# It is `top -b -n 1`, not `ps -eo pcpu,comm --sort=-pcpu`, and that is not a style choice. alpine's
+# ps is busybox, which has neither -eo nor --sort: the ps form printed "unrecognized option" to
+# stderr, which 2>/dev/null then swallowed, and the refusal shipped with an EMPTY evidence section.
+# Caught 2026-08-24 by reading the guard's own output instead of trusting that it had one, which is
+# the whole of LAW 28. busybox top -b -n 1 needs no options and gives the CPU line, the load average
+# and the consumers sorted, in one shot.
+top_cpu_consumers() {
+  # The fallback is chosen on the CONTENT, not on an exit status. Two reasons, both measured
+  # 2026-08-24 on this line:
+  #
+  #   1. `docker run ... | head -10 || echo fallback` never runs the fallback. The `||` binds to the
+  #      whole pipeline, and `head` exits 0 on empty input, so a sidecar that failed to start still
+  #      reported success. Sampled three times in a row: the section came back EMPTY once and
+  #      populated twice. An intermittently blank evidence block is worse than a stated failure,
+  #      because it reads as "nothing is using the machine".
+  #   2. The sidecar genuinely does fail sometimes here, and for the guard's own reason -- a machine
+  #      with no CPU left is slow to start a container. So this must degrade to a sentence, never to
+  #      whitespace (LAW 28: an instrument nobody can read is not an instrument).
+  #
+  # EVIDENCE_PROBE is a seam, for the same reason DAEMON_PROBE and CAPACITY_PROBE are. The failure
+  # path here cannot be reached by stubbing a shell function called `docker`: `timeout` is an
+  # external binary and execs the docker BINARY, so a function never gets a look in. Without this
+  # seam the fallback branch is unprovable, and an unproven fallback is the branch that ships broken.
+  local out
+  if [ -n "${EVIDENCE_PROBE:-}" ]; then
+    out="$($EVIDENCE_PROBE 2>/dev/null | head -10)"
+  else
+    out="$(timeout 30 docker run --rm --pid=host alpine:latest top -b -n 1 2>/dev/null | head -10)"
+  fi
+  if [ -n "$out" ]; then
+    printf '%s\n' "$out"
+  else
+    echo "   (could not read the process table: the evidence sidecar did not start either, which is"
+    echo "    itself consistent with the reading above)"
+  fi
+}
+
+# The gate is its own function so it can be proved without building a cluster: source this file
+# with a harmless argument, then call it. A guard that can only be exercised by running the
+# twenty-minute job it protects will not be exercised.
+capacity_gate() {
+  local idle; idle="$(measure_idle_pct)"
+
+  # The timeout branch refuses, and it is not covered by IDLE_FLOOR_PCT: there is no number to
+  # compare, so a floor cannot express the override. IDLE_PROBE_TIMEOUT_IS_FATAL=0 is the deliberate
+  # escape, separate because it is a different decision -- "I accept a machine measured below the
+  # floor" and "I accept a machine too busy to be measured at all" are not the same acceptance.
+  if [ "$idle" = "timeout" ]; then
+    if [ "${IDLE_PROBE_TIMEOUT_IS_FATAL:-1}" = "0" ]; then
+      note "CPU probe timed out; proceeding anyway because IDLE_PROBE_TIMEOUT_IS_FATAL=0 was set"
+      return 0
+    fi
+    fail \
+"the CPU probe did not finish in ${CAPACITY_PROBE_TIMEOUT:-45}s, so this machine cannot bootstrap a control plane.
+
+The probe runs \`sleep 4\` and reads /proc/stat twice. A machine that cannot do that inside
+${CAPACITY_PROBE_TIMEOUT:-45} seconds has no headroom to give a control plane, and this needs no
+threshold to say so -- the failure to measure IS the measurement.
+
+Measured 2026-08-24 on this laptop, for what this looks like when it is real: the sidecar did not
+return inside its 45s budget, and \`colima ssh -- head -1 /proc/loadavg\` -- a plain shell in the VM,
+no container -- did not return in 90s either.
+
+What is using the machine:
+$(top_cpu_consumers)
+
+The remedy is to free CPU, not to retry. Same two options as a below-floor refusal, and both are
+founder calls: stop the compose stack in deploy/compose for the rehearsal window (free, but it is
+shared estate infrastructure other sessions depend on, LAW 11), or raise the VM's vCPU count, which
+needs a colima restart that crew/STATE.md forbids outright, crew #85.
+
+To override deliberately, with a reason:   IDLE_PROBE_TIMEOUT_IS_FATAL=0 deploy/rehearse_cluster.sh up"
+  fi
+
+  case "$idle" in
+    ''|*[!0-9]*)
+      # A guard that loses its evidence reports BLIND, never a verdict. Refusing on an unreadable
+      # measurement would be a guard refusing correct work, which is LAW 38's outage.
+      note "CPU headroom UNREADABLE (probe said '${idle:-nothing}'); proceeding BLIND, this run is not covered by the capacity guard"
+      return 0
+      ;;
+  esac
+  if [ "$idle" -lt "${IDLE_FLOOR_PCT:-10}" ]; then
+    fail \
+"this machine has ${idle}% idle CPU and cannot bootstrap a control plane.
+
+Floor is ${IDLE_FLOOR_PCT:-10}%, measured over 4s inside the runtime's own kernel, not on the Mac.
+
+This is NOT the daemon being broken -- the check above just started a container in under a second,
+and it was right to pass. The runtime is healthy and the machine is full. Both failures leave the
+same wreckage (no kubeconfig, no serverlb confd config, a half-built cluster), so read the number
+above rather than the symptom.
+
+What it looked like the last time this ran anyway, 2026-08-24: 20 minutes, k3s at 28% of the
+machine, a single indexed kine SELECT taking 1.9s, and k3s never writing its own
+/etc/rancher/k3s/k3s.yaml in 1205 seconds. The apiserver could not answer its own client.
+
+What is using the machine:
+$(top_cpu_consumers)
+
+The remedy is to free CPU, not to retry. On this laptop the compose stack in deploy/compose shares
+these vCPUs with the cluster, so stopping it for the rehearsal window is the free option -- but it
+is shared estate infrastructure other sessions depend on, so that is a founder call under LAW 11,
+not this script's and not yours. Raising the VM's vCPU count needs a colima restart, which
+crew/STATE.md forbids outright: route it to the founder, crew #85.
+
+To override deliberately, with a reason:   IDLE_FLOOR_PCT=0 deploy/rehearse_cluster.sh up"
+  fi
+  ok "CPU headroom ${idle}% idle over 4s, floor ${IDLE_FLOOR_PCT:-10}%"
+}
+
 # THE VERSION SKEW TRAP, HANDLED RATHER THAN NARRATED.
 #
 # Measured 2026-08-24 on this laptop: the kubectl on PATH is v1.27.2, shipped by Docker Desktop, and
@@ -99,6 +320,29 @@ wait_for_api() {
 cmd_up() {
   command -v docker >/dev/null || fail "docker is not installed on this laptop"
   docker info >/dev/null 2>&1 || fail "the local docker daemon is not running"
+  # `docker info` answering is not the test; on 2026-08-24 it was the thing that lied. See the
+  # comment on daemon_can_start_a_container.
+  daemon_can_start_a_container || fail \
+"the docker daemon answers status commands but cannot start a container within \
+${DAEMON_PROBE_TIMEOUT:-60}s.
+
+Runtime that failed: context '$(docker context show 2>/dev/null || echo unknown)'. Name it, because
+the obvious repair is to restart the wrong thing: Docker Desktop is installed on this laptop and is
+NOT the runtime, so restarting it clears nothing while appearing to succeed.
+
+Do NOT let this script build into that. It gets far enough to create the k3d containers and not far
+enough to configure them, and leaves a half-built cluster that then looks like a k3d bug.
+
+Reproduce it in one line:   docker run --rm alpine:latest echo ok
+Runtime on this machine:    docker context show    (colima, not Docker Desktop)
+crew/STATE.md carries the standing instruction for this exact failure: do NOT restart colima,
+route it to the founder -- an unco-ordinated restart is crew #85, load 255 on 12 cores."
+  ok "docker context '$(docker context show 2>/dev/null || echo unknown)' started a container"
+
+  # Starting a container proves the runtime works. It says nothing about whether this machine can
+  # finish a control-plane bootstrap. See the comment on measure_idle_pct for what that cost.
+  capacity_gate
+
   command -v k3d >/dev/null   || fail "k3d is not installed. brew install k3d"
 
   say "cluster"
@@ -171,13 +415,39 @@ cmd_up() {
   # --no-rollback keeps whatever came up. The timeout goes to 900s because the measured cold build
   # took 913s. Then this script waits for /readyz itself, so the verdict comes from the API server
   # answering rather than from k3d's patience.
+  # WHAT IS STARVED IS I/O, NOT CPU, AND THAT CHANGES WHICH ADD-ONS ARE WORTH DISABLING.
+  #
+  # Measured 2026-08-24 inside the colima VM, immediately after a bootstrap failed at t=1250s with
+  # `failed to bootstrap cluster data: context deadline exceeded`:
+  #
+  #   /proc/loadavg          499.75 473.70 416.25   551/3159 runnable
+  #   nproc                  4
+  #   df -h /var/lib/docker  59G total, 38G available      <- not a disk-space problem
+  #   free -m                3445 MB available             <- not a memory problem
+  #   host CPU               Intel i7-8850H, 6 cores       <- no emulation; colima arch matches
+  #
+  # A load average of 500 on 4 CPUs with memory and disk to spare is hundreds of processes parked
+  # in uninterruptible sleep waiting on the disk. That matches the 17 `Slow SQL ... INSERT INTO
+  # kine(...) duration=2.79s` lines k3s printed: every write of the bootstrap goes through kine to
+  # SQLite on overlay2 inside a VM. The fix is to make the bootstrap write less, not to wait longer
+  # -- a timeout increase measures patience, and the previous attempt already had 900s and lost.
+  #
+  # traefik and servicelb are two Helm chart installs on the critical path, and the estate wants
+  # neither: deploy/k8s/base/edge.yaml is Gateway API served by its own controller, and a rehearsal
+  # with --agents 0 has nothing for servicelb to balance. metrics-server was already off.
+  #
+  # local-storage STAYS ON, deliberately. deploy/k8s/base declares two PVCs (prospector-data and
+  # prospector-store-api-data); without the local-path provisioner they never bind and every
+  # workload sits Pending. Disabling it would make the cluster start faster and prove nothing.
   local clog="$CACHE/k3d-create.log"
   set +e
   k3d cluster create "$CLUSTER" --wait --timeout "${K3D_TIMEOUT:-900s}" \
     --no-rollback \
     --agents 0 \
     --image "$k3s_image" \
-    --k3s-arg '--disable=metrics-server@server:0' >"$clog" 2>&1
+    --k3s-arg '--disable=metrics-server@server:0' \
+    --k3s-arg '--disable=traefik@server:0' \
+    --k3s-arg '--disable=servicelb@server:0' >"$clog" 2>&1
   local crc=$?
   set -e
 
@@ -211,7 +481,104 @@ cmd_up() {
     || fail "could not install kyverno ${KYVERNO_VERSION}"
   k -n kyverno rollout status deploy/kyverno-admission-controller --timeout=180s >/dev/null \
     || fail "kyverno admission controller never became ready"
-  ok "kyverno admission controller ready"
+
+  # ROLLOUT STATUS IS A PROXY, AND IT COST THIS DRILL A RUN. Measured 2026-08-24 on this laptop:
+  # the admission controller Deployment went Available=True at 21:11:20Z, this line returned, the
+  # drill applied the overlay, and the API server answered
+  #
+  #     Error from server (InternalError): failed calling webhook "validate-policy.kyverno.svc":
+  #     Post "https://kyverno-svc.kyverno.svc:443/policyvalidate?timeout=10s": context deadline exceeded
+  #
+  # at 21:13:18Z -- nearly two minutes AFTER the Deployment said Available. Probed by hand at
+  # 21:15Z the same webhook answered a server-side dry run immediately, so nothing was broken; the
+  # readiness reading was simply about something else. A Deployment being Available says its pods
+  # pass their own probes. It says nothing about the ValidatingWebhookConfiguration being
+  # registered, the CA bundle being injected, or the Service having a ready endpoint, and it is
+  # those three the API server needs before an apply can survive.
+  #
+  # So ask the webhook. A server-side dry run of a trivial ClusterPolicy goes through
+  # /policyvalidate exactly as the overlay's own policies will, and either it answers or it does
+  # not. Nothing is created: --dry-run=server means the API server runs admission and discards the
+  # object. This grades the thing, not a signal correlated with the thing.
+  say "kyverno webhook"
+  local wtmp; wtmp="$(mktemp -t kyverno-webhook-probe)"
+  cat >"$wtmp" <<'PROBE'
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: webhook-liveness-probe
+spec:
+  rules:
+    - name: noop
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: this policy is never created; it exists to make the webhook answer
+        pattern:
+          metadata:
+            name: "?*"
+PROBE
+  local wi=0 wbudget="${KYVERNO_WEBHOOK_WAIT_S:-300}" wstart werr
+  werr="$(mktemp -t kyverno-webhook-err)"
+  wstart="$(date +%s)"
+  until k apply --dry-run=server -f "$wtmp" >/dev/null 2>"$werr"; do
+    wi=$(( $(date +%s) - wstart ))
+    if [ "$wi" -ge "$wbudget" ]; then
+      note "last error from the API server:"
+      sed 's/^/       /' "$werr" | tail -4
+      rm -f "$wtmp" "$werr"
+      fail \
+"the kyverno webhook did not answer a server-side dry run within ${wbudget}s.
+
+The Deployment IS Available -- the line above proved that -- so this is not a crashing pod. The
+webhook is registered and the API server cannot reach it, or the CA bundle has not been injected.
+Look at the error above, then at:  kubectl -n kyverno get svc,endpoints kyverno-svc
+
+Raise the budget with KYVERNO_WEBHOOK_WAIT_S if this machine is simply slow, but read the error
+first: a webhook that will never answer does not answer any faster with a longer wait."
+    fi
+    sleep 3
+  done
+  rm -f "$wtmp" "$werr"
+  ok "kyverno webhook answered a server-side dry run after $(( $(date +%s) - wstart ))s (Deployment was Available before this)"
+
+  # THE OVERLAY REFERENCES KINDS THIS CLUSTER DOES NOT HAVE. Measured in the same failed run: the
+  # staging overlay carries the edge, and the edge is a Gateway, four HTTPRoutes and a ClusterIssuer.
+  # A bare k3s cluster has none of those kinds, so kubectl refused five objects with
+  # "no matches for kind ... ensure CRDs are installed first" and the whole apply exited non-zero.
+  #
+  # CRDs ONLY, AND THIS IS A DELIBERATE LIMIT ON WHAT THE DRILL CLAIMS. Installing the CRDs makes
+  # the manifests apply, which is what this step is for: it proves the overlay a real cluster would
+  # be handed is well-formed against the real schemas, and that the estate's policies admit or
+  # refuse it. It does NOT prove a certificate is ever issued or that traffic routes -- there is no
+  # cert-manager controller and no Gateway implementation running here, so a Gateway stays
+  # Programmed=False and a Certificate stays pending forever. Those need a controller, an ACME
+  # account and DNS that resolves, none of which belong in a throwaway cluster on a laptop. When
+  # the drill grows to claim routing, it installs the controllers and says so on this line.
+  #
+  # Versions are pinned rather than "latest" so two runs a week apart rehearse the same thing.
+  # gateway-api v1.6.1 is what deploy/k8s/base/edge.yaml already names; checked 2026-08-24 against
+  # the GitHub releases API, it is also the current release (2026-07-16). cert-manager v1.21.1 is
+  # the current release (2026-07-29) and ships a CRDs-only asset, which is why no chart is needed.
+  say "the CRDs the overlay's own kinds need"
+  local crd_gwapi="${GATEWAY_API_VERSION:-v1.6.1}"
+  local crd_certmgr="${CERT_MANAGER_VERSION:-v1.21.1}"
+  k apply --server-side -f \
+    "https://github.com/kubernetes-sigs/gateway-api/releases/download/${crd_gwapi}/standard-install.yaml" \
+    >/dev/null 2>&1 || fail "could not install the gateway-api ${crd_gwapi} CRDs"
+  k apply --server-side -f \
+    "https://github.com/cert-manager/cert-manager/releases/download/${crd_certmgr}/cert-manager.crds.yaml" \
+    >/dev/null 2>&1 || fail "could not install the cert-manager ${crd_certmgr} CRDs"
+  # Established, not merely created: the API server registers a CRD before it can serve the kind,
+  # and an apply in that window fails with the same "no matches for kind" this step exists to stop.
+  for crd in gateways.gateway.networking.k8s.io httproutes.gateway.networking.k8s.io \
+             clusterissuers.cert-manager.io; do
+    k wait --for=condition=Established "crd/$crd" --timeout=120s >/dev/null 2>&1 \
+      || fail "CRD $crd never became Established"
+  done
+  ok "gateway-api ${crd_gwapi} and cert-manager ${crd_certmgr} CRDs established (schemas only; no controllers run here)"
 
   say "the estate's standards"
   # APPLY THE OVERLAY, NOT THE DIRECTORY. `apply -f "$POLICY_DIR/"` read the raw yaml files and so
@@ -224,8 +591,36 @@ cmd_up() {
   #
   # --server-side because the built policy CRDs are large enough to hit the size limit on the
   # last-applied-configuration annotation that client-side apply writes.
-  k apply --server-side -k "$REPO/deploy/k8s/overlays/staging" >/dev/null \
-    || fail "the staging overlay did not apply"
+  # RETRY, BECAUSE THE WEBHOOK TIMES OUT UNDER ITS OWN LOAD AND NOT BECAUSE ANYTHING IS WRONG.
+  # Measured 2026-08-24, on a run where the webhook probe above answered in 1 second: applying the
+  # overlay still produced three
+  #     failed calling webhook "validate-policy.kyverno.svc": ... policyvalidate?timeout=10s:
+  #     context deadline exceeded
+  # while the other twenty-three policies went in. One apply hands the API server 26 ClusterPolicies
+  # at once, each of which Kyverno must validate inside a 10s webhook budget, on a laptop measured
+  # at 19% idle. The webhook is not broken -- it is queued behind itself.
+  #
+  # `apply` is idempotent, so a retry re-sends the whole overlay and only the objects that did not
+  # land have any work to do; each pass is cheaper than the last and the queue drains. This is a
+  # bounded retry with a named budget, not a loop: if the overlay still will not apply after
+  # OVERLAY_APPLY_TRIES passes, the last error is printed and the drill fails, because at that point
+  # it is not congestion.
+  local oi=1 otries="${OVERLAY_APPLY_TRIES:-4}" oerr
+  oerr="$(mktemp -t overlay-apply-err)"
+  until k apply --server-side -k "$REPO/deploy/k8s/overlays/staging" >/dev/null 2>"$oerr"; do
+    if [ "$oi" -ge "$otries" ]; then
+      note "last error from the API server, after $oi attempts:"
+      sed 's/^/       /' "$oerr" | tail -6
+      rm -f "$oerr"
+      fail "the staging overlay did not apply in $oi attempts"
+    fi
+    note "overlay apply $oi/$otries did not complete; $(grep -c 'context deadline exceeded' "$oerr" || true) webhook timeout(s), retrying"
+    oi=$((oi+1)); sleep 10
+  done
+  if [ "$oi" -gt 1 ]; then
+    note "the overlay applied on attempt $oi; the earlier failures were webhook congestion, not rejection"
+  fi
+  rm -f "$oerr"
   # `apply` returns when the API server has the object, not when the webhook is enforcing it. A
   # policy test run in that window passes because nothing is refusing yet, which is the most
   # expensive kind of green there is.

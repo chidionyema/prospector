@@ -33,10 +33,10 @@ jobs:
     # Same convention as ci.yml: where CI runs is an ops setting, not a code change.
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # kubectl carries kustomize. No second tool to install, and nothing here needs a cluster.
-      - uses: azure/setup-kubectl@v4
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
 
       - name: Build both overlays
         run: |
@@ -46,6 +46,48 @@ jobs:
             kubectl kustomize "deploy/k8s/overlays/$env" > "_build/$env.yaml"
             echo "$env: $(wc -c < "_build/$env.yaml") bytes"
           done
+
+      # GATE 0. Every workload image resolves to a commit SHA, in the BUILT output.
+      #
+      # base/ pins `:set-by-an-overlay` on all three images on purpose, so a manifest applied
+      # without an overlay fails loudly instead of pulling something. The overlay is what turns
+      # that into a real tag, and until 2026-08-24 neither overlay did -- the `images:` block was
+      # commented out in both, so every environment named a tag that has never existed.
+      #
+      # Kyverno does not catch this and is not meant to: `disallow-latest-tag` refuses `:latest`
+      # and an untagged image, and `set-by-an-overlay`, `main` or `v2` all sail past it. A moving
+      # tag is worse than a missing one, because a missing one fails at pull time where you can
+      # see it, and a moving one runs code nobody reviewed while every check stays green.
+      - name: Every workload image is pinned to a commit SHA
+        run: |
+          set -euo pipefail
+          fail=0
+          for env in staging production; do
+            imgs=$(grep -oE '^\s+image:\s*ghcr\.io/\S+' "_build/$env.yaml" \
+                   | sed -E 's/^\s*image:\s*//' | sort -u)
+            if [ -z "$imgs" ]; then
+              echo "FAIL: $env built no ghcr.io image at all; this gate would pass on nothing"
+              fail=1
+              continue
+            fi
+            while IFS= read -r img; do
+              tag=${img##*:}
+              if printf '%s' "$tag" | grep -Eq '^[0-9a-f]{40}$'; then
+                echo "  OK   $env  $img"
+              else
+                echo "  FAIL $env  $img -- tag '$tag' is not a 40-character commit SHA"
+                fail=1
+              fi
+            done <<< "$imgs"
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo
+            echo "An overlay must name the commit its images were built from. container-images.yml"
+            echo "publishes exactly one immutable tag per commit; paste it into the overlay's"
+            echo "images: block. A tag that is not a commit SHA either does not exist (the pods"
+            echo "never start) or can move (the cluster runs code that was never reviewed)."
+            exit 1
+          fi
 
       # GATE 1. Upstream ships every policy as Audit, which writes a report and admits the workload
       # anyway. LAW 28: an instrument nobody reads is not an instrument. One Audit policy in the
@@ -263,11 +305,39 @@ jobs:
       # This grades what is actually APPLIED, which is the overlay build, not base/ and not the
       # source. The ClusterPolicy documents are filtered out first: they are the judge, not the
       # judged.
-      - name: Every workload in both overlays is admitted by its own policies
+      # THE TARGET LIST IS ENUMERATED FROM DISK, NOT TYPED HERE. This loop used to read
+      # `for env in staging production`, which graded exactly the two directories somebody
+      # remembered to name. deploy/k8s/estate/ was added on 2026-08-24 and would have been
+      # ungraded YAML that looks identical to graded YAML — the same silent-miss shape as an
+      # allow-list with a bare `return` on its unknown branch. Every kustomization.yaml under
+      # deploy/k8s is now a target, minus the two that are not workloads: policies/ builds the
+      # judge, and base/ is built by the overlays that layer on top of it.
+      - name: Every workload in every manifest directory is admitted by its own policies
         run: |
           set -euo pipefail
-          for env in staging production; do
-            kubectl kustomize "deploy/k8s/overlays/$env" > "/tmp/$env.yaml"
+          targets=$(find deploy/k8s -mindepth 2 -name kustomization.yaml \
+                    | xargs -n1 dirname | sort \
+                    | grep -vE '^deploy/k8s/(policies|base)$')
+          echo "grading: $(echo $targets | tr '\n' ' ')"
+          # A list that silently comes back empty would make every check below vacuous.
+          if [ "$(echo "$targets" | grep -c .)" -lt 3 ]; then
+            echo "FAIL: found $(echo "$targets" | grep -c .) manifest directories, expected at least 3"
+            echo "      (overlays/staging, overlays/production, estate). The enumeration is broken,"
+            echo "      so a green result below would mean nothing was graded."
+            exit 1
+          fi
+          # The label is the directory's basename, and it is also the key split_workloads.py looks
+          # its document floor up under. Two directories sharing a basename would overwrite each
+          # other's build file and grade one of them twice, which reads as two passes.
+          dupes=$(for t in $targets; do basename "$t"; done | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "FAIL: two manifest directories share the basename(s): $dupes"
+            echo "      One would overwrite the other's build and be graded twice. Rename one."
+            exit 1
+          fi
+          for target in $targets; do
+            env=$(basename "$target")
+            kubectl kustomize "$target" > "/tmp/$env.yaml"
             # A vacuous pass is the failure mode here: handed no workloads, kyverno reports
             # "pass: 0, fail: 0" and exits 0, which reads exactly like success. The splitter
             # refuses that, and it is a file rather than inline python so that

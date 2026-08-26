@@ -38,7 +38,29 @@ from pathlib import Path
 # count. That asymmetry is worth stating for the edge documents too: Gateway, HTTPRoute and
 # ClusterIssuer contributed 0 of the 91 passes, because no policy in the set matches them. They are
 # in the count so a dropped file is caught, not because they were checked.
-MINIMUM_DOCUMENTS = 15
+#
+# THE FLOOR IS PER DIRECTORY. It was one number, `MINIMUM_DOCUMENTS = 15`, which is the right floor
+# for the two overlays and wrong for every manifest directory added after it. deploy/k8s/estate
+# builds 4 documents, and a shared floor of 15 leaves two options, both bad: pad the new directory
+# with documents it does not need, or lower the floor for the overlays as well — and lowering it is
+# the exact regression the floor exists to catch. So each directory declares the count it actually
+# builds, and each is caught when it drops one.
+#
+# An unrecognised label is REFUSED, not defaulted. A default is the silent-miss shape: a directory
+# added next month would be graded against a number nobody chose, and a build that had lost half
+# its manifests would clear it while the log said OK.
+MINIMUM_DOCUMENTS = {
+    # Measured 2026-08-24 by `kubectl kustomize deploy/k8s/overlays/<env> | grep -c '^kind:'`,
+    # minus the ClusterPolicy documents.
+    "production": 15,
+    "staging": 15,
+    # Namespace, PersistentVolumeClaim, Deployment, Service — the Healthchecks receiver. It is
+    # deliberately not in base/: the monitor must not ship inside the release it monitors.
+    "estate": 4,
+    # oke: 37 documents minus 26 ClusterPolicy on 2026-08-25; production minus the engine
+    # (Deployment, Service, PersistentVolumeClaim) and the Namespace, which idp owns.
+    "oke": 11,
+}
 REQUIRED_KIND = "Deployment"
 
 
@@ -57,13 +79,20 @@ def split(build: str) -> tuple[list[str], list[str]]:
 
 def check(keep: list[str], kinds: list[str], label: str) -> str | None:
     """The reason this build cannot be graded, or None when it can."""
+    if label not in MINIMUM_DOCUMENTS:
+        return (f"{label} has no document floor. Every manifest directory declares the number of "
+                f"documents it builds, in MINIMUM_DOCUMENTS in this file, so that a build which "
+                f"silently drops one is refused. Add a row for {label!r} with the count "
+                f"`kubectl kustomize` produces for it today. Known: "
+                f"{', '.join(sorted(MINIMUM_DOCUMENTS))}.")
+    floor = MINIMUM_DOCUMENTS[label]
     if REQUIRED_KIND not in kinds:
         return (f"{label} builds no {REQUIRED_KIND}. There is nothing for an admission policy to "
                 f"have an opinion about, so the gate would report success while grading nothing. "
                 f"Kinds found: {kinds or 'none'}.")
-    if len(keep) < MINIMUM_DOCUMENTS:
+    if len(keep) < floor:
         return (f"{label} builds only {len(keep)} non-policy document(s): {kinds}. It has had "
-                f"{MINIMUM_DOCUMENTS} since 2026-08-24, so something was dropped from "
+                f"{floor} since 2026-08-24, so something was dropped from "
                 f"deploy/k8s/base/kustomization.yaml or from the overlay.")
     return None
 

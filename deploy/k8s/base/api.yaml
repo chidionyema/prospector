@@ -130,6 +130,11 @@ spec:
             # (store_platform/src/Store.Api/Payments/MoneyRailConfigGate.cs).
             - name: Store__StorefrontUrl
               value: https://mumchimp.com
+            # Where verification, password-reset and OAuth landing links point. The compose file
+            # has carried it since the store shipped; this manifest had not, and the API refused
+            # to start on OKE on 2026-08-25 (MoneyRailConfigGate.GuardEmailWebBaseUrl).
+            - name: Email__WebBaseUrl
+              value: https://mumchimp.com
             - name: STORE_STOREFRONT_URL
               value: https://mumchimp.com
             - name: STORE_PUBLIC_URL
