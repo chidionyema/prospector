@@ -51,3 +51,15 @@ patches:
       version: v1
       kind: ClusterPolicy
       name: require-pod-probes
+  - path: admit-job-pods.yaml   # after admit-acme-solver.yaml: it appends to the preconditions that one creates
+    target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: require-pod-probes
+  - path: admit-workflow-task-pods.yaml   # after admit-job-pods.yaml: a Chaos Mesh Task pod runs to completion like a Job pod (idp crew#292 CP4)
+    target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: require-pod-probes
