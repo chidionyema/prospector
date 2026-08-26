@@ -120,8 +120,11 @@ t_secrets() {
 t_release() {
   # The build CONTEXT is the repository root, not deploy/engine. Every COPY in the Dockerfile is
   # written repo-root-relative because that is the only way one Dockerfile pulls in both the
-  # engine and the Next.js console. See the same note in deploy/targets/fly.sh.
-  docker build -f "$ENGINE_DIR/Dockerfile" -t "$IMAGE" "$REPO_DIR"
+  # engine and the Next.js console.
+  # GIT_SHA is what /app/GIT_SHA and scripts/oke_release_probe.py read back; the same argument
+  # .github/workflows/container-images.yml passes. An image built without it reports "unknown".
+  docker build -f "$ENGINE_DIR/Dockerfile" -t "$IMAGE" \
+    --build-arg "GIT_SHA=$(git -C "$REPO_DIR" rev-parse HEAD)" "$REPO_DIR"
   if [ -n "$LOAD_CMD" ]; then
     # shellcheck disable=SC2086
     $LOAD_CMD "$IMAGE"

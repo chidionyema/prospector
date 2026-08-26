@@ -18,7 +18,8 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "scripts" / "live_checkout.py"
 DOCKERFILE = REPO / "deploy" / "engine" / "Dockerfile"
-FLY_SH = REPO / "deploy" / "targets" / "fly.sh"
+K8S_SH = REPO / "deploy" / "targets" / "k8s.sh"
+IMAGES_WF = REPO / ".github" / "workflows" / "container-images.yml"
 
 
 @pytest.fixture(scope="module")
@@ -38,13 +39,12 @@ class TestTheImageCarriesItsCommit:
         assert "ARG GIT_SHA" in body, "no GIT_SHA build argument in the engine image"
         assert "/app/GIT_SHA" in body, "the image never writes the stamp file"
 
-    def test_the_deploy_passes_the_commit(self):
+    @pytest.mark.parametrize("path", [K8S_SH, IMAGES_WF], ids=["k8s.sh", "container-images.yml"])
+    def test_the_deploy_passes_the_commit(self, path: Path):
         """A stamp nothing fills in is worse than none: it reads as a confident 'unknown'."""
-        body = FLY_SH.read_text(encoding="utf-8")
-        assert "--build-arg" in body and "GIT_SHA=" in body, (
-            "deploy/targets/fly.sh releases without stamping the commit"
-        )
-        assert "rev-parse HEAD" in body
+        body = path.read_text(encoding="utf-8")
+        assert "--build-arg" in body or "build-args" in body
+        assert "GIT_SHA=" in body, f"{path.name} releases without stamping the commit"
 
     def test_the_probe_reads_the_same_path_the_image_writes(self, lc):
         assert str(lc.IMAGE_STAMP) == "/app/GIT_SHA"

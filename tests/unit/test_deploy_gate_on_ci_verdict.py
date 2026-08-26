@@ -168,7 +168,9 @@ class _Fake:
         return any(c[:2] == ["git", "checkout"] for c in self.calls)
 
 
-SIDES = ["laptop", "fly"]
+# "fly" was the second side until crew#203 (2026-08-26): the Fly release path now refuses before
+# the gate, see test_incident_crew203_the_fly_side_refuses_to_release below.
+SIDES = ["laptop"]
 
 
 def _arm(lc, monkeypatch, tmp_path, verdict: str, *, bypass: bool = False, side: str = "laptop"):
@@ -184,7 +186,7 @@ def _arm(lc, monkeypatch, tmp_path, verdict: str, *, bypass: bool = False, side:
 
     So every gate test now runs twice, once per side, and neither run touches the network.
     """
-    assert side in SIDES, side
+    assert side in SIDES or side == "fly", side
     monkeypatch.setattr(lc, "active_side", lambda: side)
 
     monkeypatch.setattr(lc, "LIVE", tmp_path / "live")
@@ -286,3 +288,12 @@ def test_the_gate_tests_never_ask_the_machine_which_side_is_live(lc, monkeypatch
     _arm(lc, monkeypatch, tmp_path, "pass", side="laptop")
     assert lc.active_side() == "laptop", "_arm did not pin active_side"
     assert not asked, "the real active_side was consulted"
+
+
+def test_incident_crew203_the_fly_side_refuses_to_release(lc, monkeypatch, tmp_path, capsys):
+    """Founder ruling R1 (2026-08-24): nothing deploys to Fly again. A green CI verdict on the
+    fly side used to build and release; now it refuses, names the ruling, and ships nothing."""
+    fake = _arm(lc, monkeypatch, tmp_path, "pass", side="fly")
+    assert lc.update(unattended=True) == 1
+    assert "crew#203" in capsys.readouterr().out
+    assert not any("fly.sh" in " ".join(c) for c in fake.calls)

@@ -233,22 +233,20 @@ LEDGER: tuple[Mode, ...] = (
         "out from deploy/k8s/overlays/oke. Nothing in this repository grades that Flux did: a "
         "publish that succeeded and a reconcile that never happened leave no failing run, so "
         "no alarm here can fire on it.",
-        (".github/workflows/container-images.yml", ".github/workflows/k8s-manifests.yml"),
-        None,
+        (".github/workflows/container-images.yml", ".github/workflows/k8s-manifests.yml",
+         "scripts/oke_release_probe.py"),
+        "tests/unit/test_the_cluster_runs_main.py",
         203,
-        "chidionyema/crew#203 PR 2: an oke-check style probe that reads the image tag the "
-        "cluster is running and compares it with origin/main, replacing the deleted "
-        "scripts/deploy_reconcile.py and production-runs-main.yml.",
+        None,
     ),
     Mode(
         "production-runs-code-that-is-not-main",
         "The image published and the cluster is still executing an older one, so every "
         "instrument says shipped and none of them looked at what is running.",
-        (".github/workflows/container-images.yml",),
-        None,
+        (".github/workflows/container-images.yml", "scripts/oke_release_probe.py"),
+        "tests/unit/test_the_cluster_runs_main.py",
         203,
-        "chidionyema/crew#203 PR 2: the same probe as the row above reads /app/GIT_SHA from the "
-        "running pod; the Fly reader scripts/live_checkout.py is retired with the pipeline.",
+        None,
     ),
     # ---- the drills that watch the rest
     Mode(
@@ -383,10 +381,8 @@ LEDGER: tuple[Mode, ...] = (
 OPEN_BASELINE: frozenset[str] = frozenset(
     {
         # Admitted on 2026-08-26 with the Fly pipeline's deletion (crew#203). Their Fly proofs
-        # (test_deploy_reconcile, test_live_checkout_deploy_gap) went with it; the OKE probe that
-        # closes both is PR 2 of that issue.
-        "main-moves-and-the-cluster-never-rolls-it-out",
-        "production-runs-code-that-is-not-main",
+        # (test_deploy_reconcile, test_live_checkout_deploy_gap) went with it. crew#203 PR 3
+        # closed both rows with scripts/oke_release_probe.py (tests/unit/test_the_cluster_runs_main.py).
     }
 )
 

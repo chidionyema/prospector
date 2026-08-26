@@ -54,7 +54,7 @@ def test_the_contract_names_verbs():
 
 def test_there_is_more_than_one_adapter():
     """Vacuity guard. One adapter, or none, and the parametrised tests below grade nothing."""
-    assert len(ADAPTERS) >= 4, f"found {IDS} in {TARGETS_DIR}"
+    assert len(ADAPTERS) >= 3, f"found {IDS} in {TARGETS_DIR}"
 
 
 @pytest.mark.parametrize("adapter", ADAPTERS, ids=IDS)

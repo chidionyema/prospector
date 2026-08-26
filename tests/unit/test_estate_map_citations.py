@@ -21,7 +21,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAP = REPO_ROOT / "docs" / "ESTATE_MAP.md"
 
-# `prospector/run.py:2735`, `verify.py:580`, `deploy/targets/fly.sh:4`
+# `prospector/run.py:2735`, `verify.py:580`, `deploy/targets/k8s.sh:4`
 CITATION = re.compile(r"`([\w./-]+\.(?:py|sh|ts|tsx|cs|yml|yaml|json|md)):(\d+)`")
 BACKTICKED = re.compile(r"`([^`]+)`")
 IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]{3,}")

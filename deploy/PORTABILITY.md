@@ -70,7 +70,7 @@ plainly rather than leaving to the reader:
 
 Shipped today:
 
-- `deploy/targets/fly.sh` — Fly.io. Where the engine runs from tonight.
+- Fly.io adapter — deleted 2026-08-26 (crew#203, founder ruling R1: Fly is never deployed to again).
 - `deploy/targets/laptop.sh` — the founder's Mac, running launchd rather than Docker. It is an
   adapter like any other, which is what makes the rollback the same command with the ends
   swapped, and what keeps "come back to the laptop" a tested path.

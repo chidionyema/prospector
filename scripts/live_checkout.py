@@ -69,8 +69,7 @@ JOBS = ("com.prospector.scheduler", "com.prospector.consumer", "com.prospector.o
 # untracked files the daemon needs that git will never bring across
 SECRETS = (".env", ".lux/keys/agent.pem")
 
-#: The Fly app that runs the engine. Same default and same override as deploy/targets/fly.sh,
-#: which is the only other file in this repo that knows the word "fly".
+#: The Fly app the engine used to run on. Read-only from here on (crew#203, R1).
 FLY_APP = os.environ.get("PROSPECTOR_FLY_APP", "prospector-engine")
 
 #: Where the image records the commit it was built from. deploy/engine/Dockerfile writes it.
@@ -554,7 +553,6 @@ def fly_machine_state() -> str:
     """State of the engine machine, or a word explaining why it could not be read.
 
     `fly status` reports an app whose machine is stopped, so the app is not the question.
-    Same JSON read as deploy/targets/fly.sh t_health, for the same reason.
     """
     fly = find_fly()
     if not fly:
@@ -773,17 +771,11 @@ def fly_update(unattended: bool = False) -> int:
     if rc != 0:
         print(f"checkout failed: {out}")
         return 1
-    print(f"deploy source at {target[:12]}; building and releasing to {FLY_APP}")
-    # 25 minutes: the image builds a Next.js console and a python environment. A shorter
-    # timeout kills a deploy that is working, which leaves the app mid-release.
-    rc, out = run(["bash", str(DEPLOY_SOURCE / "deploy/targets/fly.sh"), "t_release"],
-                  cwd=DEPLOY_SOURCE, timeout=1500)
-    print(out[-2000:] if out else "")
-    if rc != 0:
-        print(f"fly release failed (rc={rc})")
-        return 1
-    print()
-    return fly_report()
+    # crew#203, founder ruling R1 (2026-08-24): Fly is never deployed to again. deploy/targets/fly.sh
+    # is deleted; production rolls out from the image pins in deploy/k8s/overlays/oke.
+    print(f"REFUSING to release {target[:12]} to Fly: retired (crew#203). "
+          "Bump deploy/k8s/overlays/oke/kustomization.yaml; scripts/oke_release_probe.py grades it.")
+    return 1
 
 
 def update(unattended: bool = False) -> int:
