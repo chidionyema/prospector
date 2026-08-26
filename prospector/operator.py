@@ -1421,6 +1421,16 @@ class OpenAICompatibleOperator(Operator):
     It is NEVER trusted by virtue of being declared. `operator.moat_primary()` is the only
     trust fence: a ruling served here is stamped `provisional` unless the name is also on
     `moat_primary:`, and `provisional` does not publish on PASS.
+
+    ESTATE MODEL ROUTER OVERRIDE (crew#325). `LLM_BASE_URL` and `LLM_API_KEY`, when both set,
+    outrank the `base_url`/`api_key_env` this operator was declared with — same idiom as
+    `OllamaOperator.OLLAMA_BASE_URL` above. This is the seam that lets any declared,
+    OpenAI-compatible tier be pointed at the estate's LiteLLM router (idp platform/llm,
+    crew#284) with two env vars and zero config.yaml edits, so a laptop-only provider config
+    still ships to a buyer's estate unmodified. Unset (either var, or both) is byte-for-byte
+    today's behaviour: `base_url`/`api_key_env` from config, nothing else. `claude_cli` and
+    `gemini_cli` never route here — they spend a subscription through a local CLI, not an API
+    key over HTTP.
     """
 
     def __init__(self, name: str, base_url: str, api_key_env: str, model: str,
@@ -1429,7 +1439,9 @@ class OpenAICompatibleOperator(Operator):
         from .errors import ProviderExhaustedError
 
         self.provider_name = name
-        self.base_url = (base_url or "").rstrip("/")
+        router_base_url = os.environ.get("LLM_BASE_URL")
+        router_api_key = os.environ.get("LLM_API_KEY")
+        self.base_url = (router_base_url or base_url or "").rstrip("/")
         self.api_key_env = api_key_env
         # `cheap=True` is the mechanical-call path (query-gen, prescreen). A provider with no
         # second model uses its one model for both, same as a blank `model_fast` elsewhere.
@@ -1437,15 +1449,16 @@ class OpenAICompatibleOperator(Operator):
         self.max_tokens = max_tokens
         self.timeout_s = timeout_s
         self.name = f"{name}/{self.model}"
-        key = (os.environ.get(api_key_env) or "").strip()
+        key = (router_api_key or os.environ.get(api_key_env) or "").strip()
         if not key:
             # ProviderExhaustedError, not RuntimeError, and AT CONSTRUCTION: a tier whose
             # credential is absent must be dropped from the chain by `make_operator` so the run
             # fails OVER to the next brain. Raising later — on the first real call, halfway
             # through a candidate — spends the run and then reports it as a provider outage.
             raise ProviderExhaustedError(
-                f"{api_key_env} is unset or blank, so provider {name!r} cannot authenticate. "
-                f"Either export {api_key_env} or drop {name!r} from config.yaml `operator:`/"
+                f"neither LLM_API_KEY nor {api_key_env} is set, so provider {name!r} cannot "
+                f"authenticate. Either export LLM_API_KEY (routes through the estate model "
+                f"router) or {api_key_env}, or drop {name!r} from config.yaml `operator:`/"
                 "`noncritical_operator:`/`moat_primary:`.",
                 provider=self.name)
         self._key = key
