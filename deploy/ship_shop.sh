@@ -76,6 +76,13 @@ say "local preflight"
 EDGE_HTTP_PORT="$(grep -E '^EDGE_HTTP_PORT=' "$STACK_ENV" 2>/dev/null | cut -d= -f2 || echo 80)"
 EDGE_HTTPS_PORT="$(grep -E '^EDGE_HTTPS_PORT=' "$STACK_ENV" 2>/dev/null | cut -d= -f2 || echo 443)"
 : "${EDGE_HTTP_PORT:=80}" "${EDGE_HTTPS_PORT:=443}"
+# The compose file publishes the edge on 127.0.0.1 unless EDGE_BIND says otherwise (a laptop
+# is dev; only a public box may listen on every interface). A public box must say so.
+EDGE_BIND="$(grep -E '^EDGE_BIND=' "$STACK_ENV" 2>/dev/null | cut -d= -f2 || true)"
+if [ "${EDGE_BIND:-}" != "0.0.0.0" ]; then
+  fail "$STACK_ENV does not set EDGE_BIND=0.0.0.0. The edge binds 127.0.0.1 by default, which no
+   customer can reach. Add EDGE_BIND=0.0.0.0 to that file for a public box."
+fi
 if [ "$EDGE_HTTP_PORT" != 80 ] || [ "$EDGE_HTTPS_PORT" != 443 ]; then
   fail "$STACK_ENV publishes the edge on ${EDGE_HTTP_PORT}/${EDGE_HTTPS_PORT}. A public box must
    be 80/443: nothing else is reachable without a port in the URL, and Let's Encrypt answers
