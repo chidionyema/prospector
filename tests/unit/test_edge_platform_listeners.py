@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm"}
+PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse"}
 
 
 def _listeners() -> dict[str, dict]:
@@ -39,3 +39,9 @@ def test_every_estate_zone_listener_accepts_platform_routes() -> None:
 
 def test_llm_listener_names_the_router_hostname() -> None:
     assert _listeners()["https-llm"]["hostname"] == "llm.${ESTATE_ZONE}"
+
+
+def test_incident_crew325_langfuse_listener_names_the_trace_store_hostname() -> None:
+    """crew#325 showcase: langfuse.<zone> attaches from the idp `observability` namespace like the
+    catalogue and the router do; a listener missing here leaves the idp HTTPRoute with no parent."""
+    assert _listeners()["https-langfuse"]["hostname"] == "langfuse.${ESTATE_ZONE}"
