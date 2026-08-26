@@ -1,19 +1,23 @@
-"""`merge-when-green.yml` must dispatch exactly what its own merge push cannot start.
+"""`merge-when-green.yml` must dispatch every workflow its own merge push cannot start.
 
 A merge made by that workflow pushes to main with GITHUB_TOKEN, and GitHub starts no workflow run
 from a GITHUB_TOKEN event. `main-admission-guard.yml` stated the same fact about its revert push,
-above its `permissions:` block and again at :310. So the deploys that a human merge would have
-triggered have to be dispatched by hand, from a map of path patterns held in the merging
-workflow.
+above its `permissions:` block and again at :310. So every workflow that runs `on.push` to main
+has to be dispatched by hand from the merging workflow, or a merge it performs lands and never
+reaches production: the queue drains, every pull request reads as merged, and production stops
+tracking main with nothing red anywhere.
 
-That map is a COPY of each deploy workflow's own `paths:` filter, and a copy drifts. When the
-copy is narrower than the original, a merge that should have shipped the engine silently ships
-nothing: the queue drains, every pull request reads as merged, and production stops tracking main
-with nothing red anywhere.
+Until 2026-08-26 this file graded a map of path patterns copied from the three Fly deploy
+workflows. Those workflows were deleted with the Fly pipeline (crew#203, founder ruling R1), and
+the hand-off is now `container-images.yml` (publishes the commit-tagged image, no paths filter)
+plus `k8s-manifests.yml`, which Flux rolls out from `deploy/k8s/overlays/oke`. The rule is the
+same and the copy that can drift is now a list of names rather than a list of regexes, so the
+grading reads both sides out of the files and compares sets.
 
 `main-admission-guard.yml:381` recorded that the two tests which used to grade exactly this drift
 were deleted with `automerge.yml` on 2026-08-20. This is that grading, restored, and widened by
-the case the originals did not have: a deploy workflow added later that nobody adds to the map.
+the case the originals did not have: a push-to-main workflow added later that nobody adds to the
+dispatch list.
 """
 
 from __future__ import annotations
@@ -33,73 +37,60 @@ def _on_block(doc: dict) -> dict:
     return doc.get("on") or doc.get(True) or {}
 
 
-def _push_paths(path: Path) -> list[str] | None:
-    """The workflow's `on.push.paths` for main, or None when it does not deploy on a push."""
-    doc = yaml.safe_load(path.read_text())
+def _runs_on_push_to_main(path: Path) -> bool:
+    doc = yaml.safe_load(path.read_text()) or {}
     push = _on_block(doc).get("push") or {}
-    if "main" not in (push.get("branches") or []):
-        return None
-    return push.get("paths")
+    return isinstance(push, dict) and "main" in (push.get("branches") or [])
 
 
-def _dispatch_map() -> dict[str, str]:
-    """The workflow name -> regex map actually shipped, read out of the file, never retyped.
+def _push_to_main_workflows() -> set[str]:
+    return {
+        p.name
+        for p in WORKFLOWS.glob("*.yml")
+        if p.name != MERGER.name and _runs_on_push_to_main(p)
+    }
 
-    Retyping it here would grade this test's copy instead of the one that runs, which is the
+
+def _dispatched() -> set[str]:
+    """The workflow names the merger actually dispatches, read out of the file, never retyped.
+
+    Retyping them here would grade this test's copy instead of the one that runs, which is the
     same defect the test exists to catch.
     """
-    text = MERGER.read_text()
-    names = re.findall(r"gh workflow run (deploy-[a-z]+\.yml)", text)
-    patterns = re.findall(r"if want '(\^\([^']+\))'", text)
-    assert len(names) == len(patterns), (
-        f"{len(names)} dispatch call(s) but {len(patterns)} path pattern(s); the parser below "
-        f"no longer matches the file's shape, so this test is grading nothing"
-    )
-    return dict(zip(names, patterns))
+    return set(re.findall(r"gh workflow run ([a-z0-9-]+\.yml)", MERGER.read_text()))
 
 
 def test_the_merger_dispatches_something() -> None:
-    """A map that parsed to nothing would make every assertion below vacuously true."""
+    """A list that parsed to nothing would make every assertion below vacuously true."""
     assert MERGER.exists(), f"{MERGER} is missing; nothing merges a green pull request"
-    assert _dispatch_map(), "no deploy dispatch found in merge-when-green.yml"
+    assert _dispatched(), "no `gh workflow run` found in merge-when-green.yml"
 
 
-@pytest.mark.parametrize("name", sorted(_dispatch_map()))
-def test_every_declared_path_is_dispatched(name: str) -> None:
-    """Each pattern must match every path its own deploy workflow declares."""
-    pattern = re.compile(_dispatch_map()[name])
-    declared = _push_paths(WORKFLOWS / name)
-    assert declared, f"{name} no longer deploys on a push to main; the map needs re-reading"
-    for entry in declared:
-        # `paths:` is a glob and the map is a regex. A `**` stands for at least one segment, so
-        # a concrete sample under it is what the deploy would actually have seen.
-        sample = entry.replace("**", "x/y.txt").rstrip("/")
-        assert pattern.search(sample), (
-            f"{name} deploys on a push touching {entry!r}, but merge-when-green.yml would not "
-            f"dispatch it. A merge of such a change would land and never reach production."
-        )
+def test_there_is_a_push_to_main_workflow_to_grade() -> None:
+    """Anti-vacuity for the other side of the comparison."""
+    assert _push_to_main_workflows(), (
+        "no workflow runs on push to main; the glob or the parser is wrong"
+    )
 
 
-def test_no_deploy_workflow_is_left_out_of_the_map() -> None:
-    """A deploy workflow added later, and not added to the map, ships nothing after a merge."""
-    mapped = set(_dispatch_map())
-    on_push, skipped = set(), []
-    for path in sorted(WORKFLOWS.glob("*.yml")):
-        if path.name == MERGER.name:
-            continue
-        paths = _push_paths(path)
-        if paths is None:
-            continue
-        text = path.read_text()
-        if "fly deploy" in text or "deploy" in path.name:
-            on_push.add(path.name)
-        else:
-            skipped.append(path.name)
-    # The exclusions are printed, never dropped. An allow-list whose miss case is silent is how
-    # ten critical findings were lost in eighteen hours on this estate.
-    print(f"on push to main and NOT treated as a deploy: {skipped or 'none'}")
-    missing = on_push - mapped
-    assert not missing, (
-        f"{sorted(missing)} deploy on a push to main but merge-when-green.yml never dispatches "
-        f"them, so a merge it performs would not ship them"
+@pytest.mark.parametrize("name", sorted(_push_to_main_workflows()))
+def test_every_push_to_main_workflow_is_dispatched_by_the_merger(name: str) -> None:
+    """A workflow that a human merge would start, and a robot merge would not."""
+    assert name in _dispatched(), (
+        f"{name} runs on a push to main but merge-when-green.yml never dispatches it, so a merge "
+        f"it performs would land without starting it. Add `gh workflow run {name} --ref main` "
+        f"beside the other dispatches."
+    )
+
+
+@pytest.mark.parametrize("name", sorted(_dispatched()))
+def test_every_dispatched_workflow_exists_and_accepts_dispatch(name: str) -> None:
+    """The other direction: a dispatch of a workflow that was deleted or never took
+    `workflow_dispatch` fails at merge time with `could not dispatch`, which the merger
+    swallows into an echo."""
+    path = WORKFLOWS / name
+    assert path.exists(), f"merge-when-green.yml dispatches {name}, which is not on disk"
+    doc = yaml.safe_load(path.read_text()) or {}
+    assert "workflow_dispatch" in _on_block(doc), (
+        f"{name} has no workflow_dispatch trigger, so `gh workflow run {name}` is refused"
     )
