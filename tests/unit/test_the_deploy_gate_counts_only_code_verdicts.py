@@ -171,9 +171,11 @@ def test_no_fly_binary_anywhere_still_says_so(lc, monkeypatch, tmp_path):
 
 def test_the_resolver_is_the_estate_s_one_resolver(lc):
     """Not a second spelling of it. Two implementations of one class are worse than none."""
-    assert lc.find_fly.__module__ == "rollback_now", (
-        f"find_fly came from {lc.find_fly.__module__}; scripts/rollback_now.py owns it and "
-        "carries the launchd-PATH lesson that a fresh copy would lose.")
+    import inspect
+    owner = Path(inspect.getsourcefile(lc.find_fly)).name
+    assert owner == "live_checkout.py", (
+        f"find_fly came from {owner}; scripts/live_checkout.py owns it since "
+        "rollback_now.py went (crew#203) and carries the launchd-PATH lesson.")
 
 
 def test_os_import_is_present_for_the_outcome_file():

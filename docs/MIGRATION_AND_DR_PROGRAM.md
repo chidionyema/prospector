@@ -287,7 +287,7 @@ On 2026-08-19 a probe was written to ask one question: *which Fly apps does no c
 describe?*
 
 ```
-$ .venv/bin/python scripts/fly_estate_probe.py
+$ .venv/bin/python scripts/fly_estate_probe.py (deleted 2026-08-26, crew#203)
 Fly apps running: 11  (5 out of scope)
   ok prospector-ci              deploy/runner/fly.toml
   ok prospector-engine          deploy/engine/fly.toml
@@ -331,7 +331,7 @@ Read this before proposing to build any of it (memory
 | Store move | `scripts/store_migrate.py` (+ `verify`) | written; `verify` is the restore proof |
 | Compose substrate | `deploy/compose/` | written; the founder's chosen route "c" |
 | Offsite backup | `ops/automations/offsite_backup.py`, `ops/config/offsite_backup.yaml` | running, green, **from the laptop** |
-| Fly inventory | `scripts/fly_estate_probe.py` (PR #390) | raised 2026-08-19, **not merged**; Fly apps only |  <!-- doc-lint-ok: lands with PR #390 -->
+| Fly inventory | `scripts/fly_estate_probe.py (deleted 2026-08-26, crew#203)` (PR #390) | raised 2026-08-19, **not merged**; Fly apps only |  <!-- doc-lint-ok: lands with PR #390 -->
 | Laptop inventory | `ops/launchd/*.json`, `scripts/launchd_plists.py`, `scripts/process_audit.py` | declarations exist; not joined to Fly |
 | Estate census | `scripts/estate_census.py`, `scripts/estate_map.py`, `scripts/worktree_census.py` | run by hand |
 | Production currency | `scripts/live_checkout.py` (+ `--update`) | shipped, a console button |
@@ -353,7 +353,7 @@ a **Story** in the founder's words, **Done when** as a command someone can run, 
 
 ### M1 — One inventory, or none. Today the estate has three lists that never meet. **P0, M**
 
-**Breaks today.** `scripts/fly_estate_probe.py` (PR #390, open) saw 11 Fly apps when it was run.  <!-- doc-lint-ok: lands with PR #390 -->
+**Breaks today.** `scripts/fly_estate_probe.py (deleted 2026-08-26, crew#203)` (PR #390, open) saw 11 Fly apps when it was run.  <!-- doc-lint-ok: lands with PR #390 -->
 `ops/launchd/*.json` declares the
 laptop's jobs. `.github/workflows/*.yml` declares scheduled CI work. Nothing joins them, so the
 question *"what unattended work does this business run, and where?"* has no answer without three
@@ -1285,7 +1285,7 @@ Append here. One line per shipped item, with the receipt.
 
 | Date | Item | What shipped | Receipt |
 |---|---|---|---|
-| 2026-08-19 | M1 (part) | `scripts/fly_estate_probe.py` — Fly apps with no committed config | PR #390 **open, not merged**; `exit=1`, `prospector-hermes` named |  <!-- doc-lint-ok: lands with PR #390 -->
+| 2026-08-19 | M1 (part) | `scripts/fly_estate_probe.py (deleted 2026-08-26, crew#203)` — Fly apps with no committed config | PR #390 **open, not merged**; `exit=1`, `prospector-hermes` named |  <!-- doc-lint-ok: lands with PR #390 -->
 | 2026-08-19 | M3 (fence) | `deploy/targets/fly.sh` flyctl shim; D3 was red with `fly: command not found` | PR #388; 2 failed → 3 passed |
 | 2026-08-19 | — | `docs/ESTATE_MAP.md` Hermes section corrected from asserted to measured | PR #390 |
 | 2026-08-19 | M4 (part) | key-ring backup graded by opening the archive, not by its size — new `tgz` verify kind | PR #441; `26 passed` |
