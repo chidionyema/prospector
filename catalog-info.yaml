@@ -1,0 +1,46 @@
+# The product's entry in the estate catalogue (crew#282, founder 2026-08-26: "every interface
+# /ui needs exposure"). The platform's Backstage reads this file by URL from the repo, so the
+# product carries its own entity and the platform is never edited to add a product. The links
+# are the hostnames of deploy/k8s/base/edge.yaml; tests/unit/test_catalog_info_names_every_edge_hostname.py
+# refuses a hostname the edge serves that this file does not name.
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: prospector
+  description: Mumchimp store and the prospector research engine behind it
+spec:
+  owner: user:default/chidionyema
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: prospector-store-web
+  description: Storefront at mumchimp.com
+  annotations:
+    github.com/project-slug: chidionyema/prospector
+  links:
+    - title: Open
+      url: https://mumchimp.com
+    - title: Open (www)
+      url: https://www.mumchimp.com
+spec:
+  type: website
+  lifecycle: production
+  owner: user:default/chidionyema
+  system: prospector
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: prospector-store-api
+  description: Store API at api.mumchimp.com
+  annotations:
+    github.com/project-slug: chidionyema/prospector
+  links:
+    - title: Open
+      url: https://api.mumchimp.com
+spec:
+  type: service
+  lifecycle: production
+  owner: user:default/chidionyema
+  system: prospector

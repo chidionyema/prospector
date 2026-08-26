@@ -192,6 +192,12 @@ GRADES_THE_CODE = {
     "CI",
     "Main admission guard",
     "Main green guard",
+    # `k8s manifests` grades repository content — the manifests and admission policies under
+    # deploy/k8s — so a red run means this commit is wrong, which is the whole test on this list.
+    # It cannot wall an unrelated deploy the way `production runs main` did: it carries path
+    # filters for deploy/k8s/** and its own file, so a commit that touches neither starts no run
+    # at all, and a workflow with no row cannot vote.
+    "k8s manifests",
 }
 
 

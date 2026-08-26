@@ -338,6 +338,50 @@ LEDGER: tuple[Mode, ...] = (
         None,
         None,
     ),
+    # ---- at the standards gate
+    Mode(
+        "an-admission-gate-passes-on-nothing",
+        "k8s-manifests.yml grades the Kubernetes manifests against the estate's own 26 admission "
+        "policies. Handed no resources to grade, the Kyverno CLI prints `Applying 0 policy "
+        "rule(s)` and `pass: 0, fail: 0, error: 0` and exits 0 — measured 2026-08-24 — so the gate "
+        "goes green while grading nothing. Two ordinary edits produce that: dropping engine.yaml "
+        "from base/kustomization.yaml, and pointing the CLI at a build that contains a non-policy "
+        "document, which makes it silently load ZERO rules.\n\n"
+        "This is the same class as `kyverno test` reporting `13 tests passed` with an assertion "
+        "violated: every instrument in the chain reports a SHAPE, and a shape is green when there "
+        "is nothing behind it. The gate therefore asserts what it graded, not merely that grading "
+        "returned no failures — a Deployment present, at least 4 non-policy documents, at least "
+        "50 rules loaded, and a non-zero pass count.",
+        (".github/workflows/k8s-manifests.yml", "deploy/k8s/split_workloads.py"),
+        "tests/unit/test_the_k8s_gate_cannot_pass_on_nothing.py",
+        None,
+        None,
+    ),
+    # ---- at the registry
+    Mode(
+        "the-cluster-runs-a-tag-that-moved",
+        "container-images.yml holds `packages: write` and pushes three images to ghcr.io. The "
+        "overlays under deploy/k8s/overlays name images by TAG, so if the tag CI publishes is a "
+        "moving one — `latest`, `main`, `edge`, or a `type=sha` whose prefix is not pinned — the "
+        "overlay names a moving target and the cluster runs whatever was pushed last rather than "
+        "the commit that was graded. Nothing downstream catches it: the manifests apply, the pods "
+        "start, and the running code is not the reviewed code. Kyverno's `disallow-latest-tag` "
+        "does not catch it either — upstream it refuses `:latest` and an untagged image, and a "
+        "moving `:main` sails past.\n\n"
+        "Not paid for by an incident here, because nothing built these images until 2026-08-24. "
+        "It is the shape of the incident this pipeline would otherwise import: a deploy path "
+        "whose artifact identity is weaker than its review gate.\n\n"
+        "The second mode in the same file is the storefront's build-time variables. NEXT_PUBLIC_* "
+        "are inlined into the bundle at build time and an empty one does not fail the build; it "
+        "ships a page that calls `undefined`. deploy-web.yml already checks this before handing "
+        "off, and the image path has to check the same thing or the k8s route reintroduces the "
+        "bug the Fly route fixed. The proof asserts the check runs BEFORE the build step and "
+        "exits non-zero.",
+        (".github/workflows/container-images.yml",),
+        "tests/unit/test_the_image_pipeline_publishes_one_immutable_tag.py",
+        None,
+        None,
+    ),
 )
 
 # The modes with no proof. This set is a RATCHET: removing an entry is the point of the

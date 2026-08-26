@@ -78,7 +78,7 @@ jobs:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Refresh what is behind, re-run what was refused
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           # When main's own CI went green. Empty on the other triggers. A refusal is only stale
           # if it was recorded BEFORE this moment; see the loop note where it is read.
