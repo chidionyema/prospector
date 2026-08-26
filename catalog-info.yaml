@@ -52,9 +52,6 @@ metadata:
   description: Re-verification scheduler (run_scheduled --daemon) on the cluster; ticks land in store/scheduler/ticks.jsonl
   annotations:
     github.com/project-slug: chidionyema/prospector
-  links:
-    - title: Tracking issue
-      url: https://github.com/chidionyema/crew/issues/248
 spec:
   type: service
   lifecycle: production

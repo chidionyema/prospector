@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -21,7 +20,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 OVERLAY = ROOT / "deploy" / "k8s" / "overlays" / "oke"
 
-pytestmark = pytest.mark.skipif(shutil.which("kubectl") is None, reason="kubectl carries kustomize")
+# kubectl carries kustomize. Skips on a laptop without it, ERRORS on the runner (conftest).
+pytestmark = pytest.mark.needs_tool("kubectl")
 
 
 def _rendered() -> list[dict]:
