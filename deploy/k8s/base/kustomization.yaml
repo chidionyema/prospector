@@ -7,6 +7,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - engine.yaml
+  - scheduler.yaml
   - api.yaml
   - web.yaml
   - edge.yaml
