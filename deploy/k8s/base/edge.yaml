@@ -190,6 +190,22 @@ spec:
           selector:
             matchLabels:
               idp.estate/edge-attach: "true"
+    # crew#458: the idp mcp row (agentgateway + github-mcp) attaches here by sectionName.
+    - name: https-mcp
+      protocol: HTTPS
+      port: 8443
+      hostname: mcp.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
     # The estate's job monitor (idp platform/healthchecks, crew#177): the screen behind the one
     # login and /ping/ for the jobs' curl, both HTTPRoutes in the idp namespace `healthchecks`.
     - name: https-hc
