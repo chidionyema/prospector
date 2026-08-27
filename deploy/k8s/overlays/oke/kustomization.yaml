@@ -20,6 +20,8 @@ namespace: prospector
 resources:
   - ../../base
   - ../../policies
+  # Scale-to-zero opt-in for the storefront; the platform (idp platform/keda) owns KEDA itself.
+  - keda.yaml
 
 labels:
   - includeSelectors: false
@@ -65,3 +67,17 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/imagePullPolicy
         value: IfNotPresent
+  # The storefront route goes through the KEDA interceptor proxy so the Deployment can sit at 0
+  # (keda.yaml). Cross-namespace backendRef; the ReferenceGrant that permits it is platform-owned,
+  # idp platform/keda/referencegrant.yaml. The api route is untouched: a checkout API at 0
+  # replicas is not a saving anyone asked for.
+  - target:
+      kind: HTTPRoute
+      name: prospector-store-web
+    patch: |
+      - op: replace
+        path: /spec/rules/0/backendRefs
+        value:
+          - name: interceptor-proxy
+            namespace: keda
+            port: 8080

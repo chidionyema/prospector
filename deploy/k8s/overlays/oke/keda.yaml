@@ -1,0 +1,44 @@
+# The storefront scales to zero on the OKE cluster (crew#488 CP7). The platform installs KEDA and
+# its HTTP add-on once (idp platform/keda); this is the product's opt-in, and it is an overlay
+# resource and not a base one because k3d and the compose box have no KEDA and a plain Deployment
+# is the right answer there.
+#
+# How it works: the HTTPRoute for mumchimp.com (patched in kustomization.yaml) sends to the
+# interceptor proxy in namespace keda instead of the Service directly. The interceptor holds the
+# request, tells KEDA to scale prospector-store-web from 0 to 1, and forwards when a pod is ready.
+# After scaledownPeriod seconds with no request it goes back to 0.
+#
+# Why 30 minutes and not the chart's 300 seconds: a shop cold start is a Next.js boot, measured
+# in seconds, and the buyer at the checkout must never meet it. Overnight and on quiet afternoons
+# the storefront costs nothing; during any run of visits it stays warm. The two-replica ceiling is
+# the base's replicas: 2, for the same reason the base gives (a roll, not capacity).
+#
+# The PodDisruptionBudget in base/web.yaml (minAvailable 1) governs evictions only; a scale to 0
+# by the Deployment controller is not an eviction, so it neither blocks nor is blocked.
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: prospector-store-web
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-store-web
+    app.kubernetes.io/part-of: prospector
+spec:
+  hosts:
+    - mumchimp.com
+    - www.mumchimp.com
+  scaleTargetRef:
+    name: prospector-store-web
+    kind: Deployment
+    apiVersion: apps/v1
+    service: prospector-store-web
+    port: 3000
+  replicas:
+    min: 0
+    max: 2
+  scaledownPeriod: 1800
+  scalingMetric:
+    requestRate:
+      granularity: 1s
+      targetValue: 50
+      window: 1m
