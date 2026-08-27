@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc"}
+PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp"}
 
 
 def _listeners() -> dict[str, dict]:
@@ -51,3 +51,9 @@ def test_incident_crew177_hc_listener_names_the_job_monitor_hostname() -> None:
     """crew#177: hc.<zone> attaches from the idp `healthchecks` namespace; without this listener the
     idp HTTPRoutes (screen behind the login, /ping/ for the jobs) have no parent."""
     assert _listeners()["https-hc"]["hostname"] == "hc.${ESTATE_ZONE}"
+
+
+def test_incident_crew458_mcp_listener_names_the_mcp_gateway_hostname() -> None:
+    """crew#458: mcp.<zone> attaches from the idp `mcp` namespace; the MCP servers left the colima VM
+    on the founder Mac for the cluster and need a parent here before idp's HTTPRoute has one."""
+    assert _listeners()["https-mcp"]["hostname"] == "mcp.${ESTATE_ZONE}"
