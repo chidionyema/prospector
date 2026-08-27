@@ -190,6 +190,23 @@ spec:
           selector:
             matchLabels:
               idp.estate/edge-attach: "true"
+    # The estate's job monitor (idp platform/healthchecks, crew#177): the screen behind the one
+    # login and /ping/ for the jobs' curl, both HTTPRoutes in the idp namespace `healthchecks`.
+    - name: https-hc
+      protocol: HTTPS
+      port: 8443
+      hostname: hc.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
 ---
 # Everything on port 80 becomes a 301 to the same URL on 443. This is the `force_https` Fly used to
 # supply and the last thing Fly was still doing that the compose stack could not do for itself.
