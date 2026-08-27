@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp"}
+PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-signoz"}
 
 
 def _listeners() -> dict[str, dict]:
@@ -57,3 +57,8 @@ def test_incident_crew458_mcp_listener_names_the_mcp_gateway_hostname() -> None:
     """crew#458: mcp.<zone> attaches from the idp `mcp` namespace; the MCP servers left the colima VM
     on the founder Mac for the cluster and need a parent here before idp's HTTPRoute has one."""
     assert _listeners()["https-mcp"]["hostname"] == "mcp.${ESTATE_ZONE}"
+
+
+def test_incident_crew495_signoz_listener_names_the_telemetry_backend_hostname() -> None:
+    """crew#495 CP8: SigNoz had no listener, so no person and no Terraform run could reach it."""
+    assert _listeners()["https-signoz"]["hostname"] == "signoz.${ESTATE_ZONE}"
