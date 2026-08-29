@@ -13,9 +13,11 @@ name: CI
 # our own runner is the free path, and this variable is how we take it without rewriting the
 # workflow under pressure.
 #
-# The jobs are OS-portable already: no apt-get, no sudo, no docker, no service containers. They
-# use checkout, setup-python, setup-uv, setup-node, setup-dotnet and cache, every one of which
-# supports macOS, so the same five jobs run unchanged wherever CI_RUNS_ON points.
+# The jobs are OS-portable: no docker, no service containers. They use checkout, setup-python,
+# setup-uv, setup-node, setup-dotnet and cache, every one of which supports macOS. The one
+# exception is the python job's "Install age" step, which falls back to sudo apt-get only when
+# `age` is not already on PATH — on a non-Debian runner, preinstall age (brew install age on a
+# Mac; deploy/runner/Dockerfile bakes it in) and the step is a no-op.
 #
 # TWO POOLS, BECAUSE THE JOBS ARE NOT THE SAME SIZE.
 #
@@ -522,6 +524,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # tests/unit/test_secrets_recipients_survive_reencryption.py declares needs_tool("age"):
+      # its assertion is about who can decrypt real ciphertext, which a fake binary cannot
+      # show. INSTALLED_BY in test_a_missing_tool_never_silently_skips_in_ci.py names this
+      # step, so removing it turns those tests into CI errors, not silent skips.
+      - name: Install age
+        run: |
+          command -v age >/dev/null && command -v age-keygen >/dev/null || {
+            sudo apt-get update -qq && sudo apt-get install -y -qq age
+          }
 
       # One shared uv cache and one shared venv root, both on paths that survive between jobs.
       #

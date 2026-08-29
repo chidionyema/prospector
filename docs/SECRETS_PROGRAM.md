@@ -320,18 +320,23 @@ a cold Fly machine. We would hold two systems instead of one.
 
 ### 3.7 A blocker nobody would have found without reading the script
 
-`deploy/secrets.sh:62-68` re-encrypts to **one** recipient, derived from our own private key:
+Until PR #701, `encrypt_stdin` re-encrypted to **one** recipient, derived from our own private
+key:
 
 ```sh
+# the pre-S5 shape, kept here as the record of the bug
 encrypt_stdin() {
   pub="$(age-keygen -y "$KEY")"
   age -r "$pub" -o "$STORE.tmp"
 }
 ```
 
-So adding recipients by hand today would be **silently undone by the next `secrets.sh set`**.
-The recovery fix is not durable until the recipient list lives in a file the script reads. That
-is action S5 below, and it must land BEFORE S1, or S1 is decorative.
+So a recipient added by hand was **silently undone by the next `secrets.sh set`**, which made
+any escrow recipient decorative. Fixed by action S5 (PR #701): `encrypt_stdin` now reads
+`deploy/secrets.recipients` via `age -R` on every encrypt, and refuses a recipients file that
+omits our own public key — honouring one would make that `set` the last this machine can read
+back. S5 had to land BEFORE S1 for exactly this reason. The incident test is
+`tests/unit/test_secrets_recipients_survive_reencryption.py`.
 
 ### 3.8 The commands, in order, in plain `age`
 
@@ -431,3 +436,4 @@ and 2.6 are unchanged.
 | S2 | Rotate `PROSPECTOR_ENTITLEMENTS_API_KEY` and `STORE_INTERNAL_API_KEY`, exposed 2026-08-18 | **founder** | — |
 | S3 | Bring the 5 CI credentials under a declared source of truth | agent, after Part 3 lands | consolidation |
 | S4 | Make `secrets.sh check` detect a value that DIFFERS between sinks, not only one that is absent | agent, after Part 3 lands | the detect half of 2.6 |
+| S5 | Recipient list in `deploy/secrets.recipients`, read by `encrypt_stdin`, so a recipient survives re-encryption (3.7 named this action but this table never held its row) | agent — PR #701 | S1 — without it, S1's escrow recipient is stripped by the next `set` |

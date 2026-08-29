@@ -67,6 +67,11 @@ def store(tmp_path):
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
     env["PROSPECTOR_AGE_KEY"] = str(key)
     env["PROSPECTOR_SECRETS_FILE"] = str(tmp_path / "s.age")
+    # Point at a recipients file that does not exist, so these tests keep exercising the
+    # single-recipient path. The committed deploy/secrets.recipients would otherwise apply,
+    # and its guard rightly refuses the fake key. The -R path has its own tests, with real
+    # age, in test_secrets_recipients_survive_reencryption.py.
+    env["PROSPECTOR_AGE_RECIPIENTS"] = str(tmp_path / "no-recipients")
     env["FAKE_ARGV_LOG"] = str(tmp_path / "argv.log")
     return env
 
