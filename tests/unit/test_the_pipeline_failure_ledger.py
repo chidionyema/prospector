@@ -369,6 +369,21 @@ LEDGER: tuple[Mode, ...] = (
         None,
         None,
     ),
+    Mode(
+        "the-operating-model-gate-silently-stops-running",
+        "operating-model-gate.yml is eight lines that call chidionyema/idp's reusable gate at "
+        "`@main`; the rego, the steps and the LAW 51 `optimised_plan` rule live there. The way it "
+        "breaks is by drifting into something that no longer runs the shared gate: a pin to a "
+        "stale ref, a trigger other than pull_request (bin/pr-report needs a PR number), or the "
+        "loss of pull-requests: write (the verdict is posted as a review). Each of those turns the "
+        "law back into prose here while the check name stays green-looking in the list.\n\n"
+        "Not paid for by an incident here: this file arrived on 2026-08-29 (crew#584) because the "
+        "audit that day found the law enforced in three repositories and written down in seven.",
+        (".github/workflows/operating-model-gate.yml",),
+        "tests/unit/test_the_operating_model_gate_is_the_shared_one.py",
+        None,
+        None,
+    ),
 )
 
 # The modes with no proof. This set is a RATCHET: removing an entry is the point of the
@@ -388,21 +403,6 @@ OPEN_BASELINE: frozenset[str] = frozenset(
         "main-moves-and-the-cluster-never-rolls-it-out",
         "production-runs-code-that-is-not-main",
     }
-    Mode(
-        "the-operating-model-gate-silently-stops-running",
-        "operating-model-gate.yml is eight lines that call chidionyema/idp's reusable gate at "
-        "`@main`; the rego, the steps and the LAW 51 `optimised_plan` rule live there. The way it "
-        "breaks is by drifting into something that no longer runs the shared gate: a pin to a "
-        "stale ref, a trigger other than pull_request (bin/pr-report needs a PR number), or the "
-        "loss of pull-requests: write (the verdict is posted as a review). Each of those turns the "
-        "law back into prose here while the check name stays green-looking in the list.\n\n"
-        "Not paid for by an incident here: this file arrived on 2026-08-29 (crew#584) because the "
-        "audit that day found the law enforced in three repositories and written down in seven.",
-        (".github/workflows/operating-model-gate.yml",),
-        "tests/unit/test_the_operating_model_gate_is_the_shared_one.py",
-        None,
-        None,
-    ),
 )
 # Workflows that grade or ship nothing and hold no write scope still have to be named, but a
 # purely advisory workflow does not need its own failure mode. Nothing is exempt today; this
