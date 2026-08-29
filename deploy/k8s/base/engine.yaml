@@ -238,6 +238,7 @@ metadata:
   name: prospector-engine
   namespace: prospector
   labels:
+    backstage.io/kubernetes-id: company-prospector
     app.kubernetes.io/name: prospector-engine
     app.kubernetes.io/part-of: prospector
 spec:
