@@ -1,0 +1,67 @@
+# The shop on the estate's OKE cluster (idp, clusters/oke/edge.yaml). Two of the three services:
+# store-api and store-web. The engine is not here on purpose: its core is being rewritten in the
+# sprint after the infra and PE lanes close (founder, 2026-08-25), and deploying the old one to a
+# new cluster would be building a migration for code that is about to be deleted.
+#
+# What the platform supplies before this applies, from idp/platform/prospector: the namespace,
+# the ghcr-pull registry secret, and Secret prospector-store-api-env. So namespace.yaml is not
+# listed here; two owners of one Namespace is a Flux conflict.
+#
+# What this overlay changes and why, each one a property of the cluster and not a policy:
+#   - image tags, by commit SHA, the first commit whose images carry arm64 (the pool is Ampere A1);
+#   - imagePullSecrets, because ghcr packages on this account are private;
+#   - imagePullPolicy IfNotPresent, because the base's Never is the k3d import path;
+#   (Gateway listener ports 8000/8443 live in the base: they are Traefik's entrypoints on every cluster.)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: prospector
+
+resources:
+  - ../../base
+  - ../../policies
+
+labels:
+  - includeSelectors: false
+    pairs:
+      prospector.estate/environment: production
+
+images:
+  - name: ghcr.io/chidionyema/prospector-engine
+    newTag: f398a664d7de0db3637e41d20133a8cc29adcdbd
+  - name: ghcr.io/chidionyema/prospector-store-api
+    newTag: 99cdc96a341f3365916df59be4fd8f26ebf96a43
+  - name: ghcr.io/chidionyema/prospector-store-web
+    newTag: 99cdc96a341f3365916df59be4fd8f26ebf96a43
+
+patches:
+  # Delete rather than not list: kustomize refuses files above the overlay directory, so the base
+  # is taken whole and the engine and the platform-owned Namespace are removed from it.
+  - target:
+      kind: Namespace
+      name: prospector
+    patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: prospector
+  - target:
+      labelSelector: app.kubernetes.io/name=prospector-engine
+    patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: Placeholder
+      metadata:
+        name: placeholder
+  - target:
+      kind: Deployment
+      name: prospector-(store-api|store-web|scheduler)
+    patch: |
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+          - name: ghcr-pull
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent

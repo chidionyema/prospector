@@ -20,6 +20,7 @@ See specs/offline-moat-validation.md for the full promotion protocol.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -374,6 +375,29 @@ def run_golden_set(
     return discrimination, results
 
 
+def _config_fingerprint(operator: str, model: str, model_fast: str) -> str:
+    """Stable 12-char digest of the brain a golden run was measured on.
+
+    sha256, NOT the builtin `hash()`. Python salts `hash()` per process (PYTHONHASHSEED), so the
+    same brain produced a different `config_hash` on every invocation and the field could not
+    answer the one question it exists for: was this score measured on the engine we are running
+    now? Measured 2026-08-20 over the 77 stored records in a worktree's `store/golden_runs/`:
+    51 distinct values, clustering in groups of three — one group per `--runs 3` PROCESS, not
+    one per config.
+
+    The scope stays narrow deliberately. Hashing the whole config, as
+    `ops.config_editor.config_hash` does, would invalidate a golden score on any unrelated
+    threshold or market edit. The golden set measures the BRAIN, so the brain is what this
+    covers: the operator chain, the model, and the fast model.
+
+    Old records carry the previous format, a signed 19-digit int. The two are distinguishable
+    on sight, which is how a consumer can tell a comparable record from a legacy one.
+    """
+    return hashlib.sha256(
+        "\x1f".join((operator, model, model_fast)).encode()
+    ).hexdigest()[:12]
+
+
 def _audit_path(operator_name: str, timestamp: str,
                 store_dir: str | Path | None = None) -> Path:
     """Return <store_dir>/golden_runs/<operator>_<timestamp>.json.
@@ -470,7 +494,7 @@ def main() -> None:
 
     # Stamp timestamp once so a single run writes a coherent record
     op_name = str(cfg.operator[0] if isinstance(cfg.operator, list) else cfg.operator)
-    cfg_hash = str(hash((str(cfg.operator), str(cfg.model), str(cfg.model_fast))))
+    cfg_hash = _config_fingerprint(str(cfg.operator), str(cfg.model), str(cfg.model_fast))
 
     # --- Mock-vet test mode: skip all operator/search setup ---------------
     if args.mock_vet:

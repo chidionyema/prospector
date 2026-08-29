@@ -1,0 +1,20 @@
+# The estate's own workloads, kept apart from Prospector's on purpose.
+#
+# deploy/k8s/base is Prospector: the engine, the API, the storefront, the edge. This directory is
+# the estate's shared services -- the things that watch Prospector rather than being part of it.
+# Mixing them would put the monitor inside the release it monitors, and would make a Prospector
+# rollback also roll back the thing that would have reported the rollback.
+#
+# It is graded by the same 26 admission policies as everything else. That is not automatic: the
+# gate in .github/workflows/k8s-manifests.yml used to loop over `staging production` by name, so a
+# new manifest directory was ungraded YAML that looked exactly like graded YAML. The loop now reads
+# a list of targets and this directory is on it.
+#
+# The image tag is a deliberately unpullable placeholder here, the same as deploy/k8s/base. There
+# is no overlay for this yet, so applying this directory as it stands fails loudly at image pull
+# rather than quietly running whatever `latest` happens to be that week.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - healthchecks.yaml

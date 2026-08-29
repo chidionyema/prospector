@@ -1,9 +1,182 @@
 """Shared fixtures for the prospector test suite."""
 from __future__ import annotations
 
+import os
+
 import pytest
+from tool_gate import require_tool
 
 from prospector.config import Config, load_config
+
+
+# Taken verbatim from prospector-36's fix on `perf/engine-100x` (9c3310f9), not written
+# again here: the estate already owns this mechanism and two implementations of one class
+# are worse than none. Reproduced independently in this worktree before taking it — the
+# suite run under an inherited GIT_INDEX_FILE took a COPY of this branch's index from
+# 2,078 entries to 3, and reported `2 passed`.
+def _strip_inherited_git_env() -> list[str]:
+    """Remove every GIT_* variable from this process before any test runs. Returns what went.
+
+    WHAT THIS PREVENTS: the test suite destroying the index of the person running it.
+
+    `git commit` exports GIT_INDEX_FILE, GIT_DIR and friends into the environment of every hook it
+    runs, and this suite is run by one — `scripts/popdd_verify.py --staged` is wired as the
+    pre-commit gate. An inherited GIT_INDEX_FILE beats `cwd=` and it beats `git -C <dir>`
+    (memory `git-c-repo-loses-to-an-inherited-git-dir.md`). So a test that builds a scratch repo
+    in tmp_path and runs `git add -A` inside it stages the COMMITTER'S working tree instead, and
+    then passes.
+
+    Measured 2026-08-20, independently in two worktrees with two different indexes:
+
+        worktree      index before   index after   pytest verdict
+        wt-engine100x        1,979             4   10 passed
+        prospector-20        2,039             3   10 passed
+
+    1,977 files staged as deletions in the first, and the suite called it green both times. The
+    test that did it is named `test_worktree_snapshot_touches_nothing.py`.
+
+    WHY HERE AND NOT AT THE CALL SITES. There were 21 mutating git call sites across four test
+    files and not one of them passed `env=`. Fixing them individually fixes today's tests and none
+    of tomorrow's; this fixes every test that exists, every test written after it, and every
+    script they shell out to, in one place. A test that genuinely wants a GIT_* variable still
+    sets it explicitly with `env=` on its own subprocess call, which is unaffected.
+
+    WHY THE WHOLE PREFIX. GIT_WORK_TREE, GIT_OBJECT_DIRECTORY, GIT_COMMON_DIR,
+    GIT_ALTERNATE_OBJECT_DIRECTORIES and GIT_CONFIG_GLOBAL all redirect a git subprocess the same
+    way. A list of the three that bit us is a list that goes stale. Note also that the damaging
+    case and the harmless case differ only in WHICH variables are set: with GIT_INDEX_FILE alone
+    the fixture builds its repo and destroys the index, while with GIT_DIR also set it errors out
+    early and destroys nothing (2 passed, 8 errors). So this keys on inheritance, never on
+    observed damage.
+
+    WHY AT IMPORT AND NOT IN A FIXTURE. `pytest_runtest_setup` below snapshots os.environ before
+    each test's fixtures run, and `pytest_runtest_teardown` fails any test that changed it. An
+    autouse fixture doing this strip would therefore be read as a leak and fail every test in the
+    suite. Import time is before the first snapshot, so the strip is invisible to that guard.
+    """
+    removed = sorted(k for k in os.environ if k.startswith("GIT_"))
+    for name in removed:
+        del os.environ[name]
+    return removed
+
+
+STRIPPED_GIT_ENV = _strip_inherited_git_env()
+
+
+
+# Variables pytest itself owns and rewrites around every test. PYTEST_CURRENT_TEST carries the
+# node id AND the phase, so it reads "…(setup)" at the start of a test and "…(teardown)" at the
+# end — a difference on every single test, which would make the guard below fire 5852 times and
+# mean nothing. Measured 2026-08-19: with this set empty, every test in the suite errored.
+_PYTEST_OWNED_ENV = frozenset({"PYTEST_CURRENT_TEST"})
+
+
+def _env_snapshot() -> dict:
+    return {k: v for k, v in os.environ.items() if k not in _PYTEST_OWNED_ENV}
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "needs_tool(*binaries): the test needs these commands on PATH. Missing locally => "
+        "skip. Missing in CI => ERROR, because in CI a missing tool is a hole in the gate.",
+    )
+
+
+def _require_tools(item) -> None:
+    """Gate a test on an external binary, and never let CI lose it silently.
+
+    WHY THIS IS A HOOK AND NOT `pytest.mark.skipif(shutil.which(...) is None)`. That is the
+    obvious spelling and it deleted 67 tests from CI without a word. `test_main_admission_guard.py`
+    and `test_pr_keeper.py` prove their workflows by running the workflow's own `github-script`
+    body in node against a stubbed Octokit — the only executable proof that main's protection
+    decides correctly. `deploy/runner/Dockerfile` ships no language runtimes on purpose, and
+    `ci.yml`'s python job did not call setup-node, so `shutil.which("node")` was None on every
+    run. 67 tests skipped, the job stayed green, and the gate that stops an unadmitted commit
+    reaching main was graded by nobody.
+
+    THE CLASS is a test that answers "the tool is missing" with the same colour as "the code is
+    correct". A skip is invisible in `-q` output, it is not an annotation, and no reviewer counts
+    them. It is the same shape as pytest exiting 0 on a run that collected nothing, and as an
+    empty log read as a clean negative.
+
+    So the skip survives where it is honest — a laptop without harper-cli, node or docker should
+    not be walled — and becomes an ERROR on a CI runner, where a missing tool is never a fact
+    about the world but a hole in the gate that somebody has to close. `ci.yml` installing the
+    tool is what keeps CI green; this makes deleting that step loud.
+    """
+    for marker in item.iter_markers("needs_tool"):
+        for tool in marker.args:
+            require_tool(tool)
+
+
+def pytest_runtest_setup(item):
+    """Record the environment before anything in this test has touched it.
+
+    A plain hook rather than a wrapper: pytest calls this before the item's fixtures are set up,
+    which is exactly the moment wanted.
+    """
+    _require_tools(item)
+    item._prospector_env_before = _env_snapshot()
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_teardown(item, nextitem):
+    """Restore os.environ after every test, and fail the test that left it changed.
+
+    WHAT THIS PREVENTS. A leaked environment variable poisons every LATER test in the same xdist
+    worker, and the victim is what fails. On 2026-08-19 nine tests failed on the CI runner and
+    passed on every developer box, in two files (`test_exemplar_eligibility.py`,
+    `test_lint_receipt_survives_revet.py`) that had not changed. The variable was
+    PROSPECTOR_STORE_DIR, and `Config.store_dir` gives it precedence over `cfg.store["dir"]` —
+    which is the exact redirect those tests use to point the store at `tmp_path`. With the
+    variable set, the redirect is silently ignored and the tests read somebody else's store.
+    Setting it by hand reproduced six of the nine failures on the same assertions.
+
+    It was CI-only because `pytest.ini` runs `-n auto --dist loadfile`: the worker count follows
+    the CPU count, so which files share a process differs between the runner and a laptop. A
+    defect invisible on every developer box is the kind that needs a machine, not a rule.
+
+    WHY A HOOK AND NOT AN AUTOUSE FIXTURE. This was first written as a fixture declared at the top
+    of this file, on the theory that first-set-up means last-torn-down. Measured: it fired on a
+    test whose only env write was `monkeypatch.setenv`, because monkeypatch's undo ran AFTER that
+    fixture's teardown. Fixture ordering is not something to reason about here. Every fixture
+    finalizer, monkeypatch included, runs inside `pytest_runtest_teardown`, so a wrapper around
+    that hook is last by construction.
+
+    The restore happens before the failure is raised, so the leaking test is named and the tests
+    after it still run against a clean environment. A failure raised in teardown is reported as an
+    ERROR against that test rather than a FAILURE — the body already ran — which is why the guard
+    test asserts on "1 error".
+    """
+    try:
+        return (yield)
+    finally:
+        before = getattr(item, "_prospector_env_before", None)
+        after = _env_snapshot()
+        if before is not None and after != before:
+            added = sorted(k for k in after if k not in before)
+            removed = sorted(k for k in before if k not in after)
+            changed = sorted(k for k in before if k in after and before[k] != after[k])
+            keep = {k: v for k, v in os.environ.items() if k in _PYTEST_OWNED_ENV}
+            os.environ.clear()
+            os.environ.update(before)
+            os.environ.update(keep)
+            parts = []
+            if added:
+                parts.append("set " + ", ".join(added))
+            if changed:
+                parts.append("changed " + ", ".join(changed))
+            if removed:
+                parts.append("unset " + ", ".join(removed))
+            raise AssertionError(
+                "this test leaked the environment to every later test in its worker: "
+                + "; ".join(parts)
+                + ". Use the `monkeypatch` fixture (monkeypatch.setenv / delenv), which restores "
+                "the variable itself. A raw `os.environ[...] = ...` survives the test, and the "
+                "test that fails next is not this one."
+            )
+
 
 
 @pytest.fixture(autouse=True)

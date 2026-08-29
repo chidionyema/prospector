@@ -211,3 +211,172 @@ def test_trailing_barren_count_skips_guard_rows_and_breaks_on_error(tmp_path):
 
 def test_trailing_barren_count_missing_file_is_zero(tmp_path):
     assert rs._trailing_barren_count(_cfg(tmp_path)) == 0
+
+
+# --- delivery classification: nothing is silent by DEFAULT ---------------------------------
+#
+# The defect these grade, measured on the live store 2026-08-21: `store/scheduler/alerts.jsonl`
+# held 10 rows over 18 hours, every one severity `critical`, every one key `process-audit` --
+# and `process-audit` was not in TELEGRAM_KEYS, so `_telegram_push` returned on its first line.
+# `ALERT_WEBHOOK_URL` was not set either. Ten critical alerts reached nobody, and NO TEST FAILED,
+# because the miss case of an allow-list is `return`. Every key added in future was born
+# undeliverable the same way.
+
+def _emit_alert_key_literals() -> set[str]:
+    """Every string literal handed to `emit_alert(key=...)` anywhere in the repo.
+
+    An AST walk, not a regex: `key="python"` appears all over this repo in CI lane tables and in
+    house-spec gates that have nothing to do with alerting, and a regex collects all of them.
+    Only a call whose callee is named `emit_alert` counts.
+    """
+    import ast
+    root = Path(__file__).resolve().parents[2]
+    found: set[str] = set()
+    for path in root.rglob("*.py"):
+        parts = set(path.parts)
+        if parts & {"tests", ".venv", "node_modules", "build", "dist", "__pycache__"}:
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            fn = node.func
+            name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", None)
+            if name != "emit_alert":
+                continue
+            for kw in node.keywords:
+                if kw.arg == "key" and isinstance(kw.value, ast.Constant) \
+                        and isinstance(kw.value.value, str):
+                    found.add(kw.value.value)
+    return found
+
+
+def _classified(key: str) -> bool:
+    return (key in alerts.TELEGRAM_KEYS or key in alerts.LOCAL_ONLY_KEYS
+            or key.startswith(alerts.TELEGRAM_KEY_PREFIXES))
+
+
+def test_every_emitted_key_is_explicitly_classified():
+    """A new alert key must be DECIDED about. It may not arrive undeliverable by default.
+
+    Three shapes of key, because all three exist and only one of them is greppable:
+      - a literal at the `emit_alert` call site;
+      - a key inside an `alerts_for_tick` spec, splatted in as `emit_alert(cfg, **spec)`, which
+        is why `TICK_ALERT_KEYS` is the repo's own declared contract for that set;
+      - a COMPUTED key -- `service_health.alert_key(name)` builds `service_down:<name>` from a
+        table, so a service added to that table would otherwise arrive silent. Classify the
+        generator via a prefix, and drive the real function to prove the prefix still matches.
+    """
+    universe = _emit_alert_key_literals() | set(alerts.TICK_ALERT_KEYS)
+    assert "process-audit" in universe, "the walk found no call sites; it has stopped grading"
+    assert len(universe) >= 8, f"suspiciously few keys found: {sorted(universe)}"
+
+    unclassified = sorted(k for k in universe if not _classified(k))
+    assert not unclassified, (
+        "These alert keys are neither delivered nor deliberately local:\n  "
+        + "\n  ".join(unclassified)
+        + "\n\nPut each one in alerts.TELEGRAM_KEYS (it reaches the founder) or in "
+          "alerts.LOCAL_ONLY_KEYS (with the reason it must not). Silence by default is the "
+          "defect this test exists to prevent."
+    )
+
+
+def test_a_computed_service_key_is_covered_by_the_prefix_not_by_luck():
+    """Drive the real generator. A prefix that stops matching must fail here, not in an outage."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    try:
+        import service_health
+    except Exception:  # noqa: BLE001 -- import needs flyctl-adjacent deps on some hosts
+        import pytest
+        pytest.skip("service_health not importable here")
+    SERVICES = service_health.SERVICES
+    assert SERVICES, "empty service table -- this test would pass while grading nothing"
+    for name in SERVICES:
+        assert _classified(service_health.alert_key(name)), name
+
+
+def test_the_keys_that_were_silent_during_the_outage_now_deliver():
+    """Named individually and on purpose: each was CRITICAL and each reached nobody."""
+    for key in ("process-audit", "supervisor", "autopause_failed", "backlog_cap_unreadable"):
+        assert alerts._delivers(key), key
+
+
+def test_an_unclassified_key_is_loud_never_silent(caplog):
+    """The inverse of the old default. Unknown means DELIVER AND WARN, not drop on the floor."""
+    import logging
+    with caplog.at_level(logging.WARNING):
+        assert alerts._delivers("some_key_nobody_classified") is True
+    assert any("not classified" in r.getMessage()
+               for r in caplog.records), caplog.text
+
+
+def test_a_local_only_key_stays_local():
+    assert alerts._delivers("barren_generation") is False
+
+
+def test_a_condition_that_clears_itself_does_not_page():
+    """The bound on the fix above, and it is the more important half.
+
+    Making unclassified keys deliver is only safe while the SELF-HEALING ones are named and held
+    back. `moat_deferred` and `moat_provisional` are finalised by `vet --resume` with no human in
+    the loop, and the outage behind them already pages as `moat_blind`. Deliver them and the rail
+    reports one condition twice and pages for a state that fixes itself, which is how a channel
+    gets muted -- and a muted rail is an unwired rail with extra steps.
+    """
+    for key in ("moat_deferred", "moat_provisional"):
+        assert alerts._delivers(key) is False, key
+    assert alerts._delivers("moat_blind") is True
+
+
+# --- the debounce key carries WHAT is wrong, so the rail speaks on change ------------------
+
+def test_the_digest_ignores_a_count_that_flaps_but_not_the_set_that_changed():
+    """process-audit's count oscillates 31 -> 32 -> 30 -> 31 as unrelated checks flap.
+
+    Digesting the MESSAGE would produce a new key each time, defeating the debounce and putting
+    an hourly message on the founder's phone -- the exact noise that got the last channel turned
+    off. The identity is the sorted set of failing NAMES.
+    """
+    names = ["deploy engine", "deploy queue", "runner registration"]
+    a = alerts._identity_digest({"identity": "|".join(sorted(names)),
+                                 "message": "process audit: 31 failing\n..."})
+    b = alerts._identity_digest({"identity": "|".join(sorted(names)),
+                                 "message": "process audit: 32 failing\n... different wording"})
+    assert a == b, "a flapping count changed the identity; the rail would repeat hourly"
+
+    c = alerts._identity_digest({"identity": "|".join(sorted(names + ["moat blind"]))})
+    assert c != a, "a check that started failing did NOT change the identity; the rail is deaf"
+
+    assert alerts._identity_digest({"identity": "|".join(sorted(names[::-1]))}) == a, \
+        "ordering alone changed the identity"
+
+
+def test_without_an_identity_the_message_is_the_identity():
+    assert (alerts._identity_digest({"message": "same"})
+            == alerts._identity_digest({"message": "same"}))
+    assert (alerts._identity_digest({"message": "a"})
+            != alerts._identity_digest({"message": "b"}))
+
+
+def test_an_unchanged_condition_is_quieter_than_the_push_throttle_above_it():
+    """This is what makes the digest strictly a reduction in volume, never an increase.
+
+    `emit_alert` throttles the push at 3600s per key. If the debounce window were shorter than
+    that, adding a digest could only ever let MORE messages through. It must be longer.
+    """
+    assert alerts._UNCHANGED_S > 3600.0
+
+
+def test_emit_alert_records_the_identity_it_deduped_on(tmp_path, monkeypatch):
+    """'Why did this not fire?' is unanswerable after the fact unless the basis is on disk."""
+    monkeypatch.setattr(alerts, "_desktop_notify", lambda *a, **k: None)
+    cfg = _cfg(tmp_path)
+    rec = alerts.emit_alert(cfg, severity=alerts.CRITICAL, key="process-audit",
+                            title="t", message="m", identity="a|b")
+    assert rec["identity"] == "a|b"
+    line = json.loads((Path(tmp_path) / "scheduler" / "alerts.jsonl").read_text().splitlines()[0])
+    assert line["identity"] == "a|b"

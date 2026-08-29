@@ -47,6 +47,7 @@ import os
 import re
 import secrets
 import shlex
+import socket
 import subprocess
 import sys
 import time
@@ -55,8 +56,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from prospector import content_contract, pack_linter
-from prospector.operator import BUILDABLE_TIERS
+from prospector import content_contract
+
+# `prospector.tiers`, not `prospector.operator`. Both names are re-exported from operator,
+# but importing operator to read two tuples costs ~1.0s (it pulls telemetry and the config
+# machinery) and every one of the 36 console views spawns this module fresh.
+from prospector.tiers import BUILDABLE_TIERS, COMPONENTS
 
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
@@ -157,6 +162,7 @@ def _read_status(cfg, args: dict) -> dict:
     from .routing import routing_view
 
     out: dict[str, Any] = {"heartbeats": _heartbeats(cfg), "alerts": _alerts(cfg)}
+    out["stuck"] = _stuck(cfg, args)
     out["supervisor"] = _supervisor_view()
     out["pause"] = pause_view(cfg)
     # A SHORT tail here on purpose. This view is polled every 30s by the Now page; the
@@ -255,7 +261,7 @@ def _heartbeats(cfg) -> dict:
             rec["ts"] = ts
             age = _age_s(ts, now)
             rec["age_s"] = age
-            every = float(body.get("beat_every_s") or default_every)
+            every = _hb_secs(body.get("beat_every_s"), default_every)
             # Three missed beats, floored at 5 minutes: below that a single slow cycle reads as a
             # dead role, which is the false alarm that trains an operator to ignore the panel.
             rec["stale_after_s"] = max(every * 3.0, 300.0)
@@ -287,8 +293,76 @@ def _heartbeats(cfg) -> dict:
             rec.update({"age_s": None, "stale": True, "alive": False,
                         "why": "no heartbeat file — the role has never run, or store/ is not the "
                                "one the daemon writes to"})
+        # EVERY record carries a `why`, whatever branch built it.
+        #
+        # Only two of the four branches above set one. A stale beat that HAD a `next_check`
+        # promise, or a phase outside `_WORKING_PHASES`, fell through with no `why` at all -- so
+        # the field was simply absent from the JSON, the console's `Heartbeat.why: string` read
+        # `undefined`, and the incident headline on the front page rendered the literal word:
+        # "Producer: generating -- ... Consumer: undefined". The operator meets that sentence at
+        # the exact moment the sentence is the thing they need.
+        #
+        # This is filled here, after the branches, rather than in each one, because the class of
+        # failure is "a new branch forgets it". A default set at the end cannot be forgotten.
+        if not rec.get("why"):
+            rec["why"] = _hb_why(rec)
         out[role] = rec
     return out
+
+
+def _hb_secs(value: Any, default: float) -> float:
+    """A cadence out of the heartbeat file, coerced, never trusted.
+
+    `float(body.get("beat_every_s") or default)` raised ValueError on any non-numeric string, and
+    nothing caught it: one malformed heartbeat 500\'d /api/ops/read/status, so the operator got a
+    blank incident page instead of a wrong number. That is the same class as the `undefined` this
+    file was just fixed for -- the panel fails at the exact moment it is the thing being read.
+    A heartbeat is written by another process, so its contents are input, not a promise.
+    """
+    try:
+        secs = float(value)
+    except (TypeError, ValueError):
+        return float(default)
+    return secs if secs > 0 else float(default)
+
+
+def _hb_why(rec: dict) -> str:
+    """The fallback sentence for a heartbeat whose branch did not write one.
+
+    It is built from the numbers already in the record, so it says something true and specific
+    rather than a generic placeholder. Order matters: the most decisive fact first.
+    """
+    if rec.get("read_error"):
+        return f"the heartbeat file could not be read: {rec['read_error']}"
+    age = rec.get("age_s")
+    late = rec.get("late_s")
+    if rec.get("stale"):
+        if isinstance(late, (int, float)) and late > 0:
+            return (f"{_hb_dur(late)} past the wake time it promised itself, which is over the "
+                    f"{_hb_dur(rec.get('stale_after_s'))} allowed")
+        if isinstance(age, (int, float)):
+            return (f"last beat {_hb_dur(age)} ago, over the "
+                    f"{_hb_dur(rec.get('stale_after_s'))} this role allows itself")
+        return "the heartbeat carries no timestamp, so its age cannot be measured"
+    if not rec.get("pid"):
+        return "the beat is fresh but names no pid, so there is no process to check"
+    if not _pid_alive(rec.get("pid")):
+        return f"the beat is fresh but pid {rec.get('pid')} is gone — the role died mid-cycle"
+    return f"beating: last beat {_hb_dur(age)} ago"
+
+
+def _hb_dur(seconds: Any) -> str:
+    """Seconds as something an operator reads at a glance. `None` never prints as "None"."""
+    if not isinstance(seconds, (int, float)):
+        return "an unknown time"
+    s = int(seconds)
+    if s < 90:
+        return f"{s}s"
+    if s < 5400:
+        return f"{s // 60}m"
+    if s < 172800:
+        return f"{s // 3600}h"
+    return f"{s // 86400}d"
 
 
 def _pid_alive(pid: Any) -> bool:
@@ -344,6 +418,65 @@ def _alerts(cfg) -> dict:
     }
 
 
+def _stuck(cfg, args: dict) -> dict:
+    """Candidates that started and never finished, on the front page instead of three clicks in.
+
+    The engine cannot write its own `candidate_done` when it is killed (`run.py:1063`), so work
+    that died leaves no error anywhere — only a missing row. That made a dead batch invisible
+    until someone opened the run. `runs.unfinished` names each one, and only the ones that need
+    a human are counted: work still being vetted is not a fault.
+    """
+    from .runs import unfinished
+
+    try:
+        view = unfinished(days=int(args.get("days") or 3))
+    except Exception as exc:  # noqa: BLE001 — a broken audit read is information, not a 500
+        return {"error": f"{exc}", "error_kind": type(exc).__name__, "needs_attention": None,
+                "needs_attention_null_reason": "the audit log could not be read, so whether work "
+                                               "is stuck is unmeasured — treat this as unknown, "
+                                               "not as clear"}
+    worst = [e for e in view["items"] if e["state"] != "in_flight"]
+    return {
+        "needs_attention": view["needs_attention"],
+        "in_flight": view["counts"]["in_flight"],
+        "counts": view["counts"],
+        "window_days": view["window_days"],
+        "stall_after_min": int(view["stall_after_s"] // 60),
+        # Capped for the front page. `needs_attention` above is the FULL count, so a long tail
+        # is never silently reported as a short one.
+        "items": worst[:8],
+        "shown": min(len(worst), 8),
+        "note": view["note"],
+        # WHAT THE ENGINE WILL FIX BY ITSELF, separated from what it cannot. `unfinished` above
+        # is read from the audit log and is a HISTORY: it still names work that died four days
+        # ago even after the candidate has been recovered. The in-flight ledger is the LIVE
+        # answer — a record is deleted the moment a verdict exists — so this is the count that
+        # actually falls to zero, and the one that says whether a human has to do anything.
+        "awaiting_recovery": _awaiting_recovery(cfg),
+    }
+
+
+def _awaiting_recovery(cfg) -> dict:
+    """Abandoned work the next `vet --resume` will re-vet on its own.
+
+    Every drain pass starts with `run._recover_orphans`, so this number needs no operator action
+    and falls without one. It is reported anyway: work that is queued for repair and work that is
+    lost look identical from the audit log, and the founder has to be able to tell them apart.
+    """
+    from .. import inflight
+    from .runs import _store
+
+    try:
+        view = inflight.survey(_store(cfg).root)
+    except Exception as exc:  # noqa: BLE001
+        return {"count": None, "count_null_reason": f"the in-flight ledger could not be read: "
+                                                    f"{exc}"}
+    return {"count": view["counts"]["orphaned"], "in_progress": view["counts"]["live"],
+            "unreadable": view["counts"]["unreadable"], "dir": view["dir"],
+            "note": "these are re-vetted automatically at the start of every drain pass; "
+                    "nothing to do"}
+
+
 def _spend_headline(cfg) -> dict:
     """The four numbers the `/` screen needs, lifted from `spend_view` without re-deriving any.
 
@@ -377,6 +510,20 @@ def _read_providers(cfg, args: dict) -> dict:
     from .readmodel import provider_view
 
     return provider_view(cfg)
+
+
+def _read_heartbeat(cfg, args: dict) -> dict:
+    """Which brains answered last time anyone asked, for every model the platform can build.
+
+    READ-ONLY AND FREE. It reads the last round off disk and calls nothing. A dashboard that
+    probes on page load bills the founder every time a tab is refreshed, and the tiers that
+    cost money are exactly the ones a person opens this page to worry about.
+
+    To take a fresh round, run the `providers.test` action.
+    """
+    from .heartbeat import heartbeat_view
+
+    return heartbeat_view(cfg)
 
 
 def _read_routing(cfg, args: dict) -> dict:
@@ -464,6 +611,29 @@ def _read_docs(cfg, args: dict) -> dict:
     return docs_index(_repo_root())
 
 
+def _read_automations(cfg, args: dict) -> dict:
+    """Every automation on this estate, each one run for real.
+
+    Registered 2026-08-19. `automations_view.py` had existed for weeks with no caller: it was
+    written, tested, and reachable from nothing — not READS, not the browser allow-list, not a
+    page. That is the defect this repo keeps hitting, and the reason log rotation could be
+    scheduled, running and freeing a gigabyte a week while the console showed no sign of it.
+
+    The view discovers its own subjects, so a new automation is two files and no console edit.
+    `tests/unit/test_a_view_module_with_no_caller_is_unreachable.py` fails if the next one is
+    written and left unwired.
+
+    SERVED FROM A SNAPSHOT since 2026-08-21, and this one changes what the page MEANS, so it says
+    so on the page. It used to run every automation at the moment you looked, for 10.16s. It now
+    shows the last such run and how long ago it was, and starts another in the background when
+    that is over five minutes old. Running every automation on this estate because somebody
+    opened a tab was never the right price. See `prospector/ops/slow_read.py`.
+    """
+    from . import slow_read
+
+    return slow_read.serve_merged("automations")
+
+
 def _read_incidents(cfg, args: dict) -> dict:
     """What broke, what stops it repeating, and what is still unguarded.
 
@@ -475,6 +645,83 @@ def _read_incidents(cfg, args: dict) -> dict:
     from .incidents_view import incidents_view
 
     return incidents_view(_repo_root())
+
+
+def _read_migration(cfg, args: dict) -> dict:
+    """What can be moved, where to, and how the live run is going.
+
+    Registered 2026-08-21. Founder's bar: "get this done fron ops dashboard and prove and see
+    realtine progress." The runner already said what it was doing, into a JSON-lines file, so
+    proving a migration meant reading a log over somebody's shoulder. The judgement stays in
+    `kit/migrate/progress.py`, which is arithmetic over the runner's own events -- so the bar
+    on this page and the exit code of the run can never disagree.
+
+    It reads. Starting a run is the tool runner's job; this hands back the argv and nothing else.
+    """
+    from .migration_view import migration_view
+
+    return migration_view(_repo_root(), project=args.get("project") or None)
+
+
+def _read_shares(cfg, args: dict) -> dict:
+    """Every share link, live and dead, plus what this repo is willing to serve.
+
+    Registered 2026-08-19. Founder: "not deep linnk but every file sheeable", "needs to be
+    seanles". The listing NEVER carries a token — `share._public` strips it — so this view is
+    safe to render, log and screenshot.
+    """
+    from . import share as _share
+
+    root = _repo_root()
+    out = _share.list_shares(_store_ops_dir(cfg))
+    out["allow_list_source"] = _share.allow_list_source(root)
+    out["shareable_count"] = len(_share.shareable_files(root))
+    out["scopes"] = list(_share.SCOPES)
+    out["max_days"] = _share.MAX_DAYS
+    out["default_days"] = _share.DEFAULT_DAYS
+    if args.get("files"):
+        out["files"] = _share.linkable_files(root)
+    return out
+
+
+def _read_repo_files(cfg, args: dict) -> dict:
+    """Every file in this repo that may be shared, grouped by folder, with sizes.
+
+    Registered 2026-08-21, and the gap it closes is an odd one. `share.folder_view` was written,
+    tested, and called from exactly one place: `open_share`, which is what the person OUTSIDE the
+    console sees. The operator minting the link -- the only one who has to name a path -- was the
+    one party in the exchange with no way to look. So the share page asked them to type a
+    repo-relative path from memory, and a typo returned an error instead of a link. The founder:
+    "there is a path output but the whole thing isnt user friendly".
+
+    "ANY NEW FILE" NEEDS NO ACTION, and that is a property of this being a read rather than a
+    document. The list is `git ls-files` minus the deny-list, recomputed here every time. A file
+    committed a minute ago is in the next page load; a file that can never be shared is never in
+    it. A generated index would need a job to stay true, and a job that stops leaves an index
+    that lies.
+    """
+    from . import share as _share
+
+    root = _repo_root()
+    return _share.folder_view(root, _share.linkable_files(root))
+
+
+def _read_share_open(cfg, args: dict) -> dict:
+    """THE ONE VIEW THAT ANSWERS WITHOUT A CONSOLE SESSION.
+
+    It is a read like any other so the public route can spawn the same process the console does,
+    but it is deliberately NOT in the console's `VIEWS` allow-list on the Next side — the public
+    route names this view and only this view, so a bug in the public handler cannot reach `money`
+    or `spend`. The token is the entire credential; everything the caller may see is decided
+    inside `share.open_share`, not here.
+    """
+    from . import share as _share
+
+    return _share.open_share(
+        _store_ops_dir(cfg), _repo_root(),
+        str(args.get("token") or ""), str(args.get("name") or ""),
+        viewer=str(args.get("viewer") or "anonymous"),
+    )
 
 
 def _read_metrics(cfg, args: dict) -> dict:
@@ -533,6 +780,7 @@ def _read_config(cfg, args: dict) -> dict:
             readable = False
 
     probes = _probe_all(text, raw) if readable else {}
+    refresh_declared_knobs()
     knobs = []
     for spec in KNOBS:
         key = tuple(spec["path"])
@@ -543,6 +791,10 @@ def _read_config(cfg, args: dict) -> dict:
             probe = {"writable": False,
                      "reason": f"{'.'.join(key)} is not present in config.yaml. The rewriter "
                                f"never adds a key — it edits lines that exist."}
+        elif spec.get("pinned_reason"):
+            # A code clamp outranks the rewriter's verdict. yaml_surgery CAN edit this line;
+            # the engine would ignore the result, which is the worse of the two failures.
+            probe = {"writable": False, "reason": spec["pinned_reason"]}
         else:
             reason = probes.get(key)
             probe = {"writable": reason is None, "reason": reason}
@@ -596,10 +848,18 @@ def _key_is_moat_affecting(ce, key: tuple) -> bool:
 def _probe_all(text: str, raw: dict) -> dict[tuple, Optional[str]]:
     """Ask the REAL rewriter, in ONE pass, which knobs it can locate.
 
-    This is how the console knows that `schedule.batch_size` — the wave size — cannot be edited:
-    `schedule:` is a multi-line FLOW mapping (`schedule: { cadence: daily, batch_size: 50, ...`)
-    and `yaml_surgery` edits block-style `key: value` lines. It refuses rather than guessing,
-    which is correct; the console's job is to say so out loud instead of offering a dead button.
+    This is how the console knows which knobs the rewriter can actually reach. `yaml_surgery`
+    edits block-style `key: value` lines and refuses anything else rather than guessing, which is
+    correct; the console's job is to say so out loud instead of offering a dead button.
+
+    THIS PARAGRAPH USED TO NAME `schedule.batch_size` AS THE EXAMPLE THAT CANNOT BE EDITED,
+    because `schedule:` was "a multi-line FLOW mapping". It is not one. Measured 2026-08-21, two
+    angles: `config.yaml:2549` is block style — `schedule:` then `  cadence: daily` then
+    `  batch_size: 50`, no brace anywhere — and `apply_edits` on `schedule.batch_size`,
+    `schedule.interval_s` and `generation.candidates_per_signal` returned NO unresolved paths and
+    rewrote all three lines. The stale version mattered: `batch_size` is the platform's one
+    production-rate control, so a comment saying it cannot be turned from the console sends the
+    next agent to build a detour around a wall that is not there.
 
     One `apply_edits` call for all knobs, not one per knob. Probing individually measured 4.0s on
     a 2,316-line config — a four-second page load on a phone, to answer a question one pass
@@ -607,6 +867,7 @@ def _probe_all(text: str, raw: dict) -> dict[tuple, Optional[str]]:
     """
     from prospector.ops import yaml_surgery as ys
 
+    refresh_declared_knobs()
     edits: dict[tuple, Any] = {}
     for spec in KNOBS:
         key = tuple(spec["path"])
@@ -705,6 +966,40 @@ def _read_console_log(cfg, args: dict) -> dict:
         kinds[k] = kinds.get(k, 0) + 1
     return {"path": str(path), "present": path.exists(), "total": len(rows),
             "unreadable_lines": unreadable, "kinds": kinds, "rows": rows[:limit]}
+
+
+def _read_logs(cfg, args: dict) -> dict:
+    """Every service's log lines in one place, newest first, filtered.
+
+    WHY THIS EXISTS. Founder, 2026-08-19: "right now we dont have proper loggin visibility in
+    store fonrt, engine adin etc we log but no cetral place to view". Before this, answering
+    "what happened to this buyer" meant `fly logs` on three apps, each holding about four
+    minutes of history, none of them joinable. `docs/LOGGING_AND_RETENTION.md` Part 4 is the
+    design; this is step 10 of its plan.
+
+    It reads the day files directly instead of asking the ingest process over HTTP. Both run on
+    the same machine (`deploy/engine/supervisord.conf`, `[program:ops-console]` and
+    `[program:log-ingest]`), so an HTTP hop would add no isolation and one failure mode: the
+    logs would go unreadable exactly when the ingest is the process that died.
+
+    `host` and `dir` are returned on every response, empty or not. A console run against a
+    checkout that is not the engine resolves a log directory production never writes to, finds
+    nothing, and would otherwise render a confident empty table — the same shape as a healthy
+    estate. The page says which machine answered instead.
+    """
+    from prospector import log_ingest
+
+    out = log_ingest.search(
+        service=str(args.get("service") or ""),
+        level=str(args.get("level") or ""),
+        since=str(args.get("since") or ""),
+        until=str(args.get("until") or ""),
+        corr=str(args.get("corr") or ""),
+        q=str(args.get("q") or ""),
+        limit=int(args.get("limit") or 200),
+    )
+    out["host"] = socket.gethostname()
+    return out
 
 
 def _store_api() -> tuple[str, str]:
@@ -1136,6 +1431,13 @@ def _read_shelf(cfg, args: dict) -> dict:
         # A pack that was never published has no receipt by definition, so this hit exactly the
         # rows `shelf.publish_pending` was written for.
         receipt = _lint_receipt(root, cid)
+        # IMPORTED HERE, NOT AT MODULE TOP. `pack_linter` pulls `requests`, which measured
+        # 1.6-5.9s of import on this laptop, and this is its ONLY call site in this file.
+        # Every one of the 36 console views spawns this module fresh, so a top-level import
+        # charged that cost to `read docs` and `read status` too, which never touch a lint
+        # receipt. The import is cached after the first call inside one process.
+        from prospector import pack_linter
+
         current = pack_linter.receipt_is_current(receipt)
         if receipt is not None and not current:
             fix = "shelf.regate"
@@ -1296,6 +1598,7 @@ def _read_method(cfg: Any, args: dict) -> dict:
 _FAILOVER_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "engine_failover.py"
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _AUDIT_SCRIPT = _REPO_ROOT / "scripts" / "process_audit.py"
+_DEPLOY_SCRIPT = _REPO_ROOT / "scripts" / "deploy_status.py"
 
 
 def _failover(*argv: str, timeout: int = 120) -> str:
@@ -1420,8 +1723,11 @@ def _act_engine_switch(cfg, payload: dict, preview: bool) -> dict:
     the engine is in.
     """
     to = str(payload.get("to") or "").strip()
-    if to not in ("fly", "laptop", "sshdocker"):
-        raise ValueError(f"unknown side {to!r}; expected fly, laptop or sshdocker")
+    # The list of platforms comes from the script, which reads deploy/targets/*.sh. A tuple typed
+    # here would have refused `k8s` on the day the adapter landed, with the file already on disk.
+    known = json.loads(_failover("targets", "--json", timeout=20))
+    if to not in known:
+        raise ValueError(f"unknown side {to!r}; expected one of {', '.join(known)}")
     reason = str(payload.get("reason") or "").strip()
     if not reason:
         raise ValueError("a reason is required — an unexplained engine move reads as an outage")
@@ -1475,28 +1781,90 @@ def _read_content_rules(cfg, args: dict) -> dict:
 def _read_processes(cfg, args: dict) -> dict:
     """Every automated process on this estate, graded -- see scripts/process_audit.py.
 
-    Exit 1 is the NORMAL answer here, not a failure to read. The script exits non-zero whenever
-    something is failing, which is exactly the state this page exists to show; treating that as an
-    error would blank the page at the only moment it matters.
+    SERVED FROM A SNAPSHOT since 2026-08-21, and it had to be. That script takes 141.8s measured
+    (34.6s user, 28.8s system, 44% CPU -- the rest is network wait), and `OPS_READ_TIMEOUT_MS` is
+    120_000. This panel could not succeed: it spun for two minutes and reported a gateway timeout,
+    every time. `prospector/ops/slow_read.py` carries the measurement and the design.
+
+    Exit 1 is still the NORMAL answer from the audit, not a failure to read, and the snapshot
+    writer treats it that way -- the test is whether stdout parsed, never the exit code.
     """
-    proc = subprocess.run(
-        [sys.executable, str(_AUDIT_SCRIPT), "--json"],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=240)
-    if not proc.stdout.strip():
-        raise RuntimeError(f"process_audit.py produced nothing: {proc.stderr[-400:]}")
-    return json.loads(proc.stdout)
+    from . import slow_read
+
+    return slow_read.serve_merged("processes")
+
+
+def _read_deploys(cfg, args: dict) -> dict:
+    """When each deployable last shipped, and whether anything is stuck on the way out.
+
+    The console had no answer to "is the live site running what is on main". On 2026-08-19 a
+    merge sat undeployed for twelve hours behind a queued run, and the only way to see it was
+    to compare a Fly release to origin/main by hand.
+
+    SERVED FROM A SNAPSHOT since 2026-08-21. Measured at 12.45s inside a page load, against a
+    median of 0.83s for the other 37 views -- it worked, it was just fifteen times the cost of
+    everything around it, because it asks Fly and GitHub over the network for every deployable.
+    The staleness window is the shortest of the three (240s) because a deploy can land at any
+    minute. See `prospector/ops/slow_read.py`.
+
+    The exit code is deliberately ignored there too. `deploy_status.py` exits 1 when something is
+    STALLED and 2 when it could not measure something; both of those are the ANSWER.
+    """
+    from . import slow_read
+
+    return slow_read.serve_merged("deploys")
+
+
+#: How every deployable ships on OKE, in one sentence, so /deploys never shows a service with
+#: no route and no explanation. The Deploy and Roll back buttons that stood here from
+#: 2026-08-19 to 2026-08-26 dispatched Fly deploys and went with Fly (crew#203).
+_OKE_DEPLOY_HOW = ("a merge to main is the deploy: container-images.yml tags the image and "
+                   "Flux rolls it out from deploy/k8s/overlays/oke")
+_OKE_ROLLBACK_HOW = ("revert the commit on main and Flux rolls it out; `kubectl -n prospector "
+                     "rollout undo deployment/<name>` buys the minutes until that merges")
+
+
+def _deploy_route(name: str) -> dict:
+    """How the operator ships one deployable, or why there is no button.
+
+    The keys are the ones store_platform/src/Ops.Console/src/pages/deploys.tsx reads. A null
+    `deploy_tool_id` renders `deploy_how` in place of a button, never silence.
+    """
+    return {"deploy_tool_id": None, "deploy_how": _OKE_DEPLOY_HOW, "deploy_danger": None}
+
+
+def _rollback_route(name: str) -> dict:
+    """How the operator puts one deployable back, rendered beside `_deploy_route`."""
+    return {"rollback_tool_id": None, "rollback_how": _OKE_ROLLBACK_HOW,
+            "rollback_danger": None}
+
+
+def _read_attention(cfg, args: dict) -> dict:
+    """Which nav group has a problem, so the Shell can badge it.
+
+    Composed from `_read_status` and from nothing else, deliberately. The console had seven
+    groups and no signal above a screen, so "is anything wrong" cost up to seven navigations;
+    a badge with its OWN idea of trouble would have cost more than that, because it could go
+    green while the screen it points at went red.
+    """
+    from .attention import attention_view
+
+    return attention_view(_read_status(cfg, args))
 
 
 READS: dict[str, Callable[[Any, dict], Any]] = {
     "processes": _read_processes,
+    "deploys": _read_deploys,
     "engine_location": _read_engine_location,
     "method": _read_method,
     "shelf": _read_shelf,
     "content_rules": _read_content_rules,
     "status": _read_status,
+    "attention": _read_attention,
     "queue": _read_queue,
     "drain": _read_drain,
     "providers": _read_providers,
+    "heartbeat": _read_heartbeat,
     "routing": _read_routing,
     "spend": _read_spend,
     "money": _read_money,
@@ -1504,12 +1872,18 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "metrics": _read_metrics,
     "docs": _read_docs,
     "incidents": _read_incidents,
+    "repo_files": _read_repo_files,
+    "migration": _read_migration,
+    "shares": _read_shares,
+    "share_open": _read_share_open,
+    "automations": _read_automations,
     "runs": _read_runs,
     "run": _read_run,
     "candidate": _read_candidate,
     "config": _read_config,
     "intents": _read_intents,
     "console_log": _read_console_log,
+    "logs": _read_logs,
     "tools": _read_tools,
     "undo": _read_undo,
     "catalogue": _read_catalogue,
@@ -1527,7 +1901,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
 # --------------------------------------------------------------------------- #
 #: Groups are named for what the knob DOES, not for its YAML path. An operator looking for "how
 #: many ideas per batch" should not have to know it is called `batch_size` under `schedule`.
-GROUP_ORDER = ["work", "evidence", "brains", "speed", "money", "content"]
+GROUP_ORDER = ["work", "evidence", "bar", "brains", "models", "speed", "money", "content"]
 GROUP_BLURBS = {
     "content": ("Which content rules may REFUSE a pack. Every rule grades either way; these "
                 "switches decide whether a breach blocks the sale or only lands on the receipt. "
@@ -1535,10 +1909,21 @@ GROUP_BLURBS = {
                 "of the catalogue the moment it is promoted."),
     "work": "How much the engine takes on, and when it stops taking on more.",
     "evidence": "Where the engine looks for proof, and what counts as relevant.",
-    "brains": ("Which brain does which job, and which model each one runs. Every role the "
-               "engine has is here: the verdict chain and its trusted roster, the cheap chain, "
-               "the pack writer, the marketing writer, and the model pin for each provider. "
-               "The highest blast radius in the portal."),
+    "bar": ("How good an idea has to be before it may be SOLD. These two decide the pass rate "
+            "directly, and they are the only knobs in the portal that can empty the shelf "
+            "without anything looking broken -- raise either one far enough and every candidate "
+            "is killed by a number rather than by evidence. Both are moat-affecting, so a change "
+            "here drops the certification until a golden run re-earns it."),
+    "brains": ("Which brain does which job. Every role the engine has is here: the verdict "
+               "chain and its trusted roster, the cheap chain, the pack writer and the "
+               "marketing writer. WHICH MODEL each of them runs is the next section. The "
+               "highest blast radius in the portal."),
+    "models": ("Which model version each brain runs. Two layers, and the second wins: the "
+               "PROVIDER DEFAULT applies everywhere that provider is used, and a PER-CHAIN PIN "
+               "overrides it for one chain only — so the verdict chain and the cheap chain can "
+               "run different MiniMax versions without either being able to move the other. "
+               "Blank means the layer above applies. `scripts/model_pin_probe.py` prints what "
+               "each chain resolves to, by building the operator and asking it."),
     "speed": "How many calls run at once. Throughput, not correctness.",
     "money": "The daily ceiling and where the warning fires.",
 }
@@ -1551,6 +1936,28 @@ GROUP_BLURBS = {
 #: that decide which brain rules a verdict, and `producer_mode`, which decides whether this daemon
 #: vets at all. They get a second, explicit acknowledgement on top of the confirmation token — a
 #: casual dropdown is exactly what they must not be.
+def _claude_ceiling() -> int:
+    """How many claude subprocesses may run at once, read out of the code that ENFORCES it.
+
+    Never restate the number here. A console that offers 16 while `claude_cli` clamps to 1 is a
+    control that does nothing, and an operator who moves it and sees no change has been lied to
+    by their own dashboard. Importing the constant makes the two incapable of drifting apart.
+    """
+    from prospector.claude_cli import MAX_CLAUDE_CLI
+
+    return int(MAX_CLAUDE_CLI)
+
+
+#: Why the Claude concurrency knob will not move. Shown on the knob itself and returned as the
+#: refusal when a write is attempted, so the reason reaches the operator either way.
+_CLAUDE_CONC_PINNED = (
+    "Pinned at {n} by founder directive 2026-08-21, repeated: no concurrency on Claude Code, it "
+    "is too expensive. The ceiling lives in code at claude_cli.MAX_CLAUDE_CLI and this console "
+    "reads it rather than restating it, so editing config.yaml upward would change nothing. "
+    "MiniMax leads the chain — 'MiniMax calls at once' above is the throughput knob."
+)
+
+
 KNOBS: list[dict] = [
     # ---- work ----
     {"path": ["generation", "candidates_per_signal"], "group": "work",
@@ -1603,6 +2010,14 @@ KNOBS: list[dict] = [
      "help": "One bounded live search per tick. Generation is suppressed only while retrieval is "
              "ACTUALLY degraded, and it self-clears when the outage ends. Generation volume does "
              "not create backlog; failed retrieval does."},
+    {"path": ["active_lanes"], "group": "work", "high_blast": True,
+     "label": "Which lanes the engine works", "kind": "list",
+     "choices": ["side_hustle", "smb", "growth", "venture"],
+     "help": "The market lanes generation rotates through. The four choices are the four keys "
+             "under `lanes:` in config.yaml, which is where each lane's own gates and thresholds "
+             "live -- a lane named here with no block there has no rules of its own. Emptying "
+             "the list stops the engine inventing anything at all, which is why it is marked "
+             "high blast."},
     # ---- evidence ----
     {"path": ["retrieval", "provider"], "group": "evidence",
      "label": "Search engines, in order", "kind": "list",
@@ -1622,20 +2037,40 @@ KNOBS: list[dict] = [
      "min": 0.0, "max": 1.0,
      "help": "Below this a passage is not evidence. Raising it escalates the search chain more "
              "often, which costs time; lowering it admits weaker passages."},
+    # ---- bar ----
+    # Both sit inside the ("thresholds",) fence in config_editor.MOAT_AFFECTING_KEYS already, and
+    # the bounds below are the SAME bounds config_editor.validate_config enforces. They are
+    # restated here because a knob carries its own min/max to the browser;
+    # tests/ops/test_every_console_knob_is_live.py reads both and fails if they drift apart, so
+    # the portal can never offer a value the validator refuses on save.
+    {"path": ["thresholds", "min_composite_to_pass"], "group": "bar", "high_blast": True,
+     "label": "Composite score an idea must reach to PASS", "kind": "float",
+     "min": 0.0, "max": 20.0,
+     "help": "The six axes are scored 1-5 and weighted into one number; this is the bar that "
+             "number must clear. On disk it is 2.5. `prospector/pass_ceiling.py` is the check "
+             "that catches the version of this nothing can satisfy -- with the weights summing "
+             "to 1.0, every axis at 5 gives 5.0, so anything above that kills every candidate no "
+             "matter how good it is, and nothing else in the engine would say why."},
+    {"path": ["thresholds", "confidence_floor"], "group": "bar", "high_blast": True,
+     "label": "Confidence a check needs before it counts", "kind": "float",
+     "min": 0.0, "max": 1.0,
+     "help": "Below this a check is treated as unverifiable rather than as an answer. Raising it "
+             "makes the engine stricter about its own certainty, and at 1.0 nothing is ever "
+             "certain enough, so nothing passes. On disk it is 0.4."},
     # ---- brains (high blast) ----
     {"path": ["operator"], "group": "brains", "high_blast": True,
      "label": "Verdict chain — who is asked, in order", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "The first entry that answers rules. Anything in this chain but NOT in the trusted "
              "roster below is stamped provisional, never publishes on PASS, and is re-vetted."},
     {"path": ["moat_primary"], "group": "brains", "high_blast": True,
      "label": "Trusted roster — who may rule FINALLY", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "Only these may finalise a verdict and let a PASS reach the shelf. Blank falls back "
              "to operator.MOAT_PRIMARY_DEFAULT. Changing this changes what can be sold."},
     {"path": ["noncritical_operator"], "group": "brains", "high_blast": True,
      "label": "Cheap chain — generation, prescreen, scoring", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "Never rules a verdict. claude_cli is BARRED here by founder directive and the "
              "builder strips it, so adding it back has no effect."},
     # The two chains below were unreachable from this page until 2026-08-18. They are real roles
@@ -1643,43 +2078,48 @@ KNOBS: list[dict] = [
     # editing config.yaml on the box — the one thing this page exists to remove.
     {"path": ["artifact_operator"], "group": "brains", "high_blast": True,
      "label": "Pack writer — who writes what the buyer reads", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "Runs the model-written parts of a pack. It never rules a verdict, so a change here "
              "moves prose quality and cost, never what is allowed to publish."},
     {"path": ["marketing_operator"], "group": "brains", "high_blast": True,
      "label": "Marketing writer — shelf copy and launch text", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "Writes titles, one-liners and marketing copy. The publish gate still grades every "
              "line it produces, so a weaker brain here strands packs rather than shipping bad ones."},
     # ---- the model each brain runs ----
     # A tier name says WHICH adapter; these say which model that adapter asks for. Swapping
     # MiniMax M3 for another version is a change of THIS value, not of the chain above.
-    {"path": ["model"], "group": "brains", "kind": "str",
-     "label": "Verdict model pin (blank = each provider default)",
-     "help": "Applied only to the provider it names, by prefix match in `_build_operator`. Blank "
-             "means every brain uses its own default from the pins below. Wrong here is not a "
-             "typo you see — it is a provider erroring on an unknown model on every call."},
-    {"path": ["model_fast"], "group": "brains", "kind": "str",
-     "label": "Cheap-call model pin (query-gen, prescreen)",
-     "help": "Same rule as the pin above, for the mechanical calls. Blank falls back to the "
-             "main pin, then to the provider default."},
-    {"path": ["model_defaults", "minimax"], "group": "brains", "kind": "str",
+    #
+    # `model` and `model_fast` USED TO BE HERE. They were removed on 2026-08-19 because they did
+    # nothing. `_build_operator` decided which provider they applied to by matching a name
+    # prefix; the value it computed reached one construction site (`ollama`), whose prefix list
+    # was empty, so the match was always False and the model always None. An operator could set
+    # either from this page, get a green write, a history row and the new value read back, and
+    # change no call anywhere. They are the reason the per-chain pins below name their provider
+    # instead of implying it. Both keys stay in config.yaml, blank, so a stale file still parses.
+    {"path": ["model_defaults", "minimax"], "group": "models", "kind": "str",
      "label": "MiniMax model", "help": "The model the `minimax` tier asks for. This is where a "
      "different MiniMax version goes — the tier name stays `minimax`."},
-    {"path": ["model_defaults", "minimax_fast"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "minimax_fast"], "group": "models", "kind": "str",
      "label": "MiniMax model for cheap calls",
      "help": "M3 by standing order: MiniMax has no non-reasoning model, so a `_fast` pin here "
              "buys nothing unless it names a genuinely different model."},
-    {"path": ["model_defaults", "minimax_m27"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "minimax_m27"], "group": "models", "kind": "str",
      "label": "Second MiniMax tier model",
      "help": "The whole point of the `minimax_m27` tier is being a DIFFERENT model from the one "
              "above, so an M3 stall does not imply this one stalls too. Setting both the same "
              "makes the second tier inert depth."},
-    {"path": ["model_defaults", "deepseek"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "deepseek"], "group": "models", "kind": "str",
      "label": "DeepSeek model",
      "help": "Read only when `deepseek` appears in a chain above. Naming a model here does not "
              "put DeepSeek to work; adding it to a chain does."},
-    {"path": ["model_defaults", "ollama"], "group": "brains", "kind": "str",
+    {"path": ["claude_cli_model"], "group": "models", "kind": "str",
+     "label": "Claude Code CLI model",
+     "help": "Which model the Claude Code CLI is asked for, when `claude_cli` is in a chain. "
+             "Blank means the CLI's own default. It is a TOP-LEVEL key rather than one under "
+             "`model_defaults`, because the CLI is a subscription tier and not a metered "
+             "provider -- read at `operator.py:1965` and `retrieval.py:2426`."},
+    {"path": ["model_defaults", "ollama"], "group": "models", "kind": "str",
      "label": "Ollama model (local)",
      "help": "Fully local, zero token cost, CPU-only on this box. Same rule: this pin is inert "
              "until `ollama` is in a chain."},
@@ -1689,7 +2129,9 @@ KNOBS: list[dict] = [
      "help": "The ceiling on the primary brain, so this is the throughput knob. Measured clean "
              "at 16 concurrent with zero 429s."},
     {"path": ["retrieval", "claude_concurrency"], "group": "speed",
-     "label": "Claude CLI calls at once", "kind": "int", "min": 1, "max": 16,
+     "label": "Claude CLI calls at once", "kind": "int",
+     "min": 1, "max": _claude_ceiling(),
+     "pinned_reason": _CLAUDE_CONC_PINNED.format(n=_claude_ceiling()),
      "help": "Bounds the failover brain only, since MiniMax leads. At 2, a saturated queue once "
              "accounted for 1514s of a 1731s run."},
     # The four fractions below divide ONE tick deadline between its phases. They are fractions,
@@ -1714,6 +2156,19 @@ KNOBS: list[dict] = [
      "label": "Minimum pack-writing time (seconds)", "kind": "int", "min": 0, "max": 86400,
      "help": "A floor under the fraction above, so a short deadline cannot leave a PASS with too "
              "little time to render the artifact a buyer actually reads."},
+    {"path": ["retrieval", "vet_workers"], "group": "speed",
+     "label": "Candidate vets in flight at once", "kind": "int", "min": 1, "max": 64,
+     "help": "How many candidates are vetted in parallel. KEEP IT AT OR BELOW the MiniMax "
+             "number above: every vet drives calls through that chain, so a higher number here "
+             "adds no throughput, it only queues -- oversubscribing the CLI is what produced the "
+             "HTTP-429 flapping on 2026-08-06. PROSPECTOR_VET_WORKERS overrides it for one "
+             "manual run (`prospector/run.py::_vet_workers`)."},
+    {"path": ["retrieval", "breaker_failure_threshold"], "group": "speed",
+     "label": "Failures before a provider is benched", "kind": "int", "min": 1, "max": 20,
+     "help": "Consecutive TRANSIENT failures before the breaker opens and the chain falls "
+             "through to the next tier. Permanent exhaustion -- a spend limit, a 402 -- benches "
+             "a brain immediately and never waits for this count. Lower fails over sooner, and "
+             "also benches a brain that was only briefly busy."},
     # ---- money ----
     {"path": ["spend", "daily_cap_usd"], "group": "money",
      "label": "Daily spend ceiling (USD)", "kind": "float", "min": 0.0, "max": 1000.0,
@@ -1722,6 +2177,26 @@ KNOBS: list[dict] = [
     {"path": ["spend", "warn_at_usd"], "group": "money",
      "label": "Warn at (USD)", "kind": "float", "min": 0.0, "max": 1000.0,
      "help": "Where the alert rail fires, below the ceiling."},
+    # THE SECOND LEDGER. The two above govern INVOICED spend -- ledger rows tagged
+    # `event: "spend"` with an `amount_usd`. The two below govern the SUBSCRIPTION leg: the
+    # Claude Code CLI's own `total_cost_usd`, which is API-equivalent rather than billed, written
+    # with no `event` key. They are separate ceilings because they are separate money, and a
+    # figure read against the wrong one is the mistake both key names exist to prevent.
+    {"path": ["spend", "daily_subscription_cap_usd"], "group": "money",
+     "label": "Daily subscription-equivalent ceiling (USD)", "kind": "float",
+     "min": 0.0, "max": 1000.0,
+     "help": "0.0 means NO CAP, same as the ceiling above. Above this the tick HALTS -- "
+             "generation and drain together. It covers the tiers in `ops/spend.py "
+             "SUBSCRIPTION_TIERS`, which today is claude_cli alone; a tier is metered instead "
+             "whenever `telemetry.get_price` gives it a non-zero price."},
+    {"path": ["spend", "daily_subscription_soft_cap_usd"], "group": "money",
+     "label": "Stop inventing at (USD subscription-equivalent)", "kind": "float",
+     "min": 0.0, "max": 1000.0,
+     "help": "0.0 means off. A BRAKE, not a halt: above this the tick stops generating and keeps "
+             "draining, so work already minted still reaches a verdict. Set it BELOW the "
+             "subscription ceiling above -- at or above it the hard cap halts the tick first and "
+             "this never fires, which the daemon logs as a warning rather than an error "
+             "(`scheduler/run_scheduled.py:570`)."},
 ]
 
 
@@ -1770,7 +2245,115 @@ def _content_rule_knobs() -> list[dict]:
 # second list, because `KNOBS_BY_KEY` below and every consumer of `KNOBS` must see one list.
 KNOBS.extend(_content_rule_knobs())
 
+# ---- the per-chain model pins, generated from the components the engine actually has ----
+#
+# GENERATED, NOT HAND-WRITTEN, and that is the point. Every other knob on this page is typed out
+# because its meaning is specific; these are one sentence repeated per chain, and hand-typing
+# them is how a provider gets added to `component_models` in config.yaml and stays uneditable
+# here for six weeks. The source is `operator.COMPONENTS` x the providers each chain can name,
+# so a new provider row in config.yaml appears on this page without anyone remembering to add it.
+#
+# Still an allow-list: the pairs come from a table in code, not from whatever config.yaml happens
+# to contain, so a stray key in the file cannot become a writable console field.
+_CHAIN_BLURB = {
+    "moat": ("the verdict chain. This is the money path — the brain that rules a PASS or KILL "
+             "on the £49 deliverable"),
+    "noncritical": "the cheap chain: inventing ideas, prescreening and scoring",
+    "artifact": "the pack writer — the prose a buyer actually reads",
+    "marketing": "the marketing writer — titles, one-liners, shelf copy",
+    "grounding": "the retrieval brain that searches the web for evidence",
+}
+_CHAIN_PROVIDERS = {
+    "moat": ("claude_cli", "minimax"),
+    "noncritical": ("minimax", "minimax_m27", "deepseek", "ollama", "openrouter"),
+    "artifact": ("claude_cli", "minimax"),
+    "marketing": ("claude_cli", "minimax"),
+    "grounding": ("claude_cli",),
+}
+
+
+def _chain_providers() -> dict[str, tuple[str, ...]]:
+    """The table above PLUS every provider declared in `config.yaml providers:`.
+
+    The comment above claims a new provider "appears on this page without anyone remembering to
+    add it". That was true only for BUILT-INS: the table is hand-written, so the 15 declared
+    providers added on 2026-08-21 had no model-pin field on any chain, and the one knob a
+    declaration exists to expose was the one knob the console could not reach. Founder directive
+    the same day: "needs to be seanless ... and seanless ability ti add nore".
+
+    It is still an ALLOW-LIST, which is the property the comment above is really protecting: the
+    names come from the PARSED `providers:` block, which `providers.parse_declared` has already
+    refused to let shadow a built-in or revive a removed tier — not from raw config text.
+    """
+    from ..providers import declared_now
+
+    declared = tuple(sorted(declared_now() or {}))
+    if not declared:
+        return dict(_CHAIN_PROVIDERS)
+    return {comp: tuple(dict.fromkeys(built + declared))
+            for comp, built in _CHAIN_PROVIDERS.items()}
+def _model_pin_knob(comp: str, prov: str) -> dict:
+    return {
+        "path": ["component_models", comp, prov],
+        "group": "models", "kind": "str",
+        "high_blast": comp == "moat",
+        "label": f"{comp} on {prov}",
+        "help": (f"The model {prov} runs for {_CHAIN_BLURB.get(comp, comp)}. Blank uses "
+                 f"the provider default above, so this field only matters when this chain "
+                 f"should differ from the rest of the estate. It does NOT give this chain "
+                 f"its own health: dead marks and circuit breakers are keyed on the tier "
+                 f"NAME, so benching {prov} anywhere benches it here too."),
+    }
+
+
+for _comp in COMPONENTS:
+    for _prov in _CHAIN_PROVIDERS.get(_comp, ()):
+        KNOBS.append(_model_pin_knob(_comp, _prov))
+
 KNOBS_BY_KEY: dict[str, dict] = {".".join(k["path"]): k for k in KNOBS}
+
+
+def refresh_declared_knobs() -> None:
+    """Add a model-pin field for every DECLARED provider, once config has been loaded.
+
+    WHY THIS IS NOT DONE IN THE LOOP ABOVE. `installed_declared()` reads a process-global that
+    `config.load_config` installs, and this module is imported before any config is loaded. So
+    the loop above sees an empty declaration block and builds pins for the built-ins only —
+    measured 2026-08-21: groq and mistral, live in the chains and answering, had ZERO console
+    knobs. The list has to be topped up at the moment a caller holds a config, not at import.
+
+    Idempotent, and it only ever ADDS. `KNOBS` and `KNOBS_BY_KEY` are one list and its index, so
+    both are updated together; a knob appended without its index entry is editable on the page
+    and refused on save.
+    """
+    for comp, provs in _chain_providers().items():
+        for prov in provs:
+            label = f"component_models.{comp}.{prov}"
+            if label in KNOBS_BY_KEY:
+                continue
+            spec = _model_pin_knob(comp, prov)
+            KNOBS.append(spec)
+            KNOBS_BY_KEY[label] = spec
+
+    # THE CHAIN DROPDOWNS, which is a second and worse version of the same defect. The five
+    # chain knobs are `kind: list` with `choices: list(BUILDABLE_TIERS)` — the BUILT-IN table —
+    # and `_coerce` refuses on save anything not in `choices`. So with groq and mistral live in
+    # `operator:` on disk, the console could not save ANY config change at all: every save
+    # re-validates the whole page and died on "not allowed here: groq, mistral". A provider you
+    # can declare but cannot select is not configurable from the dashboard, which is the founder
+    # directive this whole change exists to satisfy: "lastly ensure configurability via ops
+    # dashboad".
+    #
+    # Topped up, not replaced, and it stays an ALLOW-LIST: the added names come from the PARSED
+    # `providers:` block, which `providers.parse_declared` has already refused to let shadow a
+    # built-in or revive a removed tier. `moat_primary` is topped up along with the rest — being
+    # SETTABLE is not being trusted, and `openrouter`, `ollama` and `mock` have always been
+    # offered there.
+    from ..providers import buildable_tiers, declared_now
+    tiers = list(buildable_tiers(declared_now()))
+    for spec in KNOBS:
+        if spec.get("choices_source") == "tiers":
+            spec["choices"] = tiers
 
 
 def _normalise_key(key: Any) -> tuple:
@@ -1834,6 +2417,23 @@ def _coerce(spec: dict, value: Any) -> Any:
             raise ValueError("expected a list")
         coerced = [str(v) for v in value]
         choices = spec.get("choices")
+        if spec.get("choices_source") == "tiers":
+            # Resolved HERE, at the moment a name is graded, and never from the list baked into
+            # the spec at import time. `choices` there is `tiers.BUILDABLE_TIERS`, the BUILT-IN
+            # table, because this module is imported long before any config is loaded. Measured
+            # 2026-08-21 with `groq` and `mistral` live in `operator:` on disk: every save
+            # re-validates the whole page, so the console could not save ANY config change at
+            # all — it died on "not allowed here: groq, mistral". A provider you can declare but
+            # cannot select is not configurable from the dashboard, which is the whole point of
+            # this page.
+            #
+            # Still an ALLOW-LIST. The added names come from the PARSED `providers:` block, which
+            # `providers.parse_declared` has already refused to let shadow a built-in or revive a
+            # removed tier. `moat_primary` resolves the same way as the rest: being SETTABLE is
+            # not being trusted, and `openrouter`, `ollama` and `mock` have always been offered
+            # there.
+            from ..providers import buildable_tiers, declared_now
+            choices = list(buildable_tiers(declared_now()))
         if choices:
             bad = [v for v in coerced if v not in choices]
             if bad:
@@ -1968,6 +2568,46 @@ def _act_pause_disarm(cfg, payload: dict, preview: bool) -> dict:
                   nonce=str(payload.get("nonce") or ""))
 
 
+def _act_providers_test(cfg, payload: dict, preview: bool) -> dict:
+    """Call a provider for real and confirm the configured MODEL answered.
+
+    Founder directive 2026-08-21: "when enabeld fron ops, should be able to test fron ops
+    console and cconfirn nodel is active", "for all nodels in platforn".
+
+    `--arg tier=<name>` tests one; no tier tests every model the platform can build. The probe
+    asks for one specific word and grades the reply, so a 200 carrying an upsell body or a
+    silently substituted model is reported as `answered_wrong` rather than as alive.
+
+    IT SPENDS MONEY ON METERED TIERS, and the preview says which ones and roughly how much
+    before anything is called. That is why this is an action with a preview rather than a read:
+    a person clicking Test is a person choosing to spend, and the choice should be informed.
+    """
+    from .heartbeat import METERED_TIERS, platform_tiers, run_heartbeat
+
+    tier = str(payload.get("tier") or "").strip()
+    known = platform_tiers(cfg)
+    if tier and tier not in known:
+        raise ValueError(f"unknown tier {tier!r}; expected one of {', '.join(known)}")
+    targets = (tier,) if tier else known
+    metered = sorted(t for t in targets if t in METERED_TIERS)
+
+    if preview:
+        return {
+            "action": "providers.test",
+            "tiers": list(targets),
+            "count": len(targets),
+            "metered": metered,
+            "spends_money": bool(metered),
+            "cost_note": (
+                "Free tiers cost nothing. Metered tiers bill one short call each — one "
+                "claude_cli probe measured $0.049 on 2026-08-21."
+                if metered else "No metered tier in this set; this probe is free."),
+            "effect": (f"calls {len(targets)} provider(s) once each with a one-word prompt and "
+                       "reports which model answered. Marks nothing dead either way."),
+        }
+    return run_heartbeat(cfg, force=True, tiers=tuple(targets))
+
+
 def _act_drain_reset(cfg, payload: dict, preview: bool) -> dict:
     """Hand every retired row its re-vet budget back by clearing the attempt ledger.
 
@@ -2094,12 +2734,15 @@ def _act_config_set(cfg, payload: dict, preview: bool) -> dict:
     from prospector.ops import config_editor as ce
     from prospector.ops import yaml_surgery as ys
 
+    refresh_declared_knobs()
     key = _normalise_key(payload.get("key"))
     label = ".".join(key)
     spec = KNOBS_BY_KEY.get(label)
     if spec is None:
         raise ValueError(f"{label!r} is not editable from the console. Editable: "
                          f"{', '.join(sorted(KNOBS_BY_KEY))}")
+    if spec.get("pinned_reason"):
+        raise ValueError(f"{label} cannot be changed from the console. {spec['pinned_reason']}")
     if "value" not in payload:
         raise ValueError("config.set needs a value")
     value = _coerce(spec, payload["value"])
@@ -2826,6 +3469,119 @@ def _act_daemon_restart(cfg, payload: dict, preview: bool) -> dict:
     return restart(cfg, label, actor=str(payload.get("actor") or "console"))
 
 
+def _act_share_create(cfg, payload: dict, preview: bool) -> dict:
+    """Mint a link. The token comes back ONCE, in the confirmed response, and never again.
+
+    The preview is not decoration. It is where the operator sees, before anything is minted, how
+    many files the link would expose and which fence answered — a `repo` share of 1,900 files and
+    a `file` share of one look identical in a form and could not be less alike.
+    """
+    from . import share as _share
+
+    scope = str(payload.get("scope") or "file").strip()
+    target = str(payload.get("target") or "").strip()
+    days = payload.get("days", _share.DEFAULT_DAYS)
+    note = str(payload.get("note") or "").strip()
+    public = bool(payload.get("public"))
+    root = _repo_root()
+
+    if scope not in _share.SCOPES:
+        raise ValueError(f"scope must be one of {', '.join(_share.SCOPES)}")
+    if preview:
+        if scope == "file":
+            covered = [target] if target and not _share.is_denied(target) else []
+        else:
+            covered = [f for f in _share.shareable_files(root)
+                       if scope == "repo" or f == target.strip("/")
+                       or f.startswith(target.strip("/") + "/")]
+        return {
+            "action": "share.create", "scope": scope, "target": target,
+            "days": 0 if public else days, "public": public,
+            "covers": len(covered), "sample": covered[:20],
+            "allow_list_source": _share.allow_list_source(root),
+            "lives_for": ("until you revoke it -- this link has no expiry" if public
+                          else f"{days} days, then it dies on its own"),
+            "note": "Anyone holding the link can read every file listed above, with no login, "
+                    "until it expires or you revoke it. Nothing outside that list is reachable "
+                    "through it. A public link is the same secret link with no expiry -- it is "
+                    "not listed anywhere and it is not reachable without the token.",
+        }
+    return _share.mint(_store_ops_dir(cfg), root, scope=scope, target=target,
+                       days=days, note=note, actor="console", public=public)
+
+
+def _act_share_revoke(cfg, payload: dict, preview: bool) -> dict:
+    """Kill a link now. Revoking something already revoked is a no-op, not an error."""
+    from . import share as _share
+
+    share_id = str(payload.get("id") or "").strip()
+    if not share_id:
+        raise ValueError("which share? pass its id")
+    if preview:
+        rows = [r for r in _share.list_shares(_store_ops_dir(cfg))["shares"]
+                if r["id"] == share_id]
+        if not rows:
+            raise ValueError(f"no share {share_id!r}")
+        row = rows[0]
+        return {"action": "share.revoke", "id": share_id, "scope": row["scope"],
+                "target": row["target"], "status": row["status"], "reads": row["reads"],
+                "note": "The link stops working immediately. This cannot be undone; mint a new "
+                        "one if you need to share again."}
+    return _share.revoke(_store_ops_dir(cfg), share_id, actor="console")
+
+
+
+def _act_snapshot_refresh(cfg, payload: dict, preview: bool) -> dict:
+    """Re-measure one of the three slow views now, instead of waiting for a read to notice.
+
+    A read already starts a background refresh when its snapshot goes stale, so this button is
+    not how the page stays current -- it is for the moment after you have changed something and
+    want the answer now rather than in a quarter of an hour.
+
+    It runs on the ACT path deliberately. `OPS_ACT_TIMEOUT_MS` is 1_860_000 against the read
+    path's 120_000, and the estate audit measured 141.8s, so this is the only path in the console
+    on which it can finish at all.
+
+    Nothing is destroyed and nothing is spent. The producer re-reads Fly, GitHub and launchd and
+    overwrites one cache file, and a producer that fails leaves the previous answer in place.
+    """
+    from . import slow_read
+
+    view = str(payload.get("view") or "").strip()
+    if view not in slow_read.PRODUCERS:
+        raise ValueError(f"unknown view {view!r}; expected one of "
+                         f"{', '.join(sorted(slow_read.PRODUCERS))}")
+    before = slow_read.load(view)
+
+    if preview:
+        return {
+            "action": "snapshot.refresh",
+            "view": view,
+            "snapshot_now": before.get("captured_at_iso") or "there is no snapshot yet",
+            "age_s": before.get("age_s"),
+            "already_refreshing": before.get("refreshing"),
+            "effect": (f"Re-runs the {view} measurement for real and replaces the cached answer. "
+                       "Nothing else on the estate changes."),
+            "cost": ("Network only. The estate audit measured 141.8s on 2026-08-21 and the other "
+                     "two are around ten seconds, so expect to wait."),
+            "reversible": ("Nothing to reverse — it is a measurement. A run that fails leaves the "
+                           "previous answer untouched."),
+        }
+
+    receipt = slow_read.refresh(view, cfg)
+    if not receipt.get("written"):
+        raise RuntimeError(f"the {view} refresh did not produce an answer, so the previous one is "
+                           f"still in place: {receipt.get('reason')}")
+    after = slow_read.load(view)
+    return {
+        "action": "snapshot.refresh",
+        "view": view,
+        "took_s": receipt.get("took_s"),
+        "captured_at_iso": after.get("captured_at_iso"),
+        "note": f"{view} re-measured in {receipt.get('took_s')}s; the page is now current",
+    }
+
+
 ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "shelf.repair_copy": _act_shelf_repair_copy,
     "shelf.publish_pending": _act_shelf_publish_pending,
@@ -2834,16 +3590,20 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "pause.arm": _act_pause_arm,
     "pause.disarm": _act_pause_disarm,
     "routing.set_moat_primary": _act_routing_set,
+    "providers.test": _act_providers_test,
     "drain.reset": _act_drain_reset,
     "config.set": _act_config_set,
     "config.restore": _act_config_restore,
     "catalogue.set_listing": _act_catalogue_listing,
     "deliveries.resend": _act_delivery_resend,
+    "share.create": _act_share_create,
+    "share.revoke": _act_share_revoke,
     "tools.run": _act_tools_run,
     "tools.undo": _act_tools_undo,
     "engine.switch": _act_engine_switch,
     "engine.arm": _act_engine_arm,
     "engine.disarm": _act_engine_disarm,
+    "snapshot.refresh": _act_snapshot_refresh,
 }
 
 #: Actions the console refuses by name rather than by absence, so the error says WHY.
@@ -2902,7 +3662,7 @@ def _t(path, purpose, writes, screen, run=True, danger=None, cmd=None, risk=None
     command = cmd or f".venv/bin/python {path}"
     # The id must be stable across restarts (a browser holds it between preview and confirm) and
     # unique. The command alone is neither: two rows share `launchctl list | grep com.prospector`.
-    ident = hashlib.sha1(f"{path}|{purpose}|{command}".encode()).hexdigest()[:10]
+    ident = hashlib.sha1(f"{path}|{purpose}|{command}".encode(), usedforsecurity=False).hexdigest()[:10]
     return {"id": ident,
             "path": path, "purpose": purpose, "writes": writes, "screen": screen,
             "run": bool(run) and risk != "shell", "danger": danger, "risk": risk,
@@ -2931,6 +3691,28 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m prospector.run diagnose"),
     _t("scripts/process_audit.py", "Grade every automated job on this estate", False,
        "/processes", cmd=".venv/bin/python scripts/process_audit.py"),
+    _t("scripts/checkout_currency.py", "Is the shared checkout on main (stale rules brief every session)",
+       False, "/processes", cmd=".venv/bin/python scripts/checkout_currency.py"),
+    _t("scripts/rework_metrics.py", "Rework rate: the guard beside the cost scoreboard",
+       False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
+    _t("tools/engine_baseline.py", "Engine baseline: all eight axes, or why each is unreadable",
+       False, "/metrics", cmd=".venv/bin/python tools/engine_baseline.py"),
+    _t("tools/build_label_set.py", "Build a blind human-labelling set from the corpus",
+       True, "/method",
+       cmd=".venv/bin/python tools/build_label_set.py --store store --n 200"),
+    _t("scripts/workflow_health.py", "Are any CI workflows dead or disabled?", False,
+       "/processes", cmd=".venv/bin/python scripts/workflow_health.py"),
+    _t("scripts/main_red.py", "Why is main red, and what fixes it?", False,
+       "/processes", cmd=".venv/bin/python scripts/main_red.py"),
+    _t("scripts/ci_fleet_keeper.py",
+       "Is CI capacity above its floor, and start the stopped runners if not", True,
+       "/processes", cmd=".venv/bin/python scripts/ci_fleet_keeper.py --start"),
+    _t("scripts/estate_inventory.py",
+       "What does this estate own, and is every resource described and restorable?", True,
+       "/processes",
+       cmd=".venv/bin/python scripts/estate_inventory.py --out store/estate_inventory.json"),
+    _t("scripts/model_pin_probe.py", "Which model is each brain actually running?", False,
+       "/config", cmd=".venv/bin/python scripts/model_pin_probe.py"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
        cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",
@@ -2962,6 +3744,8 @@ TOOLS: list[dict] = [
     _t("scripts/estate_map.py", "The whole estate, probed live: Fly apps, customer URLs, laptop "
        "jobs, volumes, secret names", False, "/engine", run=True,
        cmd=".venv/bin/python scripts/estate_map.py"),
+    _t("prospector/listing_ledger.py", "Why is each pack on or off the shelf?", False,
+       "/catalogue", run=True, cmd=".venv/bin/python -m prospector.listing_ledger"),
     _t("tools/spend_today.py", "Today's spend against the cap", False, "/spend"),
     # --- publish / republish ---
     _t("publish/publish.py", "The single publish entry point", True, "/catalogue",
@@ -3044,11 +3828,49 @@ TOOLS: list[dict] = [
        danger="MONEY RAIL — bulk Stripe writes. Undo cannot take them back"),
     _t("tools/depth_reprice_preview.py", "Before/after for the depth ladder", False, "/tools"),
     _t("tools/price_history.py", "Who moved a price and why", False, "/catalogue"),
+    # --- retention and the other declared automations ---
+    # Each of these reads by default and takes `--fix` as a second, explicit run, so the row
+    # below writes nothing and the fix row is separate. `/processes` lists them all with their
+    # live status; these entries are what lets an operator ACT on one without a terminal.
+    _t("ops/automations/log_rotation.py", "What is over its size or age budget", False,
+       "/processes", cmd=".venv/bin/python -m ops.automations.log_rotation"),
+    _t("ops/automations/log_rotation.py", "Rotate and prune to the declared policy", True,
+       "/processes", cmd=".venv/bin/python -m ops.automations.log_rotation --fix",
+       danger="DELETES files past their declared age. It refuses anything git tracks and stops "
+              "at each target's max_delete; run it read-only first and read the counts"),
+    _t("ops/automations/offsite_backup.py", "Is there a fresh copy off this machine", False,
+       "/data", cmd=".venv/bin/python -m ops.automations.offsite_backup"),
+    _t("ops/automations/offsite_backup.py", "Ship a backup to R2 and prune old ones", True,
+       "/data", risk="external",
+       cmd=".venv/bin/python -m ops.automations.offsite_backup --fix",
+       danger="writes to R2 and deletes objects past the declared keep count. Undo covers the "
+              "local store only"),
+    _t("ops/automations/stranded_packs.py", "PASSes that cannot be bought", False, "/shelf",
+       cmd=".venv/bin/python -m ops.automations.stranded_packs"),
+    _t("ops/automations/retired_terms.py", "Retired wording still in the tree", False,
+       "/processes", cmd=".venv/bin/python -m ops.automations.retired_terms"),
+    # The purpose text here read "Figures a human still has to verify" until 2026-08-21,
+    # which is review_figures.py's purpose two rows up. The console told the operator this
+    # panel was about figure verification; it is about whether every lint record carries the
+    # human-register block the style panel reads.
+    _t("ops/automations/human_register.py", "Lint records missing the human-register block",
+       False, "/processes", cmd=".venv/bin/python -m ops.automations.human_register"),
+    # The META-diagnostic beside it. human_register says which packs sit outside the human
+    # band; this says whether the repair turn spent on them is moving the number. Measured
+    # 2026-08-21: five of six armed measures responding, hedges_per_1k moved 1% in five days.
+    _t("ops/automations/prose_repair_effect.py",
+       "Is the prose repair turn actually moving the number", False, "/processes",
+       cmd=".venv/bin/python -m ops.automations.prose_repair_effect"),
     # --- integrity / probes ---
     _t("scripts/backup_store.py", "Back up dossiers and ledger to R2", True, "/tools",
        risk="external"),
     _t("scripts/restore_drill.py", "Prove the backup restores", False, "/tools"),
+    _t("scripts/dns_zone.py", "Has DNS drifted from the committed zone", False,
+       "/tools", cmd=".venv/bin/python scripts/dns_zone.py --check "
+                     "--zone mumchimp.com"),
     _t("scripts/store_audit.py", "Audit the operator's store", False, "/tools"),
+    _t("scripts/rework_metrics.py", "Rework rate: the guard on the cost scoreboard",
+       False, "/method"),
     _t("scripts/blocker_probe.py", "Which programme items are blocked", False, "/tools"),
     _t("scripts/load_gate.py", "Is the machine fit to trust a test result", False, "/tools"),
     _t("scripts/popdd_verify.py", "The lane-aware proof runner", False, "/tools"),
@@ -3116,6 +3938,32 @@ TOOLS: list[dict] = [
     # itself: the workflow can only see the workflow.
     _t("scripts/ci_capacity.py", "Does CI still fit on this machine alongside the daemons?",
        False, "/engine", cmd="python3 scripts/ci_capacity.py --live", risk="external"),
+    # --- registered 2026-08-19, after a merge sat undeployed for twelve hours ---
+    _t("scripts/deploy_status.py", "Is the live stack running what is on main?", False,
+       "/deploys", cmd=".venv/bin/python scripts/deploy_status.py", risk="external"),
+    # `external` because it starts Fly machines, which costs money and no local undo covers it.
+    _t("scripts/deploy_status.py", "Start stopped CI runners when deploys are queued behind them",
+       True, "/deploys", cmd=".venv/bin/python scripts/deploy_status.py --fix", risk="external",
+       danger="starts Fly machines on prospector-ci; only acts when runs are actually queued"),
+    # The Deploy and Roll back rows that stood here from 2026-08-19 to 2026-08-26 dispatched
+    # Fly deploys (scripts/deploy_now.py, scripts/rollback_now.py). They went with Fly
+    # (crew#203). On OKE a merge to main is the deploy: container-images.yml tags the image and
+    # Flux rolls it out from deploy/k8s/overlays/oke. The undo is a revert on main.
+    # The scheduled half of the drill. Registered 2026-08-20 because a Deploy button and a Roll
+    # back button are two controls with no feedback: measured that day, nothing on this estate
+    # made an HTTP request to mumchimp.com except the drill, and the drill only ran when someone
+    # clicked it. `external` and writes=False: it changes nothing here, but a Telegram alert
+    # cannot be unsent, which is what "the local half only" says on the button.
+    _t("scripts/service_health.py",
+       "Ask every deployed service whether it is still serving (alerts on the second failure)",
+       False, "/deploys", cmd=".venv/bin/python scripts/service_health.py", risk="external"),
+    # Registered 2026-08-19. `ci_capacity.py` answers whether CI FITS; this answers whether it
+    # can RUN AT ALL. The two are separate questions and the estate has been wrong about the
+    # second one twice in a day: a fleet scaled up whose machines were left stopped, and an
+    # autoscale workflow that failed on every one of its five runs while nothing said so.
+    _t("scripts/ci_fleet_probe.py",
+       "Can CI actually run? Machines against runners, for every fleet", False, "/engine",
+       cmd=".venv/bin/python scripts/ci_fleet_probe.py", risk="external"),
     _t("scripts/launchd_plists.py", "Record the current job definitions", True, "/engine",
        cmd="python3 scripts/launchd_plists.py --snapshot",
        danger="overwrites the tracked copies with whatever is live, so run --check first "
@@ -3127,6 +3975,16 @@ TOOLS: list[dict] = [
     # running three probes by hand and getting three different answers.
     _t("scripts/branch_backlog.py", "How much finished work is sitting unmerged on a branch?",
        False, "/audit"),
+    # --- registered 2026-08-19 ---
+    # It shipped in #460 with a `--json` flag whose own help text says "for the ops console", and
+    # was never added to this table. That is exactly the drift `test_console_tool_registry_has_no_drift`
+    # exists to catch, and it caught it: main went red the moment #460 merged, and stayed red,
+    # so every open pull request inherited a failure that had nothing to do with its own change.
+    # Sits beside `main_red.py` on /processes because they answer the two halves of one question:
+    # main_red says whether the branch everyone builds on is broken, this says whether the 27 red
+    # pull requests are 27 broken changes or one broken machine.
+    _t("scripts/pr_triage.py", "Why is every pull request red: a broken test or a broken machine?",
+       False, "/processes"),
 ]
 
 
@@ -3140,9 +3998,48 @@ TOOLS: list[dict] = [
 NOT_AN_OPS_TOOL: dict[str, str] = {
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
+    "scripts/vendor_ratchet.py": "counts how many call-sites still name a vendor the estate "
+                                 "is leaving, and refuses a commit that adds one. It reads "
+                                 "`git ls-files`, so it needs a checkout; the engine container "
+                                 "has none and could only ever answer zero, which is the most "
+                                 "dangerous wrong answer this particular tool has. CI runs it "
+                                 "on every push",
+    "scripts/green_guard_cause.py": "asks whether main was ALREADY red before a given commit "
+                                   "landed, so the green guard does not revert an innocent "
+                                   "one. The main-green-guard workflow runs it with the "
+                                   "offending sha and a GITHUB_TOKEN; without that sha it "
+                                   "has no question to answer. The operator's version of "
+                                   "this question is the `scripts/main_red.py` button",
+    "scripts/ci_runner_tools.py": "checks that the runner image carries the binaries our "
+                                  "workflows call; it grades the PATH of whatever machine "
+                                  "runs it, so on the operator's Mac it would grade the Mac. "
+                                  "The console's view of the same question is the CI fleet "
+                                  "probe, which asks it from outside",
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/install_push_shim.sh": "the pre-push shim setup_worktree.sh installs; a developer's machine, not ops (crew#326)",
+    "scripts/retrieval_parity.py": "grades the Rust retrieval port against the Python "
+                                  "it replaces by fetching live pages in both. It needs "
+                                  "the open web and a release-built Rust binary, and it "
+                                  "is deliberately not a CI lane: a check that fails when "
+                                  "gov.uk is slow teaches everyone to ignore it. A "
+                                  "migration-time developer tool, like the parity check "
+                                  "above it",
+    "scripts/dual_write_parity.py": "grades the Postgres shadow against the SQLite store "
+                                    "during the engine rewrite. It needs a psql binary, a "
+                                    "readable SQLite file and a route to Postgres, and the "
+                                    "engine container has none of the three. A migration-time "
+                                    "developer tool: it answers a question that stops existing "
+                                    "the day the rewrite lands",
+    "scripts/install_control_center_agent.sh": "writes the Control Center launchd plist into the operator's own "
+                                               "~/Library/LaunchAgents and reloads the agent. It installs the "
+                                               "console itself, on that one Mac, and the console runs on Fly — "
+                                               "so there is no page from which pressing it would mean anything",
+    "scripts/guard_main_push.py": "the pre-push fence that refuses a direct push to main; "
+                                  "git runs it and feeds it the push on stdin, so it has "
+                                  "no meaning without that input and nothing to show an "
+                                  "operator",
     "scripts/prove_test_fails.py": "edits source files to prove a test goes red, then puts them "
                                   "back; it belongs to whoever is writing the test, and "
                                   "pointing it at a running estate would mutate live code",
@@ -3156,6 +4053,16 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                   "same developer's disk as worktree_gc.py. Production runs from "
                                   "a detached mirror of main with no worktrees at all, so this "
                                   "button would always answer nothing",
+    "scripts/worktree_snapshot.py": "copies uncommitted work out of the git worktrees on this "
+                                    "developer laptop. Production is a detached mirror of main "
+                                    "with no worktrees, so there is nothing here for it to "
+                                    "snapshot",
+    "scripts/agent_estate_sync.py": "mirrors ~/.claude — the laws and the hook scripts every "
+                                   "agent session reads — into this repo, and reports the "
+                                   "drift between the two. That estate exists only on the "
+                                   "developer laptop; production is a container with no "
+                                   "~/.claude at all, so from an ops page it would grade "
+                                   "nothing",
     "scripts/guard_dead_branch_push.py": "a git pre-push hook; git fires it, and it acts on the "
                                          "push happening in that terminal. There is no push to "
                                          "guard from an ops page",
@@ -3165,8 +4072,17 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
+    "scripts/backup_agent_estate.py": "archives ~/.claude on this developer laptop. Production "
+                                      "runs from a detached mirror of main on Fly, where that "
+                                      "directory does not exist, so the button would back up "
+                                      "nothing. Its schedule is a launchd job on the Mac",
+    "scripts/founder_tasks.py": "prints and syncs the founder's own task list, which lives in "
+                                "GitHub issues labelled founder-task. It is read by the session "
+                                "state probe before an agent starts, not by an operator running "
+                                "the platform, and the console already links the issue list",
     "tools/backfill_human_register.py": "a one-off repair that back-filled the human register after a schema change; kept for the record, not for re-running",
     "tools/register_repair_probe.py": "reports rows the human register cannot resolve; a developer's diagnostic, and it names local paths an operator has no access to",
+    "scripts/claudeignore_sync.py": "compiles .claudeignore into the Read() deny rules in ~/.claude/settings.json; it configures an agent on a developer's machine, and the engine has no ~/.claude to write to",
     # Claude Code hooks — the harness fires these, they have no operator-facing run
     "scripts/graphify_query_hook.py": "a UserPromptSubmit hook; the harness fires it",
     "scripts/graphify_session_hook.py": "a SessionStart hook; the harness fires it",
@@ -3195,8 +4111,6 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                  "housekeeping, not an estate action",
     "scripts/warm_ci_uv_cache.sh": "prebuilds wheels into the runners' shared uv cache; CI "
                                    "plumbing, run on the runner box",
-    "tools/_audit_baseline_tmp.py": "a one-off inventory of failure-swallowing call sites; the "
-                                    "audit it fed is done, it is kept as the baseline",
     # the migration control plane. Both are reachable from the console already, as actions rather
     # than as tool buttons, so listing them again would give the operator two ways to do one thing.
     "scripts/engine_failover.py": "the engine failover control plane; the console drives it through "

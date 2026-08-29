@@ -76,6 +76,37 @@ def _docstring_lines(tree: ast.AST) -> set[int]:
     return lines
 
 
+def _without_string_contents(tree: ast.AST, source: str) -> list[str]:
+    """The source with the INSIDE of every string literal blanked out, line by line.
+
+    The checker below greps text, so it reads the contents of a string literal as if it were
+    code. `tests/unit/test_no_store_path_is_relative_to_the_cwd.py` is a guard whose fixtures
+    are python source held as strings -- 'f = open("store/prospector.jsonl")\\n' is the sample
+    it feeds to its own detector under tmp_path, and it never opens anything. Six of those
+    fixtures were reported here as tests reading the operator's store, on 2026-08-20, in a
+    batch of fifteen pull requests where the two files met for the first time.
+
+    This is a narrowing, not a hole. The disk operation has to be REAL code: in
+    `open("store/dossiers/x.json")` the call is outside the quotes, so blanking the path
+    leaves `open(` and it still reports. Only a call that is itself inside quotes goes quiet,
+    and a call inside quotes cannot touch a disk.
+    """
+    lines = source.splitlines()
+    blanked = list(lines)
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+            continue
+        end = node.end_lineno or node.lineno
+        for lineno in range(node.lineno, end + 1):
+            if lineno > len(blanked):
+                break
+            text = blanked[lineno - 1]
+            start = node.col_offset if lineno == node.lineno else 0
+            stop = node.end_col_offset if lineno == end else len(text)
+            blanked[lineno - 1] = text[:start] + " " * max(0, stop - start) + text[stop:]
+    return blanked
+
+
 def test_no_test_reads_the_operators_own_store():
     """A test may CREATE a store under tmp_path; it may not read the real one.
 
@@ -87,14 +118,19 @@ def test_no_test_reads_the_operators_own_store():
         if path.name == Path(__file__).name:
             continue
         source = path.read_text(encoding="utf-8")
-        prose = _docstring_lines(ast.parse(source, filename=str(path)))
+        tree = ast.parse(source, filename=str(path))
+        prose = _docstring_lines(tree)
+        # The path token has to be read from the raw line -- in real code it lives inside quotes.
+        # The disk operation has to be read from the line with quoted contents blanked, or a
+        # fixture holding python source as a string reports as code that opens a file.
+        outside_quotes = _without_string_contents(tree, source)
         for lineno, line in enumerate(source.splitlines(), 1):
             if lineno in prose:
                 continue
             code = line.split("#")[0]
             if not any(u in code for u in UNSHIPPED) or "tmp_path" in code:
                 continue
-            if not _READS_DISK.search(code):
+            if not _READS_DISK.search(outside_quotes[lineno - 1].split("#")[0]):
                 continue
             offenders.append(f"{_relevant(path)}:{lineno}: {line.strip()}")
     assert not offenders, (

@@ -1,0 +1,486 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ten Looks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..700&family=Bricolage+Grotesque:opsz,wght@10..48,200..800&family=Cabin:ital,wght@0,400..700;1,400..700&family=Chivo:ital,wght@0,300..900;1,400..800&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400..800;1,400..700&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..700&family=IBM+Plex+Mono:wght@300;400;500;600&family=Martian+Mono:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..700&family=Public+Sans:ital,wght@0,300..800;1,400..700&family=Sometype+Mono:wght@400..700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,400..600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+
+<style>
+/* ============================================================================
+   THE LOOK ENGINE — one component tree, ten looks, switched at runtime.
+   ---------------------------------------------------------------------------
+   Nothing below names a look. Every colour, face, rule weight, radius and
+   spacing step is read from a custom property that the active look supplies,
+   so a look is DATA and adding an eleventh costs no CSS here. The handful of
+   genuinely structural differences — the ones a token cannot express — live in
+   the [data-look=...] block at the end, and only there.
+
+   This is the preview of what the ops console will do: the switcher at the top
+   writes one attribute on <html>, and the whole site becomes a different site.
+   ========================================================================== */
+
+/* ---- THE TOKEN CONTRACT -------------------------------------------------
+   Every look must supply all of these, for both themes. A look that omits one
+   inherits the default below rather than rendering broken, and the console
+   refuses to save an incomplete look.                                      */
+:root {
+  /* surfaces */
+  --ground: #FFFFFF; --surface: #FFFFFF; --surface-2: #F2F2F0;
+  --hair: #DDDDD8; --hair-strong: #111111;
+  /* text */
+  --ink: #111111; --ink-2: #55565A; --ink-3: #83858A;
+  /* meaning: accent is the look's one indulgence; good/bad are semantic and
+     separate from it, so a look can never spend its accent on a status */
+  --accent: #333333; --accent-fill: #333333; --accent-ink: #FFFFFF;
+  --good: #1F4A3C; --bad: #7A1F1B;
+  /* generated graphics */
+  --plate-bg: #F2F2F0; --plate-ink: #111111; --plate-accent: #333333;
+
+  /* form */
+  --radius: 0px; --rule-w: 1px; --rule-w-strong: 3px;
+  --shadow: none;
+  --sp: 1;                     /* density multiplier: 0.85 tight … 1.2 airy */
+  --measure: 34rem;
+
+  /* type */
+  --display: Georgia, serif; --body: system-ui, sans-serif; --mono: ui-monospace, monospace;
+  --display-w: 700; --display-track: -0.02em; --display-lead: 1.02;
+  --body-w: 400; --body-lead: 1.6;
+  --label-case: uppercase; --label-track: 0.12em; --label-w: 600; --label-size: 0.6875rem;
+  --display-italic: normal;
+
+  /* fluid scale — one scale, every look, so switching cannot move the layout */
+  /* The floor used to be 2.5rem, which is a FIXED 40px — at 320px the headline ran to five
+     lines and pushed itself, the deck and both buttons off the first screen in all ten
+     looks (coldopen.mjs, 2026-08-20). A floor that does not scale is not a floor, it is a
+     minimum the narrowest screen pays for. The +0.8rem intercept keeps the slope gentle. */
+  --f-hero: clamp(2rem, 5.6vw + 0.8rem, 4.5rem);
+  --f-h2:   clamp(1.6rem, 3.2vw, 2.6rem);
+  --f-h3:   clamp(1.1rem, 1.9vw, 1.45rem);
+  --f-body: clamp(0.98rem, 0.94rem + 0.22vw, 1.09rem);
+  --f-data: 0.8125rem;
+
+  /* spacing steps, all derived from --sp so density is one number */
+  --s1: calc(0.375rem * var(--sp)); --s2: calc(0.75rem * var(--sp));
+  --s3: calc(1.125rem * var(--sp)); --s4: calc(1.75rem * var(--sp));
+  --s5: calc(2.75rem * var(--sp)); --s6: calc(4.25rem * var(--sp));
+  --s7: calc(6.5rem  * var(--sp));
+}
+
+* { box-sizing: border-box; }
+html { color-scheme: light dark; }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font-family: var(--body); font-weight: var(--body-w);
+  font-size: var(--f-body); line-height: var(--body-lead);
+  -webkit-font-smoothing: antialiased; font-optical-sizing: auto;
+  transition: background-color 220ms ease, color 220ms ease;
+}
+a { color: inherit; }
+:where(a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+img, canvas { max-width: 100%; }
+
+.shell { max-width: 1440px; margin-inline: auto; padding-inline: clamp(1rem, 3vw, 3rem); }
+.rule { border: 0; border-top: var(--rule-w) solid var(--hair); margin: 0; }
+.rule--strong { border: 0; border-top: var(--rule-w-strong) solid var(--hair-strong); margin: 0; }
+
+/* ---- the one repeated device: a label always names a real value ---- */
+.label {
+  font-family: var(--mono); font-size: var(--label-size); font-weight: var(--label-w);
+  letter-spacing: var(--label-track); text-transform: var(--label-case);
+  color: var(--ink-3); margin: 0;
+}
+.label--accent { color: var(--accent); }
+.label--good { color: var(--good); }
+.label--bad { color: var(--bad); }
+
+/* ---- switcher: the ops console, previewed ---- */
+.console {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--ground) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  border-bottom: var(--rule-w) solid var(--hair);
+}
+.console__in { display: flex; align-items: center; gap: var(--s3); padding-block: 0.5rem; flex-wrap: wrap; }
+.console__title { font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+/* min-width:0 is load-bearing: a flex item defaults to min-width:auto, which means it
+   refuses to shrink below its content, which means overflow-x never engages and the
+   PAGE scrolls sideways instead of the strip. Measured: 4px of body overflow at every
+   viewport until this line existed. */
+.chips { display: flex; flex: 1 1 auto; min-width: 0; gap: 0.3rem; overflow-x: auto; scrollbar-width: thin; padding-block: 0.25rem; }
+.chip {
+  font-family: var(--mono); font-size: var(--f-data); white-space: nowrap;
+  border: var(--rule-w) solid var(--hair); background: var(--surface); color: var(--ink-2);
+  padding: 0.6rem 0.85rem; min-height: 44px; display: inline-flex; align-items: center; gap: 0.45rem;
+  border-radius: var(--radius); cursor: pointer; transition: all 140ms;
+}
+.chip:hover { color: var(--ink); border-color: var(--ink-3); }
+.chip[aria-pressed="true"] { background: var(--accent-fill); color: var(--accent-ink); border-color: var(--accent-fill); font-weight: 600; }
+.chip i { width: 9px; height: 9px; border-radius: 50%; display: block; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
+.console__theme { margin-left: auto; min-height: 44px; display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0 0.8rem; border: 1px solid var(--hair); border-radius: var(--radius); background: none;
+  color: var(--ink-2); font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track);
+  text-transform: var(--label-case); cursor: pointer; }
+.console__theme:hover { color: var(--ink); border-color: var(--hair-strong); }
+
+/* ---- masthead ---- */
+.masthead { padding-top: var(--s3); }
+@media (min-width: 40rem) { .masthead { padding-top: var(--s5); } }
+.masthead__dateline { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: var(--label-case); color: var(--ink-3); padding-bottom: var(--s2); }
+.masthead__dateline b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.wordmark {
+  font-family: var(--display); font-weight: var(--display-w);
+  font-size: clamp(2.2rem, 8vw, 4.5rem); line-height: 0.9;
+  letter-spacing: var(--display-track); margin: var(--s3) 0; text-align: center;
+}
+.wordmark em { font-style: var(--display-italic); font-weight: inherit; }
+nav.bar { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3); padding-block: 0.35rem; }
+/* NARROW CHROME. Measured at 320x568 on 2026-08-20: the dateline wrapped to five lines (118px)
+   and the nav to four rows (184px), so 300px of the 568px screen was spent before the headline
+   started and every look failed the cold-open gate. Tap targets stay 44px — that is a different
+   gate and it is not negotiable — so the only lever is FEWER things, not smaller things. The
+   narrow nav keeps the four sections a stranger came for; FAQ and Account are in the footer.
+   Nothing is clipped: hidden is display:none, and it is all back at 40rem. */
+@media (max-width: 39.99rem) {
+  .masthead__dateline { gap: var(--s1) var(--s3); }
+  .masthead__dateline > *:nth-child(n+3) { display: none; }
+  nav.bar { justify-content: flex-start; gap: var(--s1) var(--s2); }
+  nav.bar a { padding-inline: 0.35rem; font-size: 0.75rem; }
+  nav.bar a[href="#faq"], nav.bar a[href="#account"] { display: none; }
+  /* The wordmark keeps its size at 320 — it is the brand and the first thing read — but not its
+     air: 36px of margin around a 32px mark is a ratio that only makes sense on a wide screen. */
+  .wordmark { margin: var(--s1) 0; }
+  .masthead__dateline { padding-bottom: var(--s1); }
+  /* On a phone the deck is 150px of prose between the headline and the only two things to do.
+     Source order stays headline-deck-actions, because that is the reading order a screen reader
+     and a wide screen both want; the narrow screen re-orders the paint, and only the paint. */
+  .hero__lead { display: flex; flex-direction: column; }
+  /* s2, not s3: the airiest look (`signal`, --sp 1.2) scales every gap it meets, and at 320
+     the sum of those gaps was 3px more screen than exists. The buttons keep the smallest
+     gap that still reads as a separate block. */
+  .hero__lead .actions { order: 2; margin-top: var(--s2); }
+  .hero__lead .hero__deck { order: 3; margin-top: var(--s3); }
+  .hero__lead .readouts { order: 4; }
+}
+nav.bar a {
+  font-family: var(--mono); font-size: var(--f-data); letter-spacing: 0.03em;
+  text-decoration: none; color: var(--ink-2);
+  padding: 0.72rem 0.6rem; min-height: 44px; display: inline-flex; align-items: center;
+  border-radius: var(--radius); border-bottom: 2px solid transparent;
+}
+nav.bar a:hover { color: var(--ink); border-bottom-color: var(--accent); }
+
+/* ---- hero ---- */
+.hero { display: grid; gap: var(--s5); padding-block: var(--s3); }
+/* Airy above the fold is only airy on a screen with room. At 320x568 the s6 padding was
+   96px of nothing spent before the headline had started. */
+@media (min-width: 40rem) { .hero { padding-block: var(--s6); } }
+/* The last 16px. Measured, not guessed: four looks put the buttons 1-16px past a 568px fold, so
+   the fix is 16px of air, taken from the two gaps either side of the headline. It lives HERE and
+   not with the other narrow rules 20 lines up because a media query adds no specificity: the
+   first cut sat above `.hero {...}` in the file, lost the cascade to it, and changed nothing —
+   the re-run printed byte-identical numbers, which is the only reason it was caught. */
+@media (max-width: 39.99rem) {
+  .hero { padding-block: var(--s2); }
+  .hero__head { margin: var(--s2) 0; }
+}
+@media (min-width: 64rem) { .hero { grid-template-columns: minmax(0,1.02fr) minmax(0,1fr); gap: var(--s6); align-items: center; } }
+.hero__head { font-family: var(--display); font-weight: var(--display-w); font-size: var(--f-hero); line-height: var(--display-lead); letter-spacing: var(--display-track); margin: var(--s3) 0; text-wrap: balance; }
+.hero__head em { font-style: var(--display-italic); color: var(--accent); font-weight: inherit;
+  /* The two counts ARE the argument, so they are set as figures rather than as text.
+     Several of the display faces default to oldstyle numerals, which drop 3/4/9 below
+     the baseline: at 5rem in italic that reads as a rendering fault rather than a number. */
+  font-variant-numeric: lining-nums tabular-nums; }
+.hero__deck { color: var(--ink-2); font-size: 1.06rem; max-width: 46ch; margin: 0; }
+.hero__deck b { color: var(--ink); }
+
+.figure { border: var(--rule-w) solid var(--hair); background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.figure__bar { display: flex; justify-content: space-between; gap: var(--s3); padding: 0.55rem 0.8rem; border-bottom: var(--rule-w) solid var(--hair); flex-wrap: wrap; }
+.figure canvas { display: block; width: 100%;
+  /* PIN THE BOX'S SHAPE IN CSS, never leave it to the canvas attributes. ctxFor()
+     REWRITES width/height to the measured box on every draw, so a canvas whose height
+     comes from its own intrinsic ratio is measuring the thing it is about to set. In a
+     grid cell sized by its content (align-items:start) that closes a loop and the plate
+     collapses to a strip -- which is exactly what the narrow-column archetypes did. */
+  aspect-ratio: 8 / 5; }
+.figure__legend { display: flex; gap: var(--s3); flex-wrap: wrap; padding: 0.6rem 0.8rem; border-top: var(--rule-w) solid var(--hair); }
+.key { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: var(--label-case); color: var(--ink-3); }
+.key i { width: 8px; height: 8px; display: block; }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--rule-w); background: var(--hair); border: var(--rule-w) solid var(--hair); border-radius: var(--radius); overflow: hidden; margin-top: var(--s4); }
+.readout { background: var(--surface); padding: var(--s3); display: grid; gap: 0.25rem; }
+.readout b { font-family: var(--display); font-weight: var(--display-w); font-size: clamp(1.5rem,3vw,2.15rem); line-height: 1; letter-spacing: var(--display-track); font-variant-numeric: tabular-nums; }
+
+.actions { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s4); }
+.btn {
+  font-family: var(--mono); font-size: var(--f-data); font-weight: 600; letter-spacing: 0.03em;
+  text-decoration: none; padding: 0.92rem 1.4rem; min-height: 46px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  background: var(--accent-fill); color: var(--accent-ink);
+  border: var(--rule-w) solid var(--accent-fill); border-radius: var(--radius);
+  cursor: pointer; transition: filter 140ms, transform 100ms;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: translateY(1px); }
+.btn--ghost { background: transparent; color: var(--ink); border-color: var(--hair-strong); }
+.btn--ghost:hover { background: var(--surface-2); filter: none; }
+
+/* ---- sections ---- */
+.section { padding-block: var(--s6); }
+.section__head { max-width: 64ch; margin-bottom: var(--s4); }
+.section__title { font-family: var(--display); font-weight: var(--display-w); font-size: var(--f-h2); letter-spacing: var(--display-track); line-height: var(--display-lead); margin: var(--s2) 0; text-wrap: balance; }
+.section__note { color: var(--ink-2); margin: 0; }
+
+/* ---- packs ---- */
+.packs { display: grid; gap: var(--rule-w); background: var(--hair); border: var(--rule-w) solid var(--hair); border-radius: var(--radius); overflow: hidden; }
+.pack { background: var(--surface); display: grid; gap: var(--s3); padding: var(--s4) var(--s3); align-items: start; transition: background 140ms; }
+.pack:hover { background: var(--surface-2); }
+/* THREE children, THREE columns. The card used to emit six children into a four-column grid,
+   so auto-placement wrapped it onto two rows and handed the 20-character category label the
+   widest track on the page while the product description ran at a 14-character measure. A grid
+   whose column count does not match its child count is not a layout, it is an accident that
+   happens to look deliberate at one width. */
+.pack__media { min-width: 0; }
+.pack__body  { min-width: 0; display: grid; gap: 0.55rem; align-content: start; }
+.pack__side  { min-width: 0; display: grid; gap: 0.55rem; align-content: start; justify-items: start; }
+@media (min-width: 48rem) { .pack { grid-template-columns: 13rem minmax(0,1fr); gap: var(--s4); }
+  .pack__side { grid-column: 2; justify-items: start; } }
+@media (min-width: 62rem) { .pack { grid-template-columns: 15rem minmax(0,1fr) 10.5rem; }
+  .pack__side { grid-column: 3; } }
+.plate { width: 100%; aspect-ratio: 1; display: block; background: var(--plate-bg); border-radius: var(--radius); }
+
+/* A treated archival plate. 16:10 rather than square because the source is a 4:5 portrait and a
+   square crop of a portrait throws away the top and bottom of the subject; a 16:10 crop of a
+   portrait keeps the middle, which on an archival plate is where the object is. */
+.subject { width: 100%; aspect-ratio: 16 / 10; display: block; background: var(--plate-bg);
+  border-radius: var(--radius) var(--radius) 0 0; }
+/* The provenance line is a gate, not a caption: A34 fails any graphic whose licence is not
+   recorded, and recording it on the page is the cheapest place that cannot go stale. */
+.prov { font-family: var(--mono); font-size: 0.6875rem; line-height: 1.5; color: var(--ink-3);
+  padding: 0.4rem 0 0; display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.prov b { color: var(--ink-2); font-weight: 500; }
+/* Each field stays on one line so the line breaks BETWEEN fields, never mid-licence — except
+   the first, which is the only unbounded one. A graphic title plus its date measured 647px of
+   nowrap text inside a 320px column at phone-390, clipped to nothing by .packs{overflow:hidden}
+   in all ten looks. A34 requires the licence to be readable, and clipped is not readable. */
+.prov span { white-space: nowrap; }
+.prov span:first-child { white-space: normal; }
+.pack__title { font-family: var(--display); font-weight: var(--display-w); font-size: var(--f-h3); line-height: 1.14; letter-spacing: var(--display-track); margin: 0.35rem 0 0.4rem; text-wrap: balance; }
+.pack__title a { text-decoration: none; }
+.pack__title a:hover { color: var(--accent); }
+.pack__deck { color: var(--ink-2); margin: 0; font-size: 0.955rem; max-width: var(--measure); }
+.pack__note { font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: var(--label-case); color: var(--ink-3); margin: 0; }
+.meters { display: grid; gap: 0.5rem; }
+@media (max-width: 77.99rem) { .meters { grid-template-columns: repeat(auto-fit,minmax(6.5rem,1fr)); } }
+.meter__row { display: flex; align-items: center; gap: 0.55rem; font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: var(--label-case); color: var(--ink-3); }
+.meter__row b { color: var(--ink); font-variant-numeric: tabular-nums; }
+/* flex:1 1 auto AND min-width:0. Without the width the bar is 0px; without the min-width
+   it refuses to shrink. This is the same trap that put 4px of horizontal overflow on the page. */
+.meter__track { flex: 1 1 auto; min-width: 0; height: 4px; background: var(--surface-2); overflow: hidden; }
+.meter__row .label { flex: 0 0 auto; }
+.meter__row b { flex: 0 0 auto; min-width: 2.6rem; text-align: right; }
+.meter__track i { display: block; height: 100%; background: var(--accent-fill); }
+.meter--good .meter__track i { background: var(--good); }
+.pack__buy { display: grid; gap: 0.5rem; align-content: start; }
+.pack__price { font-family: var(--display); font-weight: var(--display-w); font-size: 1.6rem; letter-spacing: var(--display-track); font-variant-numeric: tabular-nums; }
+
+/* ---- kills ---- */
+.panel { border: var(--rule-w) solid var(--hair); background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.panel__bar { display: flex; justify-content: space-between; gap: var(--s3); padding: 0.6rem 0.85rem; border-bottom: var(--rule-w) solid var(--hair); background: var(--surface-2); flex-wrap: wrap; }
+.panel__body { padding: var(--s4) 0.85rem; }
+.causes { display: grid; gap: var(--s3); }
+.cause__row { display: flex; justify-content: space-between; gap: var(--s3); align-items: baseline; font-family: var(--mono); font-size: var(--f-data); }
+.cause__row em { font-style: normal; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cause { display: grid; gap: 0.35rem; }
+.cause__track { display: block; height: 8px; background: var(--surface-2); overflow: hidden; }
+.cause__track i { display: block; height: 100%; background: var(--bad); }
+.cause--nocount > .cause__track { background: repeating-linear-gradient(90deg, var(--surface-2) 0 3px, transparent 3px 7px); }
+
+/* ---- docs ---- */
+.docs { display: grid; gap: var(--rule-w); background: var(--hair); border: var(--rule-w) solid var(--hair); border-radius: var(--radius); overflow: hidden; grid-template-columns: 1fr; }
+/* A hairline grid draws its rules by letting the container colour show through the gaps, so an
+   incomplete last row is not empty -- it is a solid grey block sitting where a cell should be.
+   14 documents in 3 columns left exactly that. The fix is count-agnostic: if the last item is
+   alone in its row, or one short of filling it, stretch it across what is left. */
+@media (min-width: 38rem) {
+  .docs { grid-template-columns: 1fr 1fr; }
+  .docs > div:last-child:nth-child(odd) { grid-column: span 2; }
+}
+@media (min-width: 70rem) {
+  .docs { grid-template-columns: repeat(3, 1fr); }
+  .docs > div:last-child:nth-child(odd) { grid-column: auto; }
+  .docs > div:last-child:nth-child(3n + 1) { grid-column: span 3; }
+  .docs > div:last-child:nth-child(3n + 2) { grid-column: span 2; }
+}
+.docs > div { background: var(--surface); padding: 0.8rem var(--s3); display: flex; gap: var(--s3); align-items: baseline; }
+/* The markup is <span>01</span><b>Title</b>. These two rules were the wrong way round, which
+   set every document title in 11px coloured mono and every ordinal in the body face. */
+.docs span { font-family: var(--mono); font-size: var(--label-size); color: var(--accent); font-weight: var(--label-w); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.docs b { font-size: 0.95rem; font-weight: 500; }
+
+/* ---- price ---- */
+.rungs { display: grid; gap: var(--s2); }
+.rung { display: grid; grid-template-columns: 4.4rem 1fr 4rem; gap: var(--s3); align-items: center; }
+.rung b { font-family: var(--mono); font-size: var(--f-data); font-variant-numeric: tabular-nums; }
+.rung__track { height: 14px; background: var(--surface-2); overflow: hidden; }
+.rung__track i { display: block; height: 100%; background: var(--good); }
+.rung em { font-style: normal; font-family: var(--mono); font-size: var(--label-size); color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+.compare { display: grid; gap: var(--s4); margin-top: var(--s4); }
+@media (min-width: 46rem) { .compare { grid-template-columns: 1fr 1fr; } }
+.compare > div { border: var(--rule-w) solid var(--hair); border-radius: var(--radius); padding: var(--s4); background: var(--surface); }
+.compare strong { font-variant-numeric: tabular-nums; display: block; font-family: var(--display); font-weight: var(--display-w); font-size: clamp(1.5rem,3vw,2.2rem); letter-spacing: var(--display-track); margin: 0.4rem 0 0.5rem; }
+.compare p { margin: 0; color: var(--ink-2); font-size: 0.92rem; }
+
+/* ---- close + foot ---- */
+.close { border: var(--rule-w) solid var(--hair); border-radius: var(--radius); background: var(--surface); padding: var(--s6) var(--s4); text-align: center; box-shadow: var(--shadow); }
+.close h2 { font-family: var(--display); font-weight: var(--display-w); font-size: var(--f-h2); letter-spacing: var(--display-track); line-height: var(--display-lead); margin: var(--s2) auto var(--s3); max-width: 20ch; text-wrap: balance; }
+.close p { color: var(--ink-2); max-width: 50ch; margin: 0 auto var(--s4); }
+footer.foot { border-top: var(--rule-w) solid var(--hair); margin-top: var(--s6); padding-block: var(--s4) var(--s6); display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); justify-content: space-between; font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: var(--label-case); color: var(--ink-3); }
+
+/* ===========================================================================
+   THE ARTEFACT PAGE — /pack/:id. Page archetype 2 of 6 (gate A53).
+
+   Section order is not a taste decision. Nine competing report sellers were
+   retrieved and read: the self-serve ones (Statista $495, NN/g $149, Leanpub
+   $19–39) put PRICE EARLY and PROOF LATE, while the enterprise ones (Gartner,
+   Forrester, IBISWorld) put proof first and never show a price at all. At
+   £39–£249 this is unambiguously a self-serve page, so the price sits above
+   the fold and the evidence runs underneath it.
+
+   The reading budget is the other constraint on every rule below. NN/g,
+   measured across 45,237 page views: a visitor reads at most 28% of the words
+   and 20% is likelier, and half the information gets read only on pages of
+   111 words or fewer. So the page is built to be SCANNED — one idea per band,
+   a number wherever a number will do, and nothing that needs a second pass.
+   =========================================================================== */
+
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding-block: var(--s4) 0;
+  font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track);
+  text-transform: var(--label-case); color: var(--ink-3); }
+.crumbs a { color: var(--ink-3); text-decoration: none; border-bottom: 1px solid var(--hair); }
+.crumbs a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.crumbs i { font-style: normal; opacity: 0.5; }
+
+/* The two-column artefact grid. The rail is second in the SOURCE so that a
+   screen reader and a 320px phone both meet the pack before they meet the
+   price — the order that reads correctly linearly, with the visual order
+   restored by the grid only once there is room for two columns. */
+.artefact { display: grid; gap: var(--s5); padding-block: var(--s4) var(--s6); }
+.artefact__main { min-width: 0; display: grid; gap: var(--s6); align-content: start; }
+.artefact__rail { min-width: 0; display: grid; gap: var(--s3); align-content: start; }
+@media (min-width: 64rem) {
+  .artefact { grid-template-columns: minmax(0,1fr) 21rem; gap: var(--s6); align-items: start; }
+  .artefact__rail { position: sticky; top: var(--s3); }
+}
+
+.artefact__eyebrow { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); align-items: center;
+  font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track);
+  text-transform: var(--label-case); color: var(--ink-3); }
+.artefact__title { font-family: var(--display); font-weight: var(--display-w);
+  font-size: clamp(1.9rem, 4.4vw, 3.4rem); line-height: var(--display-lead);
+  letter-spacing: var(--display-track); margin: var(--s3) 0 var(--s2); text-wrap: balance; }
+.artefact__deck { font-size: 1.06rem; color: var(--ink-2); max-width: var(--measure); margin: 0; }
+
+/* One idea per band, separated by a rule rather than by a box. Boxes stack
+   into a page of cards, and a page of cards has no reading order. */
+.band { border-top: var(--rule-w) solid var(--hair); padding-top: var(--s4); display: grid; gap: var(--s3); }
+.band__title { font-family: var(--display); font-weight: var(--display-w); font-size: var(--f-h3);
+  letter-spacing: var(--display-track); line-height: 1.2; margin: 0; }
+.band__note { margin: 0; color: var(--ink-3); font-size: 0.9rem; max-width: var(--measure); }
+.band > p { margin: 0; color: var(--ink-2); max-width: var(--measure); }
+
+/* ---- the buy rail ---- */
+.buy { border: var(--rule-w) solid var(--hair); border-radius: var(--radius); background: var(--surface);
+  padding: var(--s4) var(--s3); display: grid; gap: var(--s3); box-shadow: var(--shadow); }
+.buy__price { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.buy__price b { font-family: var(--display); font-weight: var(--display-w);
+  font-size: clamp(2.1rem, 4.6vw, 2.9rem); letter-spacing: var(--display-track);
+  line-height: 1; font-variant-numeric: tabular-nums; }
+.buy__price span { font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track);
+  text-transform: var(--label-case); color: var(--ink-3); }
+.buy .btn { justify-content: center; }
+.buy__terms { margin: 0; font-size: 0.85rem; color: var(--ink-3); line-height: 1.5; }
+.buy__terms b { color: var(--ink-2); font-weight: 600; }
+
+/* Scope numbers. Nine of nine sellers surveyed showed at least one hard number
+   describing size; not one showed the same KIND of number, which is the tell
+   that the number matters more than the unit. */
+.scope { display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: var(--rule-w); background: var(--hair); border: var(--rule-w) solid var(--hair);
+  border-radius: var(--radius); overflow: hidden; }
+.scope > div { background: var(--surface); padding: var(--s3) var(--s2); display: grid; gap: 0.15rem; min-width: 0; }
+.scope b { font-family: var(--display); font-weight: var(--display-w); font-size: 1.5rem;
+  letter-spacing: var(--display-track); font-variant-numeric: tabular-nums; line-height: 1.05; }
+.scope span { font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track);
+  text-transform: var(--label-case); color: var(--ink-3); }
+
+/* ---- the seven checks ---- */
+.checks { display: grid; gap: var(--rule-w); background: var(--hair);
+  border: var(--rule-w) solid var(--hair); border-radius: var(--radius); overflow: hidden; }
+.check { background: var(--surface); padding: var(--s3); display: grid; gap: 0.3rem;
+  grid-template-columns: 1.9rem minmax(0,1fr) auto; align-items: baseline; }
+.check__n { font-family: var(--mono); font-size: var(--label-size); color: var(--ink-3);
+  font-variant-numeric: tabular-nums; }
+.check__q { grid-column: 2; font-weight: 600; margin: 0; }
+.check__sub { grid-column: 2; margin: 0; color: var(--ink-3); font-size: 0.875rem; max-width: 52ch; }
+.check__v { grid-column: 3; grid-row: 1; font-family: var(--mono); font-size: var(--label-size);
+  letter-spacing: var(--label-track); text-transform: var(--label-case); white-space: nowrap; }
+.check__v[data-v="pass"]     { color: var(--good); }
+.check__v[data-v="evidence"] { color: var(--ink-3); }
+
+/* ---- who it is for, and who it is not ---- */
+.who { display: grid; gap: var(--s3); }
+@media (min-width: 46rem) { .who { grid-template-columns: 1fr 1fr; gap: var(--s4); } }
+.who > div { min-width: 0; display: grid; gap: 0.4rem; align-content: start;
+  border-left: var(--rule-w-strong) solid var(--hair); padding-left: var(--s3); }
+.who > div:first-child { border-left-color: var(--good); }
+.who > div:last-child  { border-left-color: var(--bad); }
+.who h4 { margin: 0; font-family: var(--mono); font-size: var(--label-size);
+  letter-spacing: var(--label-track); text-transform: var(--label-case); color: var(--ink-3); font-weight: 600; }
+.who p { margin: 0; color: var(--ink-2); }
+
+/* ---- the cited comparison. A price comparison is a legal claim under UK
+   CTSI/CMA guidance: the source must be named, dated and monitored. So it is
+   a footnote with a date on it, never a strikethrough. ---- */
+.cited { border: var(--rule-w) solid var(--hair); border-radius: var(--radius);
+  background: var(--surface-2); padding: var(--s3); display: grid; gap: 0.4rem; }
+.cited b { font-family: var(--display); font-weight: var(--display-w); font-size: 1.35rem;
+  letter-spacing: var(--display-track); font-variant-numeric: tabular-nums; }
+.cited p { margin: 0; color: var(--ink-2); font-size: 0.92rem; }
+.cited cite { font-style: normal; font-family: var(--mono); font-size: var(--label-size);
+  letter-spacing: var(--label-track); color: var(--ink-3); }
+
+/* ---- publisher identity. Fogg 2001: a physical address measured +1.86 and a
+   phone number +1.71 on a −3..+3 credibility scale — the two biggest single
+   wins available to a seller nobody has heard of. `data-todo` renders the slot
+   visibly unfilled rather than hiding it, because a missing address that looks
+   like a finished design is how it stays missing. ---- */
+.publisher { display: grid; gap: 0.35rem; font-size: 0.9rem; color: var(--ink-2); }
+.publisher dt { font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track);
+  text-transform: var(--label-case); color: var(--ink-3); }
+.publisher dd { margin: 0 0 var(--s2); }
+.publisher [data-todo] { color: var(--bad); font-family: var(--mono); font-size: var(--f-data); }
+
+/* ---- related, and the deliberate link OUT. Fogg measured "provides links to
+   its competitors' sites" at +1.11: sending a reader somewhere else is a
+   credibility gain, not a leak. ---- */
+.related { display: grid; gap: var(--s2); }
+.related a { display: flex; justify-content: space-between; gap: var(--s3); align-items: baseline;
+  border-bottom: var(--rule-w) solid var(--hair); padding-bottom: 0.5rem; text-decoration: none; color: inherit; }
+.related a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.related span { min-width: 0; }
+.related em { font-style: normal; font-family: var(--mono); font-size: var(--f-data);
+  color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* The extract. Amazon KDP fixes an ebook sample at 10%, Google Books lets a
+   publisher pick 20–100%. The band is a trained expectation rather than a
+   measured optimum, and the page says so instead of claiming otherwise. */
+.extract { border: var(--rule-w) solid var(--hair); border-radius: var(--radius);
+  background: var(--surface); padding: var(--s4) var(--s3); display: grid; gap: var(--s2); }
+.extract__body { font-family: var(--body); color: var(--ink-2); max-width: var(--measure); margin: 0; }
+.extract__cut { border-top: var(--rule-w) dashed var(--hair); margin-top: var(--s2); padding-top: var(--s2);
+  font-family: var(--mono); font-size: var(--label-size); letter-spacing: var(--label-track);
+  text-transform: var(--label-case); color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+</style>

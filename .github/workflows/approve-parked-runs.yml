@@ -1,0 +1,113 @@
+# Start the CI runs GitHub parked, so a pull request's checks say what its code actually did.
+#
+# WHAT GOES WRONG WITHOUT THIS. When automerge.yml pulls main into a pull request branch it
+# pushes with the default GITHUB_TOKEN. GitHub will not build such a push: it creates the
+# `pull_request` run anyway, gives it `conclusion: action_required` and ZERO jobs, and renders it
+# as "requires approval from a maintainer". automerge.yml already works around the missing build
+# by dispatching a `workflow_dispatch` run, and that run is real and green.
+#
+# The parked run is the problem, because it is NEWER. Everything that asks "what is the latest
+# run at this head" reads the parked one: the pull request's own checks tab, `gh pr checks`, and
+# the `statusCheckRollup` that `gh pr view` returns. So a pull request whose code passed every
+# job reports UNSTABLE with an empty check list, and nothing can tell it apart from one that was
+# never built at all.
+#
+# MEASURED 2026-08-20. Eight parked runs existed. Four of the eight open pull requests were
+# sitting behind one, including #474 -- a one-file fix for the single test that had main red.
+# main stayed red, and while main is red ci.yml's `changes` job refuses to build ANY pull
+# request, so the whole queue was stalled behind a run that had never been allowed to start.
+# Approving run 32309822566 turned #474 from UNSTABLE with zero checks into CLEAN in one call.
+#
+# WHY A SEPARATE FILE AND NOT A STEP IN automerge.yml. automerge's job is gated on
+# `workflow_run.conclusion` being success or failure. A parked run concludes `action_required`,
+# so it can never trigger the one workflow that would fix it. A schedule can. This also keeps
+# the repair running when automerge is not, which is exactly when a queue is stalled.
+#
+# THE SAFETY RULE. `action_required` is also GitHub's genuine fork gate: approving one of those
+# runs a stranger's code on our self-hosted runners, which hold GITHUB_RUNNER_PAT. So this
+# workflow approves a run ONLY when the pull request's head branch lives in THIS repository --
+# never a fork -- and only when the parked run was created by github-actions[bot], the one actor
+# whose pushes we make ourselves. Both conditions, every time.
+# tests/unit/test_only_our_own_parked_runs_are_approved.py fails if either is dropped.
+name: Approve parked runs
+
+on:
+  schedule:
+    # Every ten minutes. A stalled queue costs more per minute than this job costs per run, and
+    # the job does nothing at all when there is nothing parked.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  # To read the head repository and head sha of each open pull request.
+  pull-requests: read
+  # To list runs and to POST .../runs/{id}/approve. This is the only write this workflow holds,
+  # and all it can do is start a run GitHub had already created. It cannot cancel, delete or
+  # re-run anything.
+  actions: write
+
+concurrency:
+  group: approve-parked-runs
+  cancel-in-progress: false
+
+jobs:
+  approve:
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - name: Approve every run we parked on our own branches
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const {owner, repo} = context.repo
+            const approved = []
+            const skipped = []
+
+            const {data: prs} = await github.rest.pulls.list(
+              {owner, repo, state: 'open', per_page: 100})
+
+            for (const pr of prs) {
+              // A fork's head repository is not ours. `action_required` on a fork pull request
+              // is GitHub's real review gate, and approving it runs a stranger's code on
+              // runners that hold our credentials. Never.
+              const headRepo = pr.head.repo && pr.head.repo.full_name
+              if (headRepo !== `${owner}/${repo}`) {
+                skipped.push(`#${pr.number} head is ${headRepo}, not ours`)
+                continue
+              }
+
+              let runs
+              try {
+                const {data} = await github.rest.actions.listWorkflowRunsForRepo(
+                  {owner, repo, head_sha: pr.head.sha, per_page: 50})
+                runs = data.workflow_runs
+              } catch (e) {
+                // One unreadable pull request must not stop the other nine being repaired.
+                core.warning(`could not list runs for #${pr.number}: ${e.message}`)
+                continue
+              }
+
+              for (const run of runs) {
+                if (run.conclusion !== 'action_required') continue
+                // The only actor whose pushes we make ourselves. A run parked for anyone else
+                // is not ours to start.
+                const actor = (run.actor && run.actor.login) || ''
+                if (actor !== 'github-actions[bot]') {
+                  skipped.push(`run ${run.id} on #${pr.number} was parked for ${actor}`)
+                  continue
+                }
+                try {
+                  await github.rest.actions.approveWorkflowRun({owner, repo, run_id: run.id})
+                  approved.push(`#${pr.number} ${run.name} ${run.head_sha.slice(0, 8)}`)
+                } catch (e) {
+                  core.warning(`could not approve run ${run.id} on #${pr.number}: ${e.message}`)
+                }
+              }
+            }
+
+            for (const s of skipped) core.info(`left parked: ${s}`)
+            if (approved.length === 0) {
+              core.info(`nothing parked across ${prs.length} open pull requests`)
+            } else {
+              core.notice(`started ${approved.length} parked run(s): ${approved.join('; ')}`)
+            }

@@ -145,7 +145,16 @@ export default function Method() {
   if (!data.present) {
     return (
       <Shell title="Method" intro="How the agents are working, and whether it is getting better.">
-        <Card title="No scoreboard yet">
+        {/*
+          * The stamp belongs HERE most of all. "No scoreboard yet" and "the read failed" look
+          * identical without it, and this branch is the one an operator sees when something is
+          * wrong. Measured 2026-08-21 by the e2e journey "every screen reads real data": /method
+          * was one of three screens that never said when it last read.
+          */}
+        <Card
+          title="No scoreboard yet"
+          right={<AsOf asOf={envelope?.as_of} tookMs={envelope?.took_ms} />}
+        >
           <Note>{data.note}</Note>
           <div className="mt-2 font-mono text-[12px] text-subtle">{data.generator}</div>
         </Card>

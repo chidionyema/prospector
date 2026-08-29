@@ -26,6 +26,10 @@ export const ACTIONS = [
   // candidate its re-vet budget back. See
   // docs/incidents/INC-2026-08-19-drain-retired-on-our-own-outages.json.
   'drain.reset',
+  // Test a provider from the console and confirm the MODEL is active, not merely that
+  // something answered: it asks the tier for one word and grades the reply. It spends
+  // real money on metered tiers, so the preview names what it will cost before it runs.
+  'providers.test',
   'config.set',
   'config.restore',
   'catalogue.set_listing',
@@ -33,6 +37,8 @@ export const ACTIONS = [
   'shelf.publish_pending',
   'shelf.regate',
   'daemon.restart',
+  'share.create',
+  'share.revoke',
   'tools.run',
   'tools.undo',
   'deliveries.resend',
@@ -42,6 +48,10 @@ export const ACTIONS = [
   'engine.switch',
   'engine.arm',
   'engine.disarm',
+  // Re-run one of the three network-bound console views for real and write its snapshot.
+  // It is a measurement, so it changes nothing and a failed run leaves the previous answer
+  // in place. See prospector/ops/slow_read.py.
+  'snapshot.refresh',
 ] as const;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

@@ -1,0 +1,147 @@
+<!-- ===========================================================================
+     ONE COMPONENT TREE. Every one of the ten looks renders THIS markup.
+     Nothing below names a look, and nothing below is duplicated per look.
+     That is the whole architectural claim: ten looks, not ten forks.
+     =========================================================================== -->
+
+<!-- The ops console, in preview. This bar is the thing that will live in the real
+     console: pick a look, it is applied immediately, no rebuild and no deploy. -->
+<div class="console" role="region" aria-label="Look switcher">
+  <div class="console__in">
+    <span class="console__title">Look</span>
+    <div class="chips" id="chips" role="group" aria-label="Choose a look"></div>
+    <button class="console__theme" id="rollBtn" type="button" title="Generate a look nobody designed: a random seed, a random switch set, a random pairing. It is applied only if it passes the same contrast audit as the ten.">Roll a look</button>
+    <button class="console__theme" id="themeBtn" type="button" aria-live="polite">Theme: system</button>
+  </div>
+</div>
+
+<div class="shell">
+
+  <header class="masthead">
+    <a class="wordmark" href="#top">mum<em>chimp</em></a>
+    <p class="masthead__dateline" id="dateline"></p>
+  </header>
+
+  <nav class="bar" aria-label="Sections">
+    <a href="#catalogue">Catalogue</a>
+    <a href="#killlog">What we killed</a>
+    <a href="#documents">What you get</a>
+    <a href="#price">Price</a>
+    <a href="#faq">FAQ</a>
+    <a href="#account">Account</a>
+  </nav>
+
+  <div class="rule rule--strong"></div>
+
+  <!-- TWO VIEWS, ONE CHROME. The masthead, the nav and the footer are outside
+       both, so moving between the catalogue and a pack changes the CONTENT and
+       nothing else. Criterion C6: "from page to page the layout must be
+       seamless, the user must never notice anything off." A page that rebuilds
+       its own header on navigation is a page that flickers, and a flicker is
+       precisely the thing a first-time visitor reads as "unfinished". -->
+  <main id="viewHome">
+
+  <!-- THE LEAD. A newspaper front page: headline, deck, one graphic, and the
+       numbers standing beside it. The offer is not mentioned above this line. -->
+  <section class="hero" id="top">
+    <div class="hero__lead">
+      <p class="label label--accent">The week in kills</p>
+      <h1 class="hero__head">We killed <em id="hHead2">1,364</em> of <em id="hHead">1,444</em> business ideas.</h1>
+      <p class="hero__deck">You are deciding what to build next. Each idea faced the same seven checks against cited sources, and <b id="hSurv">six in every hundred</b> survived to a write-up you can read. Read those, or read why the rest died.</p>
+      <div class="actions">
+        <a class="btn" href="#catalogue">Read what survived</a>
+        <a class="btn btn--ghost" href="#killlog">Read what did not</a>
+      </div>
+      <div class="readouts" id="readouts"></div>
+    </div>
+    <figure class="figure">
+      <canvas id="heroCanvas" width="720" height="560" role="img"
+              aria-label="Every idea researched, drawn as one mark. The lit marks are the ones that survived."></canvas>
+      <figcaption class="figure__legend">
+        <span class="key"><i data-key="dead"></i> killed, reason published</span>
+        <span class="key"><i data-key="live"></i> survived every check</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- THE KILL LOG BEFORE THE CATALOGUE. The failures are the proof the filter is
+       real, so they are read first and sold nothing. -->
+  <section class="section" id="killlog">
+    <div class="section__head">
+      <h2 class="section__title">The kill log</h2>
+      <p class="section__note">Every rejection, with the check that killed it.</p>
+    </div>
+    <div class="panel">
+      <div class="panel__bar">
+        <span class="label">Leading causes of death</span>
+        <span class="label" id="killTotal"></span>
+      </div>
+      <div class="panel__body">
+        <div class="causes" id="causes"></div>
+        <div>
+          <p class="label label--bad">Kill of the week</p>
+          <h3 class="pack__title" id="kotwTitle"></h3>
+          <p class="pack__deck" id="kotwDeck"></p>
+          <p class="section__note" id="kotwDate"></p>
+          <a class="btn btn--ghost" href="#killlog">Read the full kill</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- THE CATALOGUE. Newspaper cards: headline, teaser, graphic, and a link on. -->
+  <section class="section" id="catalogue">
+    <div class="section__head">
+      <h2 class="section__title">What survived</h2>
+      <p class="section__note"><b id="availN"></b> packs available now, across <b id="catN"></b> categories.</p>
+    </div>
+    <div class="packs" id="packs"></div>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- WHAT IS IN ONE. Fourteen documents, named, in reading order. -->
+  <section class="section" id="documents">
+    <div class="section__head">
+      <h2 class="section__title">Fourteen documents, in this order</h2>
+      <p class="section__note">The same fourteen in every pack. Read top to bottom and you are ready to start.</p>
+    </div>
+    <div class="docs" id="docs"></div>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- PRICE, LAST. -->
+  <section class="section" id="price">
+    <div class="section__head">
+      <h2 class="section__title">What it costs</h2>
+      <p class="section__note">One price, once. No subscription.</p>
+    </div>
+    <div class="rungs" id="rungs"></div>
+    <div class="compare" id="compare"></div>
+  </section>
+
+  <section class="close" id="account">
+    <h2>Start with the one that is closest to work you already do.</h2>
+    <p>Every pack names its sources and shows its working. If it is not what you expected, there is a <b id="refundN"></b>-day refund and you do not have to explain why.</p>
+    <div class="actions">
+      <a class="btn" href="#catalogue">Browse the catalogue</a>
+      <a class="btn btn--ghost" href="#documents">See a sample pack first</a>
+    </div>
+  </section>
+
+  </main>
+
+  <!-- The pack page. Rendered by the router, never shipped as static markup,
+       because there are 77 of them and one of them is a template. -->
+  <main id="viewPack" hidden></main>
+
+  <footer class="foot">
+    <span>mumchimp</span>
+    <span id="footNote"></span>
+  </footer>
+</div>

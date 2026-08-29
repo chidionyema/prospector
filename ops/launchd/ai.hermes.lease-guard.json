@@ -1,0 +1,12 @@
+{
+  "Label": "ai.hermes.lease-guard",
+  "ProcessType": "Background",
+  "ProgramArguments": [
+    "/bin/bash",
+    "/Users/chidionyema/.hermes/scripts/lease-guard.sh"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/lease-guard.err",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/lease-guard.log",
+  "StartInterval": 300
+}

@@ -99,7 +99,7 @@ bash ~/.hermes/scripts/verify_estate.sh          # the whole estate
 Backups, failover, escape hatches and rollbacks are things you find out are broken on the day you
 need them. Every one runs on a schedule, unattended, and fails loudly.
 
-- Live: `.github/workflows/escape-hatch-drill.yml`, Sunday 04:00 UTC. It packs the live store off
+- Live: `escape-hatch-drill.yml (deleted 2026-08-26, crew#203)`, Sunday 04:00 UTC. It packs the live store off
   the platform through the adapter's own `t_pack` verb and verifies the payload.
 - Receipt that this law is real: the first rehearsal on 2026-08-18 failed four verbs out of ten,
   and every failure was the drill rig rather than the adapter. None of it was visible before the
@@ -129,6 +129,59 @@ One list (`deploy/secrets.required`, 11 entries), one push mechanism (`t_secrets
 A `file:line`, command output, or a runnable test, in the same breath as the claim. Otherwise the
 claim is labelled HYPOTHESIS with the exact check that would settle it. This applies to humans,
 to agents, to commit messages and to this document.
+
+### L11. No flaky solutions
+
+Founder, 2026-08-19: *"dont want flaky solutions ... never go for flaky solutions"*. He said it
+after reading five of our own proposals back to us, and he was right about all five.
+
+A solution is FLAKY if any one of these is true. They are the test, and every proposal is graded
+against them before it is accepted, not after it is built.
+
+1. **It depends on the thing it protects.** A watcher on the machine it watches dies with it. A
+   backup in the same account as the data. A gate that runs inside the process it gates.
+2. **It can fail silently.** If the failure looks like success, or like noise, or like somebody
+   else's bug, nobody acts on it. Every mechanism must answer: what fails, loudly, and who is told?
+3. **Nothing measures it.** A number in a plan is a claim. A target with no clock, a rail with no
+   drill, a budget with no meter: those are wishes, and a wish is flaky by construction.
+4. **It moves the single point of failure instead of removing it.** Off the laptop and onto one
+   Fly machine is progress. It is not redundancy, and it must never be written down as if it were.
+
+**Grade honestly and say so.** SOUND, FLAKY or UNPROVEN, with the evidence. UNPROVEN is an allowed
+answer and usually the true one. SOUND without a receipt is not.
+
+**A flaky solution is worse than no solution**, because it also spends the attention that would
+have found the real one. The autoscaler is the worked example: written, reviewed, merged, and it
+had never once run. See [`docs/STACK_FLAKINESS_AUDIT.md`](STACK_FLAKINESS_AUDIT.md).
+
+**Justification before decision** (same directive, same day: *"i need justifications alo outputted
+before final decsion"*). The argument is written out and shown FIRST. The decision line comes after
+it and refers to it. A decision presented without its argument cannot be challenged, so it gets
+re-litigated every time somebody new reads it.
+
+### L12. Emitting is not observing
+
+Founder, 2026-08-19: *"we log but no cetral place to view"*. And two months earlier, in
+`specs/observability-gap-search.md`: *"we cannot be guessing; we must log and observe thoroughly;
+we must prevent this from ever happening again."*
+
+**A signal with no consumer is not evidence.** It is the appearance of evidence, which is worse
+than nothing, because it stops anyone looking further.
+
+Three instances in this estate, all the same defect:
+
+1. `web_calls=0` — a metric shipped that no provider ever incremented. We then used it to decide
+   whether search was working. It was working.
+2. launchd jobs exiting non-zero for days. Nothing reads the second column of `launchctl list`, so
+   `com.prospector.backup` has been failing with exit 78 unnoticed.
+3. Backups graded by the writer's exit code, which proves the job ran and not that bytes landed.
+
+**So when anything emits a signal, name its consumer in the same change.** Who or what reads this,
+where does it surface, and what happens when it goes bad? If the answer is "somebody would notice",
+there is no consumer and the signal is decoration.
+
+**And prove the consumer by breaking it.** A red that has never been seen red is not known to work
+— the negative-fixture standard the test suite already holds itself to, applied to operations.
 
 ---
 
@@ -233,11 +286,12 @@ substrate is built. What is missing is proof and breadth, not architecture.
 | Fly adapter | `deploy/targets/fly.sh` | In production |
 | Laptop adapter | `deploy/targets/laptop.sh` | Tested, is the rollback path |
 | Any Linux box with Docker and SSH | `deploy/targets/sshdocker.sh` | Built, **never booted in anger** |
+| Kubernetes, and its lighter versions | `deploy/targets/k8s.sh` | Built 2026-08-20, **never booted in anger** |
 | Move between any two targets | `deploy/cutover.sh --from X --to Y` | Built |
 | Pure-Docker stack, four services | `deploy/compose/docker-compose.yml` | Built, checked by CI |
 | State as a portable tarball with a manifest | `scripts/store_migrate.py` | Built, drilled weekly |
 | Secret list and preflight | `deploy/secrets.required`, `deploy/secrets.sh` | Built, 11 entries |
-| Weekly escape drill | `.github/workflows/escape-hatch-drill.yml` | Live, Sunday 04:00 UTC |
+| Weekly escape drill | `escape-hatch-drill.yml (deleted 2026-08-26, crew#203)` | Live, Sunday 04:00 UTC |
 
 ### The insight that shrinks the job
 
@@ -245,6 +299,12 @@ substrate is built. What is missing is proof and breadth, not architecture.
 droplet, Hetzner, a Mac mini in an office, and a Raspberry Pi**, because all seven are the same
 thing: a Linux box with Docker and an SSH login. We do not need seven adapters. We need one more
 adapter shape and evidence that the one we have actually boots.
+
+`k8s.sh` collapses a second family the same way: k3s on one box, MicroK8s, kind, EKS, GKE, AKS
+and DigitalOcean Kubernetes are all one adapter, because all of them answer to `kubectl`. It
+carries one rule the others do not — a Deployment defaults to `strategy: RollingUpdate`, which
+runs two engines during every release and so breaks the single-writer money fence. `Recreate` is
+what holds it, and a test fails if that line goes missing.
 
 The second shape is the managed container service, where there is no SSH: AWS App Runner or ECS
 Fargate, Azure Container Apps, Google Cloud Run. Those need `t_exec` and `t_put` implemented
@@ -263,6 +323,7 @@ of persistent disk. They are HYPOTHESIS until a drill produces a bill.
 | On-prem box (Mac mini, NUC, Pi) | `sshdocker.sh`, built | electricity | No vendor at all. The true escape hatch |
 | DigitalOcean droplet | `sshdocker.sh`, built | ~$6 | A named cheap player with a sane API |
 | AWS EC2 / Azure VM / GCE | `sshdocker.sh`, built | ~$10 and up | Enterprise credibility, same shape |
+| Managed k8s (EKS, GKE, AKS, DOKS) or k3s on one box | `k8s.sh`, built | k3s: the box only. Managed: ~$10 and up plus nodes | Where a team lands when it outgrows one box |
 | AWS App Runner, Azure Container Apps, Cloud Run | **not built** | scale-to-zero, near free at our volume | No SSH. Needs the second adapter shape |
 | Laptop | `laptop.sh`, built | £0 | Last resort only, by L1 |
 
@@ -435,7 +496,7 @@ Append here. Never in `CLAUDE.md`.
 | The ten laws | Adopted 2026-08-18 | Enforce on every review | this file |
 | Agent tenets | Adopted 2026-08-18 | Short form into `~/.claude/CLAUDE.md` so every session loads them | Part 2 |
 | Portability substrate | Built | Nothing | `deploy/PORTABILITY.md`, `deploy/targets/*.sh` |
-| Escape hatch drill | Live weekly | Watch Sunday runs | `.github/workflows/escape-hatch-drill.yml` |
+| Escape hatch drill | Live weekly | Watch Sunday runs | `escape-hatch-drill.yml (deleted 2026-08-26, crew#203)` |
 | Cold restore drill | **Not built** | Build it, monthly, in CI | — |
 | Cutover and rollback rehearsal | **Not built** | Build it against a local Docker target | — |
 | Managed container adapters (Cloud Run, ACA, App Runner) | **Not built** | One adapter, then the other two are copies | — |

@@ -1,0 +1,39 @@
+{
+  "id": "INC-2026-08-19-automerge-threw-before-it-dispatched",
+  "opened": "2026-08-19",
+  "title": "Auto-merge merged four pull requests and dispatched no deploy, because an undeclared permission threw before the dispatch",
+  "severity": "high",
+  "detected_by": "claude",
+  "first_order": {
+    "what_broke": "Four pull requests squash-merged onto main between 21:09Z and 21:48Z (#451 #453 #459 #462) and no deploy workflow ran for any of them. #451 changed 50 files under deploy-engine.yml's watched paths. Production stayed on 66e8b28a, nine commits behind main.",
+    "receipt": "gh api repos/chidionyema/prospector/actions/runs/32302397871/logs -> the merge step logs 'merged #453' and then 'RequestError [HttpError]: Resource not accessible by integration', status 403, url https://api.github.com/repos/chidionyema/prospector/commits/44c1cc5379de37d6033ae431b5cd85a53b591f18/check-runs, response header x-accepted-github-permissions: 'checks=read'. automerge.yml's permissions block declared contents, pull-requests and actions only. Same failure at run 32304640553 (21:35Z) and 32303888702 (21:26Z). deploy-engine.yml's newest run at that point was 2026-08-19T17:44:42Z on 66e8b28a.",
+    "fixed_by": "automerge.yml declares checks: read, and the post-merge deploy dispatch was moved ABOVE the stranded-PR sweep so a throw in the best-effort sweep can no longer skip the deploy for code that has already merged."
+  },
+  "cause_chain": [
+    "The stranded-PR sweep added github.rest.checks.listForRef. A workflow that declares any permissions block gets `none` for every scope it does not name, so the call was refused 403.",
+    "The refusal came AFTER the merge had landed. GitHub reported the run as failed, which reads like a merge that did not happen, not like a deploy that did not happen.",
+    "The deploy dispatch was the last statement of a ~250-line script, so every call above it was a single point of failure for shipping code that had already reached main.",
+    "Nothing compared the API namespaces the script calls against the permissions it declares. The mistake could only be discovered by running it.",
+    "CLASS: an action that MUST follow a landed change placed downstream of optional work, plus a capability declared in one place and used in another with nothing comparing the two."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'github\\.rest\\.[a-z]+\\.' .github/workflows/*.yml && rg -n -A6 '^permissions:' .github/workflows/*.yml",
+    "siblings_found": 0,
+    "siblings_fixed": 0,
+    "note": "automerge.yml is the only workflow in this repo that calls the GitHub API through actions/github-script; every other workflow uses gh with its own token or no API at all. The permission test therefore covers the whole class as it exists today, and fails on a new namespace it has no scope mapping for rather than passing it silently."
+  },
+  "third_order": {
+    "tier": "test",
+    "mechanism": "tests/unit/test_automerge_deploys_before_anything_optional.py. It fails when the script calls a github.rest namespace whose permission scope is not declared, when the deploy dispatch falls below the sweep again, and when the dispatch block regains an early return that would skip the sweep. Mutation-checked: deleting `checks: read` turns the first test red; moving the dispatch block back below the sweep turns the second red and errors the six sweep tests whose fixture then slices the wrong block.",
+    "landed_on": "2026-08-19",
+    "why_not_higher": "A guard cannot run before the workflow does, and self-healing would mean a second workflow watching for merges with no deploy - which is the ops-console work already open as #399. The repository's own suite is what gates the merge that would reintroduce either defect."
+  },
+  "grade": {
+    "signature": "a merge commit on main with no deploy run after it, where the merged files touch a deploy workflow's paths",
+    "before": 1,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "state": "open"
+}

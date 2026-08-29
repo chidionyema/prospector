@@ -25,3 +25,5 @@ Limitations:
 - MiniCheck was not run and not downloaded — see the `minicheck` probe for what is actually in the local HF cache.
 
 Receipt: `tools/experiments/e17_hhem_moat_agreement_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E17 --limit 600`
+
+**Follow-through:** NO ACTION — this is a measurement of HHEM as an instrument, not of the engine. Its own full-corpus run scores AUC 0.567, which is too close to chance to wire as a gate. It stays as the reason E15 is a ticket rather than a branch.

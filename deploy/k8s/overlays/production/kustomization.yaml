@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: prospector
+
+resources:
+  - ../../base
+  - ../../policies
+
+labels:
+  - includeSelectors: false
+    pairs:
+      prospector.estate/environment: production
+
+# Image tags are set HERE, by commit SHA, never by a moving tag. You cannot roll back to a tag that
+# moves. Promotion from staging to production is a commit that edits the line below, which makes the
+# git history the deployment audit log.
+#
+# PRODUCTION IS DELIBERATELY NOT AHEAD OF STAGING. Both name 7142f8d1 today because that is the
+# first commit whose images exist; from here, a promotion edits this file and only this file, and
+# the two overlays are allowed to name different commits. `git log -p -- <this file>` is then the
+# record of what production has ever run.
+images:
+  - name: ghcr.io/chidionyema/prospector-engine
+    newTag: 7142f8d15539f568c47b21ea51b79af8018d1162
+  - name: ghcr.io/chidionyema/prospector-store-api
+    newTag: 7142f8d15539f568c47b21ea51b79af8018d1162
+  - name: ghcr.io/chidionyema/prospector-store-web
+    newTag: 7142f8d15539f568c47b21ea51b79af8018d1162

@@ -1976,7 +1976,23 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               this row because it was ~1,400 elements and the h1 is this page's LCP element. The
               grid is one `<path>` plus one `<rect>` per listed pack -- around fifty nodes -- so
               there is nothing to defer. */}
-          <HeroRatio packCount={packs.length} />
+          {/* HIDDEN BELOW 901px, WHICH IS THE STYLESHEET'S OWN HERO BREAKPOINT, NOT A GUESS.
+              `mumchimp.css:432` is `@media(max-width:900px){.hero{grid-template-columns:1fr}}`:
+              below 901px the hero stops being two columns and this figure stacks UNDER the
+              headline instead of beside it. Measured on live mumchimp.com at a 400px viewport on
+              2026-08-19: `figure.gridwrap` is 550px tall, the hero band is 1070px, and the first
+              visible pack card sits at y=1288 -- a shop whose home page opens with no product on
+              screen on every phone size we test.
+
+              This is the gate `PopulationField` carried (`hidden [@media(min-height:821px)]:lg:block`)
+              and that the redraw did not carry over when this component took its slot. The number
+              is 901 rather than Tailwind `lg:` (1024px) so the figure appears exactly when the
+              stylesheet gives it a column to appear in; `lg:` would leave 901-1023px drawing a
+              two-column hero with an empty right side.
+
+              It is a utility class, so `scripts/parity.mjs` is unaffected -- it compares tag names
+              and mumchimp.css classes only, and the element stays in the DOM either way. */}
+          <HeroRatio packCount={packs.length} className="hidden min-[901px]:block" />
         </div>
         {/* THE PRODUCT, not the filter log.
             What stood here was `LiveKillCard` -- the killed/survived ledger. Beside a headline

@@ -1,2 +1,9 @@
 # Real addresses for this box. stack.env.example is the template.
 stack.env
+
+# The stack's own state directories, created by `docker compose up` in THIS directory.
+# They hold the live SQLite database and the ASP.NET data-protection keys the moment
+# anyone drills a restore, which is production customer data sitting in a working tree
+# one `git add -A` away from a public repository. Ignored, not tidied up afterwards.
+data/
+data-api/

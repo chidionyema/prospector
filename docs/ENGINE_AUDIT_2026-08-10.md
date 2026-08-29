@@ -97,7 +97,7 @@ Regression cover for 5-9: `tests/unit/test_engine_audit_findings_5_to_9.py`.
 
 | Claim in CLAUDE.md | Reality | Evidence |
 |---|---|---|
-| Architecture: "`dossier.py` / `store.py` / `publish.py`" implies `publish.py` lives in `prospector/` | `prospector/publish.py` is a **0-byte dead stub**; the real, imported module is the top-level `publish/publish.py` (259 lines) | `wc -c prospector/publish.py` → `0`; `git log --follow -- prospector/publish.py` → content removed in `5f95ca7` (2026-06-15); real callers: `tools/publish_offline.py:25`, `tools/publish_passes.py:48`, `run.py:545`, `tests/unit/test_dry_run_gate_mints_nothing.py:190`, `tests/behavioural/test_publish.py:18` |
+| Architecture: "`dossier.py` / `store.py` / `publish.py`" implies `publish.py` lives in `prospector/` | `prospector/publish.py` is a **0-byte dead stub**; the real, imported module is the top-level `publish/publish.py` (259 lines) | `wc -c prospector/publish.py` → `0`; `git log --follow -- prospector/publish.py` → content removed in `5f95ca7` (2026-06-15); real callers: `tools/publish_offline.py:25`, `tools/publish_passes.py:48`, `run.py:545`, `tests/unit/test_dry_run_gate_mints_nothing.py:190`, `tests/behavioural/test_publish.py:18` | <!-- doc-lint-ok: a dated audit record; the correction row at line 9 already says the path is gone -->
 | `MOAT_PRIMARY` lives at `operator.py:885` (also cited as `:875` in `run.py:291`, `:889` in `claude_cli.py:145`/`cli_auth.py:37-38`) | Actually at `operator.py:1068` in current `main` | Direct read of `operator.py:1068` |
 | "default 5 candidates per signal" | `config.yaml:764` sets `candidates_per_signal: 20`; `schedule.batch_size` is `15` (`config.yaml:1389`, "was 5: founder directive 2026-07-31") | Config is correctly the source of truth (no hardcoding violation) — the CLAUDE.md *number* is just stale |
 | "embed-match against the catalogue to drop near-duplicates" (`dedup.py`) | `dedup.py` is pure stdlib `difflib.SequenceMatcher` + Jaccard token overlap — **no embeddings**. A real embedding component exists (`prescreen_prefilter.py`) but never affects any decision (`config.yaml:1192-1194`) | Direct read of `dedup.py`; grep for embedding calls |
@@ -345,7 +345,7 @@ all-bad:
 - **Circuit breaker state machine** (`breaker.py:72-113`) — CLOSED→OPEN, OPEN→HALF_OPEN only after
   cooldown, single-probe admission, reopen-on-half-open-failure — no defect found; unlike `health.py`,
   all mutation is under one in-process lock so there's no cross-caller race here.
-- **`GeminiGroundingProvider`/`GeminiOperator` are genuinely unreachable from config** — no `"gemini"`
+- **`GeminiGroundingProvider`/`GeminiOperator` are genuinely unreachable from config** — no `"gemini"` <!-- doc-lint-ok: the finding is that gemini is unreachable from config -- naming it is the point -->
   branch exists in either `_build_search` or `_build_operator`; matches CLAUDE.md exactly.
 - **Cache never persists a failed/empty render** — `DiskCache.search` only writes on non-empty results
   (`retrieval.py:1390`), so the "cached failure pinned the state" bug class this repo has hit before does

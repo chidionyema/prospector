@@ -15,7 +15,18 @@ export type Group = { label: string; screens: Screen[] };
 export const GROUPS: Group[] = [
   {
     label: 'Now',
-    screens: [{ href: '/', label: 'Now', what: 'what needs attention right now' }],
+    // Deploys sits beside Now because "is the thing I merged actually live?" is a
+    // right-now question. It was invisible for twelve hours on 2026-08-19 while every
+    // other screen read green.
+    // Logs sits here for the same reason. It is read WHILE something is wrong, so it is a
+    // right-now question. Everything in the Data group is read afterwards: Incidents is the
+    // write-up, Audit is who changed what, Backups is what survives. Logs is the system still
+    // talking.
+    screens: [
+      { href: '/', label: 'Now', what: 'what needs attention right now' },
+      { href: '/deploys', label: 'Deploys', what: 'what each deployable is running, and how far behind main' },
+      { href: '/logs', label: 'Logs', what: 'what every service said, in one place' },
+    ],
   },
   {
     label: 'Engine',
@@ -23,7 +34,7 @@ export const GROUPS: Group[] = [
       { href: '/engine', label: 'Engine', what: 'is the daemon running and what is it doing' },
       { href: '/queue', label: 'Queue', what: 'work waiting, and what is blocking it' },
       { href: '/runs', label: 'Runs', what: 'what each run produced' },
-      { href: '/metrics', label: 'Yield', what: 'how much of what it generates survives' },
+      { href: '/method', label: 'Method', what: 'how the agents work, and if it is improving' },
     ],
   },
   {
@@ -31,6 +42,7 @@ export const GROUPS: Group[] = [
     screens: [
       { href: '/catalogue', label: 'Catalogue', what: 'what is on offer' },
       { href: '/shelf', label: 'Stranded', what: 'passed every gate and cannot be bought' },
+      { href: '/metrics', label: 'Yield', what: 'how much of what it generates survives' },
     ],
   },
   {
@@ -58,6 +70,7 @@ export const GROUPS: Group[] = [
       { href: '/data', label: 'Backups', what: 'what survives if the volume is lost' },
       { href: '/audit', label: 'Audit', what: 'what changed, and who changed it' },
       { href: '/docs', label: 'Docs', what: 'the decisions, incidents and runbooks, in here' },
+      { href: '/reports', label: 'Reports', what: 'every sheet published, and who can see it' },
       { href: '/incidents', label: 'Incidents', what: 'what broke, and what stops it recurring' },
     ],
   },
@@ -66,7 +79,7 @@ export const GROUPS: Group[] = [
     screens: [
       { href: '/config', label: 'Settings', what: 'the knobs, and their history' },
       { href: '/tools', label: 'Tools', what: 'run a tool, and undo it' },
-      { href: '/method', label: 'Method', what: 'how the agents work, and if it is improving' },
+      { href: '/share', label: 'Share', what: 'give someone outside a link to a file or the repo' },
       { href: '/processes', label: 'Processes', what: 'every automated job, and what is failing' },
     ],
   },

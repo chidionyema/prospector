@@ -1,0 +1,251 @@
+# The store API, declared. The second of the five workloads in deploy/compose/docker-compose.yml to
+# move out of a shell script and into a manifest this estate's own policies grade. Register row F-39.
+#
+# THIS ONE IS THE MONEY RAIL. store.db is the catalogue, the orders and the entitlements, and
+# store_platform/src/Store.Api/Payments/ mints Stripe Prices against it. Everything below that looks
+# conservative — one replica, Recreate, ReadWriteOnce, the single-writer label — is that fact, not a
+# preference. Two API pods against one SQLite file is two writers on a money ledger.
+#
+# WHAT CHANGED IN THE APPLICATION TO MAKE THIS ADMISSIBLE. `secrets-not-from-env-vars` refuses
+# `envFrom.secretRef` and `env[].valueFrom.secretKeyRef` outright, and the compose file supplies all
+# seven of this API's secrets through `environment:`. So the API had to learn to read secrets as
+# files, exactly as the engine did on 2026-08-24. It reads them with
+# Microsoft.Extensions.Configuration.KeyPerFile, which ships inside the Microsoft.AspNetCore.App
+# shared framework, so no package was added and no resolver was written: a file named
+# `Jwt__SigningKeyPem` becomes the configuration key `Jwt:SigningKeyPem`, which is the naming the
+# compose file and the C# already use. Store.Api/Infrastructure/FileSecrets.cs adds only the part
+# the framework has no opinion about — refusing to start on a missing or empty mount — and it reads
+# the same PROSPECTOR_SECRETS_DIR the engine reads, so the estate has one variable, not one per
+# workload.
+#
+# WHAT IS STILL NOT TRUE. Read this before applying it anywhere:
+#
+#   1. NO CLUSTER HAS EVER APPLIED THIS. The build is green and the policies admit it; there is no
+#      cluster. Same sentence as base/engine.yaml, and it stays until there is one.
+#   2. THE IMAGE RUNS AS ROOT. store_platform/src/Store.Api/Dockerfile has no USER line. The
+#      non-root drill that measured the engine has NOT been run against this image, so
+#      `runAsUser: 10001` below is declared and unproved. The aspnet base image ships an APP_UID,
+#      which is the likely fix, but a likely fix is not a measurement.
+#   3. THE PROBE PATH IS PROVED IN COMPOSE, NOT HERE. /catalog is what the compose healthcheck
+#      checks and what Fly checked. Nothing has yet run it against a pod.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prospector-store-api-data
+  namespace: prospector
+  labels:
+    app.kubernetes.io/name: prospector-store-api
+    app.kubernetes.io/part-of: prospector
+spec:
+  # ReadWriteOnce, for the same reason the engine's is: one writer is the contract, and a default
+  # StorageClass asked for ReadWriteMany hands back a PVC that stays Pending with no obvious cause.
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      # store.db plus the data-protection key ring. The engine's 20Gi is sized for packs and
+      # dossiers; this holds rows.
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prospector-store-api
+  namespace: prospector
+  labels:
+    app: prospector-store-api
+    app.kubernetes.io/name: prospector-store-api
+    app.kubernetes.io/part-of: prospector
+    # money-rail-single-writer keys on this label and enforces the two settings below at admission
+    # rather than leaving them to whoever edits this file next.
+    prospector.estate/single-writer: "true"
+spec:
+  replicas: 1
+  strategy:
+    # RollingUpdate starts the replacement before the old pod terminates, which is two writers on
+    # store.db during every release, and which also deadlocks against the ReadWriteOnce volume with
+    # "Multi-Attach error" until the rollout times out.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prospector-store-api
+  template:
+    metadata:
+      labels:
+        app: prospector-store-api
+        app.kubernetes.io/name: prospector-store-api
+        prospector.estate/single-writer: "true"
+    spec:
+      # The API never calls the Kubernetes API. A mounted token it does not use is a credential
+      # sitting in the pod for anything that gets a shell in it.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        # Without fsGroup the PVC is root-owned and the API cannot create store.db or write the key
+        # ring, which fails as an EF Core exception rather than as a permission error.
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          # Never a moving tag; disallow-latest-tag refuses one and you cannot roll back to a tag
+          # that moves. The overlay sets the real tag by commit SHA. This placeholder is
+          # deliberately unpullable so applying base/ directly fails with ImagePullBackOff rather
+          # than quietly running whatever was there before.
+          image: ghcr.io/chidionyema/prospector-store-api:set-by-an-overlay
+          imagePullPolicy: IfNotPresent
+          env:
+            # ---------------------------------------------------------------------------------
+            # CONFIG ONLY. Every value here is a path, a hostname, a claim name or a number. Not
+            # one of them is a credential: the seven secrets arrive as files through the volume
+            # below, which is what secrets-not-from-env-vars requires. Nothing here appears in
+            # etcd or in `kubectl describe pod` that would matter if it did.
+            # ---------------------------------------------------------------------------------
+            - name: PROSPECTOR_SECRETS_DIR
+              value: /var/run/secrets/prospector
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            # The image already sets ASPNETCORE_URLS=http://+:8080 (Dockerfile:45). It is repeated
+            # here because containerPort, the Service and both probes below all assert 8080, and a
+            # port that is only true inside an image is a number three files are guessing at.
+            - name: ASPNETCORE_URLS
+              value: http://+:8080
+            - name: ConnectionStrings__DefaultConnection
+              value: Data Source=/data/store.db
+            # The data-protection key ring, on the same volume as the database, so the key that
+            # decrypts existing cookies and refresh tokens travels with the rows they belong to.
+            - name: Data__KeyRingPath
+              value: /data/keys
+            - name: payments__active_provider
+              value: stripe
+            # Claim names, not credentials. Changing either invalidates every refresh token issued
+            # under the old pair, so a cutover keeps them. The signing key itself is a mounted file.
+            - name: Jwt__Issuer
+              value: store-api
+            - name: Jwt__Audience
+              value: store-web
+            # Where a paying buyer is sent back to. Unset, the API refuses to boot rather than
+            # redirect every customer to itself and a 404
+            # (store_platform/src/Store.Api/Payments/MoneyRailConfigGate.cs).
+            - name: Store__StorefrontUrl
+              value: https://mumchimp.com
+            # Where verification, password-reset and OAuth landing links point. The compose file
+            # has carried it since the store shipped; this manifest had not, and the API refused
+            # to start on OKE on 2026-08-25 (MoneyRailConfigGate.GuardEmailWebBaseUrl).
+            - name: Email__WebBaseUrl
+              value: https://mumchimp.com
+            - name: STORE_STOREFRONT_URL
+              value: https://mumchimp.com
+            - name: STORE_PUBLIC_URL
+              value: https://api.mumchimp.com
+            # Comma-separated because a site on a custom domain has more than one origin: the
+            # apex and the www. form are distinct to a browser. The .fly.dev hostname the live app
+            # still allows is deliberately absent — an origin allow-list is exactly where a dead
+            # vendor's name survives a migration unnoticed.
+            - name: STORE_ALLOWED_ORIGIN
+              value: https://mumchimp.com,https://www.mumchimp.com
+            - name: RateLimiting__PermitPerMinute
+              value: "600"
+            - name: Security__KnownNetworks
+              value: ::/0,0.0.0.0/0
+            - name: Founder__Emails
+              value: chidionyema@gmail.com
+            # With readOnlyRootFilesystem the .NET runtime has nowhere to put a temporary file and
+            # nowhere to resolve HOME to. Both point at the emptyDir below. The engine measured
+            # HOME=/ inside its image on 2026-08-24 and uid 10001 could not write it; naming HOME
+            # here costs one line and does not wait for the same measurement on this image.
+            - name: TMPDIR
+              value: /tmp
+            - name: HOME
+              value: /tmp
+          ports:
+            - name: http
+              containerPort: 8080
+          # /catalog, not a static path, and that is the whole point of it: /catalog reads store.db,
+          # so a pass means the process is up AND the database is readable, which is what has to be
+          # true for the shop to take money.
+          #
+          # WHAT THIS FIXES ON THE WAY OUT OF COMPOSE. The compose healthcheck opens the socket with
+          # bash's /dev/tcp because the aspnet runtime image carries no curl and no wget, and it
+          # spawns `head` and `grep` every 15s under a PID 1 that does not reap — measured
+          # 2026-08-24, 48 zombies, which is why `init: true` is in the compose file. An httpGet
+          # probe is performed by the kubelet from outside the container. It starts no process
+          # inside it, so there is nothing to reap and no HTTP client to install.
+          livenessProbe:
+            httpGet:
+              path: /catalog
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /catalog
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              # No CPU limit on purpose, and the same choice as the engine: a CPU limit throttles
+              # rather than protects, and a throttled money rail times out a Stripe webhook. Memory
+              # is limited because unbounded memory takes the node down with it.
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: secrets
+              mountPath: /var/run/secrets/prospector
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: prospector-store-api-data
+        - name: secrets
+          secret:
+            secretName: prospector-store-api-env
+            # optional: false, and no-optional-secret-references enforces it. The 2026-08-24
+            # incident written as a setting: compose's `required: false` let a box start carrying
+            # none of its 24 settings while the deploy script reported success. FileSecrets.cs
+            # refuses an empty mount for the same reason at the other end.
+            optional: false
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prospector-store-api
+  namespace: prospector
+  labels:
+    backstage.io/kubernetes-id: company-prospector
+    app.kubernetes.io/name: prospector-store-api
+    app.kubernetes.io/part-of: prospector
+spec:
+  # ClusterIP. The storefront reaches it at http://prospector-store-api:8080 from inside the
+  # cluster; the public hostname is an Ingress decision made once, in the open, not a side effect
+  # of a Service type.
+  type: ClusterIP
+  selector:
+    app: prospector-store-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

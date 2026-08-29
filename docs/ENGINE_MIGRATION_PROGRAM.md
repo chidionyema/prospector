@@ -23,7 +23,7 @@ Three of those premises are wrong, and getting them right shrinks the job.
 
 Receipts: `fly status -a prospector-store-api`, `fly scale show`, `fly volumes list`.
 24 secrets already set on the API (`fly secrets list`): R2, Stripe, Mailjet, JWT, Google OAuth.
-Deploy is already automated: `.github/workflows/deploy-api.yml` and `deploy-web.yml` via
+Deploy is already automated: `deploy-api.yml (deleted 2026-08-26, crew#203)` and `deploy-web.yml` via
 `superfly/flyctl-actions`, config in `store_platform/deploy/fly/api.fly.toml`.
 
 **Nothing buyer-facing needs to move.** `mumchimp.com` does not touch the laptop. DNS, TLS,
@@ -771,7 +771,7 @@ class as every other failure in §11: the failure mode was a silent success.
 | R5 | The engine's own nightly backup silently failed on Fly | **CLOSED, PROVEN** | Two defects, both fixed and both proved on release v5. `backup_store.py` built its paths from `__file__`, so it looked beside the code instead of at the volume. Then the git mirror failed with `Need a repository to create a bundle`, because the container ships the code and not the checkout, and that failed the whole run after the store had already uploaded. The mirror is skipped, out loud, when there is no work tree, and runs on the laptop under `--mirror-only`. Receipt: `STORE_BACKUP PASS dossiers=2968 verified=8/8`, exit 0. |
 | R6 | Monitoring grades the engine from launchd receipts that no longer exist | **CLOSED** | `deploy/engine/receipt.sh` wraps the two graded jobs in the container and writes each run's real exit code to a file on the volume. `engine_failover.py receipts`, on a fifteen-minute watch job, pulls those files down and appends them to the Hermes ledger, keyed by run so a stopped job cannot look alive. It invents nothing: no receipt on the container means no line written and the capability goes DARK, which is the true answer. |
 | R7 | Hermes itself still runs on the laptop | **OPEN, NEXT PHASE** | §12.6. |
-| R8 | CI runs on four Mac runners in this room | **OPEN, BLOCKED** | The Fly runner image is built and the fleet script is written. It needs a fine-grained `GITHUB_RUNNER_PAT`, which only the founder can mint. |
+| R8 | CI runs on four Mac runners in this room | **CLOSED** | The fleet runs on Fly. `flyctl machines list -a prospector-ci` shows 18 machines on `prospector-ci`, and `flyctl secrets list -a prospector-ci` shows the credential deployed under two names, `GH_RUNNER_PAT` and `GITHUB_RUNNER_PAT`, sharing digest `c85d164fde97f3d8` — the same value stored twice. This row previously read **OPEN, BLOCKED** on a PAT "which only the founder can mint"; that sentence was written before the token existed and was never re-checked, so it kept sending work to the founder that was already done. The rule it produced: a row that names a blocker states the COMMAND that proves the blocker is still there. |
 | R9 | Secrets exist only on this laptop | **ACCEPTED** | `.env` is deliberately the source of truth, and it is encrypted inside the offsite backup. Any platform is filled from it with one `t_secrets` call. |
 
 ### 12.6 Next phase — move Hermes the same way (founder directive, 2026-08-18)
@@ -788,8 +788,8 @@ the thing that watches everything else. A monitor that dies with the room is not
 It follows the pattern already built, and reuses it rather than repeating it:
 
 - **One container image**, and no platform API call inside it. Same rule as the engine.
-- **A `deploy/targets/` adapter**, so the same three targets — `fly`, `laptop`, `sshdocker` —
-  work for Hermes with no new concepts.
+- **A `deploy/targets/` adapter**, so the same four targets — `fly`, `laptop`, `sshdocker`, `k8s`
+  — work for Hermes with no new concepts.
 - **`deploy/cutover.sh` unchanged.** It already does not know what it is moving; both ends are
   adapters.
 - **The laptop stays a proven standby**, with the same disable fence and the same

@@ -1,0 +1,18 @@
+{
+  "EnvironmentVariables": {
+    "HERMES_HOME": "/Users/chidionyema/.hermes",
+    "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  },
+  "Label": "ai.hermes.selfcheck",
+  "ProgramArguments": [
+    "/usr/local/bin/python3",
+    "-u",
+    "/Users/chidionyema/.hermes/scripts/hermes_selfcheck.py",
+    "--alert"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/selfcheck.err.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/selfcheck.log",
+  "StartInterval": 3600,
+  "WorkingDirectory": "/Users/chidionyema/.hermes"
+}

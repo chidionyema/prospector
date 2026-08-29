@@ -19,6 +19,9 @@ import { packOgImagePath } from '@/lib/seo/ogImage';
 // path, not a page we want turning up as a search result for a human.
 const PUBLIC_PATHS = [
   '/',
+  // FR-10's plain index. It carries an anchor to every pack in the catalogue, so it is the one
+  // page a crawler can walk to reach the whole shelf; `/` caps its own shelf on purpose.
+  '/packs',
   '/how-it-works',
   '/sample',
   '/kill-log',

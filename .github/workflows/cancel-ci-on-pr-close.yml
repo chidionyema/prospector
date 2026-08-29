@@ -32,8 +32,9 @@ on:
     types: [closed]
 
 permissions:
-  actions: write        # the whole point: cancel runs
+  actions: write          # the whole point: cancel runs
   contents: read
+  pull-requests: write    # to say on the pull request WHY it cancelled, and what it kept
 
 jobs:
   cancel:
@@ -49,7 +50,7 @@ jobs:
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Cancel queued and in-progress runs for this PR's branch
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -63,7 +64,33 @@ jobs:
             // its own cleanup.
             const self = context.runId
 
+            // A MERGED pull request's run at its MERGED HEAD is evidence, not waste.
+            //
+            // Measured 2026-08-20, and it destroyed merged work. #500 merged at 03:05. This
+            // workflow ran and cancelled its two CI runs:
+            //
+            //   03:12:58  cancelled queued run 32326602598 (CI)
+            //   03:12:59  cancelled in_progress run 32326599613 (CI)
+            //   03:12:59  cancelled 2 run(s) on feat/agent-estate-backup
+            //
+            // Four minutes later main-admission-guard looked for a green CI run at that same
+            // head, found only the two this job had just cancelled, and reverted the merge:
+            //
+            //   Reverted by main-admission-guard: #500 was merged without a green CI run at its
+            //   head 1886e967 (CI there: cancelled, cancelled)
+            //
+            // Two workflows, each doing exactly what it was written to do, deleting a merged
+            // pull request between them. Neither said a word on the pull request.
+            //
+            // So a run at the merged head SURVIVES. Everything on an older sha is still
+            // cancelled, and that is where the wasted runner-hours actually were -- a superseded
+            // sha can never be anybody's evidence. A pull request closed WITHOUT merging keeps
+            // the old behaviour entirely: nothing will ever ask it for proof.
+            const merged = context.payload.pull_request.merged === true
+            const headSha = context.payload.pull_request.head.sha
+
             let cancelled = 0
+            const kept = []
             // Both states, because a run already executing on a merged PR is just as wasteful
             // as a queued one -- it holds a runner for its full twenty minutes to answer a dead
             // question.
@@ -74,6 +101,12 @@ jobs:
               for (const run of runs) {
                 if (run.id === self) {
                   core.info(`not cancelling this job's own run ${run.id}`)
+                  continue
+                }
+                if (merged && run.head_sha === headSha) {
+                  core.info(`KEEPING ${status} run ${run.id} (${run.name}): it is at the merged ` +
+                            `head ${headSha.slice(0, 8)}, and main-admission-guard needs it green`)
+                  kept.push(`${run.name} ([${run.id}](${run.html_url}))`)
                   continue
                 }
                 try {
@@ -88,4 +121,29 @@ jobs:
                 }
               }
             }
-            core.info(`cancelled ${cancelled} run(s) on ${branch}`)
+            core.info(`cancelled ${cancelled} run(s) on ${branch}, kept ${kept.length}`)
+
+            // Founder directive 2026-08-20: "we have processes doing stuff without stating
+            // clearly why", "like blocking, reverting, merging", "the whole loop happens in the
+            // dark". This job cancels other people's builds and, until today, said so only in
+            // its own log -- which nobody opens, because the check is green. It says it on the
+            // pull request now, and only when it actually did something.
+            if (cancelled || kept.length) {
+              const lines = [`**cancel-ci-on-pr-close:** this pull request ${merged ? 'merged' : 'closed'}, so its builds were tidied up.`, '']
+              if (cancelled) {
+                lines.push(`Cancelled **${cancelled}** run(s) on \`${branch}\` that were still queued or running against a superseded commit. They were answering a question nobody is waiting on, and each one held a self-hosted runner for up to twenty minutes.`)
+              }
+              if (kept.length) {
+                lines.push('', `Kept, deliberately: ${kept.join(', ')} — at the merged head \`${headSha.slice(0, 8)}\`. \`main-admission-guard\` reverts a merge that has no green CI run at its head, so cancelling this would undo the merge. That happened to #500 today.`)
+              }
+              lines.push('', `Decided by [this run](${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}).`)
+              try {
+                await github.rest.issues.createComment({
+                  owner, repo,
+                  issue_number: context.payload.pull_request.number,
+                  body: lines.join('\n'),
+                })
+              } catch (e) {
+                core.warning(`could not comment: ${e.message}`)
+              }
+            }

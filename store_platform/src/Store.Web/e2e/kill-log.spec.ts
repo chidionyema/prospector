@@ -28,9 +28,24 @@ const CITATION_HASH = /[([][0-9a-f]{16}[)\]]/;
  * checking nothing.
  */
 
-/** The one-<tbody>-per-record group. `[id]` is the per-kill permalink slug, so this cannot
- *  accidentally match the <thead> or a layout table elsewhere on the page. */
-const records = (page: import('@playwright/test').Page) => page.locator('main tbody[id]');
+/** The one-<li>-per-record group. Selected on `data-testid`, not on the tag or the class.
+ *
+ *  IT USED TO SELECT `main tbody[id]`. #336 redrew this page from a <table> to a <ul>, and
+ *  nothing failed at the time: a docs-and-markup redesign does not run this suite, and against
+ *  live the selector simply matched zero elements, so `e2e-live-smoke` went red for 13
+ *  consecutive runs over 73 hours reporting a count of 0 on a page that was rendering 1,364
+ *  kills perfectly well. A CSS class or a tag name is a rendering decision and the next
+ *  redesign is entitled to change it; `data-testid` is a contract, and `kill-log.tsx` now
+ *  carries it at the four points this file reads. */
+/*  EACH SELECTOR ACCEPTS BOTH FORMS, and that is not belt-and-braces. This suite runs against
+ *  LIVE (`WEB_BASE_URL: https://mumchimp.com`), so on the run that grades this very pull request
+ *  the deployed page is still the one WITHOUT the testids. A testid-only selector would ship a
+ *  test that cannot pass until a later deploy, which is a red check with no defect under it --
+ *  the exact thing this change exists to stop. The class half is what goes green today; the
+ *  testid half is what stops the next redesign breaking it. Drop the class half once the site
+ *  carrying these testids is live. */
+const records = (page: import('@playwright/test').Page) =>
+  page.locator('[data-testid="kill-record"], li.klrow[id]');
 
 /** Expand the first record whose source COUNT column is non-zero, and hand back its detail row.
  *  Chosen by reading the count off the summary row rather than by index: which kills carry a
@@ -42,10 +57,11 @@ async function openFirstSourcedRecord(page: import('@playwright/test').Page) {
 
   for (let i = 0; i < total; i++) {
     const record = all.nth(i);
-    const sources = (await record.locator('tr').first().locator('td').nth(2).innerText()).trim();
+    const meta = await record.locator('[data-testid="kill-meta"], p.m.num').first().innerText();
+    const sources = meta.match(/\u00b7\s*(\d+)\s*sources?/)?.[1] ?? '0';
     if (Number(sources) > 0) {
       await record.locator('button[aria-expanded]').first().click();
-      const detail = record.locator('tr').nth(1);
+      const detail = record.locator('[data-testid="kill-detail"], div.bg-surface3').first();
       await expect(detail).toBeVisible();
       // The row is visible the instant it is expanded, but the argument inside it comes from
       // /api/kill-log-detail, one ~400KB fetch for the whole page (`kill-log.tsx:495`). Until it
@@ -77,7 +93,7 @@ test('the kill log renders rejections with the reason that killed each one', asy
   // own cell, so a table of 400 ideas with an empty "Killed by" column would satisfy a bare
   // count while losing the entire point of the page.
   for (let i = 0; i < 5; i++) {
-    const killedBy = all.nth(i).locator('tr').first().locator('td').nth(1);
+    const killedBy = all.nth(i).locator('[data-testid="kill-gate"], span.side span.mono').first();
     await expect(killedBy).not.toBeEmpty();
   }
 

@@ -24,6 +24,7 @@ EVERY occurrence is still written to alerts.jsonl for the audit trail.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -32,7 +33,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from prospector.jsonl_atomic import append_jsonl
-from prospector.scheduler import paths
+
+# `telegram_sender` is the fallback alert sink: a sibling module importing nothing but the
+# stdlib, so there is no cycle and no reason to defer it. See `_load_repo_sender`.
+from prospector.scheduler import paths, telegram_sender
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +193,23 @@ def resolve_alert(cfg, *, key: str, reason: str) -> bool:
 
     _rewrite_alert_txt(cfg, active)
     logger.warning("RESOLVED [%s] %s: %s", key, resolved.get("title"), reason)
+
+    # THE ALL-CLEAR GOES TO THE SAME PLACE THE ALARM WENT. Until 2026-08-21 this function
+    # appended the resolution to alerts.jsonl, rewrote ALERT.txt and logged it -- and reached no
+    # sink at all. So whoever was told a thing broke was NEVER told it recovered: every loop this
+    # module opened had to be closed by a human going and looking. That is the founder's
+    # "we need to close loops asap", and it was a missing call, not a missing design.
+    #
+    # It runs through the same `_delivers` classification as the alarm, so an all-clear can never
+    # reach somewhere the alarm did not, and it is bounded by the same never-raises promise:
+    # failing to announce a RECOVERY must not be able to crash the daemon or lose the resolution,
+    # which is already durable on disk by this point.
+    try:
+        _desktop_notify(f"Prospector: {record['title']}", reason)
+        _webhook_post(record)
+        _telegram_push(record)
+    except Exception:  # noqa: BLE001 -- the resolution is already recorded; announcing is extra
+        logger.exception("Alert resolution push failed (resolution was still recorded)")
     return True
 
 
@@ -288,10 +309,111 @@ _HERMES_ALERT_PATH = Path.home() / ".hermes" / "scripts" / "estate_alert.py"
 TELEGRAM_KEYS = frozenset({
     "liveness", "tick_error", "zero_yield", "barren_streak", "moat_blind", "stranded_passes",
     "consumer_down",
+    #: Added 2026-08-21. Every one of these was CRITICAL and UNDELIVERABLE: emitted, written to
+    #: alerts.jsonl, and dropped on the floor by the `not in TELEGRAM_KEYS` line below. Measured
+    #: on the live store the same day: `store/scheduler/alerts.jsonl` held 10 rows over 18 hours,
+    #: ALL severity `critical`, ALL key `process-audit`, and not one of them could reach anybody.
+    #: `ALERT_WEBHOOK_URL` is not among the Fly secrets, so `_webhook_post` returned immediately
+    #: too; the only sink that ran was a macOS banner on a laptop, which vanishes.
+    #: `process-audit` carried "deploy engine: STALLED -- 1 commit(s) on main have not deployed".
+    "process-audit",
+    #: `supervisor` and `autopause_failed` are the daemon reporting that its OWN safety machinery
+    #: failed. If those cannot reach a human, nothing else in this list can be trusted either.
+    "supervisor", "autopause_failed",
+    #: `backlog_cap_unreadable` means the generation brake cannot read its own limit, so the brake
+    #: is not braking. Silent is the one thing it must not be.
+    "backlog_cap_unreadable",
 })
+
+#: Keys that are DELIBERATELY local. Being on this list is a decision with a reason, and the
+#: suite requires every emitted key to be on exactly one of the two lists -- see
+#: `test_alerts.py::test_every_emitted_key_is_explicitly_classified`. Nothing is silent by
+#: default any more. That default was the defect: an allow-list whose miss case is `return`
+#: means every key added in future is born undeliverable, and NO TEST FAILS when it is.
+LOCAL_ONLY_KEYS = frozenset({
+    #: The ONE-tick blip. `barren_streak` (3+ consecutive, CRITICAL) is the escalation and it IS
+    #: delivered, so putting this on the phone as well means the founder is told twice about one
+    #: condition -- once when it might be noise and again when it is real. Deliberately local, and
+    #: the pair is the reason: this key is only defensible as local while `barren_streak` is not.
+    "barren_generation",
+    #: Both of these SELF-HEAL, which is the whole test for this set. `vet --resume` finalises a
+    #: deferred row and re-vets a provisional one the moment the moat is back, with no human in
+    #: the loop -- and the outage that caused them pages already, under `moat_blind`. Putting them
+    #: on the phone would report one condition twice and page for a state that clears itself,
+    #: which is how a rail gets muted, and a muted rail is an unwired rail with extra steps.
+    "moat_deferred", "moat_provisional",
+})
+
+#: Computed keys cannot be enumerated by eye. `scripts/service_health.py:99` builds
+#: `service_down:<name>` from a table, so a service added to that table would otherwise arrive
+#: undeliverable and nobody would notice. Classify the GENERATOR, not each of its outputs.
+TELEGRAM_KEY_PREFIXES = ("service_down:",)
+
+
+def _delivers(key: str) -> bool:
+    """Does this alert key reach the founder's phone? Unclassified is LOUD, never silent.
+
+    An unclassified key is delivered AND logged at WARNING. That is the inverse of the old
+    behaviour on purpose: a key nobody classified is far more likely to be a real condition than
+    to be spam, it is throttled to once an hour like everything else, and a warning in the log is
+    a thing a person can find. Silence is not.
+    """
+    if key in LOCAL_ONLY_KEYS:
+        return False
+    if key in TELEGRAM_KEYS or key.startswith(TELEGRAM_KEY_PREFIXES):
+        return True
+    logger.warning("Alert key %r is not classified in TELEGRAM_KEYS or LOCAL_ONLY_KEYS -- "
+                   "delivering it, because an unclassified alert must never be a silent one. "
+                   "Add it to one of the two lists.", key)
+    return True
+
+
+def _under_pytest() -> bool:
+    """True while a test is running. A function, not an inline check, so a test can lift it.
+
+    `monkeypatch.delenv("PYTEST_CURRENT_TEST")` in a fixture does NOT work: pytest re-sets that
+    variable for each phase of each test, so it is back before the test body runs and a fixture
+    that deletes it grades nothing. Patching this function is the only way to exercise the
+    sender-selection path the way production reaches it.
+    """
+    return "PYTEST_CURRENT_TEST" in os.environ
+
+
+def _load_repo_sender():
+    """The in-repo Telegram sender. Always returns one.
+
+    WHY THIS EXISTS (issue #355). Every sink below and the Hermes one above are things that live
+    on the founder's Mac. Since the Fly cutover on 2026-08-18 the engine runs in a container with
+    no `$HOME/.hermes`, so `_load_estate_sender()` returned None and the engine's own log recorded
+    `Tick digest sink unavailable (no estate_alert.py); digest stayed local` while both MiniMax
+    tiers were exhausted and generation produced nothing. The founder found out by noticing the
+    ops console was stale.
+
+    NO try/except around the import, AND no credential check. `telegram_sender` is a sibling
+    module in this package importing nothing but the stdlib, so an ImportError is a broken
+    deployment: it belongs in a traceback, not in a handler that quietly leaves the estate with
+    no rail — which is the same shape of failure as the one this whole change exists to fix. And
+    a sender with no `TELEGRAM_BOT_TOKEN` names the missing variable at WARNING when it is
+    called; refusing to return one logs "sink unavailable", which reads as "there is no rail
+    here" and is the exact message that hid this for two days.
+    """
+    return telegram_sender.send_operator_alert
 
 
 def _load_hermes_sender():
+    """The off-machine sender: Hermes' if this estate has it, otherwise the in-repo one.
+
+    The order is deliberate. On the founder's Mac, Hermes holds the credentials in `~/.hermes/.env`
+    and shares one debounce file with every other estate alarm, so it must win where it exists.
+    Everywhere else — the Fly container, a fresh clone, a new laptop — the in-repo sender is the
+    rail, reading its credentials from the environment.
+    """
+    if _under_pytest():
+        return None
+    return _load_estate_sender() or _load_repo_sender()
+
+
+def _load_estate_sender():
     """Return Hermes' `send_operator_alert`, or None if the estate isn't present/importable.
 
     UNDER PYTEST THIS ALWAYS RETURNS None, and `dry_run` is not considered a sufficient fence.
@@ -301,7 +423,7 @@ def _load_hermes_sender():
     30 minutes. Loading the module at all is the side effect; refusing to load it is the fix.
     Tests that need to exercise this path monkeypatch THIS function.
     """
-    if "PYTEST_CURRENT_TEST" in os.environ:
+    if _under_pytest():
         return None
     if not _HERMES_ALERT_PATH.exists():
         return None
@@ -313,16 +435,35 @@ def _load_hermes_sender():
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return getattr(mod, "send_operator_alert", None)
-    except Exception:  # noqa: BLE001 — a broken estate degrades to the local sinks, never a crash
-        # Logged at ERROR with a traceback because the two callers (`_telegram_push`,
-        # `_emit_tick_digest`) both report None as "sink unavailable (no <path>)" at INFO — the
-        # message for an estate that ISN'T INSTALLED. The `_HERMES_ALERT_PATH.exists()` check
-        # above already covers that case, so reaching here means the file is present and BROKEN,
-        # and every CRITICAL in TELEGRAM_KEYS (liveness, stranded_passes, moat_blind) is being
-        # dropped on the floor. That must not be indistinguishable from "no estate here".
+    except Exception:  # noqa: BLE001 — a broken estate degrades to the repo sender, never a crash
+        # Logged at ERROR with a traceback because the caller returns None for an estate that
+        # ISN'T INSTALLED too, and the `_HERMES_ALERT_PATH.exists()` check above already covers
+        # that case: reaching here means the file is PRESENT and BROKEN, which is a defect on this
+        # machine rather than a machine that never had Hermes. Since 2026-08-20 the alert still
+        # goes out — `_load_hermes_sender` falls through to the in-repo sender — but a silently
+        # broken Hermes would then hide behind a working fallback forever.
         logger.exception("Hermes sender at %s is present but failed to load — Telegram alerts and "
                          "tick digests are NOT being delivered", _HERMES_ALERT_PATH)
         return None
+
+
+#: How long an alert whose CONTENT has not changed stays quiet. Longer than the 3600s push
+#: throttle above it, so adding the digest can only ever reduce message volume.
+_UNCHANGED_S = 6 * 3600.0
+
+
+def _identity_digest(record: dict) -> str:
+    """A short digest of WHAT is wrong, for the debounce key.
+
+    `identity` when the caller supplied one, else the message. Callers whose message carries a
+    fluctuating number MUST pass `identity`: `scripts/process_audit.py` titles its alert
+    "process audit: 31 failing", and that count oscillates 31 -> 32 -> 30 -> 31 as unrelated
+    checks flap, so a digest over the message would re-alert every hour and this whole change
+    would buy nothing. Its identity is the sorted SET OF FAILING NAMES, which only moves when
+    something actually starts or stops failing.
+    """
+    basis = str(record.get("identity") or record.get("message") or "")[:4000]
+    return hashlib.sha256(basis.encode("utf-8", "replace")).hexdigest()[:12]
 
 
 def _telegram_push(record: dict) -> None:
@@ -333,17 +474,33 @@ def _telegram_push(record: dict) -> None:
     physically cannot send: it degrades to Hermes' own `dry_run` path. Do not replace this with an
     opt-in env var a test could forget to set.
     """
-    key = record.get("key")
-    if key not in TELEGRAM_KEYS:
+    key = record.get("key") or ""
+    if not _delivers(key):
         return
     send = _load_hermes_sender()
     if send is None:
-        logger.info("Telegram sink unavailable (no %s); alert stayed local", _HERMES_ALERT_PATH)
+        # Since the in-repo sender landed there is no such thing as "this machine has no rail":
+        # `_load_hermes_sender` only returns None under pytest, or when the in-repo module itself
+        # failed to import, and that import failure is already logged with a traceback. So this is
+        # a WARNING, not the INFO it used to be — INFO is what let issue #355 sit for two days.
+        logger.warning("Telegram sink unavailable (no sender could be loaded); alert stayed local")
         return
     line = (f"{_ICON.get(record.get('severity'), '')} Prospector [{record.get('severity')}] "
             f"{record.get('title')}: {record.get('message')}")
     try:
-        sent = send(line, debounce_key=f"prospector:{key}", debounce_s=1800.0,
+        # The debounce key carries a digest of WHAT IS WRONG, so the rail speaks when the state
+        # CHANGES and stays quiet while it does not. A bare per-key debounce is time-keyed: an
+        # 18-hour outage is 18 identical messages, which is the noise that got the last channel
+        # switched off. This is a KEY choice, not a second debounce -- `telegram_sender._debounced`
+        # is still the one implementation, and a second one would be #426 again.
+        #
+        # `_UNCHANGED_S` is deliberately longer than `emit_alert`'s own 3600s throttle, which is
+        # what makes this strictly quieter than before and never noisier: the throttle still caps
+        # a CHANGING condition at one message an hour, and this caps an UNCHANGING one at one per
+        # six. Recovery is no longer inferred from silence either -- `resolve_alert` sends its own
+        # all-clear now, so a condition that stops has an end as well as a beginning.
+        sent = send(line, debounce_key=f"prospector:{key}:{_identity_digest(record)}",
+                    debounce_s=_UNCHANGED_S,
                     dry_run="PYTEST_CURRENT_TEST" in os.environ)
         logger.info("Telegram alert key=%s sent=%s", key, sent)
     except Exception as exc:  # noqa: BLE001 — documented never-raises, but trust nothing here
@@ -351,7 +508,7 @@ def _telegram_push(record: dict) -> None:
 
 
 def emit_alert(cfg, *, severity: str, key: str, title: str, message: str,
-               throttle_s: int = 3600, **fields) -> dict:
+               throttle_s: int = 3600, identity: str | None = None, **fields) -> dict:
     """Record an alert and (unless throttled) push it to the notification sinks.
 
     `key` groups alerts for throttling (e.g. "zero_yield", "tick_error", "liveness"). The full
@@ -361,6 +518,10 @@ def emit_alert(cfg, *, severity: str, key: str, title: str, message: str,
     now = datetime.now(timezone.utc)
     record = {"ts": now.isoformat(), "severity": severity, "key": key,
               "title": title, "message": message, **fields}
+    if identity is not None:
+        # Recorded, not just used: an alert whose dedupe basis is in the audit trail can be
+        # explained later. "Why did this not fire?" is otherwise unanswerable after the fact.
+        record["identity"] = identity
 
     sdir = _scheduler_dir(cfg)
     try:

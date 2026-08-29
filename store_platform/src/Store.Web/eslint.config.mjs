@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import jsxA11y from "eslint-plugin-jsx-a11y";
+import tailwind from "eslint-plugin-tailwindcss";
 
 /**
  * Foundation Wave enforcement (docs/ux/WEB-FOUNDATION-WAVE.md).
@@ -97,6 +98,25 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // The central-log shipper is a transport, not a caller.
+  //
+  // It cannot route through src/lib/api/client.ts: that file exports typed store-API endpoints
+  // and no generic post, and a client whose own failures were reported through the logger would
+  // recurse. It also has to stay byte-for-byte identical to
+  // store_platform/src/Ops.Console/src/lib/centralLog.ts -- src/__tests__/centralLogDoesNotDrift
+  // .test.ts fails if it drifts -- so it cannot be edited to satisfy one app's lint config.
+  //
+  // Narrow on purpose: one file by name, not a directory. UI-STANDARDS §4 is about COMPONENTS
+  // calling fetch, and the error boundary that tripped this rule on 2026-08-20 was fixed by
+  // moving its fetch into client.ts (reportClientError), not by widening this list.
+  {
+    name: "tie/central-log-transport-exception",
+    files: ["src/lib/centralLog.ts"],
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  },
+
   // A/B testing exception for landing page.
   {
     name: "tie/landing-page-exceptions",
@@ -104,6 +124,46 @@ const eslintConfig = defineConfig([
     rules: {
       "no-restricted-globals": "off",
       "react-hooks/set-state-in-effect": "off",
+    },
+  },
+
+  // Tailwind class hygiene. The storefront's utility classes are written by hand across ~90
+  // components, and two failure modes there are invisible in review: a contradiction
+  // (`p-2 p-4` — the later one silently wins) and a shorthand that reads as two different
+  // properties (`mt-2 mb-2` vs `my-2`). Both are class strings that LOOK fine and render wrong.
+  //
+  // `no-custom-classname` is OFF, deliberately. The shipped design bundle `src/styles/mumchimp.css`
+  // defines the class vocabulary this site is built from (`.d`, `.desc`, `.strip`, `.hdr`, `.tag`),
+  // it is byte-locked by a test, and the rule cannot see it — so every one of those classes would
+  // report as a typo. A rule that fires on the house style is a rule that gets disabled inline
+  // everywhere, which is worse than not having it.
+  {
+    ...tailwind.configs.recommended,
+    name: "tie/tailwind",
+    files: ["src/**/*.{ts,tsx}"],
+    // Tailwind v4 is configured in CSS, and the plugin looks for `src/style.css` by default --
+    // which this app does not have, so eslint died with ENOENT before judging a single file.
+    // Point it at the real entry stylesheet.
+    settings: { tailwindcss: { cssConfigPath: "./src/styles/globals.css" } },
+    rules: {
+      ...tailwind.configs.recommended.rules,
+      // `p-2 p-4` — the second silently wins, and the class string looks deliberate either way.
+      // The only rule here that gates.
+      "tailwindcss/no-contradicting-classname": "error",
+      // `mt-2 mb-2` reads as two decisions where there is one. Cheap to fix, small count.
+      "tailwindcss/enforces-shorthand": "warn",
+      // Tailwind v4 moved the important marker to the end (`pt-6!`). The old form still parses,
+      // so this is a migration hint rather than a defect.
+      "tailwindcss/important-modifier-suffix": "warn",
+      /**
+       * OFF, on a measurement. Enabled as a warning it reported 408 of the 517 findings in this
+       * package, every one of them "these classes are in a different order than the plugin would
+       * write them" — no rendering difference, no defect, and autofixing them would rewrite a few
+       * hundred lines of JSX to satisfy a preference. A rule at that volume is a rule people learn
+       * to scroll past, and it would bury the contradiction rule above it.
+       */
+      "tailwindcss/classnames-order": "off",
+      "tailwindcss/no-custom-classname": "off",
     },
   },
 
@@ -119,6 +179,8 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "playwright/.cache/**",
+    // Storybook build output. Same reason as above: generated, minified, not source.
+    "storybook-static/**",
   ]),
 ]);
 

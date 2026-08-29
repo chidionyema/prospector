@@ -26,6 +26,7 @@ worse than the drift.
 Usage:
     python3 scripts/launchd_plists.py --check       # report drift, exit 1 if any
     python3 scripts/launchd_plists.py --snapshot    # write the tracked copies
+    python3 scripts/launchd_plists.py --assert-held # exit 1 if a declared job is not running
 """
 from __future__ import annotations
 
@@ -40,6 +41,7 @@ from pathlib import Path
 
 LIVE = Path(os.path.expanduser("~/Library/LaunchAgents"))
 TRACKED = Path(__file__).resolve().parent.parent / "ops" / "launchd"
+NOT_HELD = Path(__file__).resolve().parent.parent / "ops" / "config" / "launchd_not_held.json"
 
 REDACTED = "<REDACTED>"
 
@@ -52,8 +54,25 @@ _SECRET_KEY_RE = re.compile(
 
 # Jobs we did not install and do not own. Tracking them would report drift every time a
 # vendor updates its own agent, which trains the reader to ignore the output.
+#
+# `com.haworks.` and `com.tie.` are here for a different reason, and it is the reason this
+# list is a code constant rather than a habit. They are other projects entirely. Their jobs
+# were installed on this Mac, this tool snapshotted them because nothing said not to, and
+# `--check` then reported them BROKEN on every run once their checkouts went away:
+#
+#     BROKEN  com.haworks.continuous-review  WorkingDirectory not found: .../haworks-platform
+#     BROKEN  com.haworks.test-coverage      WorkingDirectory not found: .../haworks-platform
+#     BROKEN  com.tie.ai-review              script not found: .../the-introduction-exchange/...
+#
+# Three permanent findings about three jobs Prospector does not own, in the output of the one
+# probe that is supposed to mean something. They were unloaded and their plists retired on
+# 2026-08-20 (`~/Library/LaunchAgents/*.plist.RETIRED-2026-08-20`), but retiring them by hand
+# is not what stops this: anything reinstalled tomorrow would be picked straight back up.
+# Naming the prefixes is what stops it, and `tests/unit/test_launchd_tracks_only_prospector.py`
+# fails if either is dropped from this tuple.
 _FOREIGN_PREFIXES = ("com.adobe.", "com.expressvpn.", "com.valvesoftware.",
-                     "com.google.", "com.microsoft.", "com.docker.")
+                     "com.google.", "com.microsoft.", "com.docker.",
+                     "com.haworks.", "com.tie.")
 
 
 def owned(label: str) -> bool:
@@ -173,6 +192,16 @@ def disabled_labels() -> set[str]:
 
     Fails OPEN. If launchctl cannot be read the set is empty and every job is checked. A false
     alarm about a missing program is cheap; silence about one is what this exists to stop.
+
+    `--assert-held` reads this too, because launchd has three states and the middle one is the
+    interesting one: a label can be held; absent because it crashed, was never loaded or was
+    booted out; or absent because somebody ran `launchctl disable`, which writes a persistent
+    per-user override that survives a reboot and makes `bootstrap` refuse. That third state is
+    an ACT, not a REASON, so it excuses nothing -- it changes the wording of the finding and
+    nothing else. Measured 2026-08-20: nine ai.hermes.* daemons reported NOT HELD had all been
+    disabled in one action at 19 Aug 22:47, to end a split in which the same daemons ran on Fly
+    and on this Mac against separate SQLite databases. The report gave no hint of that, so the
+    first move it invited was a hunt for nine crashes that never happened.
     """
     try:
         out = subprocess.run(["launchctl", "print-disabled", "gui/%d" % os.getuid()],
@@ -213,6 +242,26 @@ def broken_programs(live: dict[str, dict],
         wd = str(job.get("WorkingDirectory") or "")
         if wd.startswith("/") and not Path(wd).exists():
             findings.append("%s  WorkingDirectory not found: %s" % (label, wd))
+        # argv[0] above is the INTERPRETER, and every job in this estate is `python <script>`,
+        # so checking only argv[0] validated the one argument that never goes missing. Measured
+        # 2026-08-19: com.prospector.process-audit had exited 2 hourly for a day with
+        # "can't open file '.../prospector-live/scripts/process_audit.py'", while its python and
+        # its WorkingDirectory both existed and this function reported nothing. That job is the
+        # only caller of `--check`, so the drift detector was dead and could not say so.
+        #
+        # Only absolute paths with a script suffix are judged. A relative path is resolved
+        # against the job's own WorkingDirectory at load time and a bare word against its PATH;
+        # guessing at either is how a check earns false positives and gets ignored.
+        seen: set[str] = set()
+        for arg in argv[1:]:
+            a = str(arg)
+            if not a.startswith("/") or a in seen:
+                continue
+            if not a.endswith((".py", ".sh", ".mjs", ".js")):
+                continue
+            seen.add(a)
+            if not Path(a).exists():
+                findings.append("%s  script not found: %s" % (label, a))
     return findings
 
 
@@ -319,6 +368,129 @@ def cmd_check() -> int:
     return 1
 
 
+def held_labels() -> set[str] | None:
+    """Labels launchd is holding right now, or None when launchctl did not answer.
+
+    None and the empty set are different answers and the difference is the whole point. A
+    parse that returns {} when it could not ask reports every job in the estate as dead, so
+    the reader learns to ignore it; a parse that returns {} when it DID ask and launchd holds
+    nothing is a real alarm. `--assert-held` exits 2 on None and never grades anything.
+    """
+    try:
+        proc = subprocess.run(["launchctl", "list"], capture_output=True, text=True,
+                              timeout=20, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    held: set[str] = set()
+    for line in proc.stdout.splitlines()[1:]:
+        parts = line.split("\t")
+        if len(parts) >= 3:
+            held.add(parts[2].strip())
+    return held
+
+
+def load_not_held(path: Path | None = None) -> tuple[dict[str, str], list[str]]:
+    """The deliberately-not-held labels and their reasons, plus anything wrong with the file.
+
+    A missing file is not a problem: it means every declared job is expected to be held,
+    which is the safe default. A file that exists and cannot be read IS a problem, because
+    the alternative is excusing nothing and burying the reader in false alarms.
+    """
+    path = NOT_HELD if path is None else path
+    problems: list[str] = []
+    if not path.exists():
+        return {}, problems
+    try:
+        raw = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        return {}, ["%s is unreadable: %s" % (path.name, exc)]
+    entries = raw.get("not_held")
+    if not isinstance(entries, dict):
+        return {}, ["%s has no `not_held` object" % path.name]
+    excused: dict[str, str] = {}
+    for label, why in sorted(entries.items()):
+        if not isinstance(why, str) or not why.strip():
+            problems.append("%s excuses %s with no reason" % (path.name, label))
+            continue
+        excused[label] = why.strip()
+    return excused, problems
+
+
+def cmd_assert_held() -> int:
+    """Every job declared in ops/launchd/ is held by launchd, or is excused in writing.
+
+    WHY THIS IS SEPARATE FROM --check. `--check` compares definitions; this asserts one fact
+    about the running machine, so its exit code means exactly one thing and a capability can
+    be hung on it. `process_audit.py` already measured this and graded it WARN, on the
+    written argument that the probe could not know whether a job OUGHT to be running -- and
+    it was right, so this gives it the missing input instead of arguing with it. What a job
+    ought to do is now declared in ops/config/launchd_not_held.json, where a person writes
+    the reason down once.
+
+    Measured 2026-08-20, the run that produced this: ten jobs were installed and not held,
+    including every ai.hermes.* daemon, and the estate had been blind to it for 13.5 hours.
+    """
+    declared = sorted(load_tracked())
+    if not declared:
+        print("LAUNCHD HELD UNPROVEN — no declarations in %s, so there is nothing to assert"
+              % TRACKED)
+        return 2
+    held = held_labels()
+    if held is None:
+        print("LAUNCHD HELD UNPROVEN — `launchctl list` did not answer, so nothing was graded")
+        return 2
+
+    excused, problems = load_not_held()
+    installed = {p.stem for p in LIVE.glob("*.plist")}
+    # None here is not fatal. Not knowing WHY a job is absent leaves the fact that it is
+    # absent, which is the only thing this command asserts; it costs the reader the wording.
+    disabled = disabled_labels() or set()
+
+    missing: list[str] = []
+    notes: list[str] = []
+    for label in declared:
+        if label in held:
+            if label in excused:
+                notes.append("%s  is excused as not-held, but launchd IS holding it — drop "
+                             "the entry from %s" % (label, NOT_HELD.name))
+            continue
+        if label in excused:
+            notes.append("%s  off by design — %s" % (label, excused[label]))
+            continue
+        if label in disabled:
+            missing.append("%s  declared, and somebody ran `launchctl disable` on it. That "
+                           "records the act, not the reason -- write the reason in %s, or "
+                           "re-enable the job" % (label, NOT_HELD.name))
+            continue
+        where = "its plist is installed" if label in installed else "NO plist installed"
+        missing.append("%s  declared, %s, launchd is NOT holding it" % (label, where))
+
+    for label in sorted(set(excused) - set(declared)):
+        notes.append("%s  is excused as not-held but is declared nowhere in %s"
+                     % (label, TRACKED.name))
+
+    for note in notes:
+        print("NOTE         %s" % note)
+    for problem in problems:
+        print("BAD EXCUSE   %s" % problem)
+    for finding in missing:
+        print("NOT HELD     %s" % finding)
+
+    n = len(missing) + len(problems)
+    if n == 0:
+        print("LAUNCHD HELD PASS  %d declared job(s), %d held, %d excused in writing"
+              % (len(declared), len(declared) - len(excused), len(excused)))
+        return 0
+    off_by_hand = sum(1 for label in declared
+                      if label not in held and label not in excused and label in disabled)
+    print("LAUNCHD HELD FAIL  %d finding(s)  (not-held=%d, %d of them disabled by hand; "
+          "bad-excuse=%d)  — either load the job, or write down in %s why it must not run"
+          % (n, len(missing), off_by_hand, len(problems), NOT_HELD.name))
+    return 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     g = ap.add_mutually_exclusive_group(required=True)
@@ -326,8 +498,15 @@ def main() -> int:
                    help="report drift against the tracked snapshot; exit 1 if any")
     g.add_argument("--snapshot", action="store_true",
                    help="overwrite the tracked snapshot with what is installed now")
+    g.add_argument("--assert-held", action="store_true",
+                   help="exit 1 if launchd is not holding a declared job that is "
+                        "not excused in ops/config/launchd_not_held.json")
     args = ap.parse_args()
-    return cmd_snapshot() if args.snapshot else cmd_check()
+    if args.snapshot:
+        return cmd_snapshot()
+    if args.assert_held:
+        return cmd_assert_held()
+    return cmd_check()
 
 
 if __name__ == "__main__":

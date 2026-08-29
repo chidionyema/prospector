@@ -480,8 +480,18 @@ Counting words inside `msg` is what produced 97 instead of 8.
 
 R2 is the requirement that pays for this whole design.
 
-- `Store.Web` generates a `corr` on first page load and sends it as header `X-Corr-Id`.
-- `Store.Api` reads that header, and where it is absent mints one at the edge.
+- `Store.Web` generates a `corr` on the visit's first API call and sends it as header
+  `X-Correlation-Id` (`src/lib/api/correlation.ts`). **The header name is not the `X-Corr-Id` this
+  document first proposed.** `Store.Api` already runs `Crux.Observability`'s correlation
+  middleware (`Program.cs`, `app.UseCorrelationId()`), which reads `X-Correlation-ID`, mints a GUID
+  when no header arrives, puts that id in every framework log scope, and stamps it on every
+  outbound HTTP call. Introducing a second header would have produced TWO ids per request — the
+  package's GUID in the framework's log lines and ours in the Stripe metadata — and everything
+  would have looked healthy while joining up to nothing. One header means one id.
+- `Store.Api` reads that header, and where it is absent adopts the id the package minted at the
+  edge (`HttpContextExtensions.GetCorrelationId`). It is sanitised to `[A-Za-z0-9._-]` and 64
+  characters before it reaches a log line or Stripe, because a hostile header is otherwise a log
+  forgery and a 500-character Stripe metadata value is a refused checkout.
 - The id is written onto the Stripe Checkout Session metadata at creation
   (`CheckoutEndpoints.cs`, where the session is minted).
 - The webhook reads it back off the session and puts it on the fulfilment log lines
@@ -517,6 +527,30 @@ binding it to the private 6PN network, not the public listener.
 Rate limit: 100 requests/second/service, dropped not queued. A logging endpoint that applies
 backpressure to the caller lets a log problem become an outage.
 
+The same ingest also accepts OTLP, so a producer we did not write can send to it without a
+translator:
+
+```
+POST /internal/logs/otlp          (and /internal/logs/otlp/v1/logs)
+Authorization: Bearer <STORE_INTERNAL_API_KEY>
+Content-Type: application/x-protobuf  or  application/json
+Body: an OTLP ExportLogsServiceRequest, same 1 MB and 1000-record caps
+```
+
+Two spellings of the route because an OTLP client is usually handed a BASE url and appends the
+signal path itself. Measured 2026-08-20: OpenTelemetry .NET 1.15.3 appends nothing and posts to
+the configured url verbatim, so both had to exist.
+
+Both content types, because there is no choice. Measured 2026-08-20 against
+`OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.15.3: `OtlpExportProtocol` offers `Grpc` and
+`HttpProtobuf` and nothing else. A JSON-only ingest could never have received Store.Api's
+exporter, which is why `prospector/otlp.py` reads protobuf rather than only OTLP-shaped JSON.
+
+Responses follow OTLP rather than the NDJSON route: `200` with an empty `ExportLogsServiceResponse`
+when everything was accepted, `200` with `partialSuccess.rejectedLogRecords` when some were
+dropped, and the same `400`/`401`/`413`/`429` otherwise. A producer we did not write cannot read
+our `X-Dropped` header, so the drop count has to travel in the protocol's own field.
+
 ### 4.6 Files, rotation and caps
 
 Files live at `/data/logs/` on `prospector-engine`, one file per service per UTC day:
@@ -549,9 +583,17 @@ A `/logs` page in the existing Ops.Console, served through the existing dispatch
 (`prospector/ops/console_api.py` — `read` verb, allow-listed view). Filters: service, level,
 time range, correlation id, free text.
 
-The console cannot import Python and does not read the volume directly. It calls the dispatcher,
-which fetches from the engine over the private network. This keeps the existing rule intact:
-reads cannot write, and the verb in argv is the fence.
+The console cannot import Python and does not read the volume directly. It calls the dispatcher
+(`prospector.ops.console_api`, view `logs`), which keeps the existing rule intact: reads cannot
+write, and the verb in argv is the fence.
+
+**The dispatcher reads the day files directly rather than calling the ingest over HTTP**, which is
+a change from this section's first draft. Measured reason: `deploy/engine/supervisord.conf` runs
+`[program:ops-console]` and `[program:log-ingest]` on the same machine, so an HTTP hop adds no
+isolation and one failure mode — the logs would become unreadable exactly when the ingest is the
+process that died, which is when they are worth most. `log_ingest.search()` is that reader, and
+every bound it applies is in its result (`truncated`, `files_capped`, `unreadable`) so a bounded
+search can never be mistaken for a quiet estate.
 
 ### 4.8 Why plain files satisfies R8
 
@@ -691,8 +733,39 @@ Every option below was rejected for cost, lock-in, or both. R7 is zero new recur
 | **Datadog** | Priced per host and per GB ingested. The most expensive option on this list by a wide margin. | Total. Agent, tags, dashboards, monitors. | **Rejected.** Violates R7 immediately and R8 permanently. |
 | **Sentry** | Free tier exists for errors. | Moderate. | **Not rejected — out of scope.** Sentry is error tracking, not logging. `ErrorBoundary.tsx:32` records it as "a deferred, founder-gated decision" and it stays that way. It would not satisfy R1, R2 or R4. |
 | **A second Fly machine as a log host** | Roughly the cost of one more `shared-cpu-1x` machine plus a volume. | None. | **Rejected on cost only.** The `prospector-engine` volume has 18G free (§1.2). Paying for a second machine to hold 500 MB when an existing machine has 18G spare fails R7 and P8. |
-| **OpenTelemetry collector** | Free software; needs somewhere to send data. | Low — OTLP is a standard. | **Rejected for now.** It is a pipeline with no destination. Every destination on this list is rejected. Revisit if a budget ever appears; the JSONL schema in §4.3 maps cleanly onto OTLP fields, which keeps that door open. |
+| **OpenTelemetry collector** | Free software; needs somewhere to send data. | Low — OTLP is a standard. | **Still rejected, for a different reason (2026-08-20, issue #501).** It was rejected as a pipeline with no destination. Since then the ingest itself learned OTLP (§4.5), so we ARE the destination and the collector has no job left to do. Speaking a standard is not lock-in: a producer can be pointed at a real collector later by changing one url, and nothing here depends on a vendor. |
+| **OTLP** (the wire format) | £0. It is a POST of JSON; no collector is required to speak it. | None. CNCF standard, not a vendor. | **This row was missing, and its absence was an error — see the correction below.** |
 | **`fly logs` piped into a file on the Mac** | £0. | None. | **Rejected as the primary mechanism.** It is a tail: when the collector is down or the Mac sleeps, those lines are gone forever, and there is no way to tell afterwards that they are missing. Silent, unmeasurable loss is worse than no logs, because it looks the same as quiet. Fine as a debugging tool; not a design. |
+
+**Correction, 2026-08-20 — this table conflated the collector with the protocol, and they are not
+the same decision.** Founder challenge: *"OpenTelemetry collector seems like should have been
+used"*. Two things were being rejected under one name.
+
+The **collector** is a daemon. Rejecting it is still right: it exists to fan data out to sinks, and
+every sink here is rejected, so it would be a process whose whole job is to hand our own bytes back
+to us. That is a real cost — another thing to run, deploy, secret, monitor and migrate — for no
+answer we cannot get today.
+
+**OTLP is a wire format, and rejecting it was a mistake.** It costs nothing extra to emit, needs no
+collector (OTLP/HTTP is a POST of JSON to a URL), and it is the only option on this page that is
+neither a vendor nor a bill. It is also the one that answers the migration bar: with OTLP the sink
+is a config line, so moving to Grafana, ClickHouse or anything else is not a rewrite — and, in the
+other direction, any third-party system already speaks it, so auditing something we did not write
+stops needing a bespoke adapter.
+
+**It is also already paid for and switched off.** `store_platform/Directory.Packages.props:68-71`
+pins `OpenTelemetry` 1.15.3 and three siblings, and `Crux.Observability` pulls the ASP.NET Core,
+Http, EF Core and Runtime instrumentation into every `Store.Api` build. `AddOpenTelemetry`,
+`WithTracing` and `AddOtlpExporter` appear nowhere in `store_platform/src`. We compile it on every
+build and emit nothing. `docs/PLATFORM_PORTABILITY_AUDIT.md:392` recorded this and this document
+did not read it.
+
+What does **not** change is Part 4. The ingest, the plain NDJSON files and the zero-cost sink all
+stand; the lock-in that would actually hurt is a query language and a storage format, and we have
+neither. What changes is that the door has to be opened rather than left "open in principle": the
+ingest should accept OTLP/HTTP JSON alongside its own NDJSON, and the exporter `Store.Api` already
+compiles should be switched on and pointed at it. Tracked as its own change, not folded into a
+producer PR.
 
 ---
 
@@ -701,23 +774,113 @@ Every option below was rejected for cost, lock-in, or both. R7 is zero new recur
 Each step is one pull request. Each is independently useful. Each ships report-only first where
 it writes anything (P3).
 
-**Step 1 — Fix the backup. One line.**
-Correct the `--mirror-only` argument in `com.prospector.backup`. Regenerate the plist from the
-tracked declaration with `scripts/launchd_plists.py` rather than editing
-`~/Library/LaunchAgents/` by hand, so the tracked file and the installed file cannot drift again.
-Add a test that every flag in every `ops/launchd/*.json` `ProgramArguments` exists in the script
-it invokes. That test is what stops this class of failure, not the fix.
-*Verification:* the job runs and `store/backup.log` gains an entry dated today.
+**Step 1 — Fix the backup. CLOSED, and the premise was wrong.**
+Measured 2026-08-20: `--mirror-only` is a real flag (`scripts/backup_store.py:854`, and `:786` in
+the live checkout), so there was no bad argument to correct. The guard this step asked for already
+exists and is green: `tests/unit/test_launchd_checks_the_script_not_the_interpreter.py`, 4 passed.
 
-**Step 2 — Alert on a failed scheduled job.**
-Extend `prospector/scheduler/alerts.py` so a launchd job exiting non-zero raises. Today nothing
-does. This is why Step 1's defect survived at least a day.
-*Verification:* deliberately break a job in a worktree, confirm an alert fires.
+The job is still failing, for a different reason, and the difference is the whole point of this
+document. Run by hand with launchd's exact `ProgramArguments` it PASSES:
 
-**Step 3 — Move the two `/tmp` loggers onto real disk.**
-`com.prospector.ops-console` and `com.prospector.control-center` to `store/logs/`. Add
-`store/logs/*.log` to `ops/config/log_rotation.yaml` with a stated reason and a limit.
-*Verification:* reboot, confirm the files are still there.
+    STORE_BACKUP PASS mirror=repo/2026-08-19T233340Z.bundle bytes=66664795   (2026-08-20 00:33)
+
+Under launchd the same argv exits 78. Nothing recorded that. All three channels are empty:
+`store/backup.log` (the job's own `StandardOutPath` AND `StandardErrorPath`) has an mtime of
+2026-08-17 09:38 and its last line is that day's PASS; the wrapper's receipt ledger
+`~/.hermes/state/capability_receipts.jsonl` has no `com.prospector.backup` row after 2026-08-19
+09:09, and every row it does have says `exit_code: 0`; and `launchctl list` is the only place in
+the estate that knows the number 78.
+
+A job whose stdout, stderr and receipt ledger are all silent about a failure it definitely had is
+not an under-logged job. It is an unobserved one, and no amount of shipping logs helps if the
+failing run emits none. That is why Step 2 is graded on a DURABLE RECORD rather than on log
+volume, and it is why `--mirror-only` under launchd stays open separately (task #92 proposes
+unloading this job entirely, since the store it guards is no longer canonical).
+
+**Step 2 — Alert on a failed scheduled job. DONE.**
+The instruction above was to extend `prospector/scheduler/alerts.py` because "today nothing does".
+Measured 2026-08-20, that was half wrong, and the wrong half is the interesting one.
+`scripts/process_audit.py` already grades every launchd job on this Mac AND every supervisord
+program inside `prospector-engine` (`grade_fly` marks non-RUNNING BAD, and marks "could not ask
+supervisorctl" BAD too), and it already had an `--alert` flag. The rail existed. It could not fire.
+
+`alert()` imported `~/.hermes/scripts/estate_alert.py` — a module in another project's checkout.
+On any host without Hermes, which includes `prospector-engine` where production runs, the import
+raised, the function returned the string `could not alert: No module named estate_alert`, and
+NOTHING GRADED THAT STRING. The audit printed it, exited 1 for the findings, and the estate went
+on being reported as watched. Same class as a workflow that can never run: the failure is
+indistinguishable from ordinary output.
+
+The fix routes through this repo's own alert door, `prospector.scheduler.alerts.emit_alert`, which
+is strictly wider than what it replaced: it appends the record to `alerts.jsonl` with an fsync
+BEFORE any sink is tried, and its Telegram sink loads the same Hermes sender this used to import,
+so nothing is lost where Hermes IS present. When every sink is missing there is still a receipt
+saying the estate was failing at this time. A broken alert path now returns
+`ALERT PATH BROKEN (<Type>: <msg>) -- N failing went unsent`, which no reader mistakes for success.
+
+Live evidence that made this a P0 rather than a tidy-up, all measured 2026-08-20:
+`com.prospector.backup` last exit 78, `com.prospector.process-audit` last exit 2, and the laptop
+backup silently dead since 2026-08-17 (see Step 1).
+
+*Verification:* `tests/unit/test_a_failing_job_must_raise.py`, 7 passed. Mutation-checked by
+restoring the old unreachable-import behaviour: 4 of the 7 fail, including
+`test_a_failing_audit_leaves_a_durable_record_with_no_sinks_at_all`. The tests deliberately do not
+assert a notification was delivered — no test can promise that, and one that mocked a sink into
+returning True would be testing the mock. They assert the durable record, under an autouse fixture
+that neutralises every sink, which is the permanent state of any host without Hermes.
+
+**Step 3 — The two `/tmp` loggers. DONE, by deleting both jobs rather than moving their logs.**
+The instruction above was to point `com.prospector.ops-console` and
+`com.prospector.control-center` at `store/logs/` and give that a prune target. Measured
+2026-08-20, before any edit, neither job was running and one of them no longer existed:
+
+```
+$ launchctl print gui/501/com.prospector.ops-console
+Could not find service "com.prospector.ops-console" in domain for user gui: 501
+$ launchctl print-disabled gui/501 | grep ops-console
+        "com.prospector.ops-console" => disabled
+$ lsof -nP -iTCP:8611 -sTCP:LISTEN        # nothing
+$ ls ~/Library/LaunchAgents/com.prospector.control-center.plist
+ls: No such file or directory
+```
+
+The console moved to Fly. It is `[program:ops-console]` in `deploy/engine/supervisord.conf`,
+its two streams go to `/dev/stdout` and `/dev/stderr`, supervisord hands those to the container
+log, and Part 4's ingest is what carries them off the machine. So the console's logs already
+land where this document says they should, and moving a dead Mac job's `/tmp` files would have
+polished a job nothing runs. Both were retired instead:
+
+| label | what was done | evidence it was safe |
+|---|---|---|
+| `com.prospector.ops-console` | `launchctl bootout`, plist renamed `.RETIRED-2026-08-20` | already `disabled`, nothing on 8611, running on Fly |
+| `com.prospector.control-center` | nothing to do | no plist, no snapshot, no override |
+| `com.haworks.continuous-review` | `launchctl bootout`, plist retired | another project; `BROKEN` on every `--check` |
+| `com.haworks.test-coverage` | `launchctl bootout`, plist retired | another project; `BROKEN` on every `--check` |
+| `com.tie.ai-review` | `launchctl bootout`, plist retired | another project; `BROKEN` on every `--check` |
+
+The last three are not Prospector's and were never meant to be tracked here. They were on this
+Mac, `scripts/launchd_plists.py` snapshotted them because nothing said not to, and once their
+checkouts went away `--check` printed three permanent `BROKEN` findings about jobs this repo
+does not own. `--check` went from 11 findings to 1 after the retirement and re-snapshot, and the
+one that remains is real: `com.prospector.process-audit` names a script the stale `prospector-live`
+checkout does not have yet.
+
+**What stops this coming back** is not the retirement, which any reinstall undoes. It is two
+rules read out of files in this repository, so they hold on CI and not just on the Mac that has
+the plists — `tests/unit/test_launchd_tracks_only_prospector.py`:
+
+1. `com.haworks.` and `com.tie.` are in `_FOREIGN_PREFIXES`, so `--snapshot` cannot re-adopt
+   them, and the test fails if either prefix is dropped from that tuple.
+2. **No tracked job may declare a log path under `/tmp`.** macOS purges `/tmp` on reboot, so a
+   log there cannot answer a question tomorrow — which is the defect this step existed to fix,
+   stated once as a rule instead of twice as a fix. The check reads `StandardOutPath`,
+   `StandardErrorPath` and every other string in the plist, so a redirect hidden in an argv is
+   caught too.
+
+*Verification:* 5 passed. Mutation-checked three ways, each killing exactly one test: drop
+`com.haworks.` from `_FOREIGN_PREFIXES`; give a tracked job a `/tmp` `StandardOutPath`; put a
+`com.haworks.*` snapshot back in `ops/launchd/`. Restored: 23 passed across all four launchd
+suites. `rg -n '/tmp/' ops/launchd/` returns nothing.
 
 **Step 4 — Bring `prospector-engine` into the repo. DONE.**
 `deploy/engine/fly.toml` is committed and is what the app is deployed from, alongside
@@ -726,58 +889,233 @@ with 558M of live state and zero references in its own repository cannot be oper
 restored.
 *Verification:* `fly config show -a prospector-engine` matches `deploy/engine/fly.toml`.
 
-**Step 5 — Back up the engine volume.**
-Add a third source to `ops/config/offsite_backup.yaml` for `prospector-engine:/data/store`.
-Config only if the existing engine already handles the fetch shape; a small engine change
-otherwise.
-*Verification:* a `money-db`-style receipt for the new source appears in
-`store/offsite_backup.log`.
+**Step 5 — Back up the engine volume. ALREADY CLOSED.**
+Measured 2026-08-20: `ops/config/offsite_backup.yaml` already declares three engine sources —
+`engine-ledger` (:121), `engine-store-db` (:130) and `repo-mirror` (:139) — each with
+`max_age_hours: 30`, and each written by the `[program:backup]` entry in
+`deploy/engine/supervisord.conf`. Nothing to add. The step was written against an older config.
 
-**Step 6 — The ingest endpoint, engine side.**
-`POST /internal/logs` on `prospector-engine`, private network only. Writes
-`/data/logs/<svc>-<date>.jsonl`. Enforces the three caps in §4.6. No client changes yet.
-*Verification:* `curl` one line from inside the 6PN, confirm it lands; confirm a 17 KB line is
-rejected with 413; confirm a bad key gets 401.
+**Step 6 — The ingest endpoint, engine side. DONE.**
+`prospector/log_ingest.py`. `POST /internal/logs` writes `<svc>-<date>.jsonl` under
+`log_dir()`, which is `/data/logs` on the engine, and it runs as `[program:log-ingest]` in
+`deploy/engine/supervisord.conf:199`. The three §4.6 caps are enforced with the status codes
+this step asked for: `401` on a bad key (`log_ingest.py:529`), `413` on an oversized body and on
+too many lines (`log_ingest.py:533`, `:537`, `:546`). Every drop is counted and the counters are
+readable at `GET /internal/logs/stats`, so a client that is being rejected can be seen rather
+than inferred from an absence.
 
-**Step 7 — First producer: the Mac daemons.**
-A small writer in `prospector/telemetry.py` alongside the existing `route_logs_to_file`
-(`telemetry.py:100`). Buffered, non-blocking, drops on failure. **A logging call must never be
-able to fail a tick.**
-*Verification:* `evt` counts in `/data/logs/scheduler-*.jsonl` match tick counts in
-`store/scheduler/ticks.jsonl`.
+One thing was added that this step did not ask for, and it is the reason the filename uses the
+INGEST's date rather than the line's own `ts` (`log_ingest.py:24`): a client with a wrong clock
+would otherwise create `store-api-2035-01-01.jsonl`, a file the retention sweeper would never
+reach and which would sit on the volume holding personal data forever.
 
-**Step 8 — Second producer: `Store.Api`.**
-An `ILoggerProvider` that batches to the ingest. This is the first PR that touches the money
-service, so it is the first that needs the money-path review. It adds logging only.
-*Verification:* a checkout in test mode produces lines in `/data/logs/store-api-*.jsonl`.
+**Step 7 — First producer: the daemons. DONE, and not in the file this step named.**
+The writer is `prospector/log_shipper.py`, not an addition to `prospector/telemetry.py`.
+`telemetry.py` is on the hot path of every priced call; a shipper that batches, buffers and
+talks to a socket does not belong in it, and keeping them apart is what makes "a logging call
+must never be able to fail a tick" checkable rather than asserted. Both producers attach it:
+`prospector/scheduler/run_scheduled.py:2459` and `prospector/run.py:4472`, each via
+`log_shipper.attach`.
 
-**Step 9 — The correlation id.**
-`X-Corr-Id` through web → api → Stripe session metadata → webhook → fulfilment → delivery.
-Money-path review again.
-*Verification:* one test purchase yields one `corr` value that appears in every stage, queried
-with a single `grep`.
+**Step 8 — Second producer: `Store.Api`. DONE.**
+`store_platform/src/Store.Api/Infrastructure/CentralLog/`, eight files: an `ILoggerProvider`
+(`CentralLogProvider.cs`) over a buffer (`CentralLogBuffer.cs`) and a background shipper
+(`CentralLogShipper.cs`), wired by `CentralLogExtensions.cs` and configured by
+`CentralLogOptions.cs`. It adds logging and nothing else — no money-path behaviour changed,
+which is what let it land without the money-path review this step anticipated.
 
-**Step 10 — The console page.**
+*Verification for all three:* 69 passed — `tests/unit/test_log_ingest.py`,
+`tests/unit/test_log_shipper.py` and
+`tests/unit/test_log_retention_sweeps_where_the_logs_land.py`, plus
+`store_platform/src/Store.Tests/Infrastructure/CentralLogTests.cs` (253 lines) on the .NET side.
+All three shipped in PR #466, and this document did not say so until 2026-08-20.
+
+PR #466 was then reverted off `main` as `739b6d42` at 00:30Z on 2026-08-20 by the automated
+green guard, and re-landed by this branch. The revert is worth recording because the reason it
+gives is not the reason it happened. Main's CI failed on five tests; one of them,
+`test_swallowed_failures_can_only_go_down`, was #466's and is fixed here. The other four —
+`test_console_tool_registry_has_no_drift` and four in `test_prune_branches_absorbed.py` — were
+already failing before #466 merged, from #460 and #467, and were fixed by #488. The proof is
+that CI on the revert commit itself, run `32317556934`, failed on the same five tests: reverting
+#466 did not make main green. So the central logging build was deleted for four failures it did
+not cause.
+
+**Step 9 — The correlation id. DONE.**
+`X-Correlation-Id` through web → api → Stripe session metadata → webhook → fulfilment. Not
+`X-Corr-Id`: see §4.4 for why a second header would have produced two ids per request.
+*Verified in the suite:* `Store.Tests` 425 passed, including `CorrelationIdIsOneIdTests`, which
+drives the real middleware pipeline and asserts the id this service uses IS the one the package
+minted — so a rename inside `Crux.Observability` fails the build instead of silently re-splitting
+the trail. `Store.Web` 874 passed, including a source scan asserting all ten calls to our own API
+carry the header. Both guards were mutation-checked: removing the adoption branch gives
+`Failed! - Failed: 1`, and stripping `correlated(` from one call site gives `Tests 1 failed`.
+*NOT yet verified live:* nobody has run a real purchase end to end and grepped one `corr` across
+all stages. That proof belongs to the scheduled buy-a-pack drill (M8), and until it runs this step
+is proven in-process only.
+
+**Step 10 — The console page. DONE.**
 `/logs` in Ops.Console, through the existing dispatcher read verb. Registered in the view
 allow-list, which the drift test in `tests/unit/test_console_tools_run.py`
 (`test_the_browser_view_allowlist_matches_the_gateway`) already enforces.
-*Verification:* the page renders and the drift test passes.
+*Verified:* `test_the_browser_view_allowlist_matches_the_gateway` passes with `logs` on both
+sides, and `tests/unit/test_log_search.py` (16 tests) drives the reader — including the cases
+where it stops early, so a bounded search can never render as a quiet estate.
 
-**Step 11 — The retention sweeper.**
-A new `ops/automations/log_retention.py` + `ops/config/log_retention.yaml` (doc-lint-ok:
-neither exists yet — this step is what creates them), following the
-`ops/automations` contract exactly: report-only by default, `--fix` to delete, `--json` for the
-console, exit 0 clean / 1 findings / 2 cannot establish. Fails closed if it cannot establish a
-file's age (P6).
-*Verification:* report mode names the files it would delete and deletes nothing.
+**Step 11 — The retention sweeper. DONE, and not as this step instructed.**
+The instruction above was to write a new module, `ops/automations/log_retention.py` (doc-lint-ok),
+carrying its own declaration, `ops/config/log_retention.yaml` (doc-lint-ok). Neither should ever
+exist, and the reason is worth recording because the same mistake is available on every future
+step of this document.
 
-**Step 12 — Cold tier and the restore drill.**
-Daily gzip of yesterday's files to R2 `prospector-backup/logs/` with a 90-day lifecycle rule.
-Then run the §6.4 drill once and write the date and result into `store/backup.log`.
-*Verification:* step 5 of the drill passes — a historical grant token decrypts against the
-restored key ring.
+`ops/automations/log_rotation.py` already implements the whole contract this step asked for:
+report-only by default, `--fix` to delete, `--json`, `--config PATH`, exit 0 clean / 1 findings /
+2 could not establish, plus two things the new module would not have had on day one — a
+`max_delete` cap that refuses a glob that matches more than its author believed, and
+`resolve_prune`, which will not follow a symlink, will not cross a `.git` segment and skips any
+file git is tracking. A second module would have been a second copy of a tested engine, and the
+copy is where the next deletion accident lives.
+
+So Step 11 is two edits to files that already exist, and a test that pins the one thing the edits
+cannot prove about each other.
+
+*The declaration.* One prune target appended to `ops/config/log_rotation.yaml`:
+`/data/logs/*.jsonl`, `older_than_days: 14`, no `keep_newest`. Age only is deliberate — a count
+bound holds a file forever on a service that stopped emitting, and that is precisely the case
+where a stale log still contains personal data (§5.3) and no longer answers any question.
+
+*The path is absolute on purpose, and this was the second design.* The first attempt set
+`PROSPECTOR_LOG_DIR=/data/logs` in `deploy/engine/Dockerfile`, `deploy/engine/fly.toml` and the
+Mac plist, and declared the target as `$PROSPECTOR_LOG_DIR/*.jsonl`. It was built, tested green
+and then reverted, for two measured reasons:
+
+- `ops/launchd/*.json` is a SNAPSHOT of the plists installed on this Mac, not a source that
+  anything installs from — `scripts/launchd_plists.py` has `--check` and `--snapshot` and no
+  installer, and it duly reported the edit as *drift*. Committing it would have asserted a
+  machine state that does not exist.
+- An unset variable is not a quiet no-op in this engine. `_assert_expanded` raises
+  `CannotEstablish`, and `run()` catches that at the top level and returns `status="unknown"`
+  for the WHOLE run. A Mac that never got the variable would therefore also stop reporting on
+  Hermes' logs, the Adobe pile and the daemon's own stdout — one missing variable blanking four
+  unrelated targets.
+
+`/data/logs` simply does not exist on this Mac, so the target reports zero files, which is the
+truth. The cost is that the string restates what `log_ingest.log_dir()` derives from the store
+root, and that cost is paid by the test below.
+
+*Something has to run it.* Measured before this step,
+`rg -n log_rotation ops/launchd/ .github/workflows/ deploy/engine/` returned exactly one hit —
+the Mac plist. Nothing pruned `/data/logs` at all, so the declaration alone would have been a
+policy that is off. `[program:log-retention]` in `deploy/engine/supervisord.conf` runs it daily
+(the bound is 14 days; a sweep a few hours late deletes the same files) through `receipt.sh`, so
+the exit code lands in `$PROSPECTOR_STORE_DIR/ops/receipts/` — a silently failing sweep is the
+Step 2 defect again, and this is what stops it being invisible. `priority=50` puts it after every
+program that produces logs; it holds no descriptor on what it deletes and opens no database, so
+it cannot wedge a producer.
+
+*Verification:* `tests/unit/test_log_retention_sweeps_where_the_logs_land.py`, 8 passed.
+Report mode names the old files and deletes nothing; `--fix` deletes past the window and leaves a
+file one hour inside it; the glob leaves a `.json` and a `.db` sitting beside the logs. The test
+that justifies the whole file asserts that the declared glob's parent equals
+`log_ingest.log_dir()` under the `PROSPECTOR_STORE_DIR` the engine Dockerfile declares, so the
+two halves cannot drift apart in silence. Mutation-checked four ways — remove
+`[program:log-retention]`, point the glob at `/data/store/logs`, widen the window to 30 days, drop
+`--fix` — each kills exactly one test, and the restore is green.
+
+**Step 12 — Cold tier. DONE. The restore drill is NOT this document's to close.**
+The cold tier is a `logs` source in `ops/config/offsite_backup.yaml`, and no new code:
+`ops.automations.offsite_backup` already fetches, verifies, prunes and grades freshness, and
+already runs daily as `[program:offsite-backup]` (`deploy/engine/supervisord.conf:109`).
+
+Why this is a `source` and not a line in the retention sweeper: `ops/config/log_rotation.yaml`
+deletes `/data/logs/*.jsonl` at 14 days, and §5.3 makes that a data-protection bound rather than
+a storage preference, so the deletion cannot be postponed to cover a failing archive. Fourteen
+days is therefore the entire margin. If this stops depositing and nobody notices for two weeks,
+the logs are gone from both places at once — which is exactly why it needed the freshness grade
+a `source` gets and a `watch` prefix does not.
+
+Three decisions in it that differ from the instruction above, each stated rather than buried:
+
+| | This step said | What shipped, and why |
+|---|---|---|
+| retention | a 90-day R2 lifecycle rule | `keep: 90`, enforced by this job's own prune. A lifecycle rule lives in Cloudflare's console, where no clone can read it, nothing here can grade it, and it does not move with the estate. One daily object, so 90 copies is 90 days. |
+| location | `prospector-backup/logs/` | `prospector-backup/offsite/logs/engine-logs-*.tgz`. `offsite/` is the declaration's storage prefix, shared by every source; carving out an exception would need a special case in the prune, the freshness check and the restore procedure. |
+| the archiver | "daily gzip" | A five-line Python program in the declaration, not `tar` and not a shell glob. `date -u -d yesterday` is GNU-only, so a shell one-liner would pass on the Linux runners and fail on a developer's Mac. |
+
+**An empty day exits non-zero on purpose.** `[program:log-ingest]` runs continuously and the
+scheduler ticks every 7200s, so a day with no log file does not mean a quiet day, it means the
+ingest died. An empty archive would upload, pass `verify: tgz`, and be graded fresh — a green
+light reporting the exact outage it exists to catch.
+
+*Verification:* 5 passed, `tests/unit/test_offsite_backup_archives_logs.py`, which runs the argv
+out of the declaration itself rather than a copy pasted into the test. Mutation-checked four
+ways, each killing its own test: delete the `logs` source (4 errors); `keep: 90` → `30` (1
+failed); make an empty day exit 0 (2 failed); archive today instead of yesterday (2 failed).
+Restored: 5 passed.
+
+**What is left, and it is not a logging task.** §6.4 step 5 — a historical grant token
+decrypting against a restored key ring — needs a throwaway Fly app booted from the same
+Dockerfile. That is new infrastructure and a founder decision, and it grades the
+`data-protection-keys` source rather than anything on this page. It belongs to M4 (prove the
+backups restore) in `docs/LAUNCH_OPS_PROGRAM.md`, and it stays open there rather than being
+marked done here. `scripts/restore_drill.py` runs weekly as `[program:restore-drill]`
+(`deploy/engine/supervisord.conf:135`) and drills the ENGINE STORE, which is a different
+datastore and does not close §6.4.
+
+**TWO IMPLEMENTATIONS OF THIS STEP LANDED, AND THAT IS AN OPEN DEFECT.** The paragraph above
+describes the `logs` source in `ops/config/offsite_backup.yaml`, driven by
+`ops.automations.offsite_backup`. PR #518 independently shipped `archive_logs()` in
+`scripts/backup_store.py`, which gzips every closed day file to `prospector-backup/logs/` from
+inside `[program:backup]`. Both are merged, both have passing tests, and they archive the same
+files to overlapping prefixes on the same schedule.
+
+Neither can be deleted casually, because deleting either removes tested work — which is exactly
+the trap `CLAUDE.md` names: "two implementations of one class are worse than none". Whoever picks
+this up chooses ONE, proves the other's tests are covered by it, and removes the loser in a single
+commit. Do not leave both running: two daily uploads of the same day, pruned by two different
+rules, is a restore that silently picks the wrong copy.
 
 ---
+
+**Step 13 — Third and fourth producers: the storefront and the console. DONE. This step was not
+in the original twelve, and its absence was the gap.**
+Steps 7 and 8 shipped the daemons and `Store.Api`. Measured 2026-08-20, that left two of the four
+things a customer or an operator actually touches producing nothing a central reader can see:
+`Store.Web` (mumchimp.com) and `Ops.Console`. A browser error on the shop front, or a failed read
+in the admin console, existed only in a Fly container's stdout for that machine's lifetime.
+
+Four pieces:
+
+| piece | file | what it does |
+|---|---|---|
+| the Node shipper | `Store.Web/src/lib/centralLog.ts` and `Ops.Console/src/lib/centralLog.ts` | the Node end of §4.5. Queue of 1000, batches of 200 every 2s, 3s timeout, drops rather than blocks, never throws, server-only. |
+| the browser's way in | `Store.Web/src/pages/api/client-log.ts` | a POST-only route. The browser cannot reach the ingest directly — see below. |
+| the storefront's first caller | `Store.Web/src/components/ErrorBoundary.tsx` | a React crash now reports itself, carrying `X-Correlation-Id` so the line joins the §4.4 trail. |
+| the console's first caller | `Ops.Console/src/lib/oplog.ts` | every existing `ConsoleEvent` also ships centrally. The two destinations it already had are unchanged. |
+
+**The ingest key must never reach the browser**, which is why the storefront posts to its own API
+route rather than to `:8613`. `STORE_INTERNAL_API_KEY` in a module the client bundle imports would
+be published in JavaScript to every visitor. That is enforced, not conventioned: a source scan in
+`clientLogRoute.test.ts` asserts nothing outside `pages/api/`, `lib/centralLog*` or `__tests__`
+imports the shipper, and `configured()` returns false whenever `window` is defined.
+
+**The shipper file is copied, not shared, and a test in EACH app refuses drift.** The two Next
+builds have separate `package.json` files and no workspace between them, so there is nowhere for
+one copy to live. The reason the guard is duplicated rather than written once is the CI path
+filter at `.github/workflows/ci.yml:390-402`: `wb` selects on `^store_platform/src/Store\.Web/`
+and `cn` on `^store_platform/src/Ops\.Console/`, so a single-lane drift test would be skipped by
+exactly the one-app change that causes drift.
+
+**Nothing here can fail a request or a build.** `ship()` is wrapped in try/catch and returns a
+boolean nobody is required to read; a failed POST increments `failed_posts` and is dropped, never
+retried; the flush timer is unrefed so a short-lived `next build` process is not held open.
+
+**Deployment note — the code is safe to land before the secret exists.** `configured()` is false
+without `STORE_INTERNAL_API_KEY`, so an unconfigured app counts `dropped_unconfigured` and behaves
+exactly as it does today. `prospector-store-web` needs that secret set before the storefront's
+lines appear; `Ops.Console` runs on `prospector-engine`, which already has it.
+
+*Verification:* 26 passed across six test files. Mutation-checked six ways — see the PR for the
+table.
 
 ## Part 9 — Open gaps and what closing each costs
 

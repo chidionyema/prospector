@@ -17,12 +17,12 @@ tolerance, and off-machine monitoring via the Hermes Telegram agent.
 
 | Metric | Baseline (2026-08-06) | Target | Probe |
 |---|---|---|---|
-| Verdict calls that bought no ruling — **CURRENT** | **45.9%** (2026-08, n=1998) | < 35% | `scripts/engine_yield.py` (to write, P1) |
+| Verdict calls that bought no ruling — **CURRENT** | **45.9%** (2026-08, n=1998) | < 35% | `scripts/engine_yield.py` (to write, P1) <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition --> |
 | Verdict calls that bought no ruling — all-time | 66.8% (4957/7421) — *historic average, see §3* | n/a | same |
-| Live PASSes failing today's gate | ~~5 of 83~~ → **0 of 78** (all 5 re-vetted to KILL) | 0 | `scripts/replay_pass_gate.py` (to write, P0) |
+| Live PASSes failing today's gate | ~~5 of 83~~ → **0 of 78** (all 5 re-vetted to KILL) | 0 | `scripts/replay_pass_gate.py` (to write, P0) <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition --> |
 | Killed packs still publicly listed | **5** (no retract path exists — §7) | 0 | `ls store/listings/` vs `*.kill.json` |
 | Live PASSes past re-vet SLA | **29 of 83**, max 21d overdue | < 5 | decay sweep counters in tick log |
-| Unwired rails (impl + tested + 0 prod callers) | **6 known** (1 fixed, 5 open) | 0 | `scripts/unwired_rails.py` (to write, P2) |
+| Unwired rails (impl + tested + 0 prod callers) | **6 known** (1 fixed, 5 open) | 0 | `scripts/unwired_rails.py` (to write, P2) <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition --> |
 | Off-machine alert delivery | **inert** (`ALERT_WEBHOOK_URL` unset) | Telegram, debounced | `estate_alert.py --dry-run` + tick log |
 | Distinguishable limit classes | **1** (everything → 3600s) | 3 (5-hour / weekly / permanent) | `tests/unit/test_errors_limits.py` (to write, P1) |
 
@@ -112,19 +112,48 @@ defining property and it is why this needs a mechanical probe, not vigilance.
 | 2 | `kill_decay.py:18::get_active_steers` | 0 | open — kill-rate steering never activates |
 | 3 | `kill_decay.py:257::re_seed_suggestions` | 0 | open — suggestions never refresh |
 | 4 | `kill_decay.py:120::check_diversity_floor` | 0 | open — no kill-clustering detection |
+| 4a | `kill_decay.py::get_stale_domains` | 0 | open — same module, same sweep |
+| 4b | `kill_decay.py::decayed_kill_ids` / `iter_revet_claims` | 0 | open — **and would return 0 rows if wired**; see below |
 | 5 | `scheduler/guard.py:266::guard_check` | 0 | open — deprecated; `guard_from_config` is live |
 
-> Rows 1–5 are **AGENT-REPORTED (unverified)** — from a caller-graph sweep excluding `tests/` and
-> `scripts/`. Each must be re-verified on disk before any of them is wired. Rows 2–4 are the same
-> module, which suggests `kill_decay.py` is dead wholesale rather than three separate omissions;
-> that is a hypothesis, not a finding.
+> Rows 1 and 5 remain **AGENT-REPORTED (unverified)** — from a caller-graph sweep excluding
+> `tests/` and `scripts/`. Each must be re-verified on disk before it is wired.
+>
+> **Rows 2–4b are VERIFIED on disk, 2026-08-20.** `rg` over the tree for all six public names in
+> `kill_decay.py`, excluding the module itself and `tests/`, returns only two `specs/*.md` design
+> documents and this file. The earlier hypothesis — "`kill_decay.py` is dead wholesale" — is now a
+> finding: the module has no production caller at all, not three separate omissions.
+>
+> **Row 4b carries a second defect, and it is the one that matters if anyone wires this module.**
+> `decayed_kill_ids` requires a top-level `verdict == "KILL"` and reads its date from
+> `killed_at` / `timestamp` / `ts`. Real dossiers carry neither. Measured over the 2,698
+> `*.kill.json` files in `store/dossiers/`: **0 have a top-level `verdict` key** (they carry
+> `decision`, whose value is the lowercase string `kill` on all 2,698) and **0 have `killed_at`**
+> (they carry `created_at`, on all 2,698).
+>
+> Two angles, and they agree. The key census above is one. Running the function against that real
+> corpus is the other: `decayed_kill_ids` returns **0 ids** at `half_life=30/revisit_below=0.5`, at
+> `revisit_below=1.0`, and at `half_life=365/revisit_below=1.0` — the last of which every one of
+> the 2,698 kills should clear.
+>
+> So the R2 per-candidate claim lock (`prospector/claim_lock.py`, `tests/unit/test_claim_lock.py`)
+> guards a walker that yields nothing. Its tests pass because their fixture writes
+> `{candidate_id, verdict, killed_at, domain}` — a four-key shape production has never written.
+> This is the same fixture defect that hid the lint-receipt bug in `tests/test_kill_decay.py`, in a
+> second file.
+>
+> **Deliberately not fixed here.** Correcting the read keys would make 2,698 killed candidates
+> eligible for re-vet the moment anything calls the walker, and a re-vet spends money on the moat.
+> That is a founder decision (LAW 11), not a drive-by patch, and there is no caller today so
+> nothing is currently broken by leaving it. Wire the caller and fix the keys in the same change,
+> with a bound on how many re-vets a tick may start.
 
 Same sweep reported, also unverified: **`adaptive.py` is fully wired** (all 8 functions called from
 `run.py` / `diagnostics.py`), **no write-only fields remain in the Dossier model**, and **index
 reconciliation is manual by design** — the daemon detects orphaned rows (`run.py:1300-1306`) but
 deliberately does not fix them; only `scripts/reconcile_orphan_index.py` does.
 
-**P2 deliverable:** `scripts/unwired_rails.py` — walks `prospector/`, builds a caller graph with
+**P2 deliverable:** `scripts/unwired_rails.py` — walks `prospector/`, builds a caller graph with  <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition -->
 `tests/` and `scripts/` excluded from the caller set, fails CI on any public function with zero
 production callers that is not on an explicit allowlist. This turns a class of bug that survived two
 occurrences into a build failure.
@@ -308,7 +337,7 @@ a probe, not a paragraph" for this engine.
 2. Confirm `schedule.decay_per_tick: 2`. ← decision
 3. Re-vet the 5 pre-gate PASSes. ← decision
 4. Wire the Telegram sink (§5) with the dry-run test fence.
-5. `scripts/replay_pass_gate.py` — make "live PASSes failing today's gate" a probe, not a memory.
+5. `scripts/replay_pass_gate.py` — make "live PASSes failing today's gate" a probe, not a memory.  <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition -->
 
 **P1 — reliability and yield (next).**
 6. Three limit classes + absolute reset parsing (§4).
@@ -316,7 +345,7 @@ a probe, not a paragraph" for this engine.
 8. Prompt work on `payer_solvency` and `legality` — the two worst checks.
 
 **P2 — make the class extinct.**
-9. `scripts/unwired_rails.py` in CI (§2).
+9. `scripts/unwired_rails.py` in CI (§2).  <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition -->
 10. Verify rails 1–5 on disk, then wire or delete each. Deleting is a legitimate outcome; a rail
     nobody wants is cheaper gone than dormant.
 11. Stamp `delivery_proof.json` so the estate probe sees this engine.
@@ -419,6 +448,218 @@ scheduler-test fix; the one failure was this session's own decay wiring meeting 
 fake config, now fixed. **A full-suite re-run is still owed.**
 
 ---
+
+## 8. Progress log — 2026-08-20/21: the ops console outage, and why generation is paused
+
+**Read this first if you find `store/scheduler/PAUSE_GENERATION` armed on the engine.** It was
+armed by hand at 22:53 UTC on 2026-08-20 and the reason is written inside the file. From this
+release it can also arm itself; see "The autopause" below.
+
+### What the founder saw
+
+"dashboard is not loading any data again". Measured inside the container, 34 console reads: **20
+hit the 30s ceiling and the fastest was 8475ms.** Loadavg 25.83. CPU steal 90.7%, user 6.8%.
+After the pause: nine consecutive reads at 478, 615, 620, 812, 874, 895, 1230, 1257, 1298ms,
+loadavg 4.09, no 502s.
+
+### The chain, end to end
+
+1. The MiniMax token plan ran out. Every call came back HTTP 429.
+2. `errors.classify_exhaustion` grades a bare 429 as TRANSIENT backpressure, which is correct on
+   its own terms — a 429 usually means slow down, not stop.
+3. So the MiniMax adapter's own ladder (`operator.py:833-861`) retried: 5s, 10s, 20s, 40s, four
+   times per call. No brain was ever marked dead.
+4. `_moat_blind_reason` needs EVERY verdict brain dead before it skips a tick. One brain was
+   nominally alive, so it never fired and generation kept running.
+5. Generation produced zero candidates, wave after wave, and the fallthrough spawned `claude -p`
+   runtimes to do the query-writing. Four of them at once.
+6. Four Node runtimes on a `shared-cpu-2x` took the box to 90.7% steal. The ops console
+   (`next-server`, same container) was starved: `console_api` import measured 6078ms under load
+   against 125ms idle.
+
+**The engine was minting work that no brain could finish, and paying for the privilege with the
+CPU the console needed to say so.**
+
+### Why the fix is not "teach the error classifier about this 429"
+
+`prospector/errors.py` carries four comment blocks recording the same fix attempted four times,
+each time by adding the vendor's newest noun: "free usage" (2026-08-09), "free trial"
+(2026-08-13), "spend limit" against "usage limit", and word boundaries on the HTTP codes. Every
+one of them was correct and none of them held, because the wording is the vendor's to change.
+
+**Grade the OUTCOME instead.** Barren generation is barren generation whichever provider is down
+and whatever it says. That is the rail below.
+
+### The autopause — new, and ON by default
+
+`_autopause_generation_on_barren_streak` in `prospector/scheduler/run_scheduled.py`, called from
+`_emit_tick_alerts` on every tick.
+
+- The alert `barren_streak` has existed for months and stopped nothing. It now STOPS first and
+  tells second.
+- **One threshold, not two.** It reads the alert spec the alerter already produced, so "this is
+  an outage" and "this stops generation" cannot drift apart. Change it in
+  `alerts.alerts_for_tick`, once. Today: three consecutive barren real ticks.
+- **Scope is `generation`, never `all`.** It arms `PAUSE_GENERATION`. The drain keeps running and
+  keeps finishing the work already in the queue, which is exactly the half-stop CLAUDE.md
+  describes. `PAUSE` is the liability rail and this never touches it.
+- **It does not self-clear.** The founder asked for that directly: "and we can restat fron
+  adnindashboard hwen we are able to". A rail that re-opens by itself re-opens into the same
+  outage.
+- **It writes down why.** The pause file carries the tick count, what it means, and the way back.
+  `pause.arm` keeps the FIRST armer's reason, so an automatic pause never overwrites an
+  operator's.
+- **A stop that fails to arm is louder than one that works.** If `pause.arm` raises, the function
+  emits a CRITICAL `autopause_failed` alert naming the exception and saying generation is STILL
+  RUNNING, then returns without taking the daemon down with it.
+- Switch: `schedule.autopause_on_barren_streak` in `config.yaml`, default `true`.
+
+### How to resume
+
+**From the admin console, which is what it is for.** `/engine`, the generation row, the button
+reading "Start it again" (`store_platform/src/Ops.Console/src/pages/engine.tsx:823`, registered
+at `prospector/ops/console_api.py:2549`). By hand:
+`rm /data/store/scheduler/PAUSE_GENERATION` on the engine.
+
+**Resume only after the provider is funded.** Nothing about this pause fixes the token plan; it
+stops the engine burning CPU and subscription allowance on work it cannot finish.
+
+### One Claude CLI process, not four
+
+Founder directive 2026-08-20, verbatim: "for the last tine i donnt want 4 claude processes, its
+epensive", "1 cludclaude cli", "not 4", "this needs to be enforce ruthlessly".
+
+`claude_cli.MAX_CLAUDE_CLI = 1` clamps every path into the governor — `config.yaml`, the
+dashboard overlay, and `PROSPECTOR_CLAUDE_CONCURRENCY` alike — and logs a warning naming the
+directive when a larger number is asked for. The env var still works as a way DOWN, never back
+up. `config.yaml retrieval.claude_concurrency` and `config.Retrieval.claude_concurrency` are both
+1, but they are defaults; the clamp is the refusal, because a default can be overridden from the
+dashboard and a clamp cannot. `tests/unit/test_one_claude_cli_process.py` fails if the ceiling
+moves.
+
+Money, not just CPU: every `claude -p` spends the subscription allowance, so four of them reach
+the usage wall four times sooner.
+
+### A pause reason written by a human now reaches the panel
+
+Every runbook in this repo says `touch store/scheduler/PAUSE`, and an operator in an incident
+writes a sentence, not JSON. `readmodel.pause_view` used to call `json.loads` on the body and
+reset it to `{}` when that raised, so the console rendered `reason: null`. **A pause that renders
+without a reason reads to the next person exactly like a crash.** JSON still wins when it parses;
+a plain sentence now becomes the reason with `actor: hand`.
+
+## 9. The pipeline gap — production could run code main had already taken back
+
+Founder, 2026-08-21, on being shown that the fix for the console outage only changed production
+once it was deployed: **"why, this is a gap is our pipeline process"**, and then **"we need to
+iron it out properly"**.
+
+### What was measured, three angles, all on 2026-08-21
+
+1. **The deploy does not wait for CI.** `deploy-engine.yml (deleted 2026-08-26, crew#203)` fires on `push` to
+   `main`. Its only gate is `deploy: needs: test`, and that `test` job is the Ops.Console lane —
+   `npx tsc --noEmit` and `npx vitest run`. Nothing else is graded before the image ships. The
+   probe printed the proof during this very session: production on `61cfb7d1` while
+   `scripts/live_checkout.py` reported `CI on it   pending: still in_progress` for that same
+   commit.
+2. **One of the two main guards reverts without re-deploying.** `main-admission-guard.yml` does
+   the right thing: its step "Put the estate back, not just git" dispatches every deploy the bad
+   commit had already set off. `main-green-guard.yml` does not. It pushes the revert with
+   `GITHUB_TOKEN`, which starts no workflow runs — deliberately, so it cannot recurse — and then
+   dispatches CI and only CI. Its own header says it plainly: *"WHAT IT DOES TO PRODUCTION.
+   Nothing directly."* Eight reverts landed on main in the three days to 2026-08-21.
+3. **Nothing compared the running image to main.** Before this work, `rg deployed_commit` and
+   `rg GIT_SHA` matched exactly one file in the repo — `scripts/live_checkout.py` — which runs
+   when a person runs it. None of the fifteen workflows checked for drift.
+   `com.prospector.live-update`, the launchd job that would have run the probe every 60 seconds,
+   is not loaded.
+
+Put together: a red commit can reach production, be reverted on main, and **keep serving**, with
+every instrument in the estate reading green. A deploy that never happens leaves no failed run
+behind, so no alert here could ever have fired on it.
+
+### What was built
+
+`scripts/deploy_reconcile.py (deleted 2026-08-26, crew#203)` plus `production-runs-main.yml (deleted 2026-08-26, crew#203)`. It asks the one
+question that stays true whatever the cause: **is the image production is running the one main
+says it should be?** When it is not, and the difference is real, it dispatches
+`deploy-engine.yml`. It never builds and never pushes, so there is still exactly one route to
+production with its gates and its rollback intact.
+
+It reuses rather than reimplements. `live_checkout.deployed_commit()` reads `/app/GIT_SHA`,
+`live_checkout.ci_verdict()` grades main, and `live_checkout._deployed_changes()` reads the
+shipped-paths filter out of `deploy-engine.yml` on origin/main — a second copy of that filter
+would drift silently in the one direction that matters, production graded current while a real
+change sits unshipped, and `test_the_deploy_path_filter_is_never_copied_into_this_script` fails
+if anyone copies it.
+
+**The eight refusals, which are most of the value:**
+
+| situation | what it does | why |
+|---|---|---|
+| main's CI is `fail`, `none` or `unknown` | refuses, opens the issue | shipping an ungraded commit to close a drift is worse than the drift |
+| the image stamp cannot be read | refuses, opens the issue | "I could not tell" is never "it is fine", and never a licence to deploy |
+| a deploy is already running | waits | the same reason `deploy-engine.yml` sets `cancel-in-progress: false` |
+| 3 deploys already dispatched in 6h | refuses, opens the issue | every release up to v15 shipped without `GIT_SHA`; a drift that cannot close would otherwise pay for a Fly build every hour, forever |
+| a secret is staged on the app | refuses, names the secret | **a Fly deploy APPLIES staged secrets.** Without this the robot turns "a session staged a credential" into "it is live in production", hourly, with nobody in the path at the moment it happens. Not hypothetical: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_HOME_CHANNEL` were staged on this app on 2026-08-20 precisely so they would not go live until someone chose |
+| the secret list cannot be read | refuses | flyctl and the token are both in the step's env, so a failure there is a fault rather than an absence |
+| `~/.prospector/ACTIVE` says a side that is not `fly` | refuses | `AUTOFAILOVER` is armed, so the serving side can move with no human. Deploying the side that is not serving restarts four processes on a box nobody is using |
+| `~/.prospector/ACTIVE` is absent | **proceeds, and says so** | the opposite direction from every other row, deliberately. That marker lives in a home directory on the laptop and can never exist on a GitHub runner, so refusing on absence would make the robot permanently inert in the only place it actually runs |
+
+It also does nothing when the commits differ but nothing the image ships does. A docs merge is
+not a drift, and an alarm that is usually wrong is one that gets ignored.
+
+**Triggers and cost.** Hourly cron, plus one run every time CI concludes on main — which is the
+moment a drift can first be healed, and exactly the case a `main-green-guard` revert leaves
+behind. About 24 runs a day, each a checkout, a flyctl setup and one `fly ssh` read.
+
+**Alerting.** A failure opens a GitHub issue titled `production is not running main`, reuses that
+issue rather than duplicating it while the drift lasts, and closes it on the first run that finds
+production on main. The alarm step hangs off `failure()` of the check itself and nothing
+narrower, because a reporting mechanism whose trigger is narrower than the thing it reports on is
+never reached while every instrument still reads green
+(`tests/unit/test_an_alarm_must_run_when_the_thing_it_alarms_on_fails.py`).
+
+### The last four rows of that table are LAW 11 paying for itself
+
+The first three refusals were mine. The last four came back from a peer review of the plan,
+before it landed, and neither of the two risks behind them was visible from inside this
+session: that a Fly deploy applies staged secrets, and that `~/.prospector/ACTIVE` can move
+the serving side with no human. The correction to the correction was mine — the peer asked
+for a refusal when `ACTIVE` is not `fly`, which would have made the robot inert on
+`ubuntu-latest`, where that file cannot exist at all.
+
+One more thing the estate refused, and was right to: the workflow was first called
+`deploy-reconcile.yml`. `test_every_deploy_ships_on_green_main.py (deleted 2026-08-26, crew#203)` globs
+`deploy-*.yml` and holds every match to the contract of a workflow that SHIPS code — on a
+push to main, in the admission guard's re-dispatch map, with matching path filters. This one
+dispatches a deploy and never ships anything, so it is `production-runs-main.yml` now.
+
+### What this does NOT fix, and why it was not taken unilaterally
+
+Hole 1 stays open. The reconciler heals a bad state; it does not prevent one. Making
+`deploy-engine.yml` wait for CI green — a `workflow_run` gate instead of `on: push` — would stop
+an ungraded commit reaching production at all, at the price of the CI wait on every merge. That
+price is the founder's to accept, so it is the next decision on this file, not a task.
+
+**The price, measured rather than guessed.** This paragraph said "a ~25 minute CI run" until
+2026-08-21, which was a number from memory, and it made the case against waiting sound much
+stronger than it is. `gh run list --workflow ci.yml --branch main --limit 20`, taking
+`updatedAt - createdAt` so the queue is counted the way a waiting deploy would feel it:
+
+| population | n | median | min | max | green |
+|---|---|---|---|---|---|
+| CI on main, last 20 concluded | 20 | 8.5 min | 5.0 | 63.1 | 16/20 |
+| the last 12 of those | 12 | 5.7 min | 5.0 | 10.2 | — |
+| `deploy-engine.yml`, last 8 | 8 | 3.9 min | 3.2 | 4.7 | 8/8 |
+
+The 25.8, 31.9 and 63.1 minute runs are all older than the CI fleet work, so the recent figure is
+the one that decides this. **The gap, on the very commit that produced this section:** `61cfb7d1`
+deployed in 3.2 minutes and was graded in 5.3. The image was serving in production about two
+minutes before its own verdict arrived. Not hours — two minutes, on every merge, every time.
+
+At roughly six minutes of added latency, the argument against waiting is weak. The recommendation
+is to gate it. The ruling is still the founder's.
 
 ## Open decisions (not taken unilaterally)
 

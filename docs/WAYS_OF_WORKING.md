@@ -271,9 +271,17 @@ session will not find it.
 
 ### W19. Follow the pull request to merged
 
-Raising it is not finishing. The automerge workflow on `main` lands a PR when CI concludes
-success, so the follow-through is usually watching, not merging. A PR that has sat with a failing
-check for an hour is unfinished work.
+Raising it is not finishing, and since 2026-08-20 the last step is yours. There is no merge robot:
+the automerge workflow was deleted on founder decision after the branch update it performed moved
+fifteen pull request heads and jammed the board for thirty hours. Watch the checks, and when CI
+concludes success, merge it:
+
+```bash
+gh pr merge <n> --squash --delete-branch
+```
+
+A PR that has sat with a failing check for an hour is unfinished work. So is a green one nobody
+merged.
 
 ### W20. Nothing is shipped until production runs it
 

@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { Breadcrumbs } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { CartButton } from '@/components/cart/CartButton';
-import { LEGAL, BRAND } from '@/lib/config';
+import { LEGAL, BRAND, traderIdentity } from '@/lib/config';
 import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { tightDecimal } from '@/components/ui/Money';
@@ -176,9 +176,35 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
         Skip to content
       </a>
 
-      {/* The drawing puts the dark strip ABOVE the header on all eleven pages, and it scrolls
-          away rather than sticking. See `TodayRibbon` for why the tag prints a date. */}
-      <TodayRibbon />
+      {/* THE KILL RIBBON NOW APPEARS ONLY ON `/kill-log`, AND THAT IS A DELIBERATE DIVERGENCE
+          FROM THE DRAWINGS.
+
+          The drawings put the dark strip above the header on all eleven pages, and until
+          2026-08-21 so did we. Measured that day against live, all twelve marketing routes opened
+          with the identical line, printed above the logo:
+
+            "Killed 7 Aug · Sound Check Rounds, the monthly noise test that keeps a small music
+             venue's licence safe · Read the verdict"
+
+          The founder read it cold and said: "first tine user just gets hit with kill log no
+          contexxt no idea wtf is going on", "NOno brand acquainyance", "just a static headline
+          about kill log". The first sentence on the shop was a dated rejection of a business the
+          reader had never heard of, using a word that only means something once you know what we
+          do, and the brand came second.
+
+          On `/kill-log` the strip is right, because the visitor clicked "Kill log" and is oriented
+          by their own click. Everywhere else the header goes first.
+
+          WHAT THIS COSTS. The strip was added 2026-08-18 for pixel parity: without it every page
+          rendered 44px higher than its drawing. Those eleven pages now diverge from their drawings
+          by that 44px again, and the drawings should be redrawn rather than the strip put back.
+          `docs/FIRST_RUN_AND_NAVIGATION_PROGRAM.md` §2 carries the trade and item FR-1 carries the
+          replacement: the drawings' OTHER documented variant, the teal "survivor" ribbon that
+          links to a pack (`docs/design/mumchimp-build-bundle/components.html:541`), which was
+          never built. That one orients instead of confusing, and it belongs above the header.
+
+          Gated by `e2e/first-run.spec.ts` FR1 and FR2 so it cannot come back by accident. */}
+      {router.pathname === '/kill-log' && <TodayRibbon />}
 
       {/*
         White chrome (brand v3, 2026-08-06). The near-black band is gone.
@@ -247,7 +273,16 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
           </Link>
           {/* Renders nothing until there is something in it, see CartButton. */}
           <CartButton />
-          <button type="button" className="icon-btn" aria-label="Search" onClick={openSearch}>
+          {/* "Search the catalogue", not "Search". Below 980px `mumchimp.css:436` sets
+              `.fb-in{display:none}`, so the shelf toolbar's own trigger is not rendered on a
+              phone and THIS button is the only search control the reader has -- which is the job
+              the docblock above hands it. The name is what `e2e/discovery.spec.ts:254,266` scopes
+              to `header` to prove that both dispatch paths work, and the redraw renamed it to the
+              bare verb, so those two tests have been failing on live since 2026-08-19. A specific
+              accessible name is also the better one: "Search" alone tells a screen-reader user
+              nothing about what is being searched. Invisible to the drawing -- `parity.mjs` drops
+              aria-label, and the button renders an icon, not this text. */}
+          <button type="button" className="icon-btn" aria-label="Search the catalogue" onClick={openSearch}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <circle cx="9" cy="9" r="6.25" stroke="currentColor" strokeWidth="1.7" />
               <path d="m13.8 13.8 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -361,6 +396,11 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             <div className="f-col">
               <p className="colh">Store</p>
               <Link href="/">Catalogue</Link>
+              {/* FR-10. This is the ONLY link to `/packs`, and it is load-bearing: the footer
+                  renders on every page including the legal ones, so this one anchor is what puts
+                  all 77 packs two clicks from the whole site. Measured 2026-08-21, before it
+                  existed: 14 of 77 were three clicks from every entry route. */}
+              <Link href="/packs">Every pack</Link>
               <Link href="/ideas">Categories</Link>
               <Link href="/how-it-works">How it works</Link>
               <Link href="/kill-log" prefetch={false}>Kill log</Link>
@@ -390,6 +430,14 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             <p>
               &copy; 2026 {BRAND.name}. All rights reserved. {BRAND.name} packs are sold for
               information only, not financial, legal, or investment advice.
+            </p>
+            <p>
+              {/* The trader, named on the shop front rather than three clicks into the legal
+                  pages. reg 6 of the E-Commerce Regulations 2002 says "easily, directly and
+                  permanently accessible", and a footer is the only surface on this site that is
+                  all three. Baymard's abandonment list puts "didn't trust the site" at 19% of
+                  abandoners, and an anonymous seller asking for 99.99 is that finding. */}
+              Operated by {traderIdentity()}.
             </p>
             <details>
               <summary>Read the full disclaimer</summary>

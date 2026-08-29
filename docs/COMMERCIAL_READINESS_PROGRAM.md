@@ -3368,7 +3368,7 @@ proves it, or it is not done.
 |---|---|---|
 | 33-A | **SHIPPED** as `prospector/figure_check.py` + `CheckResult.untraceable_figures` + the trace block in `verify.py::verdict_for`. **Observability only — the verdict is NOT demoted.** See §33.7 for why the first draft of this row (demote to `unverifiable`) was wrong | `tests/unit/test_figure_check.py`, incl. an equivalence test against the independent probe |
 | 33-B | Fix payer_solvency's invented price: the check must be handed the candidate's **actual rung** from `config.yaml listing.pricing`, never left to supply one | no live example with a figure off the rung ladder |
-| 33-C | Build `tools/audit_live_citations.py` — the end-to-end audit that does not exist today: for every selling pack, re-fetch each citation *and* re-check the quoted passage still appears in the body. This is the gap `tools/verify_selling_catalogue.py` leaves (it only checks a PASS dossier exists) | one clean run over 50 packs, committed receipts |
+| 33-C | Build `tools/audit_live_citations.py` — the end-to-end audit that does not exist today: for every selling pack, re-fetch each citation *and* re-check the quoted passage still appears in the body. This is the gap `tools/verify_selling_catalogue.py` leaves (it only checks a PASS dossier exists) | one clean run over 50 packs, committed receipts <!-- doc-lint-ok: task 33-C's own deliverable; the line says it does not exist today --> |
 | 33-D | Gate the shelf on 33-A + 33-C — a pack with an untraceable figure may not be listed. `bridge.py:437` already refuses to list what we cannot deliver; this is the same fence, one dimension out | a pack with a seeded untraceable figure is refused listing, in a test |
 | 33-E | **Copy comes down or becomes true — never stays false while we fix it.** Until 33-A lands, `pricing.tsx:191`, `faqContent.ts:70` and `how-it-works.tsx:202-206` must be rewritten to what is measurably true. Cross-ref `docs/SITE_SPEC_PROGRAM.md` | the three strings, and the register line that says which claim each rests on |
 | 33-F | Raise AI disclosure from footer/legal tier to value-prop tier, and make it the *position* rather than the apology. The critique's one genuinely strategic point: the engine is the product, the packs are its output | founder sign-off on the new above-fold line |
@@ -3502,3 +3502,52 @@ The pattern across all six: the TRUE half was always adjacent to the false one. 
 really is exact; the sources really are published; the unverifiable checks really are labelled.
 Nothing here required weakening the product's actual claim — only deleting the part of the sentence
 that generalised it into a guarantee. `npx tsc --noEmit` exit 0; 264 python tests green.
+
+---
+
+## 34. E-104 — is a claim-level verdict defensible? Market structure, measured (2026-08-20)
+
+Researched across 68 sourced pages. Recorded here rather than in the engine programme file because
+it changes what we SELL, not how the engine runs. The engine-side row is `ENGINE_100X_PROGRAM.md`
+section 4, E-104.
+
+**The question.** The engine's differentiator has been described internally as "we rule on a claim
+against retrieved evidence". Is that a moat, or has the market already commoditised it?
+
+**Finding 1 — per-answer citation is commoditised.** Four rivals converged on $10–$14 per thousand
+grounded requests, and Anthropic's Citations charges nothing beyond tokens. Attaching a source to
+an answer is now a checkbox, not a product.
+
+**Finding 2 — ruling on a claim is not commoditised, but it is unsold rather than defended.**
+Zero of thirteen major providers ship a claim-level verdict against retrieved open-web evidence.
+The verdict-shaped things that do exist are narrow and cheap:
+
+| Product | Price | What it actually does |
+|---|---|---|
+| Google Check Grounding | $0.00075 / 1k | scores an answer against passages you supply |
+| AWS Bedrock contextual grounding | $0.10 / 1k | same shape, inside Guardrails |
+| AWS Bedrock Automated Reasoning | $0.17 / 1k | proves against a FORMAL POLICY, not the open web |
+| WebCite | ~$0.16 per verification | closest direct competitor: supported/contradicted + citations |
+
+**Finding 3 — the verification vendors are being absorbed.** Arize → Dynatrace, $915M, 13 Aug 2026.
+Galileo → Cisco, 9 Apr 2026. TruEra → Snowflake. Logically → administration. Standalone
+"we check AI output" companies are not surviving as standalone companies.
+
+**Finding 4 — the best open verifier is free and beats GPT-4o.** IBM Granite Guardian 3.3 (8B),
+Apache 2.0, 76.5 on LLM-AggreFact against GPT-4o's 75.9. Bespoke-MiniCheck-7B leads at 77.4 but is
+CC BY-NC 4.0. A competitor can stand up a credible verifier for the cost of an endpoint.
+
+**The conclusion, stated plainly: the verifier is not the moat.** Anyone can buy or download one.
+What cannot be downloaded is the corpus we have accumulated, the declared standard of proof the
+filter applies uniformly, the audit trail that makes a verdict inspectable after the fact, and the
+liability position of a business willing to stand behind it. Product work should be aimed at those
+four, not at the model.
+
+**What this makes urgent.** E15 measured 48.9% rationale infidelity (171/350, CI 43.7–54.1) — the
+audit trail is the asset, and nearly half of it does not currently say what its own citation
+supports. Re-measuring and fixing that (E-102) is now a commercial priority, not a quality nicety.
+
+**Research still open on this thread.** Who buys a claim-level verdict with consequences attached —
+pharma review, advertising substantiation, ESG. No per-verdict product priced for a business
+carrying liability was found. That is either an opening or the reason nobody bothered, and the two
+look identical from outside.

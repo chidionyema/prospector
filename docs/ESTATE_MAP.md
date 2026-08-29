@@ -13,6 +13,11 @@ architect, QA, ML engineer, data engineer, product, content, growth, support, th
 on day one. This file is the shared factual spine those documents point back at, so a fact lives here
 once instead of drifting in twenty places.
 
+**Where this estate is going:** the [GOLD STAR PLAN](https://claude.ai/code/artifact/ef6fe784-7f6c-4981-85cd-37dfbe40b696) (adopted 2026-08-20) is the target
+platform — ten planes, one portability contract each, and the 55 requirements between here and
+there. This file says what exists today; that page says what it is being built into. Source of
+truth for it is [MIGRATION_AND_DR_PROGRAM.md](MIGRATION_AND_DR_PROGRAM.md) §10 and §11.
+
 ---
 
 ## 1. The one-page picture
@@ -72,9 +77,11 @@ downtime. Anything that still says otherwise is stale. The discriminator a proce
 ### When a candidate is parked: DEFER, and what unparks it
 
 A DEFER is not a verdict. It means the engine could not reach an answer — the brain was benched,
-the call raised, retrieval was down — so the row is put back rather than killed. `verify.py:365`
-sets `retrieval_failed=True` on any verdict call that raises, and the DEFER gate at `verify.py:693`
-fires on it. This exists because the honest verdict on a check that never ran is "come back to it",
+the call raised, retrieval was down — so the row is put back rather than killed. `prospector/verify.py:589` and `prospector/verify.py:701`
+set `retrieval_failed=True` on any verdict call that raises, and the DEFER gate at `prospector/verify.py:1199`
+fires on it. The adversarial pass carries the same channel since 2026-08-21: `prospector/verify.py:1040`
+sets it when that call raises, and the gate at `prospector/verify.py:1314` defers instead of publishing
+a candidate whose final gate never ran. This exists because the honest verdict on a check that never ran is "come back to it",
 never "this idea is dead". Killing on an outage is a real defect this system has had:
 `store/dossiers/2102bacc6dd75cf9.kill.json` is a candidate killed by our own quota exhaustion, in a
 dossier that reads as fully reasoned.
@@ -85,8 +92,8 @@ webhook, no queue trigger. A separate process re-reads the parked rows on a time
 | Who | What it does | Where |
 | --- | --- | --- |
 | `com.prospector.consumer` | the drain. Wakes on its own cadence, takes a batch of parked rows, re-vets each one, writes the outcome | `prospector/consumer.py` |
-| `run.py::_cmd_resume` | the same work by hand: `python -m prospector.run vet --resume` | `prospector/run.py:2687` |
-| `run.drainable` | the ONE definition of what counts as parked-and-workable | `prospector/run.py:2547` |
+| `run.py::_cmd_resume` | the same work by hand: `python -m prospector.run vet --resume` | `prospector/run.py:2735` |
+| `run.drainable` | the ONE definition of what counts as parked-and-workable | `prospector/run.py:2595` |
 
 So the answer to "MiniMax is back, what happens to the deferred rows" is: the consumer picks them
 up a batch at a time on its next pass, and the backlog falls over hours, not at once.
@@ -116,7 +123,7 @@ claim.
 it has been in it, pid), then "Is it moving?" (what came of the work, backlog then and now), then
 "The last few passes". Engine page → the brains, which is where a bench shows up. On disk:
 `store/scheduler/consumer_drains.jsonl` is one line per pass, `store/consumer_heartbeat.json` is
-the live phase, and `prospector/consumer.py:478` `consumer_liveness` is the only thing that reads
+the live phase, and `prospector/consumer.py:487` `consumer_liveness` is the only thing that reads
 that format — the alarm and the panel share it so they cannot disagree.
 
 **Alive is not working.** The same afternoon the consumer sat in phase `draining` for 61 minutes
@@ -175,9 +182,28 @@ perfectly healthy machine. That 404 has been read as an outage more than once, i
 views from `prospector/ops/console_api.py`. There is no separate console app and no laptop tunnel:
 the Streamlit control centre was deleted permanently, and the tunnel was killed.
 
-**Hermes** — `prospector-hermes`, 3 GB volume `hermes_state` at `/data` (27 MB used). It is the
-Telegram surface, and the front door is the gateway, not the cockpit. Under supervisord it runs
-cockpit, coordinator, otto-server, progress, rsi and submodule-backup.
+**Hermes** — HALF MIGRATED. Do not read this section as a description of where Hermes runs.
+
+`prospector-hermes` exists on Fly with a 3 GB volume `hermes_state` at `/data`, and a machine has
+been `started` since 2026-08-18. That is all that is true of it. Measured 2026-08-19:
+
+- The app has emitted **no application logs at all** since it was created — only `New SSH session`
+  lines. Nothing is running on it.
+- **No committed file in this repo describes it.** Five of the six `prospector-*` apps have a
+  `fly.toml`; this one has none, so it cannot be reviewed, rebuilt, or moved off Fly.
+  `scripts/fly_estate_probe.py (deleted 2026-08-26, crew#203)` is the probe that says so, and it exits non-zero today.
+- The **laptop still runs all eleven Hermes launchd jobs** — `ai.hermes.gateway`,
+  `ai.hermes.coordinator`, `ai.hermes.otto-server`, `ai.hermes.idle-engine`, `ai.hermes.rsi`,
+  `ai.hermes.progress`, `ai.hermes.watchdog`, `ai.hermes.runaway-reaper`,
+  `ai.hermes.submodule-backup`, `ai.hermes.selfcheck`, `ai.hermes.keepawake`. Hermes is still an
+  on-premises dependency.
+
+This paragraph previously asserted that the Fly app runs "cockpit, coordinator, otto-server,
+progress, rsi and submodule-backup" under supervisord. That was prose written from an intention,
+never from a probe, and it stood for a day while the opposite was true. It is the exact failure
+the estate rule names: state is a probe, not a paragraph.
+
+The Telegram surface is still the gateway rather than the cockpit. Where it RUNS is task R7, open.
 
 Two things about the console, both learned the hard way on 2026-08-18:
 
@@ -204,16 +230,33 @@ fly ssh console -a prospector-engine -C "sh -lc 'find /app/store_platform/src/Op
 Everything ships from GitHub Actions. Four workflows: `ci.yml`, `deploy-api.yml`, `deploy-web.yml`,
 `e2e-live-smoke.yml`.
 
-The runners are **four self-hosted runners on the laptop** — `mumchimp-mac`, `-2`, `-3`, `-4`, with
-labels `self-hosted,macOS,X64,heavy` (`-4` is `light`). Self-hosted minutes are free. **Do not flip
-CI to GitHub-hosted.** Deleting `CI_RUNS_ON` is an emergency lever, not a convenience.
+**CI runs on the Fly app `prospector-ci`** (lhr), which registers two Linux container runners
+labelled `self-hosted,X64,heavy,Linux,container,fly`. R8 is done; it landed in #335.
 
-`prospector-ci` exists on Fly and is suspended. It is the intended home for the runners (R8). That
-work is not done, and it is blocked on one decision: where the runner registration credential
-lives. When it happens, that app gets `GITHUB_RUNNER_PAT` and `RUNNER_LABELS` and **nothing else** —
-a runner executes code from every pull request, including one an outsider opened, so it must never
-hold a money key. The PAT must be fine-grained, *Only select repositories → prospector*,
-*Repository → Administration → Read and write*, and nothing more.
+The laptop's `mumchimp-mac`, `-2` and `-3` are **offline by founder decision. Do not start them.**
+`mumchimp-mac-4` stays online with the `light` label. A queued pull request is almost always the
+Fly fleet being busy, not a dead runner — that misreading cost a session on 2026-08-19, when an
+agent read three offline Mac jobs as halved capacity and told the founder to `launchctl kickstart`
+them.
+
+Never trust this paragraph. Ask:
+
+```bash
+gh api repos/chidionyema/prospector/actions/runners \
+  --jq '.runners[] | "\(.name) \(.status) busy=\(.busy) \(.labels|map(.name)|join(","))"'
+fly status -a prospector-ci
+```
+
+`scripts/process_audit.py` grades the same question on `/processes`, and `scripts/estate_map.py`
+reports how many online runners are on Fly and how many on the laptop.
+
+Self-hosted minutes are free. **Do not flip CI to GitHub-hosted.** Deleting `CI_RUNS_ON` is an
+emergency lever, not a convenience.
+
+The runner app holds `GITHUB_RUNNER_PAT` and `RUNNER_LABELS` and **nothing else** — a runner
+executes code from every pull request, including one an outsider opened, so it must never hold a
+money key. The PAT is fine-grained, *Only select repositories → prospector*, *Repository →
+Administration → Read and write*, and nothing more.
 
 Deploy credentials are per-app Fly tokens, because a Fly deploy token is scoped to its app:
 `FLY_API_TOKEN` (web), `FLY_API_TOKEN_API`, `FLY_API_TOKEN_ENGINE`.
@@ -266,12 +309,25 @@ somewhere off this machine. Everything encrypted at rest is unreadable without i
 
 After the Fly cutover, this is the honest list:
 
-- The **four CI runners**. No runner, no deploy. Selling keeps working; shipping stops. (R8)
-- The **`ai.hermes.*` launchd jobs** — gateway, coordinator, otto-server and the rest. Hermes is
-  deployed on Fly, but the laptop copies are still the ones running, and the Fly `gateway` process
-  is stopped. The cutover is half done. (R7)
-- The **`com.prospector-control.*` jobs** — failover-watch, receipt-bridge, standby-sync — and
-  `com.prospector.backup`.
+Re-measured 2026-08-20 by running the command at the foot of this section, because the list
+below had drifted in both directions.
+
+- The **`ai.hermes.*` launchd jobs that are actually loaded**: `keepawake`, `idle-engine`,
+  `lease-guard`, `runaway-reaper`. Those four, and no others.
+- The **`com.prospector*` jobs**: `offsite-backup`, `backup`, `launchd-held`, `process-audit`,
+  `log-rotation`, and the `com.prospector-control.*` set — `failover-watch`, `receipt-bridge`,
+  `standby-sync`.
+
+Two entries that used to be on this list are NOT on it, and both were wrong in a way that
+would have sent someone looking for a process that does not exist:
+
+- **The CI runners are not here.** `launchctl list` shows no `actions.runner.*` entry at all,
+  and `ops/launchd/` defines no runner job. They run on Fly.
+- **`ai.hermes.gateway`, `coordinator` and `otto-server` are not running on this laptop.**
+  The gateway plist carries `<key>Disabled</key><true/>`, set on 2026-06-25 during the Phase 0
+  estate surgery. The other two are not registered with launchd at all — `launchctl print`
+  answers "Could not find service". The claim that "the laptop copies are still the ones
+  running" was true once and stopped being true two months ago.
 
 Nothing a customer touches depends on the laptop any more. That was the point of the migration.
 

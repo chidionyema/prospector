@@ -1,0 +1,65 @@
+# The estate's admission control, assembled from the upstream library rather than hand-written.
+#
+# Founder, 2026-08-24: "not write custon scripts for production cluster" and "never reinvent the
+# wheel". Six of the seven policies this estate had written by hand exist upstream, maintained by
+# the Kyverno project. RETIRED.md is the row-by-row mapping and the measurement behind it.
+#
+# PINNED TO A COMMIT, NOT A BRANCH. kyverno/policies publishes no releases (measured 2026-08-24:
+# GET /repos/kyverno/policies/releases/latest returns 404), so `?ref=main` would mean the cluster's
+# admission rules change under us on somebody else's merge. The SHA below is main as of
+# 2026-07-04T06:01:43Z. Moving it is a reviewed commit, like every other change here.
+#
+# UPSTREAM SHIPS Audit. enforce.yaml flips every ClusterPolicy in this build to Enforce, because an
+# audit-only rule is a log line nobody reads, which LAW 28 grades as not an instrument at all.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Pod Security `restricted`, the six-policy bundle. Its own kustomization.yaml pulls in
+  # ../baseline as well, so this one line is the whole PSS ladder.
+  #   disallow-capabilities-strict, disallow-privilege-escalation, require-run-as-non-root-user,
+  #   require-run-as-nonroot, restrict-seccomp-strict, restrict-volume-types
+  - github.com/kyverno/policies/pod-security/restricted?ref=ef9843f08d25b3555fe69616f8612c9f915af5d4
+
+  # Best practices, chosen one at a time. The directory holds twenty; the ones that MUTATE
+  # (add-network-policy, add-ns-quota, add-rolebinding, add-safe-to-evict) are deliberately left
+  # out, because a policy that silently edits a workload is harder to debug than one that refuses it.
+  - https://raw.githubusercontent.com/kyverno/policies/ef9843f08d25b3555fe69616f8612c9f915af5d4/best-practices/disallow-latest-tag/disallow-latest-tag.yaml
+  - https://raw.githubusercontent.com/kyverno/policies/ef9843f08d25b3555fe69616f8612c9f915af5d4/best-practices/require-pod-requests-limits/require-pod-requests-limits.yaml
+  - https://raw.githubusercontent.com/kyverno/policies/ef9843f08d25b3555fe69616f8612c9f915af5d4/best-practices/require-probes/require-probes.yaml
+  - https://raw.githubusercontent.com/kyverno/policies/ef9843f08d25b3555fe69616f8612c9f915af5d4/best-practices/require-drop-all/require-drop-all.yaml
+  - https://raw.githubusercontent.com/kyverno/policies/ef9843f08d25b3555fe69616f8612c9f915af5d4/best-practices/require-ro-rootfs/require-ro-rootfs.yaml
+  - https://raw.githubusercontent.com/kyverno/policies/ef9843f08d25b3555fe69616f8612c9f915af5d4/best-practices/disallow-default-namespace/disallow-default-namespace.yaml
+
+  # A literal credential in a pod spec is a credential in `kubectl get pod -o yaml`, in every
+  # backup of etcd, and in anything that scrapes the API. Upstream calls it this.
+  - https://raw.githubusercontent.com/kyverno/policies/ef9843f08d25b3555fe69616f8612c9f915af5d4/other/disallow-secrets-from-env-vars/disallow-secrets-from-env-vars.yaml
+
+  # The two that are genuinely this estate's, and could not be upstream. See estate.yaml.
+  - estate.yaml
+
+patches:
+  - path: enforce.yaml
+    target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+  - path: admit-acme-solver.yaml
+    target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: require-pod-probes
+  - path: admit-job-pods.yaml   # after admit-acme-solver.yaml: it appends to the preconditions that one creates
+    target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: require-pod-probes
+  - path: admit-workflow-task-pods.yaml   # after admit-job-pods.yaml: a Chaos Mesh Task pod runs to completion like a Job pod (idp crew#292 CP4)
+    target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: require-pod-probes

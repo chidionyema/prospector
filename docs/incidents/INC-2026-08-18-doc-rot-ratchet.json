@@ -12,7 +12,7 @@
   "cause_chain": [
     "docs/doc_lint_baseline.json contains every finding doc_lint can currently produce, and check_ratchet only fails on a regression against that baseline, so no live finding fails anything.",
     "The gate was installed with the existing rot grandfathered in, and nothing was scheduled to burn the baseline down, so grandfathered became permanent.",
-    "Nothing measures whether a doc's CLAIMS still match the live estate — only whether the paths it names exist. docs/ENGINE_AUDIT_2026-08-10.md passed doc_lint on 2026-08-18 while six of its concrete statements about the engine were false, because a wrong line number and a retired provider roster are not missing paths.",
+    "Nothing measures whether a doc's CLAIMS still match the live estate \u2014 only whether the paths it names exist. docs/ENGINE_AUDIT_2026-08-10.md passed doc_lint on 2026-08-18 while six of its concrete statements about the engine were false, because a wrong line number and a retired provider roster are not missing paths.",
     "CLASS: a ratchet with no burn-down schedule is a warning fence, and a warning fence is not a fence."
   ],
   "second_order": {
@@ -20,15 +20,15 @@
     "siblings_found": 1,
     "siblings_fixed": 0,
     "sibling_list": [
-      "tests/unit/swallow_ratchet_baseline.json — 23 grandfathered tier-1 swallows across 16 files, plus 5 waivers. Same shape: existing findings suppressed, no burn-down date."
+      "tests/unit/swallow_ratchet_baseline.json \u2014 23 grandfathered tier-1 swallows across 16 files, plus 5 waivers. Same shape: existing findings suppressed, no burn-down date."
     ],
     "note": "SWEPT 2026-08-18. Two candidates rejected on inspection and named so nobody re-sweeps them: tests/fixtures/gen_quality_baseline.json is a reference fixture, not a suppression list; register_baseline.py is a report-only script. register_baseline.py:18 does hardcode an absolute store path, which is a sibling of INC-2026-08-18-store-resolver, not of this one."
   },
   "third_order": {
     "tier": "refuse",
-    "mechanism": null,
-    "landed_on": null,
-    "note": "The mechanism is a burn-down date on the baseline file itself: doc_lint --check fails when today is past the date, so a suppression cannot outlive its own deadline. Not written yet."
+    "mechanism": "Every entry in docs/doc_lint_baseline.json now carries its own burn-down date, and doc_lint.py --check fails on a suppression whose date has passed while findings remain. The dodge is closed by doc_lint.due_dates(): re-running --write-baseline keeps a doc's existing deadline unless its count came DOWN, so the command cannot be used as a snooze button. An entry with no date at all is also refused, so stripping the date restores nothing. Deadlines are staggered a week apart, cheapest doc first, so the burn-down is a queue rather than one day on which fourteen docs come due at once.",
+    "landed_on": "2026-08-19",
+    "note": "The expiry is fatal whether or not the branch touched the doc, which is a deliberate exception to the `scope` rule in check_ratchet. `scope` exists so a pull request is not failed by someone else's NEW regression; a deadline is neither new nor a surprise, it was written into the baseline weeks earlier and the file names the day. Reported-not-fatal would let a doc nobody happens to edit rot forever, which is this incident. Pinned by tests/unit/test_doc_lint_baseline_expires.py (8 tests), including one that reads the committed baseline rather than a fixture. Visible on the ops dashboard: scripts/process_audit.py::_grade_doc_lint_baseline grades undated and past-due suppressions BAD and otherwise prints the next date due. Live dates as written on 2026-08-19: first 2026-09-18 (docs/DESIGN_UX_AUDIT_PROGRAM.md, 1 finding), last 2026-12-18 (docs/OPS_CONSOLE_PROGRAM.md, 8). The sibling at tests/unit/swallow_ratchet_baseline.json still has no burn-down date and is still siblings_fixed 0."
   },
   "grade": {
     "signature": "doc_lint findings suppressed by the baseline",

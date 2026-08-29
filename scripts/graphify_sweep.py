@@ -200,7 +200,7 @@ def repo_lock(repo: str):
     macOS has no flock(1), so this uses fcntl.flock. The lock file lives in the temp dir,
     not in the repo, so a lock never shows up as a repo change and can never be committed.
     """
-    key = hashlib.sha1(repo.encode()).hexdigest()[:16]
+    key = hashlib.sha1(repo.encode(), usedforsecurity=False).hexdigest()[:16]
     path = os.path.join(tempfile.gettempdir(), f"graphify-sweep-{key}.lock")
     fh = open(path, "w")
     try:

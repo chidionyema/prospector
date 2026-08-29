@@ -14,6 +14,33 @@
 # This is a contract for a temporary arrangement. The engine is being moved to hosted capacity;
 # until it is, CI has to share this box without stalling it.
 
+# ---------------------------------------------------------------------- where CI runs now
+# UBUNTU-LATEST, NOT THE FLY FLEET, SINCE 2026-08-21. The founder made the repository public,
+# which is what made GitHub-hosted runners free, and all four runner variables were set to
+# `ubuntu-latest` the same day:
+#
+#   CI_RUNS_ON=ubuntu-latest  CI_HEAVY_RUNS_ON=ubuntu-latest
+#   CI_LIGHT_RUNS_ON=ubuntu-latest  CI_DEPLOY_RUNS_ON=ubuntu-latest
+#
+# This file was not moved with them, so `pools.*.label` still said `fly` and check 1b in
+# scripts/ci_capacity.py failed every pull request opened after the flip. Measured: #643 and
+# #644 both red on `guard` at the step "CI still fits on the machine it runs on"; #639 through
+# #642 green, because their guard ran before the variables changed. The guard was right and the
+# contract was stale.
+#
+# WHAT IS NOW STALE IN THIS FILE, said plainly rather than left as a trap. The `autoscale_*`
+# and `fleet.*` rows below, and check 3 in scripts/ci_capacity.py, describe the `prospector-ci`
+# Fly machines. Nothing dispatches to them any more. They are only read by
+# `scripts/ci_capacity.py --live`, which is an operator command and not a CI step, so they
+# cannot fail a pull request -- but an operator running --live today is grading a fleet that
+# takes no work. Deleting them is a separate change from unblocking the pipeline.
+#
+# `box.cpus` is deliberately NOT touched here. 4 is what the file already said and the
+# arithmetic still holds at 4; whether a GitHub-hosted runner is actually that wide is a
+# measurement nobody has taken on this account. Take it before trusting the number:
+#   gh api repos/chidionyema/prospector/actions/runners  (hosted runners do not appear)
+#   or add `nproc && free -g` to a job and read it off one run.
+
 box:
   # THE RUNNER MACHINE, not the founder's laptop. Rewritten 2026-08-18 when CI moved to Fly.
   #
@@ -41,6 +68,11 @@ box:
 job_cpus:
   python: 4
   engine: 3
+  # 3, and ci.yml pins CARGO_BUILD_JOBS and RUST_TEST_THREADS to 3 to make it true.
+  # cargo defaults both to the CPU count, so left alone this job is 4 wide and this
+  # line would be a number nobody could check: ci_capacity.py reads widths off
+  # `pytest -n N` and there is no pytest in the rust lane.
+  rust: 3
   dotnet: 1
   nextjs: 1
   ops-console: 1
@@ -82,11 +114,28 @@ pools:
     # machine, and it is needed: these runners are `--ephemeral`, so each one deregisters when a
     # job ends and re-registers when Fly restarts it about two seconds later. A blink is normal;
     # two machines down at once is not.
+    # AUTOSCALE SETS THIS RANGE NOW, not a hand-counted fleet (founder chose max 6 on
+    # 2026-08-19). `runners` is autoscale_min -- the machines kept started at all times, and the floor that
+    # turns a dark runner into a failing row -- and
+    # `ephemeral` is the headroom up to autoscale_max. scripts/ci_capacity.py --live checks
+    # between the two, which is exactly the band autoscale is allowed to move in.
+    #
+    # A stopped machine bills no CPU and no RAM, so the headroom costs pennies and is only paid
+    # for while it is running jobs. box.heavy_slots, not this number, is what bounds the CPU
+    # arithmetic, so widening the band does not oversubscribe anything.
     runners: 2
-    ephemeral: 1
+    ephemeral: 10
     variable: CI_HEAVY_RUNS_ON
-    label: heavy
-    jobs: [python, engine, dotnet]
+    # LABEL `fly`, NOT `heavy` OR `self-hosted`, SINCE 2026-08-19. mumchimp-mac-4 was online
+    # carrying `self-hosted`, the same label the Linux fleet carries, so GitHub scheduled
+    # Linux jobs onto macOS at random and they died in actions/setup-python. The error names
+    # the action, not the routing. `fly` is carried only by the prospector-ci machines
+    # (deploy/runner/fly.toml RUNNER_LABELS), so it names the fleet and nothing else. The
+    # repository variables CI_HEAVY_RUNS_ON, CI_LIGHT_RUNS_ON and CI_RUNS_ON were set to
+    # `fly` at 12:01 on 2026-08-19; this file has to agree or scripts/ci_capacity.py fails
+    # the guard job on every branch.
+    label: ubuntu-latest
+    jobs: [python, engine, dotnet, rust]
   # Short jobs: a checkout, a doc lint, a shell loop over already-computed results. They must
   # never wait behind a suite -- `ci-ok` queueing behind a 24-minute python job is what left runs
   # reading `queued` after every job in them had finished.
@@ -108,8 +157,102 @@ pools:
     # not a separate fleet any more -- the reservation the split existed for came from the Macs,
     # where mumchimp-mac-4 deliberately lacked `heavy`. Keep the split declared: it costs
     # nothing, and it is how a light job gets its own capacity again the moment one is added.
+    # Same band, same fleet: these machines carry both labels.
     runners: 2
-    ephemeral: 1
+    ephemeral: 10
     variable: CI_LIGHT_RUNS_ON
-    label: self-hosted
+    # Same fleet, same label, same reason as heavy above.
+    label: ubuntu-latest
     jobs: [changes, guard, ci-ok, nextjs, ops-console]
+
+# HOW MANY MACHINES MAY BE RUNNING AT ONCE, AND HOW FEW.
+#
+# Priced 2026-08-19 from https://fly.io/docs/about/pricing/. A `shared-cpu-4x` machine is
+# $8.08/month of CPU; extra RAM is about $5/GB/month, so the 8 GB in deploy/runner/fly.toml is
+# roughly $40 more. Call it ~$48/month per machine left started around the clock, ~$145/month
+# for the fleet of three. A STOPPED machine bills no CPU and no RAM -- only rootfs storage at
+# $0.15 per GB per 30 days.
+#
+# That price shape is why `deploy/runners.sh autoscale` starts and stops machines instead of
+# creating and destroying them, and why the ceiling can be raised without raising the bill: an
+# idle machine in the pool costs pennies, so capacity for a busy afternoon is nearly free and is
+# only paid for while it is actually running jobs.
+#
+# autoscale_min  machines kept started at all times. 2, not 0: a cold start costs a job about a
+#                minute, and the first job of the morning should not pay it. Set 0 to pay
+#                nothing overnight and accept that delay.
+# autoscale_max  the ceiling, 12 since 2026-08-19. Raising it does not raise the bill: Fly
+#                charges per second a machine is RUNNING and the job count is fixed, so twelve
+#                runners burn the same machine-seconds as six and finish in half the wall
+#                clock. Idle machines are stopped and bill only rootfs storage. The queue that
+#                forced this was ten branches deep across several concurrent sessions, against
+#                six runners. Never higher than the
+#                machines the pool actually holds --
+#                `deploy/runners.sh up <n>` is what creates them; autoscale only starts and
+#                stops what is already there, and says so when it wants more than exists.
+autoscale_min: 2
+autoscale_max: 12
+
+# ---------------------------------------------------------------------------- fleet floor
+# THE NUMBER THAT NOTICES A COLLAPSE. Distinct from `autoscale_min` and from `pools.*.runners`,
+# and it has to be, because those two are the reason the collapse of 2026-08-19 was invisible.
+# Both were 2, so when ten of twelve `prospector-ci` machines were stopped and capacity sat at
+# 2/12 for hours, `scripts/ci_capacity.py --live` graded the contract as HOLDING. It was right
+# on its own terms: 2 is the floor it was given. A floor set to the minimum survivable number
+# cannot detect a collapse to the minimum survivable number.
+#
+# 6 is not a capacity target and not a round number. It is one pull request's peak fan-out on
+# the `fly` pool, read off the `needs:` graph in .github/workflows/ci.yml: `changes` gates five
+# jobs (python, engine, dotnet, nextjs, ops-console) and `guard` runs beside them. Below six,
+# one PR queues behind itself. `scripts/ci_fleet_keeper.py` starts machines up to this number
+# and never past it, so raising it raises the bill and lowering it raises the wait.
+fleet:
+  # 3, NOT 6, SINCE 2026-08-21. The founder read the utilisation and said "we are bleeding
+  # money". The two measurements behind that are these, taken over the busiest 9h04m this
+  # estate has had (2026-08-20 16:05 -> 2026-08-21 01:09 UTC, the outage plus four sessions
+  # pushing), across the 327 self-hosted jobs that actually ran:
+  #
+  #   OVERLAP, from the job event stream : 58.3% of the window had ZERO jobs running. Peak was
+  #                                        8 of 12. 95.2% of it was 3 busy or fewer.
+  #   DURATION, a different quantity     : 25,464 machine-seconds of work against 392,126
+  #                                        available = 6.5% utilisation. The work equals 0.78
+  #                                        machines running flat out. Median queue wait from
+  #                                        created to started was 2s, max 53s; not one job of
+  #                                        327 waited a minute.
+  #
+  # Two angles that can fail differently, same verdict: twelve machines started around the
+  # clock were nine times the capacity the work needed.
+  #
+  # WHAT 6 WAS FOR, AND WHAT 3 COSTS. 6 was one pull request's peak fan-out off the `needs:`
+  # graph in ci.yml, so that a single PR never queues behind itself. At 3 it does: the heavy
+  # lanes still run together, the rest serialise, and a PR's wall clock rises. That trade was
+  # made deliberately against a measured 6.5% utilisation.
+  #
+  # THE POOL IS STILL 12. `autoscale_max` is unchanged and the rest are STOPPED, not
+  # destroyed. A stopped machine bills rootfs only ($0.15 per GB per 30 days) and starts in
+  # seconds because the image is already on the host. Moving this number is one
+  # `fly machine start` per machine and one line here.
+  #
+  # 5, NOT 3, SINCE 2026-08-21 03:55Z. Three lasted about two hours. The founder's words were
+  # "lets try 5", and the reason to trust 5 over 3 is what the estate did in between, which is
+  # a measurement the 9h04m window above could not contain:
+  #
+  #   `scripts/deploy_status.py` reported "4 run(s) queued while 9 CI machine(s) are stopped,
+  #   oldest 28m". One pull request's own run sat queued for 47 minutes against a median run
+  #   time of 8.3 minutes for the 16 runs before it.
+  #
+  # The 6.5% utilisation figure is still true and is not the number that decides this. It
+  # averages a window that is 58.3% idle, and CI demand is not an average -- it arrives in
+  # bursts when several sessions push at once, which is exactly when anyone is waiting. A
+  # fleet sized for the mean is a fleet that is short every time it matters.
+  #
+  # THE CONFIRMATION, taken 20 seconds after starting the two: all five runners reported
+  # `status=online busy=true` to the GitHub API. Not one of them idled. Capacity that is busy
+  # the moment it appears was capacity that was already owed. Two angles that fail
+  # differently: Fly says 5 of 12 started, GitHub says 5 online -- so these are registered
+  # runners and not the 2026-08-19 case where nine machines were started and none could
+  # receive a job.
+  #
+  # 5 sits one below the 6 that covers a single PR's peak fan-out, so a lone PR can still
+  # queue behind itself by one job. That is the deliberate remainder of the cost cut.
+  min_started: 5

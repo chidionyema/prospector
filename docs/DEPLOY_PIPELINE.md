@@ -10,21 +10,27 @@ parts of system / all parts of system need to work this way. document it."
 ## The route
 
 ```
-PR opened  ->  CI runs  ->  CI green
-                              |
-                              v
-                 .github/workflows/automerge.yml
-                   squash-merges the PR
-                   dispatches CI on main
-                   dispatches every deploy workflow whose watched paths the merge touched
-                              |
-              +---------------+----------------+
-              v               v                v
-      deploy-engine.yml  deploy-api.yml   deploy-web.yml
-      prospector-engine  prospector-      prospector-
-      (engine + ops      store-api        store-web
+PR opened  ->  CI runs  ->  CI green  ->  the AUTHOR merges it
+                                              |
+                                  the merge is a push to main
+                                              |
+              +-------------------------------+----------------+
+              v               v                                v
+      deploy-engine.yml  deploy-api.yml                  deploy-web.yml
+      prospector-engine  prospector-                     prospector-
+      (engine + ops      store-api                       store-web
        console)
+
+      each one triggered by its OWN `on: push: {branches: [main], paths: [...]}`
 ```
+
+Changed 2026-08-20. Until then a workflow called automerge.yml did the merging and then dispatched
+each deploy by hand. It was deleted on founder decision -- *"no autonerge goee autodeploy stays"* --
+because the `pulls.updateBranch` call it made to keep branches fresh pushed a merge commit onto
+every open pull request whenever main moved, which moved fifteen heads out of the batch branches
+cut to close them and jammed the board for thirty hours.
+
+Deleting it did not break the deploys, and the reason is the next section.
 
 ## What ships where
 
@@ -39,15 +45,24 @@ The ops console has no deploy of its own. It is built into the engine image
 (`deploy/engine/Dockerfile` copies both), so shipping the console means shipping the engine, and
 one restart covers both.
 
-## Why a merge is not enough on its own
+## Why a robot merge was not enough on its own
 
 A push made with the default `GITHUB_TOKEN` starts no workflow runs. GitHub documents two
-exceptions: `workflow_dispatch` and `repository_dispatch`. So `automerge.yml` merges the PR and
-then explicitly dispatches what the merge push could not start.
+exceptions: `workflow_dispatch` and `repository_dispatch`. A robot merge is such a push, so the
+automerge workflow had to dispatch by hand everything its own merge could not start.
 
-That is also how this broke. Until 2026-08-19 automerge dispatched exactly one deploy, the
-engine's. Merges that changed the API or the storefront went green, landed on `main`, and never
-deployed. `deploy-api.yml` last ran at 05:01Z on 2026-08-18 while #358 and #342 changed
+**A human merge is not.** `gh pr merge` pushes as you, so the merge commit starts the deploy
+workflows the ordinary way, off the `push:` triggers they already carried. That is why the deploys
+survived automerge's deletion untouched.
+
+One push in this estate is still a `GITHUB_TOKEN` push: the merge that
+`.github/workflows/merge-when-green.yml` makes when a pull request goes green. It therefore
+dispatches the deploys itself with `gh workflow run` -- otherwise a merge it performed would ship
+nothing, which is the failure that left production on old code before.
+
+That map is the thing that broke before. Until 2026-08-19 the dispatch list covered exactly one
+deploy, the engine's. Merges that changed the API or the storefront went green, landed on `main`,
+and never deployed. `deploy-api.yml` last ran at 05:01Z on 2026-08-18 while #358 and #342 changed
 `Store.Api` and merged that evening. `deploy-web.yml` last ran from a push at 13:33Z on 2026-08-18
 while #349, #363 and #365 changed `Store.Web` after it. Nothing was red. The symptom of a missing
 dispatch is a run that does not happen, and nothing looks at those.
@@ -56,19 +71,21 @@ Record: `incidents/INC-2026-08-19-automerge-shipped-only-the-engine.json`.
 
 ## The machine that keeps this true
 
-`tests/unit/test_every_deploy_ships_on_green_main.py` compares `automerge.yml`'s dispatch list
+`test_every_deploy_ships_on_green_main.py (deleted 2026-08-26, crew#203)` compares the admission guard's dispatch list
 against each deploy workflow's own `on.push.paths`. It fails when:
 
-- a `deploy-*.yml` exists that automerge does not dispatch (so a new deployable part cannot be
-  added half-wired),
+- a `deploy-*.yml` has no `push:` trigger at all, or fires on a branch other than `main`, or
+  watches no paths (the primary route, gone or pointed at the wrong branch),
+- a `deploy-*.yml` exists that the admission guard does not dispatch (so a new deployable part
+  cannot be added half-wired, and a revert would leave it in production),
 - the path lists drift in either direction,
-- a deploy workflow has no `workflow_dispatch` trigger, so automerge could not start it,
-- a required dispatch input is not supplied, or automerge sends one the workflow does not declare,
-- automerge stops being gated on a **successful** CI run.
+- a deploy workflow has no `workflow_dispatch` trigger, so the guard could not start it,
+- a required dispatch input is not supplied, or the guard sends one the workflow does not declare,
+- the admission guard stops watching pushes to `main`, or stops re-deploying after a revert.
 
 Adding a new deployable component therefore means four edits, and the suite names the ones you
-forgot: the workflow, its entry in automerge's `DEPLOY` map, its entry in automerge's `INPUTS`
-map, and a row in the table above.
+forgot: the workflow (with its own `push:` trigger), its entry in the admission guard's `DEPLOY`
+map, its entry in that guard's `INPUTS` map, and a row in the table above.
 
 ## Where the jobs run
 
@@ -112,10 +129,18 @@ launchctl enable gui/501/actions.runner.chidionyema-prospector.mumchimp-mac
 
 ## What this does not cover
 
-- **A direct push to `main`.** Each deploy workflow also has a `push: branches: [main]` trigger
-  with the same path filter. That path does not wait for CI, because a push trigger fires at the
-  same time CI does. It is kept as the fallback for when automerge is off, and it is the only
-  route here that can ship un-graded code. Merge through a PR.
+- **CI finishing before the deploy does.** The `push: branches: [main]` trigger fires at the same
+  moment CI on main does, not after it, so a deploy can be in flight while main is still being
+  graded. Nothing here waits. This is the accepted cost of the 2026-08-20 change, and the
+  compensating control is no longer a revert robot. Ruleset `strict` (id 20109556, active on
+  `~DEFAULT_BRANCH`, no bypass actors) requires `guard`, `python`, `dotnet`, `nextjs` and `ci-ok`
+  to pass before anything reaches main, so a merge with no green run at its head cannot land and
+  there is nothing to take back out. Merge through a PR whose CI is already green and the window
+  is empty.
+- **A direct push to `main`.** Same trigger, same lack of a wait, and no pull request was ever
+  graded. `scripts/guard_main_push.py` is the local pre-push hook that refuses it; ruleset `strict`
+  is the server-side half, because no local hook can see a merge clicked in the web UI. Its
+  `pull_request` rule means a direct push to main is refused by GitHub outright.
 - **Proving the deploy landed.** `deploy-engine.yml` ends with three requests against the running
   console and fails if the old image is still answering. The other two do not have an equivalent
   yet.
@@ -130,5 +155,5 @@ The live answer is a command, never this page:
 gh run list --workflow deploy-engine.yml --limit 5
 gh run list --workflow deploy-api.yml --limit 5
 gh run list --workflow deploy-web.yml --limit 5
-.venv/bin/python -m pytest tests/unit/test_every_deploy_ships_on_green_main.py -q
+.venv/bin/python -m pytest test_every_deploy_ships_on_green_main.py (deleted 2026-08-26, crew#203) -q
 ```
