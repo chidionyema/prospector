@@ -254,6 +254,7 @@ metadata:
   name: prospector-edge-https-redirect
   namespace: prospector
   labels:
+    backstage.io/kubernetes-id: company-prospector
     app.kubernetes.io/name: prospector-edge
     app.kubernetes.io/part-of: prospector
 spec:
@@ -278,6 +279,7 @@ metadata:
   name: prospector-store-web
   namespace: prospector
   labels:
+    backstage.io/kubernetes-id: company-prospector
     app.kubernetes.io/name: prospector-store-web
     app.kubernetes.io/part-of: prospector
 spec:
@@ -318,6 +320,7 @@ metadata:
   name: prospector-store-api
   namespace: prospector
   labels:
+    backstage.io/kubernetes-id: company-prospector
     app.kubernetes.io/name: prospector-store-api
     app.kubernetes.io/part-of: prospector
 spec:
