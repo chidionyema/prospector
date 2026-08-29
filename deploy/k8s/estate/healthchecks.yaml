@@ -267,6 +267,7 @@ metadata:
   name: healthchecks
   namespace: estate
   labels:
+    backstage.io/kubernetes-id: founder-jobs
     app.kubernetes.io/name: healthchecks
     app.kubernetes.io/part-of: estate
 spec:

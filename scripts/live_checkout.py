@@ -474,7 +474,8 @@ ALLOW_UNVERIFIED_DEPLOY = DEV / "store" / "scheduler" / "ALLOW_UNVERIFIED_DEPLOY
 _IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel",
                       "production runs main", "pr keeper", "drill", "fleet",
                       "weekly estate review", "approve parked runs", "merge when green",
-                      "container images", "stale")   # stale: closes idle PRs, grades nothing (crew#299)
+                      "container images", "stale",   # stale: closes idle PRs, grades nothing (crew#299)
+                      "operating-model-gate")   # grades the PR body, not the code (LAW 51, crew#584)
 
 
 def ci_verdict(sha: str) -> tuple[str, str]:
