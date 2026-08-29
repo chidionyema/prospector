@@ -14,7 +14,7 @@ PLATFORM_REPO = "chidionyema/idp"
 SHIPS = {("edge", "status-page"): "platform/edge/status-page.yaml"}
 # A platform door that carries the same edge-headers Middleware idp#695 ships: HSTS on it proves
 # the running Traefik accepts cross-namespace middlewares, not just that the file is on main.
-PLATFORM_DOOR = "https://catalogue.mumchimp.com/"
+PLATFORM_DOOR = "https://auth.mumchimp.com/"  # identity door: its 302 is Traefik's own, so the header proves the new edge; the catalogue's 302 comes from oauth2-proxy before the headers middleware
 
 
 def _platform_main_has(path):
