@@ -44,3 +44,16 @@ spec:
   lifecycle: production
   owner: user:default/chidionyema
   system: prospector
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: prospector-scheduler
+  description: Re-verification scheduler (run_scheduled --daemon) on the cluster; ticks land in store/scheduler/ticks.jsonl
+  annotations:
+    github.com/project-slug: chidionyema/prospector
+spec:
+  type: service
+  lifecycle: production
+  owner: user:default/chidionyema
+  system: prospector

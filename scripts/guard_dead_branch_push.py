@@ -164,13 +164,38 @@ RESCUE_BODY = (
 )
 
 
+def open_pr_on_sha(sha: str, run=subprocess.run) -> tuple[str, str] | None:
+    """An OPEN pull request whose head is exactly this sha: (branch, url). None when there is none.
+
+    Measured 2026-08-26 on prospector: five families of identical draft PRs (#688 #693 #728 #739
+    #744 were one set of commits) because every push of a dead name rescued the same sha again
+    under the next free suffix. The suffix search asked "is this NAME free", never "are these
+    COMMITS already open". Raises when gh cannot answer, for the reason finished_pr gives.
+    """
+    out = run(["gh", "pr", "list", "--state", "open", "--limit", "100",
+               "--json", "headRefName,headRefOid,url"],
+              capture_output=True, text=True, timeout=30, check=False)
+    if out.returncode != 0:
+        raise RuntimeError(out.stderr.strip() or "gh pr list --state open exited non-zero")
+    for row in json.loads(out.stdout or "[]"):
+        if row.get("headRefOid") == sha:
+            return str(row.get("headRefName", "")), str(row.get("url", ""))
+    return None
+
+
 def rescue(branch: str, sha: str, run=subprocess.run) -> tuple[str, str]:
     """Push these commits to a fresh name, open a DRAFT pull request. Returns (name, url).
 
     Additive only. It pushes a sha to a branch that does not exist, and never checks anything out,
     so a failure part way through leaves a branch with no PR rather than a damaged tree — and the
     caller then falls back to the plain refusal, which says what is where.
+
+    Idempotent on the commits: when an open PR already carries this exact sha, that PR is the
+    answer and nothing is pushed.
     """
+    already = open_pr_on_sha(sha, run=run)
+    if already is not None:
+        return already
     name = fresh_name(branch, run=run)
     pushed = run(["git", "push", "--no-verify", "origin", f"{sha}:refs/heads/{name}"],
                  capture_output=True, text=True, timeout=180, check=False, env=_rescue_env())

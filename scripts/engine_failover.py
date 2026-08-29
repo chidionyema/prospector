@@ -669,7 +669,7 @@ def cmd_switch(args) -> int:
 
 STORE_LEAF = LAPTOP_STORE.name
 
-HERMES_RECEIPTS = Path.home() / ".hermes" / "state" / "capability_receipts.jsonl"
+HERMES_RECEIPTS = Path.home() / ".estate" / "state" / "capability_receipts.jsonl"  # crew#13: ~/.hermes is retired
 
 #: The file that decides which jobs the container runs, and therefore which receipts exist.
 SUPERVISORD_CONF = REPO / "deploy" / "engine" / "supervisord.conf"

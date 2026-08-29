@@ -23,7 +23,7 @@ Three of those premises are wrong, and getting them right shrinks the job.
 
 Receipts: `fly status -a prospector-store-api`, `fly scale show`, `fly volumes list`.
 24 secrets already set on the API (`fly secrets list`): R2, Stripe, Mailjet, JWT, Google OAuth.
-Deploy is already automated: `.github/workflows/deploy-api.yml` and `deploy-web.yml` via
+Deploy is already automated: `deploy-api.yml (deleted 2026-08-26, crew#203)` and `deploy-web.yml` via
 `superfly/flyctl-actions`, config in `store_platform/deploy/fly/api.fly.toml`.
 
 **Nothing buyer-facing needs to move.** `mumchimp.com` does not touch the laptop. DNS, TLS,

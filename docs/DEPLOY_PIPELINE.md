@@ -71,7 +71,7 @@ Record: `incidents/INC-2026-08-19-automerge-shipped-only-the-engine.json`.
 
 ## The machine that keeps this true
 
-`tests/unit/test_every_deploy_ships_on_green_main.py` compares the admission guard's dispatch list
+`test_every_deploy_ships_on_green_main.py (deleted 2026-08-26, crew#203)` compares the admission guard's dispatch list
 against each deploy workflow's own `on.push.paths`. It fails when:
 
 - a `deploy-*.yml` has no `push:` trigger at all, or fires on a branch other than `main`, or
@@ -155,5 +155,5 @@ The live answer is a command, never this page:
 gh run list --workflow deploy-engine.yml --limit 5
 gh run list --workflow deploy-api.yml --limit 5
 gh run list --workflow deploy-web.yml --limit 5
-.venv/bin/python -m pytest tests/unit/test_every_deploy_ships_on_green_main.py -q
+.venv/bin/python -m pytest test_every_deploy_ships_on_green_main.py (deleted 2026-08-26, crew#203) -q
 ```

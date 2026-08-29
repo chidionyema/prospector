@@ -209,7 +209,7 @@ performed moved fifteen pull request heads and jammed the board for thirty hours
 The one push that starts nothing is a push made with the default `GITHUB_TOKEN` -- GitHub refuses
 to build its own token's pushes. That is why `.github/workflows/merge-when-green.yml` dispatches the
 deploys itself after it merges, with `gh workflow run deploy-engine.yml`, `deploy-web.yml` and
-`deploy-api.yml`. `tests/unit/test_every_deploy_ships_on_green_main.py` compares what it sends
+`deploy-api.yml`. `test_every_deploy_ships_on_green_main.py (deleted 2026-08-26, crew#203)` compares what it sends
 against each deploy workflow's declared inputs, in both directions: an input the merger sends that
 the deploy does not declare is rejected by `gh workflow run`, and a required input the merger fails
 to send is a deploy that never starts.

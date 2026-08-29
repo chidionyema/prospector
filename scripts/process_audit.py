@@ -47,7 +47,7 @@ DECLARED_DIR = ROOT / "ops" / "launchd"
 WORKFLOW_DIR = ROOT / ".github" / "workflows"
 INVENTORY = ROOT / "docs" / "PROCESS_INVENTORY.md"
 AGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
-RECEIPTS = Path.home() / ".hermes" / "state" / "capability_receipts.jsonl"
+RECEIPTS = Path.home() / ".estate" / "state" / "capability_receipts.jsonl"  # crew#13: ~/.hermes is retired
 
 # A job is OURS if this repo declares it, or if its label carries one of our prefixes. The test is
 # a whitelist rather than a blocklist of vendors, because a blocklist is never finished: every new

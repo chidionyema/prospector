@@ -22,7 +22,7 @@ name: Live storefront smoke
 
 on:
   workflow_run:
-    workflows: ["Deploy Store.Web"]
+    workflows: ["container images"]  # deploy-web.yml went with Fly (crew#203); the image publish is the hand-off now
     types: [completed]
   schedule:
     # 07:00 UTC daily — before the UK working day, so a broken shelf is known before buyers arrive.
