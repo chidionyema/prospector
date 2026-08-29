@@ -305,6 +305,16 @@ spec:
             set:
               - name: X-Forwarded-Proto
                 value: https
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: friendly-errors
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: edge-headers
       backendRefs:
         # The Service in base/web.yaml. A Service and not a published host port, which is what
         # keeps an un-TLS'd storefront off the box's public interface.
@@ -333,6 +343,16 @@ spec:
             set:
               - name: X-Forwarded-Proto
                 value: https
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: friendly-errors
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: edge-headers
       # STRIPE POSTS WEBHOOKS HERE, and a webhook that times out is a payment the shop never hears
       # about. The Caddyfile said `response_header_timeout 60s`, which is time-to-first-response-
       # header. This is NOT the same measurement: `backendRequest` bounds the whole backend
