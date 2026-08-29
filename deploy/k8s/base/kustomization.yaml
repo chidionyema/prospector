@@ -11,6 +11,7 @@ resources:
   - api.yaml
   - web.yaml
   - edge.yaml
+  - edge-manners.yaml
 
 # THE FIFTH SERVICE IS ANSWERED AND THE ANSWER IS "NOTHING GOES HERE". The CI runner is the last
 # of the five services in deploy/compose/docker-compose.yml, and it is deliberately absent rather
