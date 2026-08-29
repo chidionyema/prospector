@@ -657,6 +657,12 @@ jobs:
         with:
           node-version: "22"
 
+      # kubectl carries kustomize. tests/unit/test_incident_crew248_scheduler_runs_on_the_cluster.py
+      # renders deploy/k8s/overlays/oke with it (needs_tool("kubectl")); without this step the
+      # marker ERRORs the test in CI, same contract as Node above.
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4.0.1
+
       - name: Test suite
         # No -x. It stops at the first failure, so a run reports one problem and hides the
         # rest behind it: on 2026-07-31 four independent environment faults (a hardcoded

@@ -147,6 +147,7 @@ metadata:
   name: prospector-store-web
   namespace: prospector
   labels:
+    backstage.io/kubernetes-id: company-prospector
     app.kubernetes.io/name: prospector-store-web
     app.kubernetes.io/part-of: prospector
 spec:

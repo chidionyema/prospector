@@ -72,20 +72,20 @@ DEPLOYABLES: list[dict] = [
         "name": "store-web",
         "what": "the storefront at mumchimp.com",
         "app": "prospector-store-web",
-        "workflow": "deploy-web.yml",
+        "workflow": None,  # deploy-web.yml deleted 2026-08-26 (crew#203); this probe goes in PR 2
         "url": "https://mumchimp.com",
     },
     {
         "name": "store-api",
         "what": "the shop API, checkout and fulfilment",
         "app": "prospector-store-api",
-        "workflow": "deploy-api.yml",
+        "workflow": None,  # deploy-api.yml deleted 2026-08-26 (crew#203); this probe goes in PR 2
     },
     {
         "name": "engine",
         "what": "the vetting engine on Fly",
         "app": "prospector-engine",
-        "workflow": "deploy-engine.yml",
+        "workflow": None,  # deploy-engine.yml deleted 2026-08-26 (crew#203); this probe goes in PR 2
     },
     {
         "name": "ci-runner",

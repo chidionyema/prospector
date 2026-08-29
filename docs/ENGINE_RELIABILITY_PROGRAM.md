@@ -556,7 +556,7 @@ iron it out properly"**.
 
 ### What was measured, three angles, all on 2026-08-21
 
-1. **The deploy does not wait for CI.** `.github/workflows/deploy-engine.yml` fires on `push` to
+1. **The deploy does not wait for CI.** `deploy-engine.yml (deleted 2026-08-26, crew#203)` fires on `push` to
    `main`. Its only gate is `deploy: needs: test`, and that `test` job is the Ops.Console lane —
    `npx tsc --noEmit` and `npx vitest run`. Nothing else is graded before the image ships. The
    probe printed the proof during this very session: production on `61cfb7d1` while
@@ -580,7 +580,7 @@ behind, so no alert here could ever have fired on it.
 
 ### What was built
 
-`scripts/deploy_reconcile.py` plus `.github/workflows/production-runs-main.yml`. It asks the one
+`scripts/deploy_reconcile.py (deleted 2026-08-26, crew#203)` plus `production-runs-main.yml (deleted 2026-08-26, crew#203)`. It asks the one
 question that stays true whatever the cause: **is the image production is running the one main
 says it should be?** When it is not, and the difference is real, it dispatches
 `deploy-engine.yml`. It never builds and never pushes, so there is still exactly one route to
@@ -630,7 +630,7 @@ for a refusal when `ACTIVE` is not `fly`, which would have made the robot inert 
 `ubuntu-latest`, where that file cannot exist at all.
 
 One more thing the estate refused, and was right to: the workflow was first called
-`deploy-reconcile.yml`. `tests/unit/test_every_deploy_ships_on_green_main.py:86` globs
+`deploy-reconcile.yml`. `test_every_deploy_ships_on_green_main.py (deleted 2026-08-26, crew#203)` globs
 `deploy-*.yml` and holds every match to the contract of a workflow that SHIPS code — on a
 push to main, in the admission guard's re-dispatch map, with matching path filters. This one
 dispatches a deploy and never ships anything, so it is `production-runs-main.yml` now.

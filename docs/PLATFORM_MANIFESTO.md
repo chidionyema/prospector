@@ -99,7 +99,7 @@ bash ~/.hermes/scripts/verify_estate.sh          # the whole estate
 Backups, failover, escape hatches and rollbacks are things you find out are broken on the day you
 need them. Every one runs on a schedule, unattended, and fails loudly.
 
-- Live: `.github/workflows/escape-hatch-drill.yml`, Sunday 04:00 UTC. It packs the live store off
+- Live: `escape-hatch-drill.yml (deleted 2026-08-26, crew#203)`, Sunday 04:00 UTC. It packs the live store off
   the platform through the adapter's own `t_pack` verb and verifies the payload.
 - Receipt that this law is real: the first rehearsal on 2026-08-18 failed four verbs out of ten,
   and every failure was the drill rig rather than the adapter. None of it was visible before the
@@ -291,7 +291,7 @@ substrate is built. What is missing is proof and breadth, not architecture.
 | Pure-Docker stack, four services | `deploy/compose/docker-compose.yml` | Built, checked by CI |
 | State as a portable tarball with a manifest | `scripts/store_migrate.py` | Built, drilled weekly |
 | Secret list and preflight | `deploy/secrets.required`, `deploy/secrets.sh` | Built, 11 entries |
-| Weekly escape drill | `.github/workflows/escape-hatch-drill.yml` | Live, Sunday 04:00 UTC |
+| Weekly escape drill | `escape-hatch-drill.yml (deleted 2026-08-26, crew#203)` | Live, Sunday 04:00 UTC |
 
 ### The insight that shrinks the job
 
@@ -496,7 +496,7 @@ Append here. Never in `CLAUDE.md`.
 | The ten laws | Adopted 2026-08-18 | Enforce on every review | this file |
 | Agent tenets | Adopted 2026-08-18 | Short form into `~/.claude/CLAUDE.md` so every session loads them | Part 2 |
 | Portability substrate | Built | Nothing | `deploy/PORTABILITY.md`, `deploy/targets/*.sh` |
-| Escape hatch drill | Live weekly | Watch Sunday runs | `.github/workflows/escape-hatch-drill.yml` |
+| Escape hatch drill | Live weekly | Watch Sunday runs | `escape-hatch-drill.yml (deleted 2026-08-26, crew#203)` |
 | Cold restore drill | **Not built** | Build it, monthly, in CI | — |
 | Cutover and rollback rehearsal | **Not built** | Build it against a local Docker target | — |
 | Managed container adapters (Cloud Run, ACA, App Runner) | **Not built** | One adapter, then the other two are copies | — |

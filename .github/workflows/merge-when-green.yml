@@ -229,26 +229,8 @@ jobs:
           gh workflow run k8s-manifests.yml --ref main || \
             echo "could not dispatch k8s-manifests.yml"
 
-          files=$(cat merged_files.txt)
-          want() { grep -Eq "$1" <<<"$files"; }
-          if grep -q '__UNKNOWN__' <<<"$files"; then
-            # One pull request would not say what it touched. Guessing narrow means skipping a
-            # deploy that was needed, so every deploy is dispatched instead -- the same choice
-            # main-admission-guard.yml makes for a commit whose file list is truncated.
-            echo "a merged pull request did not report its files; dispatching every deploy"
-            want() { true; }
-          fi
-
-          if want '^(prospector/|scripts/|deploy/engine/|store_platform/src/Ops\.Console/|requirements\.txt$|config\.yaml$|\.github/workflows/deploy-engine\.yml$)'; then
-            gh workflow run deploy-engine.yml --ref main -f dry_run=false || \
-              echo "could not dispatch deploy-engine.yml"
-          fi
-          if want '^(store_platform/src/Store\.Web/|store_platform/deploy/fly/web\.fly\.toml$|store_platform/scripts/deploy_web\.sh$|store_platform/scripts/predeploy_guard\.sh$|\.github/workflows/deploy-web\.yml$)'; then
-            gh workflow run deploy-web.yml --ref main -f target=prod -f dry_run=false || \
-              echo "could not dispatch deploy-web.yml"
-          fi
-          if want '^(store_platform/src/Store\.Api/|store_platform/src/Store\.Catalog/|store_platform/deploy/fly/api\.fly\.toml$|\.github/workflows/deploy-api\.yml$)'; then
-            gh workflow run deploy-api.yml --ref main -f dry_run=false || \
-              echo "could not dispatch deploy-api.yml"
-          fi
+          # No deploy is dispatched here any more. The Fly deploy workflows were deleted on
+          # 2026-08-26 (crew#203, founder ruling R1: never revive Fly). Production is OKE:
+          # container-images.yml publishes the commit-tagged image and Flux rolls it out from
+          # deploy/k8s/overlays/oke, so the dispatch above is the whole hand-off.
           echo "dispatched what the merge push could not start"
