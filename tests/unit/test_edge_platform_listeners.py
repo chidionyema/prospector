@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-signoz"}
+PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-signoz", "https-alertmanager", "https-prometheus"}
 
 
 def _listeners() -> dict[str, dict]:
@@ -62,3 +62,10 @@ def test_incident_crew458_mcp_listener_names_the_mcp_gateway_hostname() -> None:
 def test_incident_crew495_signoz_listener_names_the_telemetry_backend_hostname() -> None:
     """crew#495 CP8: SigNoz had no listener, so no person and no Terraform run could reach it."""
     assert _listeners()["https-signoz"]["hostname"] == "signoz.${ESTATE_ZONE}"
+
+
+def test_incident_crew684_alertmanager_and_prometheus_listeners_name_the_monitoring_hostnames() -> None:
+    """crew#684 (founder 2026-08-30, "i need all cluster monitoring tools now"): the alert console and
+    the metrics store ran 43 hours with no hostname; idp's HTTPRoutes in `monitoring` need a parent."""
+    assert _listeners()["https-alertmanager"]["hostname"] == "alertmanager.${ESTATE_ZONE}"
+    assert _listeners()["https-prometheus"]["hostname"] == "prometheus.${ESTATE_ZONE}"
