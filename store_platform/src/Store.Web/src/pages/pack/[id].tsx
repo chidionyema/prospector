@@ -826,7 +826,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 intrinsic size and no variants to serve. */}
             <img
               className="packcover"
-              src={packImage(pack.sector)}
+              src={packImage(pack)}
               alt=""
               aria-hidden
               width={1280}

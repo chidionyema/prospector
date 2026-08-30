@@ -164,7 +164,7 @@ export function PackRow({
           intrinsic size and no variants to serve. */}
       <img
         className="rowcover"
-        src={packImage(pack.sector)}
+        src={packImage(pack)}
         alt=""
         aria-hidden
         width={800}
@@ -361,7 +361,7 @@ export function PackTileGrid({
             {/* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
                 intrinsic size and no variants to serve; `next/image` would add a loader round
                 trip and a wrapper div that breaks the full-bleed margin. */}
-            <img className="cover" src={packImage(pack.sector)} alt="" aria-hidden width={800} height={450} loading="lazy" />
+            <img className="cover" src={packImage(pack)} alt="" aria-hidden width={800} height={450} loading="lazy" />
             {/* GATED ON `tagged`, like every other sector render site (`PackRow.tsx:152`,
                 `index.tsx:322`). This tile was added with the three-up row and did not carry the
                 guard, so it printed "Not yet tagged" -- a status message about our own pipeline --

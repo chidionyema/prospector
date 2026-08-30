@@ -137,6 +137,10 @@
      heading) and one long description. A real short form is a publish-path change, tracked in
      docs/SITE_SPEC_PROGRAM.md; until it lands, the honest render is the whole sentence.
 
+     Cutting at the first FULL STOP instead was measured on 2026-08-30 and does nothing: of the 77
+     live `oneLine` values, 69 are a single sentence, and the cut lands under 120 characters on 2
+     of 77. There is no short form hiding inside this field. Do not re-derive this.
+
      `text-wrap: pretty` is from the founder's polish layer section 3.2 and belongs with this
      change rather than after it: unclamped body copy is exactly where a one-word last line
      shows. */
