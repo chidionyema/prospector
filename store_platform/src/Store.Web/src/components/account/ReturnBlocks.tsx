@@ -78,7 +78,7 @@ function Block({
           utility on the same element wins whatever the specificity. The horizontal padding goes
           too, because `.owned` pads each row itself. */}
       <ul className="rows mt-4">{children}</ul>
-      <Link href={moreHref} className={textLinkClass('mt-4 inline-flex items-center gap-1 text-meta font-medium')}>
+      <Link href={moreHref} className={textLinkClass('mt-4 inline-flex items-center gap-1 text-meta')}>
         {moreLabel} <Icon name="arrowRight" size={12} />
       </Link>
     </section>

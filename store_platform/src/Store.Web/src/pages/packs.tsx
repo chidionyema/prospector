@@ -122,7 +122,7 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
               WHOLE page, so a link to the top of the marketing site leaves a visitor with
               nowhere to go, and `e2e/first-run.spec.ts` FR3 says so. */}
           <p className="lede">
-            <Link href="/#catalog" className={textLinkClass('font-medium')}>
+            <Link href="/#catalog" className={textLinkClass()}>
               Back to the catalogue
             </Link>
             .
@@ -179,11 +179,11 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
         <p className="mt-10 lede">
           Sorted by title, so a pack you have heard of is findable. To browse by sector or buyer,
           use the{' '}
-          <Link href="/ideas" className={textLinkClass('font-medium')}>
+          <Link href="/ideas" className={textLinkClass()}>
             categories
           </Link>
           . What did not survive the checks is in the{' '}
-          <Link href="/kill-log" prefetch={false} className={textLinkClass('font-medium')}>
+          <Link href="/kill-log" prefetch={false} className={textLinkClass()}>
             kill log
           </Link>
           .

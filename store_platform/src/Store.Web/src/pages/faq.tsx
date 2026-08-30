@@ -16,7 +16,7 @@ function Answer({ item }: { item: FaqItem }) {
     <>
       {item.answer.map((segment, i) => {
         if (!isLink(segment)) return <React.Fragment key={i}>{segment}</React.Fragment>;
-        const className = textLinkClass('font-medium');
+        const className = textLinkClass();
         return segment.href.startsWith('/') ? (
           <Link key={i} href={segment.href} className={className}>
             {segment.text}

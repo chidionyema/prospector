@@ -179,3 +179,38 @@ test.describe('typography', () => {
     });
   }
 });
+
+/*
+ * THE DRAWING WINS WHERE IT HAS AN OPINION.
+ *
+ * `noUtilityOverpaint.test.ts` reads the source and can only see what one className string holds.
+ * Twice on 2026-08-30 that was not enough. `textLinkClass()` emits the bundle's `tlink` and the
+ * call site passed `font-medium` separately, so every inline link on the site rendered at weight
+ * 500 against the 550 `mumchimp.css:27` draws -- measured with getComputedStyle on the built page
+ * at :3177, on /ideas, /about and /faq. And `.sigcard .key`, drawn once at 12px mono, rendered at
+ * 14px on /how-it-works because that one call site also wore `text-meta`.
+ *
+ * These two assertions are the rendered-DOM angle on the same rule: whatever the source looks
+ * like, and wherever a future override arrives from, the page has to show the drawn value.
+ */
+test.describe('the bundle is not overpainted', () => {
+  for (const route of ['/ideas', '/about', '/faq']) {
+    test(`inline links on ${route} carry the drawn weight`, async ({ page }) => {
+      await page.goto(route);
+      const weights = await page.$$eval('.tlink', (els) => [
+        ...new Set(els.map((el) => getComputedStyle(el).fontWeight)),
+      ]);
+      expect(weights.length, `no .tlink on ${route} to measure`).toBeGreaterThan(0);
+      expect(weights, 'mumchimp.css:27 draws .tlink at font-weight 550').toEqual(['550']);
+    });
+  }
+
+  test('the signature card key strip is drawn at the bundle size', async ({ page }) => {
+    await page.goto('/how-it-works');
+    const sizes = await page.$$eval('.sigcard .key', (els) => [
+      ...new Set(els.map((el) => getComputedStyle(el).fontSize)),
+    ]);
+    expect(sizes.length, 'no .sigcard .key to measure').toBeGreaterThan(0);
+    expect(sizes, 'mumchimp.css:174 draws .sigcard .key at 12px').toEqual(['12px']);
+  });
+});

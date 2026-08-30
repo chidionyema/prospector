@@ -143,7 +143,7 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
         ))}
         <Link
           href="/sample"
-          className={textLinkClass('font-medium text-caption')}
+          className={textLinkClass('text-caption')}
         >
           See the whole thing
         </Link>

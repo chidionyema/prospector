@@ -1149,7 +1149,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. {outcomeSentence} Finding nothing is not the same as finding a green light; see how each check works on{' '}
                   <Link
                     href="/how-it-works"
-                    className={textLinkClass('font-medium')}
+                    className={textLinkClass()}
                   >
                     /how-it-works
                   </Link>

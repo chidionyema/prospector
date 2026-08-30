@@ -49,6 +49,17 @@ const UTILITY_PROPS: ReadonlyArray<readonly [RegExp, readonly string[]]> = [
   [/^px-/, ["padding-left", "padding-right"]],
   [/^py-/, ["padding-top", "padding-bottom"]],
   [/^text-(xs|sm|base|lg|xl|\dxl|\[)/, ["font-size"]],
+  /*
+   * THE HOUSE'S OWN SIZE UTILITIES, ADDED 2026-08-30. The row above only knows Tailwind's
+   * stock scale, so `text-meta` and its four siblings -- defined in `globals.css`, in
+   * `layer(utilities)` like every other utility -- walked straight past this guard. Measured
+   * on the built page: `.sigcard .key` is drawn at 12px mono and the one call site that also
+   * wears `text-meta` rendered it at 14px, so the same strip of key text is two sizes on two
+   * pages. The scale tokens (`text-display`, `text-h1`, `text-h2`) are deliberately NOT here:
+   * they are unlayered in `globals.css` precisely so a page can step a heading, and
+   * `headingFloorIsLayered.test.ts` pins that.
+   */
+  [/^text-(meta|caption|body|data|label)$/, ["font-size"]],
   [/^font-(thin|light|normal|medium|semibold|bold|extrabold|black|\[)/, ["font-weight"]],
   [/^bg-/, ["background"]],
   [/^rounded/, ["border-radius"]],
@@ -112,6 +123,33 @@ function walk(dir: string, out: string[] = []): string[] {
 function bundleClassProps(): Map<string, Map<string, string>> {
   const css = readFileSync(SHEET, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   const map = new Map<string, Map<string, string>>();
+  /*
+   * A class the bundle styles as the last step of a descendant chain is admitted too, on one
+   * condition: the bundle must draw it in exactly ONE such chain. `.key` qualifies -- the only
+   * rule that reaches it is `.sigcard .key`, 12px mono -- so whatever ancestor the element has
+   * at runtime the bundle has one answer and a utility beside it always overrules something real.
+   * `.sub` does not: the bundle draws it three ways (`h3.sub`, `.comp .sub`, `.hero .sub`) and
+   * only the hero one sets a margin-bottom, so a scan of the source cannot tell whether a `mb-3`
+   * beside it replaces the drawing or fills a gap the drawing left. Counting the chains rather
+   * than comparing their values is what separates those two cases; the ambiguous class is
+   * dropped and the check stays silent, which is the same conservatism as before.
+   */
+  const chains = new Map<string, Set<string>>();
+  const viaContext = new Map<string, Map<string, string>>();
+  for (const m of css.matchAll(/([^{}@]+)\{([^{}]*)\}/g)) {
+    const decls = [...m[2].matchAll(/([-a-zA-Z]+)\s*:\s*([^;]+)/g)];
+    for (const selector of m[1].split(",")) {
+      const chain = selector.trim().match(/^(?:\.[a-zA-Z][\w-]* )+\.([a-zA-Z][\w-]*)$/);
+      if (!chain) continue;
+      const entry = viaContext.get(chain[1]) ?? new Map<string, string>();
+      const drawnBy = chains.get(chain[1]) ?? new Set<string>();
+      drawnBy.add(selector.trim());
+      chains.set(chain[1], drawnBy);
+      for (const d of decls) entry.set(d[1].trim(), d[2].trim());
+      viaContext.set(chain[1], entry);
+    }
+  }
+
   for (const m of css.matchAll(/([^{}@]+)\{([^{}]*)\}/g)) {
     const decls = [...m[2].matchAll(/([-a-zA-Z]+)\s*:\s*([^;]+)/g)];
     for (const selector of m[1].split(",")) {
@@ -122,6 +160,16 @@ function bundleClassProps(): Map<string, Map<string, string>> {
       for (const d of decls) if (!entry.has(d[1].trim())) entry.set(d[1].trim(), d[2].trim());
       map.set(name, entry);
     }
+  }
+
+  for (const [name, entry] of viaContext) {
+    const merged = map.get(name) ?? new Map<string, string>();
+    if ((chains.get(name)?.size ?? 0) !== 1) continue;
+    for (const [prop, value] of entry) {
+      if (merged.has(prop)) continue;
+      merged.set(prop, value);
+    }
+    if (merged.size) map.set(name, merged);
   }
   return map;
 }
@@ -139,7 +187,19 @@ describe("the bundle's classes are not overpainted by utilities", () => {
     for (const file of walk(SRC)) {
       const rel = path.relative(WEB, file);
       const source = readFileSync(file, "utf8");
-      for (const attr of source.matchAll(/class(?:Name)?\s*=\s*(?:"([^"]*)"|\{`([^`]*)`\})/g)) {
+      const attrs = [...source.matchAll(/class(?:Name)?\s*=\s*(?:"([^"]*)"|\{`([^`]*)`\})/g)];
+      /*
+       * `textLinkClass("...")` emits `tlink` -- the bundle's inline-link class -- and appends
+       * whatever the call site passes. The two halves of a conflict therefore never appear in
+       * one string, and the scan below could not see them. Measured on the built /ideas page:
+       * `a.tlink` computed font-weight 500 against the 550 the bundle draws, because a call
+       * site had added `font-medium`. Reading the argument as if it carried `tlink` closes it.
+       */
+      for (const call of source.matchAll(/textLinkClass\(\s*(?:"([^"]*)"|'([^']*)'|`([^`$]*)`)/g)) {
+        const arg = call[1] ?? call[2] ?? call[3] ?? "";
+        if (arg.trim()) attrs.push([`tlink ${arg}`, `tlink ${arg}`, undefined] as never);
+      }
+      for (const attr of attrs) {
         // Split on whitespace only: `sm:p-8` must stay one token so the prefix check sees it.
         const tokens = (attr[1] ?? attr[2] ?? "").split(/\s+/).filter(Boolean);
         const designer = tokens.filter((t) => owned.has(t));
