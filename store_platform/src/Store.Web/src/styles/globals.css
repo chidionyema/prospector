@@ -12,7 +12,7 @@
    Same declarations as `.f-col h6` in the copied stylesheet, so the look is identical. */
 @layer components {
 
-  /* FOUR DEVIATIONS FROM THE SHIPPED STYLESHEET, each one measured against a check in
+  /* FIVE DEVIATIONS FROM THE SHIPPED STYLESHEET, each one measured against a check in
      `verify.mjs`. The bundle stays byte-identical; the deviation lives here, which is what
      `src/__tests__/stylesheetIsShippedVerbatim.test.ts` asks for. */
 
@@ -50,6 +50,26 @@
      spacing that was already there. mumchimp.css:99. */
   .row .proof {
     display: block;
+  }
+
+  /* `mumchimp.css:417` turns on `hyphens:auto` for `.d` and `.desc` under 520px, and with no
+     lower bound it breaks ordinary short words. The first listing on /packs rendered "third-party
+     libraries and ven-dors" on a 390px phone, measured 2026-08-30 -- a paragraph carrying a real
+     hyphen and an invented one four words later, which reads as a typo on a page whose whole
+     argument is that we are careful. The measure on a phone card is about 40 characters, narrow
+     enough that SOME hyphenation beats the rivers you get without it ("Commissioner's",
+     "infrastructure" do need to break), so the rule is bounded rather than turned off: nothing
+     under 12 characters hyphenates, and never fewer than 5 characters before the break or 4
+     after. `hyphenate-limit-chars` is limited availability (MDN,
+     Properties/hyphenate-limit-chars, read 2026-08-30: "does not work in some of the most
+     widely-used browsers") -- where it is unsupported the declaration is dropped and the line
+     behaves exactly as it does today, so this improves Safari and Chrome, which is where phone
+     traffic is, and is a no-op everywhere else. It cannot regress. */
+  @media (max-width: 520px) {
+    .d,
+    .desc {
+      hyphenate-limit-chars: 12 5 4;
+    }
   }
 
   /* C3 forbids a heading jump, and every `.checkrow` / `.klrow` row heading followed an h2 as an

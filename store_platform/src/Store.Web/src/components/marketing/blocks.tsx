@@ -209,13 +209,10 @@ export function PageHero({
    */
   aside,
   children,
-  /** The page's own name in the breadcrumb. Defaults to `eyebrow`, which is already it. */
-  crumb,
 }: {
   bg?: BandBg;
   width?: keyof typeof BAND_WIDTH;
   eyebrow?: string;
-  crumb?: string;
   title: React.ReactNode;
   lead?: React.ReactNode;
   primary?: { href: string; label: string; onClick?: () => void; variant?: ButtonVariant };
@@ -227,10 +224,24 @@ export function PageHero({
   // the fold, so it is the LCP element on every route that uses this component, and `rise`
   // fades in from opacity 0 -- which is not LCP-eligible. Measured: /how-it-works 1824ms and
   // /ideas 1860ms LCP against 164ms and 208ms first paint (F-005).
-  /* The breadcrumb reads "Catalogue / <page>". The eyebrow is already that page's own name on
-     every page that sets one, so it is the default rather than a second thing to keep in step; a
-     page with no eyebrow gets no crumb rather than an invented one. */
-  const crumbLabel = crumb ?? (typeof eyebrow === 'string' ? eyebrow : null);
+  /* THE HERO NO LONGER DRAWS ITS OWN BREADCRUMB. It used to render `<p className="crumb">
+     <Link href="/">Catalogue</Link> / {crumb ?? eyebrow}</p>` here, and `MarketingLayout` renders
+     `<Breadcrumbs>` -- the drawing's same `.crumb` line -- immediately above it, so every one of
+     the five pages that draws a hero drew the trail TWICE. Measured on the live site
+     (`curl -s https://mumchimp.com/packs`, 2026-08-30):
+
+         Catalogue / Every pack      <- MarketingLayout <Breadcrumbs>
+         Catalogue / 77 packs        <- this component
+         77 packs                    <- the eyebrow, again
+         Every pack                  <- the headline
+
+     Three of those four lines say the same two things. The label defaulted to the EYEBROW, which
+     on /packs is a count, so the trail claimed the page was called "77 packs". The one deleted is
+     the worse of the two by every measure: a bare `<p>` with no `nav`/`ol`/`aria-current`, a
+     "Catalogue" root hardcoded to `/` wherever the page actually sits, no truncation for long
+     pack titles, and no correspondence with the `breadcrumbNode` JSON-LD the pages emit. Every
+     page that renders a hero already passes `breadcrumbs` to the layout (all five, checked), so
+     nothing loses its trail. `heroDrawsNoCrumb.test.ts` fails if it is ever added back. */
 
   return (
     /* `page-hero` on the BAND, not the measure: `globals.css` uses it as an adjacent-sibling hook
@@ -251,15 +262,10 @@ export function PageHero({
         }
       >
       {/* THE DRAWING'S PAGE TOP (`mockups/about.html:328`, and the same three lines open every
-          other page): a mono breadcrumb, then `.pagetop` holding the eyebrow, the headline and the
-          lead. It was five Tailwind utilities per line holding the same sizes by hand, which is
-          how eight pages could each drift from the drawing separately. */}
+          other page): `.pagetop` holding the eyebrow, the headline and the lead, under the mono
+          breadcrumb the LAYOUT draws. It was five Tailwind utilities per line holding the same
+          sizes by hand, which is how eight pages could each drift from the drawing separately. */}
       <div className="max-w-[46rem]">
-        {crumbLabel && (
-          <p className="crumb">
-            <Link href="/">Catalogue</Link> / {crumbLabel}
-          </p>
-        )}
         <div className="pagetop">
           {eyebrow && <p className="eyebrow">{eyebrow}</p>}
           <h1 className="max-w-[20ch]" style={{ marginTop: 12 }}>{title}</h1>
