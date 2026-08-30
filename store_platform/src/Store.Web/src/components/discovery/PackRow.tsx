@@ -326,8 +326,16 @@ export function PackTileGrid({
             href={`/pack/${pack.id}`}
             onClick={() => trackCardClick(pack.id, i + 1)}
           >
+            {/* GATED ON `tagged`, like every other sector render site (`PackRow.tsx:152`,
+                `index.tsx:322`). This tile was added with the three-up row and did not carry the
+                guard, so it printed "Not yet tagged" -- a status message about our own pipeline --
+                on the first card of "Newest survivors", above the fold, on a live product. That is
+                the exact defect `lib/category.ts` documents and forbids. `categoryScale.test.ts`
+                asserted the gate on the shared `PackCardHeader` path only, so a new render site
+                could bypass it silently; `eyebrowIsGated.test.ts` now reads the source and fails
+                on any ungated one. */}
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-              <span className="eyebrow">{cat.label}</span>
+              {cat.tagged && <span className="eyebrow">{cat.label}</span>}
               {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
             </div>
             <h4>{listHeading(heading)}</h4>
