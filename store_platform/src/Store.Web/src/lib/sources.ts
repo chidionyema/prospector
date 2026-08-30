@@ -56,7 +56,7 @@ export const CITED_FIGURES: readonly CitedFigure[] = [
     url: 'https://explodingtopics.com/pricing',
     checkedOn: '2026-08-01',
     caveat:
-      'One product’s published price, not a survey of the category. Their other plans are listed at $99 and $249 a month.',
+      'One product’s published price. It is not a survey of the category, and their other plans are listed at $99 and $249 a month.',
   },
   {
     id: 'documentary-research',
@@ -67,7 +67,7 @@ export const CITED_FIGURES: readonly CitedFigure[] = [
     checkedOn: '2026-08-01',
     publishedOn: '2025-02-26',
     caveat:
-      'Their price list, for a question a client brings them. A pack answers a question we chose and already ran, which is why it can cost what it costs, and why this is a comparison of method, not of service.',
+      'Their price list, for a question a client brings them. A pack answers a question we chose and already ran, which is why it can cost what it costs. The comparison is one of method.',
   },
 ];
 

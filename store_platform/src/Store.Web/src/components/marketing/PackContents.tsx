@@ -92,7 +92,7 @@ export const PACK_DOCUMENTS: {
     title: 'What would sink this',
     section: 'What_Would_Sink_This.md',
     desc:
-      'The case against, at full strength, so you meet the objection here rather than from a customer.',
+      'The case against, at full strength. Meet the objection here, before a customer makes it.',
   },
   // --- the body: how it is done ---
   {

@@ -88,7 +88,7 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
       }
       setState('queued');
     } catch {
-      setError('That did not go through. Try again in a moment.');
+      setError('We could not add you to the list. Try again in a moment.');
       setState('error');
     }
   };

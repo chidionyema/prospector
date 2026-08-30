@@ -86,7 +86,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Vetted B2B business ideas where the customer is a company with a budget. Each pack names the buyer, the price they pay, and the evidence behind both.',
     intro:
-      'These are the packs where the customer is another business. That changes the shape of the work more than most people expect: the buyer has a budget line and an approval process, the sale is a conversation rather than an impulse, and one signed customer can be worth a hundred consumer ones. It also means the payer check, can this customer actually afford it, is answered against company finances rather than household ones.',
+      'These are the packs where the customer is another business. The buyer has a budget line and an approval process, so the sale is a conversation held over weeks. One signed customer can be worth a hundred consumer ones. The payer check, can this customer afford it, is answered against company accounts.',
   },
   {
     slug: 'b2c-business-ideas',
@@ -98,7 +98,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Vetted consumer business ideas with the buyer, the price and the route to reach them all sourced. One payment per researched pack.',
     intro:
-      'Here the person paying is a member of the public, usually at a moment when something has gone wrong or come due. Consumer ideas trade the long B2B sales cycle for a short one, and trade account management for the harder problem of being findable at the exact moment of need, which is why the distribution check does most of the work on these packs.',
+      'Here the person paying is a member of the public, usually at a moment when something has gone wrong or come due. The sale is short and there is no account to manage. The hard part is being findable at the exact moment of need, so the distribution check does most of the work on these packs.',
   },
 
   // ── Hours it needs from you ──────────────────────────────────────────────────
@@ -112,7 +112,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas that fit around a full-time job, evenings and weekends. Each pack cites a source for every claim.',
     intro:
-      'Every idea here was assessed as startable outside working hours, without a customer needing you during the day. That is a real constraint, not a marketing angle: it rules out anything where the work is answering the phone when the phone rings, and favours ideas where the customer submits something and you turn it around on your own schedule.',
+      'Every idea here was assessed as startable outside working hours, without a customer needing you during the day. The constraint is real and it does real work. It rules out anything where the job is answering the phone when the phone rings. What is left is work a customer submits and you turn around on your own schedule.',
   },
   {
     slug: 'part-time-business-ideas',
@@ -122,9 +122,9 @@ export const LANDINGS: Landing[] = [
     shortName: 'Part time',
     metaTitle: 'Part-time business ideas, researched and sourced',
     metaDescription:
-      'Business ideas sized for part-time hours rather than a full-time leap. Every claim cited, one payment per pack.',
+      'Business ideas sized for part-time hours. Every claim cited, one payment per pack.',
     intro:
-      'These need more than evenings but less than a full week, the middle ground where most businesses actually get started, usually alongside reduced hours or other work. The packs are explicit about which parts of the week the work has to land in, because "part-time" hides a lot of difference between a few scheduled hours and being reachable most days.',
+      'These need more than evenings and less than a full week. It is the middle ground where most businesses get started, usually alongside reduced hours or other work. Each pack says which parts of the week the work has to land in. "Part-time" covers everything from a few scheduled hours to being reachable most days.',
   },
 
   // ── How much is automated ────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Business ideas where software does most of the delivery. Each pack sets out what can be automated and what still needs a person.',
     intro:
-      'The delivery in these ideas is mostly machine-doable, data gathered, documents produced, checks run, rather than hours sold. That is what makes them scale without proportionally more of your time, and it is also the honest limit: automatable does not mean autonomous, and each pack is specific about the steps that still need a human hand.',
+      'Most of the delivery in these ideas is machine-doable (data gathered, documents produced, checks run). They grow without taking proportionally more of your time. The honest limit is that automatable does not mean autonomous, and each pack names the steps that still need a person.',
   },
   {
     slug: 'part-automated-business-ideas',
@@ -164,7 +164,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas where being able to build software is the unfair advantage. Every claim sourced, one payment per pack.',
     intro:
-      'These reward the ability to build the thing yourself rather than pay someone to. That advantage is usually not the code itself, it is being able to try five versions of the product in the time it takes a competitor to specify one, in a market where the established tooling is old.',
+      'These reward being able to build the thing yourself instead of paying someone to. The advantage is speed: you can try five versions of the product in the time it takes a competitor to specify one. The established tooling in these markets is old.',
   },
   {
     slug: 'business-ideas-for-operators',
@@ -176,7 +176,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas where running a tight process is the advantage. Every claim sourced, one payment per pack.',
     intro:
-      'The advantage here is process: turning something chaotic into something that reliably happens on time, at a predictable cost. These ideas usually sit in markets where the work is not technically hard but is done badly and inconsistently by everyone currently doing it, which is exactly the gap someone who runs things well can walk into.',
+      'The advantage here is process: turning something chaotic into something that reliably happens on time, at a predictable cost. These ideas sit in markets where simple work is done badly and inconsistently by everyone currently doing it. The gap that leaves is what someone who runs things well walks into.',
   },
   {
     slug: 'business-ideas-for-salespeople',
@@ -188,7 +188,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas where the bottleneck is distribution, not building. Every claim sourced, one payment per pack.',
     intro:
-      'In these, the hard part is not making the thing, it is getting in front of the buyer and closing. They suit someone who is comfortable with outbound conversation and rejection, and they are the ideas most likely to stall for someone who is not, no matter how good the product gets.',
+      'In these, the hard part is getting in front of the buyer and closing. They suit someone comfortable with outbound conversation and rejection. Without that, the pack stalls no matter how good the product gets.',
   },
 
   // ── How it makes money ───────────────────────────────────────────────────────
@@ -202,7 +202,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Fixed scope, fixed price, repeatable delivery. Researched fixed-price service ideas at one payment per pack.',
     intro:
-      'A fixed-price service sells a defined outcome at a fixed price instead of billing for hours, the same job, done the same way, over and over. It is the mechanism with the shortest path to a first paying customer, because you can sell it before you have built any of the machinery that later makes it efficient.',
+      'A fixed-price service sells a defined outcome at a fixed price instead of billing for hours: the same job done the same way, over and over. This is the shortest path to a first paying customer. You can sell it before you have built any of the machinery that later makes it efficient.',
   },
   {
     slug: 'vertical-software-ideas',
@@ -212,9 +212,9 @@ export const LANDINGS: Landing[] = [
     shortName: 'Software for one job',
     metaTitle: 'Software business ideas aimed at one trade',
     metaDescription:
-      'Software ideas aimed at one trade or profession rather than everyone. Every claim cited, one payment per researched pack.',
+      'Software ideas aimed at one trade or profession. Every claim cited, one payment per researched pack.',
     intro:
-      'Software built for one trade or profession, not for everybody. The bet is depth over reach: a tool that knows the specific forms, rules and vocabulary of a single industry is hard for a general-purpose competitor to match, and the buyer is easy to find because they all read the same few places.',
+      'Software built for one trade or profession. The bet is depth over reach: a tool that knows the forms, rules and vocabulary of a single industry is hard for a general-purpose competitor to match. The buyer is easy to find, because they all read the same few places.',
   },
   {
     slug: 'marketplace-and-broker-ideas',
@@ -226,7 +226,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Ideas that earn by connecting two sides of a deal. One payment per researched pack, and each one says how you get the first people on both sides.',
     intro:
-      'These earn a cut for standing between two parties who struggle to find each other. The upside is that you carry no inventory and little delivery cost; the difficulty is getting the first people on both sides, since neither side turns up for an empty market, so each pack has to say which side it gets first and how.',
+      'These earn a cut for standing between two parties who struggle to find each other. You carry no inventory and little delivery cost. The difficulty is getting the first people on both sides, because neither side turns up for an empty market. Each pack says which side it gets first, and how.',
   },
 
   // ── Sector ───────────────────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas built on permits, licences and mandatory admin, deadlines someone has to meet. One payment per pack.',
     intro:
-      'Licences, permits, registrations and the paperwork that is not optional. What makes this sector durable is that the deadline is set by someone other than the customer: the work recurs whether or not anyone feels like doing it, and the cost of getting it wrong is what people are really paying to avoid.',
+      'Licences, permits and the paperwork that is not optional. The deadline is set by someone other than the customer, which is what makes this sector durable. The work recurs whether or not anyone feels like doing it. People are paying to avoid the cost of getting it wrong.',
   },
   {
     slug: 'pay-and-worker-rights-ideas',
@@ -252,7 +252,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas around wages, entitlements and employment admin, with the legality check applied. One payment per pack.',
     intro:
-      'Wages, entitlements, deductions and the disputes that follow when they are wrong. This sector carries real regulatory weight, so the legality check does more work here than anywhere else in the catalogue, several ideas in this space have been killed outright at that gate, and the kill log records why.',
+      'Wages, entitlements and the disputes that follow when they are wrong. This sector carries real regulatory weight, so the legality check does more work here than anywhere else. Ideas in this space have been killed outright at that gate, and the kill log records why.',
   },
   {
     slug: 'care-and-benefits-ideas',
@@ -264,7 +264,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas around care arrangements and benefits entitlement, each with a sourced payer and legality check. One payment per pack.',
     intro:
-      'Care arrangements, entitlements and the claims process around them. These reach people at a genuinely difficult moment, which raises the bar rather than lowering it: the payer check has to establish who can actually pay when the person who needs the help often cannot, and the legality check has to be satisfied before anything reaches the catalogue.',
+      'Care arrangements, entitlements and the claims process around them. These reach people at a genuinely difficult moment, which raises the bar. The payer check has to establish who pays when the person who needs the help cannot. The legality check has to be satisfied before anything reaches the catalogue.',
   },
   {
     slug: 'trades-and-construction-ideas',
@@ -276,7 +276,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas serving builders, trades and site operations. Every claim sourced, one payment per pack.',
     intro:
-      'Serving the people who do physical work on sites and in homes. The customers here are chronically underserved by software because they are not at a desk, and they are quick to pay for anything that removes an evening of paperwork, but equally quick to abandon anything that assumes they have one.',
+      'Serving the people who do physical work on sites and in homes. These customers are underserved by software because they are not at a desk. They pay quickly for anything that removes an evening of paperwork, and abandon anything that assumes they have a desk.',
   },
 ];
 

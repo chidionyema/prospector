@@ -137,7 +137,7 @@ export function CauseGrid({ distribution, className }: CauseGridProps) {
       <div
         className="causegrid"
         role="img"
-        aria-label={`Every idea we researched, one mark each, shaded by the check that killed it. Each of the ${researched.toLocaleString('en-GB')} marks is one idea; the strongest red is the commonest cause of death, and the teal block is what got through.`}
+        aria-label={`Every idea we researched, one mark each, shaded by the check that killed it. Each of the ${researched.toLocaleString('en-GB')} marks is one idea. The strongest red is the commonest cause of death, and the teal block is what got through.`}
       >
         {marks.map((paint, i) => (
           <i key={i} className={paint} />
