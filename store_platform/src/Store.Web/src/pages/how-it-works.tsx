@@ -189,7 +189,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
               was false about a number this page reads from the same JSON as the page that states it
               correctly: 400 of the 1,364, per /kill-log. The replacement claims no quantity at all,
               and `numbersReconcile.test.ts` scans every page for the absolute form. */}
-            <p className="mt-2 max-w-[60ch] lede">
+            <p className="mt-2 lede">
               {RESEARCH_STATS.rejectRateLabel} died on cited evidence. {killsSummary()}.
             </p>
           </div>
@@ -238,7 +238,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
        */}
       <Section bg="surface" outerClassName="!border-b-0">
         <h2 className="sec">Where the ideas went</h2>
-        <p className="mt-3 max-w-[62ch] lede">
+        <p className="mt-3 lede">
           Every check that killed something, in the order of how much it killed, with the number
           taken off the total each time.
         </p>
@@ -290,7 +290,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             Before the first check, because a reader who learns this after reading six verdicts has
             been told late. The 52-word single sentence it started as was three claims sharing one
             spine; three short sentences say the same thing and can each be read on its own. */}
-        <p className="mb-10 max-w-3xl lede">
+        <p className="mb-10 lede">
           AI agents run the checks below. Each may only rule on passages it fetched from the open
           web, and those sources are published with the verdict, so you can hold the reasoning
           against them yourself. A person reads that record before a pack goes on sale.

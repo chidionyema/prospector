@@ -141,7 +141,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
                 rungs={ladder.map((rung) => ({ price: formatGbp(rung.amount), count: rung.count }))}
               />
             </div>
-            <p className="mt-8 max-w-[60ch] lede">
+            <p className="mt-8 lede">
               Two things set the rung, not a guess: how big the idea could realistically become,
               and which market it targets. US-market packs sit one price step higher, because the
               market they address is bigger. A weekend side business and a
@@ -157,7 +157,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         <hr className="rule2" />
         <div className="mt-8">
           <h2 className="sec">What you get, at every price</h2>
-          <p className="mt-3 max-w-[60ch] lede">
+          <p className="mt-3 lede">
             Every pack is the same shape: {PACK_DOCUMENTS.length} documents, sourced
             and cited. No tier, no add-on. The list below is
             identical for every pack in the catalogue
@@ -204,7 +204,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           <h2 id="what-you-do-not-get" className="scroll-mt-24 sec">
             What you do not get
           </h2>
-          <p className="mt-3 max-w-[60ch] lede">
+          <p className="mt-3 lede">
             Honesty about the limits is part of the brand.
           </p>
           {/* THE DRAWING'S CARD OF `.checkrow`s (`mockups/pricing.html`): one bordered surface,

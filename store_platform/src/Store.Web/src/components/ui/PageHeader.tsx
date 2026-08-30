@@ -39,7 +39,7 @@ export function PageHeader({ eyebrow, title, description, action, className }: P
             No `leading-tight`/`tracking-tight`: both tokens already carry their own line-height and
             letter-spacing, and stacking the utilities on top applied the correction twice. */}
         <h1>{title}</h1>
-        {description && <p className="mt-2 max-w-[60ch] lede">{description}</p>}
+        {description && <p className="mt-2 lede">{description}</p>}
       </div>
       {action && <div className="shrink-0 sm:pb-0.5">{action}</div>}
     </header>

@@ -358,7 +358,7 @@ export default function KillLogPage({
           <h2 id="distribution-heading" className="sec">
             How ideas die
           </h2>
-          <p className="mt-2 max-w-[68ch] lede">
+          <p className="mt-2 lede">
             Every rejection across all {killed.toLocaleString('en-GB')} kills, by the check that
             fired first. The checks stop at the first hard failure, so each idea is counted once,
             against the cheapest gate that killed it.
@@ -370,7 +370,7 @@ export default function KillLogPage({
               comparing a finding with a tally, and nothing on the page marked the difference.
               `isStageLabel` keys on the LABEL for the reason given where it is defined: every
               surface on this page is keyed on label, and two engine keys can share one. */}
-          <p className="mt-2 max-w-[68ch] lede">
+          <p className="mt-2 lede">
             Causes marked <span className="mono">stage</span> are
             points in the run rather than findings about the idea: it scored too low overall, or
             the evidence never grounded well enough to rule on.
@@ -668,7 +668,7 @@ export default function KillLogPage({
                         ) : (
                         <>
                         {detail.oneLiner && (
-                          <p className="max-w-[80ch] lede">{detail.oneLiner}</p>
+                          <p className="lede">{detail.oneLiner}</p>
                         )}
                         {/* THE ENGINE'S OWN WORDS, TRANSLATED ON THE WAY OUT. This paragraph is
                             written by the verdict brain for an audit trail and rendered verbatim
@@ -738,7 +738,7 @@ export default function KillLogPage({
           form is what the email asks for, and it sits between the last row and the closing
           CTA so a reader who reaches the end still meets it.
         */}
-        <p className="mt-10 max-w-[68ch] lede">
+        <p className="mt-10 lede">
           This is a sample of the log, not all {killed.toLocaleString('en-GB')}. The rest were
           rejected on a low overall score, with no single finding behind it, so there would be
           nothing here for you to read. Every kill above names the check it failed and why.

@@ -196,7 +196,7 @@ export default function OrderSuccess() {
         </h1>
 
         {/* 3. Pack one-liner */}
-        <p className="mt-3 max-w-[60ch] lede">
+        <p className="mt-3 lede">
           {pack?.oneLine ?? 'Your payment was received. The download is ready below.'}
         </p>
 
@@ -255,7 +255,7 @@ export default function OrderSuccess() {
             <h2 className="sec">
               Other packs in this category
             </h2>
-            <p className="mt-2 max-w-[60ch] lede">
+            <p className="mt-2 lede">
               Same vetted filter, same evidence standard. Three more from the same market.
             </p>
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -284,7 +284,7 @@ export default function OrderSuccess() {
             <h2 className="sub">
               Share with a friend
             </h2>
-            <p className="mt-2 max-w-[60ch] lede">
+            <p className="mt-2 lede">
               If this helped, send it to the one person who would actually build it.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -318,7 +318,7 @@ export default function OrderSuccess() {
             <h2 className="sub">
               Save your receipt
             </h2>
-            <p className="mt-2 max-w-[60ch] lede">
+            <p className="mt-2 lede">
               Keep a copy for your records. The receipt is your orderPath; the bookmark
               above is the same URL.
             </p>
@@ -343,7 +343,7 @@ export default function OrderSuccess() {
           <h2 className="sub">
             {`What's next`}
           </h2>
-          <p className="mt-2 max-w-[60ch] lede">
+          <p className="mt-2 lede">
             The pack is a built project, not a report. Four steps to a first customer.
           </p>
           <ol className="mt-6 space-y-3">
@@ -421,7 +421,7 @@ function ResolutionFallback({
             <h1>
               Order confirmed
             </h1>
-            <p className="max-w-md lede">
+            <p className="lede">
               {phase === 'ready'
                 ? 'Your payment was received. Your download is ready below.'
                 : phase === 'resolving'
