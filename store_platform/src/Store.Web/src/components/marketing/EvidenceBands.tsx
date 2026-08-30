@@ -25,24 +25,30 @@ import { RESEARCH_STATS } from '@/lib/stats';
 import { GATE_LABELS } from '@/lib/gateLabels';
 
 /*
- * THE KEY NAMES ONE BAR, NOT SIX (2026-08-19).
+ * THE CHART IS `.barline` NOW, NOT THE SPARKLINE (founder, 2026-08-30, pointing at this band:
+ * "THE STYLONG HERE 24 ... IS SHIT", "IT LOOKS WEORD AND HAS DONE SINCE IT WAS INTROCDEC").
  *
- * It printed all six canonical gate names joined by "·". Measured on the live page at 1280 with
- * Playwright: `.barkey` rendered 518x124px -- five wrapped lines of 11.5px mono under a 44px-tall
- * chart -- and at 390 it rendered 310x198px. It read as a paragraph, not a key, and no label sat
- * under the bar it named, so it told a reader nothing about which bar was which anyway.
+ * It was six vertical cells in `.bars`. Measured on the production build at 1280 on 2026-08-30:
+ * the box is 846.3x44px and the six cells render 44.0, 14.5, 13.6, 10.1, 5.7 and 3.5px tall, so
+ * five of the six are under fifteen pixels and the whole chart occupies 171px of an 846px box.
+ * It carried `aria-hidden`, so a screen reader was told the only ranked evidence on the band is
+ * decoration, and one `.barkey` line named one bar for six bars, so five had no label at all.
  *
- * Short labels are not the way back. They were removed on 2026-08-18 because this file and the
- * kill log then named the same cause of death two different ways. The canonical names stay.
+ * The comment that stood here said pairing each label with its own bar "needs a CSS rule that
+ * `mumchimp.css` does not have". That was wrong, and it shipped on the strength of being written
+ * down. `mumchimp.css:104-109` is `.barline`: a `1fr 48px` grid with a label, a 9px track and the
+ * count in mono. The shipped stylesheet draws exactly this chart; nobody used it here.
+ * `/kill-log` has rendered the same ranked chart from the same rule since 2026-08-18.
  *
- * So the key names the bar the copy is about and says what the rest are. Pairing each label with
- * its own bar needs a CSS rule that `mumchimp.css` does not have, and this build writes no CSS.
+ * Two utilities come with it, for the reason `killLogBars.test.ts` records: `.bars` is one class
+ * name over two components, so the sparkline's `height:44px` (`mumchimp.css:103`) and its
+ * `max-width:26px` cell cap (`mumchimp.css:356`) both land on this chart and have to be undone at
+ * the call site. `mumchimp.css` is shipped verbatim and is not touched.
  */
 
 const byGate = (killTotals as { byGate: Record<string, number> }).byGate;
-const gates = Object.entries(byGate)
-  .sort((a, b) => b[1] - a[1])
-  .slice(0, 6);
+const ranked = Object.entries(byGate).sort((a, b) => b[1] - a[1]);
+const gates = ranked.slice(0, 6);
 const top = gates[0];
 
 export function KillGateBand() {
@@ -64,19 +70,35 @@ export function KillGateBand() {
             enough to be worth your money. Not illegal, not already taken, not unfounded. Just not
             good enough to publish.
           </p>
-          <div className="bars" aria-hidden="true">
-            {gates.map(([gate, n], i) => (
-              <i
-                key={gate}
-                className={i === 0 ? 'hot' : undefined}
-                style={{ height: `${Math.round((n / max) * 100)}%` }}
-              />
+          {/* Every bar is drawn against the LARGEST cause, not against the total. Against the
+              total every bar but the first is a sliver and the picture says nothing; against the
+              max, the comparison the reader came for is the one the chart makes. The floor of
+              0.6% keeps a real cause visible rather than rendering it as an empty track. */}
+          <ul className="bars h-auto items-stretch">
+            {gates.map(([gate, n]) => (
+              <li key={gate} className="barline">
+                <span className="t max-sm:flex-col max-sm:items-start max-sm:gap-2">
+                  {/* `.barline .lab` truncates at 52% with an ellipsis, which on a phone cuts the
+                      cause of a rejection in half -- and the label IS the finding. Below `sm` it
+                      takes the row and wraps, exactly as `/kill-log` does. */}
+                  <span className="lab max-sm:max-w-none max-sm:whitespace-normal">
+                    {GATE_LABELS[gate] ?? gate}
+                  </span>
+                  <span className="bar max-sm:w-full">
+                    <i
+                      className="max-w-none"
+                      style={{ width: `${Math.max((n / max) * 100, 0.6)}%` }}
+                    />
+                  </span>
+                </span>
+                <span className="n num">{n.toLocaleString('en-GB')}</span>
+              </li>
             ))}
-          </div>
-          <p className="barkey">
-            Tallest bar: {GATE_LABELS[top[0]] ?? top[0]}. The five after it are the next commonest
-            causes, in order.
-          </p>
+          </ul>
+          {/* The key says what is NOT on the chart. Six labelled rows need no legend, but a
+              reader who counts them is owed the fact that more causes exist, and the count comes
+              from the data rather than being typed. The kill log holds the rest. */}
+          <p className="barkey">The six commonest of {ranked.length} recorded causes.</p>
           <p className="src num">
             Every kill published with its reason · <Link href="/kill-log" prefetch={false}>read the kill log</Link>
           </p>
