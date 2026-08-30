@@ -16,8 +16,8 @@ interface LogoProps {
  * render below. The single objection that produced the ONE-weight rule (2026-08-06) was that the
  * font loaded then (Geist, static 400/500/600) would SYNTHESISE any heavier ask, smearing a fake
  * bold onto the one string that is the brand. That objection no longer holds: the sans face is
- * now self-hosted Switzer, declared `font-weight: 100 900` as a true variable axis
- * (`tokens.css`, the `@font-face` block), so 700 renders as a real intermediate weight, not a
+ * now self-hosted Inter Variable, declared `font-weight: 100 900` as a true variable axis
+ * (`tokens.css:65`), so 700 renders as a real intermediate weight, not a
  * synthesis. The ink stays single (`text-text`, no second colour) and there is still no dot --
  * only the "one weight" third of the 2026-08-06 rule is what changes here. Still ONE colour, ONE
  * name, no punctuation.
@@ -97,7 +97,9 @@ interface LogoProps {
  *
  * SIZED TO THE CAP HEIGHT, NOT THE EM BOX (2026-08-08). It was `1.06em`, which is a measurement
  * of the FONT rather than of the letters: at the header's 24px the em box is 24px but the capital
- * M beside it is 16.32px tall (measured off Switzer via canvas `actualBoundingBoxAscent`), so a
+ * M beside it is 16.32px tall (measured off Switzer via canvas `actualBoundingBoxAscent` -- the
+ * sans face is Inter Variable since, whose cap height differs, so this number and the ratio
+ * below are due a re-measure), so a
  * 25.44px tile stood 56% taller than every letterform next to it and the lockup read as an icon
  * with a caption. The pairing a reader actually sees is tile-against-cap, so that is the ratio to
  * set: 0.82em is 19.7px here, a 1.21 overshoot on the cap. Solid marks want to sit slightly proud

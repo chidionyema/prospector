@@ -912,7 +912,8 @@
      REGRESSION WATCH, recorded because the note this block replaces exists for a reason: h1 was
      deliberately dropped 2.25rem -> 2rem in v3 because the pack-detail h1 wrapped to four lines,
      Geist having a much larger x-height than the Newsreader it replaced. This restores 2.25rem
-     per spec, on Switzer, whose x-height differs again -- so the pack-detail h1 is the first
+     per spec. The face has changed twice since that note -- Switzer, and now Inter Variable
+     (tokens.css:63) -- and each has a different x-height, so the pack-detail h1 is the first
      thing to look at on the rendered page, not the last.
 
      THE TWO TOP STEPS CARRY THEIR OWN MOBILE SIZE (spec: display "mobile: 2.25", h1 "mobile:
@@ -944,8 +945,9 @@
      The four values below are transcribed from the rendered specimen the founder approved
      ("ok i like the concept" / "ok lets try plate"), not chosen here: 72px / 0.94 / -0.036em / 660.
      660 breaks the "no scale weight above 600" policy on purpose and with the same justification
-     the Logo exemption already carries -- Switzer is a VARIABLE face with a 100-900 axis, so 660
-     is a real cut rather than a synthesised bold, and the policy exists to stop synthesis. It is
+     the Logo exemption already carries -- Inter Variable is a VARIABLE face with a 100-900 axis
+     (tokens.css:65), so 660 is a real cut rather than a synthesised bold, and the policy exists
+     to stop synthesis. It is
      a one-token exemption: the ban still holds for every other step, and
      `weightAndCasePolicy.test.ts` was widened to name display specifically rather than raised. */
   /* ── REVERTED TO THE SPEC'S OWN NUMBER, 2026-08-14 ──────────────────────────────────────────

@@ -136,3 +136,46 @@ test.describe('basket drawer', () => {
     }
   });
 });
+
+/**
+ * NO HEADING MAY RENDER AS BODY TEXT.
+ *
+ * Tailwind's preflight sets every heading to `font-size:inherit;font-weight:inherit`, and the
+ * shipped bundle styles headings per container -- `.htile h3`, `.band h3`, `.checkrow h5`,
+ * `.klrow h4`. Between the two there is a silent hole: a heading at a level no rule names keeps
+ * the body's 400 and 16px, looks like a paragraph, and fails nothing. Measured on the built home
+ * page 2026-08-30, six headings were in it, including the three tiles at the top of the first
+ * shelf a visitor sees. Nobody could point at what was wrong; it just read cheap.
+ *
+ * `globals.css` now carries a weight floor for h1-h6 in `@layer base`, which is the fix. This is
+ * the guard, and it grades the rendered page rather than the stylesheet because the defect lives
+ * in the gap between them. The threshold is the floor's own 560 minus a margin: anything at 500
+ * or below is the reset's value, which is the exact signature of a heading no rule reached.
+ */
+test.describe('typography', () => {
+  const ROUTES = ['/', '/ideas', '/kill-log', '/how-it-works', '/pricing'];
+
+  for (const route of ROUTES) {
+    test(`every visible heading on ${route} is set as a heading`, async ({ page }) => {
+      await page.goto(route);
+      const unstyled = await page.$$eval('h1,h2,h3,h4,h5,h6', (els) =>
+        els
+          .filter((el) => (el as HTMLElement).offsetParent !== null)
+          .map((el) => {
+            const s = getComputedStyle(el);
+            return {
+              tag: el.tagName,
+              weight: parseInt(s.fontWeight, 10),
+              size: s.fontSize,
+              text: (el.textContent || '').trim().slice(0, 60),
+            };
+          })
+          .filter((h) => h.weight <= 500),
+      );
+      expect(
+        unstyled,
+        'a heading rendering at the body weight is a heading no stylesheet rule reached',
+      ).toEqual([]);
+    });
+  }
+});

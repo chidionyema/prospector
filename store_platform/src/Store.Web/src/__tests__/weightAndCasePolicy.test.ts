@@ -16,7 +16,8 @@ import { readStylesheet } from './helpers/stylesheet';
  *    The original ban rested on SYNTHESIS: `_app.tsx` loaded Geist via next/font at 400/500/600,
  *    no 700 cut was downloaded, so `font-bold` did not fail loudly, it made the browser smear the
  *    600 into a fake bold that differed between engines. §3 deleted next/font entirely and
- *    self-hosts Switzer as a VARIABLE face declaring `font-weight: 100 900` (tokens.css:45-48).
+ *    self-hosts a VARIABLE face declaring `font-weight: 100 900` -- Switzer when this was
+ *    written, Inter Variable now (tokens.css:62-68).
  *    A variable axis renders 700 as a true 700. The synthesis argument is therefore dead, and a
  *    guard that kept citing it would have been a false comment defending a real face.
  *
@@ -118,8 +119,9 @@ describe('weight and case policy', () => {
     //
     // ORIGINAL NOTE (2026-08-14). `--text-display--font-weight` is 660,
     // transcribed from the specimen the founder approved. The ban exists to stop SYNTHESISED
-    // bolds -- a browser faux-bolding a 400-only face -- and Switzer is variable across 100-900,
-    // asserted below, so 660 is a real cut on the axis. The exemption is written as a filter on
+    // bolds -- a browser faux-bolding a 400-only face -- and the sans face is variable across
+    // 100-900 (Switzer then, Inter Variable now, same axis), asserted below, so 660 is a real
+    // cut on the axis. The exemption is written as a filter on
     // the token NAME rather than as a raised threshold on purpose: raising it to 700 would let
     // any future step drift up silently, which is the thing this test is for.
     const DISPLAY_STEPS = new Set(['display', 'h1', 'h2']);

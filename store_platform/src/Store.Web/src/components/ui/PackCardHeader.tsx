@@ -7,7 +7,8 @@ import { cx } from './cx';
  *
  * NOT MONOSPACE ANY MORE (2026-08-15, brief Part One item 3). The house rule this site actually
  * holds is `tokens.css` §3.2 -- "Commit Mono for anything the engine produced ... monospace is
- * the site's promise that a string is checkable". A sector is a TAXONOMY, not a measurement:
+ * the site's promise that a string is checkable". Those are the spec's words; the mono face that
+ * ships is IBM Plex Mono (tokens.css:69-88). The rule is about the promise, not the family. A sector is a TAXONOMY, not a measurement:
  * nobody checks "Licensing and admin" against a source. Setting it in the same face as the source
  * counts and the prices spent the promise on a label that makes none, which is what put four mono
  * runs on one row and made the meta line read as a single run-on string.

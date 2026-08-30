@@ -91,6 +91,18 @@
     margin-bottom: 6px;
     max-width: 58ch;
   }
+  /* The same gap, one level further down. The specimen's `.doc-body` is drawn with an h3 head
+     per section and one sub-head under the failed check ("The strongest case against this
+     idea"), but the bundle gives `.doc-body` a rule for `p` and nothing else, so that sub-head
+     rendered at 16px / weight 400 on the built page (measured 2026-08-30) next to a 19px / 650
+     sibling. These are the bundle's own sub-head numbers, lifted from `.checkrow h5`
+     (mumchimp.css:68) -- the step it draws immediately below an h3. No new design. */
+  .doc-body h4 {
+    font-size: 16.5px;
+    font-weight: 635;
+    letter-spacing: -0.014em;
+    margin-bottom: 5px;
+  }
   /* THE ONE REAL COLLISION, AND IT SURVIVES INTO THE SHIPPED STYLESHEET. Both drawings declare `.bars`: index.html
      draws a row of kill-gate columns, pack-detail.html draws a stack of score bars, and
      pack-detail wins. mumchimp.css:103 ships `flex-direction:column` with mumchimp.css:356 `i{flex:1;max-width:26px}`, which is the merged pair. Scoping index's version to the band it lives
@@ -166,6 +178,39 @@
     font-size: clamp(19px, 3.4vw, 23px);
     letter-spacing: -0.02em;
     font-weight: 655;
+  }
+
+  /* AN INLINE LINK INSIDE A SENTENCE NEEDS MORE THAN ITS COLOUR. The bundle strips every
+     underline (`mumchimp.css:7`, `a{text-decoration:none}`) and then colours these links
+     `--link` on `--ink-3` text (`mumchimp.css:47,48,63,64,354,355`). Measured with axe-core:
+     link #2447C9 against surrounding #8B9096 is 2.31:1, under the 3:1 that WCAG 1.4.1 requires
+     when colour is the only thing separating a link from the words around it. It fired on the
+     breadcrumbs on `/`, `/ideas` and `/how-it-works` at both widths (live, 2026-08-19) and on
+     both links in the kill-gate band on `/` -- "read the kill log", "how the filter works"
+     (built page, 2026-08-30).
+
+     Colour is not touched: the drawing's palette is the founder's call (2026-08-18, "pixel
+     perfect ... to colours"), and the two tokens are 2.31:1 apart whatever we do to the link.
+     The second signal is the underline instead, which is what the rest of the web uses for
+     exactly this and what the bundle itself already uses on `.tlink:hover`. It is drawn at 45%
+     of the link colour so it reads as a rule under the words rather than a second line of ink,
+     and goes solid on hover.
+
+     `e2e/a11y.spec.ts` carried this as an open defect awaiting a style decision rather than as
+     an accepted trade; the founder gave it on 2026-08-30 ("really polish the site thoroughly as
+     best as we possibly can, attention to details"), so the exception is deleted rather than
+     renewed. Scoped to these two: they are links set in running text. A card that IS a link
+     stays undecorated. */
+  .crumb a,
+  .src a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+    text-decoration-color: color-mix(in srgb, var(--link) 45%, transparent);
+  }
+  .crumb a:hover,
+  .src a:hover {
+    text-decoration-color: var(--link);
   }
 
   /* ─────────────────────────────────────────────────────────────────────────────────────────
@@ -636,13 +681,26 @@ body::before {
    a Tailwind utility such as `font-semibold` still overrides it, and the three
    `:is(h1, h2, h3).text-*` rules below stay unlayered and still win where a scale token is worn. */
 @layer base {
-  h1, h2, h3 {
+  /* h4, h5 AND h6 ARE IN THIS LIST SINCE 2026-08-30, AND LEAVING THEM OUT WAS A REAL DEFECT.
+     Tailwind's preflight sets every heading to `font-size:inherit;font-weight:inherit`, so a
+     heading level that neither the bundle nor this floor names renders as body text and nothing
+     anywhere fails. Measured on the built home page with a computed-style probe: four headings
+     came back at 16px / weight 400 -- the three tiles at the top of "What survived" (fixed
+     separately, the bundle draws those as `.htile h3`), the two kill-gate band heads, and the
+     specimen's "The strongest case against this idea". The bundle styles headings per container
+     (`.band h3`, `.checkrow h5`, `.klrow h4`), so a new container or a raised level silently
+     loses its type, and the page looks slightly wrong in a way nobody can point at.
+
+     The floor cannot break a drawn heading: `mumchimp.css` is imported into `layer(components)`,
+     which beats `base`, and a Tailwind utility beats both. It applies only where nothing else
+     has an opinion, which is exactly the broken case. */
+  h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-sans);
     /* 560, not 600, to match the weights the §3.2 scale tokens now carry (display/h1 560,
        h2 520). A heading wearing no scale token used to render 600 while one wearing `text-h1`
        rendered whatever the token said, so the same heading level had two weights depending on
-       how it was classed. 560 is only reachable because Switzer is a variable face -- see
-       tokens.css. This is now a FLOOR in the truest sense: it applies only where neither the
+       how it was classed. 560 is only reachable because Inter Variable is a variable face,
+       declaring a 100-900 axis at tokens.css:65. This is now a FLOOR in the truest sense: it applies only where neither the
        shipped bundle nor a utility has an opinion. */
     font-weight: 560;
     /* The per-size --text-*--letter-spacing values in the theme block are the finer control; this

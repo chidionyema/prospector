@@ -782,7 +782,8 @@ describe('Design contract — wordmark (Logo.tsx)', () => {
    * `font-bold`, "chimp" sets `font-normal`, ink and no-dot are untouched. The premise that made
    * v3's weight rule necessary -- that the loaded font would SYNTHESISE a heavier weight the
    * browser fakes by smearing the glyph -- is no longer true: the sans face is self-hosted
-   * Switzer, declared `font-weight: 100 900` as a real variable axis (`tokens.css`), not the
+   * Inter Variable, declared `font-weight: 100 900` as a real variable axis (`tokens.css:65`),
+   * not the
    * static Geist 400/500/600 v3 was written against. 700 renders as a true intermediate weight
    * on this face, so the objection the old test enforced does not apply to this font.
    */

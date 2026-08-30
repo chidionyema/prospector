@@ -53,7 +53,11 @@ export function KillGateBand() {
       <div className="band-in">
         <p className="fig dead num">{top[1].toLocaleString('en-GB')}</p>
         <div>
-          <h4>The check that kills most ideas is not the one people expect</h4>
+          {/* h3, because that is the only heading level the bundle draws inside a band
+              (mumchimp.css:352, `.band h3`: 19px / 650 / -.018em). As an h4 it matched no rule
+              and rendered at 16px / weight 400 on the built page, measured 2026-08-30. The
+              outline is unaffected: the band sits under the h2 that heads its section. */}
+          <h3>The check that kills most ideas is not the one people expect</h3>
           <p>
             Of {RESEARCH_STATS.killed.toLocaleString('en-GB')} kills, {top[1].toLocaleString('en-GB')}{' '}
             died on the same one: the idea cleared every hard gate and still did not score high
@@ -91,7 +95,8 @@ export function SourcesBand({ sourcesTotal, packCount }: { sourcesTotal: number;
       <div className="band-in">
         <p className="fig num">{sourcesTotal.toLocaleString('en-GB')}</p>
         <div>
-          <h4>Nothing here rests on a number we cannot show you</h4>
+          {/* h3, for the reason given on the band above: `.band h3` is the drawn style. */}
+          <h3>Nothing here rests on a number we cannot show you</h3>
           <p>
             Every figure in every pack links back to the page it came from: tribunal decisions, ONS
             tables, Companies House filings, council policy documents. Where a claim could not be
