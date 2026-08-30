@@ -29,10 +29,19 @@ labels:
 images:
   - name: ghcr.io/chidionyema/prospector-engine
     newTag: f398a664d7de0db3637e41d20133a8cc29adcdbd
+  # The api stays where it is on purpose, not by omission: `git log 99cdc96a..2921bd96 --
+  # store_platform/src/Store.Api` is empty, so there is no api change to release, and the two
+  # images at those tags carry different digests (666b28cf vs 231800bf) because a rebuild is
+  # never bit-identical. Rolling production for a rebuild nobody asked for is risk with no payer.
   - name: ghcr.io/chidionyema/prospector-store-api
     newTag: 99cdc96a341f3365916df59be4fd8f26ebf96a43
+  # crew#693: this line is the release. Four merged storefront commits -- #785, #788, #789, #790
+  # -- sat unreleased from 2026-08-25T04:51Z to 2026-08-30 because nothing rewrites it: ghcr held
+  # the images and https://mumchimp.com kept serving the markup #790 deleted. Until idp#925
+  # rewrites it on a merge, moving it by hand IS the deploy, and the founder noticed before any
+  # instrument here did.
   - name: ghcr.io/chidionyema/prospector-store-web
-    newTag: 99cdc96a341f3365916df59be4fd8f26ebf96a43
+    newTag: 2921bd966231b9e9831d3fd5f65458ac7ff2345d
 
 patches:
   # Delete rather than not list: kustomize refuses files above the overlay directory, so the base
