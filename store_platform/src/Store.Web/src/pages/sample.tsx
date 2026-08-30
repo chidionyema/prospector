@@ -250,7 +250,7 @@ export default function SamplePage() {
           oversells is worse than a generic one: it converts a click into a disappointment. */}
       <Seo
         title="Read the opening of a real pack, free"
-        description="The first three sections of a published Mumchimp pack, in full and unedited: the situation, what you would be selling, and the competitors already there, quoted from their own pages with every link. It stops where the working sections begin."
+        description="The first three sections of a published Mumchimp pack, in full and unedited: the situation, what you would be selling, and the competitors already there. Every claim is quoted from its own page, with the link. It stops where the working sections begin."
       />
 
       {/* Hero. Left-aligned, and on the SAME `7xl` band and rail grid as the document below, so

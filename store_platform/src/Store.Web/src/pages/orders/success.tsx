@@ -473,7 +473,7 @@ function ResolutionFallback({
                   </p>
                   <p className="text-caption text-muted mt-0.5">
                     {phase === 'unfulfilled'
-                      ? 'Your payment went through, but this order did not release its download. That is our fault, not yours. Send us the reference below and we will get your pack to you, or refund you in full, whichever you prefer.'
+                      ? 'Your payment went through, but this order did not release its download. The fault is ours. Send us the reference below and we will get your pack to you, or refund you in full, whichever you prefer.'
                       : phase === 'revoked'
                         ? 'This order was refunded, so its download has been withdrawn. Nothing further is owed. If that is unexpected, send us the reference below.'
                         : phase === 'timed-out'

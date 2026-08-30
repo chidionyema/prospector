@@ -133,7 +133,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // this is, written as a reason to buy. No new line, because the 175-to-80 cut above was
     // measured against the fold and a third paragraph would spend that back.
     globalHookDescription:
-      'The buyer, the price, the margins and the plan, put through an AI built to kill the idea first.',
+      'The buyer, the price and the plan, put through an AI built to kill the idea first.',
 
     howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Every idea faces checks built to kill it.',
@@ -161,10 +161,10 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // that six is all there is.
     sixChecksTitle: 'The checks, in order. One hard fail and it stops.',
     sixChecksDescription:
-      'Some ideas face more checks; each pack page names its own. Every kill is logged with its reason, so the filter is auditable, not a black box.',
+      'Some ideas face more checks, and each pack page names its own. Every kill is logged with the reason that fired it, so you can audit the filter yourself.',
 
     automatedIdeasIntro:
-      'Code does the heavy lifting. These ideas scale on software, not your time. The core delivery (gathering data, generating docs, running checks) is automated rather than billed by the hour. We will tell you exactly where you still need a human in the loop.',
+      'Code does the heavy lifting. These ideas scale on software instead of your hours. The core delivery (gathering data, generating documents, running checks) is automated. We will tell you exactly where you still need a person.',
 
     categoryH1: CATEGORY_H1_A,
     categoryMetaTitle: CATEGORY_H1_A, // mirror for now
@@ -173,7 +173,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   b: {
     globalHookLead: 'Business ideas with the economics already verified.',
     globalHookDescription:
-      'The buyer, the price, the numbers and the plan, checked by an AI paid to find the flaw.',
+      'The buyer, the numbers and the plan, checked by an AI paid to find the flaw.',
 
     howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Every idea is tested to destruction.',
@@ -188,7 +188,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // only about.tsx. 23 of the 63 live packs report a denominator other than 6.
     sixChecksTitle: 'The checks an idea has to survive',
     sixChecksDescription:
-      'Every pack faced the same checks: a real problem, proven value, room to compete, buyers who can pay, a clear way to reach them, and no legal red tape. Which checks ran depends on the idea, and the pack page shows exactly which ones it cleared.',
+      'Every pack faced the same bar: a real problem, proven value and room to compete. Then buyers who can pay, a clear way to reach them and no legal red tape. The checks that ran depend on the idea, and the pack page shows the ones it cleared.',
 
     automatedIdeasIntro:
       'Businesses where systems do the heavy lifting. Delivery relies on tools, templates, and automated checks so you do not run out of hours as you grow. We are honest about the limits: automatable does not mean autonomous. We list the exact steps that still require your input.',
@@ -200,7 +200,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   c: {
     globalHookLead: 'Business ideas with a source behind every number.',
     globalHookDescription:
-      'The buyer, the price, the margins and the plan. An AI checked every number against a page you can open.',
+      'The buyer, the price and the plan. An AI checked every number against a page you can open.',
 
     // VARIANT C DE-JARGONED (2026-08-13). C is the proof-hungry reader, and its copy had been
     // reading that as Latinate abstraction: "regulatory friction", "margin compression",
@@ -213,13 +213,13 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksEyebrow: 'The methodology',
     howItWorksTitle: 'We try to prove every idea wrong first.',
     howItWorksLead:
-      'Before an idea is listed, AI agents go looking for the thing that kills it: rules that make it illegal, buyers who cannot pay, competitors already doing it, or margins too thin to live on. What survives is published with its sources. What does not is published in the kill log, with the evidence that killed it.',
+      'Before an idea is listed, AI agents go looking for the thing that kills it. They look for rules that make it illegal, buyers who cannot pay, or competitors already doing it. What survives is published with its sources. What does not is published in the kill log, with the evidence that killed it.',
     howItWorksSeoDescription:
       'How Mumchimp works: AI agents hunt for the reason each idea fails, and the ideas that fail are published too, with the evidence.',
 
     sixChecksTitle: 'The same bar, every time',
     sixChecksDescription:
-      'Every pack clears the same bar: a real problem, value that lasts, room to compete, buyers with money to spend, a way to reach them, and nothing illegal about it. Which checks ran depends on the idea, and each pack page lists the ones it cleared.',
+      'Every pack clears the same bar: a real problem, value that lasts and room to compete. Then buyers with money to spend, a way to reach them and nothing illegal about it. The checks that ran depend on the idea, and each pack page lists the ones it cleared.',
 
     automatedIdeasIntro:
       'Businesses where software does the work. Reading data, producing documents, running checks: that is the part that scales, and it is why the income stops tracking the hours you put in. Each pack is explicit about the steps that still need you.',

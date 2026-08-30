@@ -325,7 +325,7 @@ export async function joinWaitlist(
     return { ok: false, error: 'Too many attempts from here. Give it a minute and try again.' };
   }
   const body = (await res.json().catch(() => null)) as { error?: string } | null;
-  return { ok: false, error: body?.error ?? 'That did not go through. Try again in a moment.' };
+  return { ok: false, error: body?.error ?? 'We could not complete that. Try again in a moment.' };
 }
 
 /**

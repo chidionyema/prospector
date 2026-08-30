@@ -28,8 +28,11 @@
  * a reader can decide the outcome they had in mind is covered, and "not a guarantee" denies the
  * strength of the claim without denying its subject.
  */
+/* voice.md bans the antithesis as a RHYTHM, and allows the negative where clearing a
+   misconception is the point. Here the misconception is the whole job of the sentence, and the
+   docblock above is why this exact wording and no shorter one. Hence the opt-out below. */
 export const PACK_DISCLAIMER =
-  'A pack is evidence-backed research, not a promise of business success.';
+  'A pack is evidence-backed research, not a promise of business success.'; // tone-ok: the misconception IS the point
 
 /** What the pack DOES do, for surfaces with room for the second half of the sentence. */
 export const PACK_SCOPE = 'The finding, vetting and sourcing is done. The execution is yours.';

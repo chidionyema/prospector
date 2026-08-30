@@ -72,7 +72,7 @@ export const FAQS: FaqItem[] = [
     // free business ideas from a chatbot and already knows it invents numbers, so naming the AI
     // without answering "why pay" reads as an admission. Answered here, next to the kill log
     // question it sets up, because the two together are the whole argument.
-    question: 'Why not just ask a chatbot?',
+    question: 'Why not ask a chatbot?',
     answer: [
       'Because it will agree with you. Ask a chatbot about your idea and you get an encouraging answer full of numbers it invented on the spot. Every figure here links to the page it came from, and the ideas that failed are published too, in the ',
       { text: 'kill log', href: '/kill-log' },
@@ -100,7 +100,7 @@ export const FAQS: FaqItem[] = [
       //     delivered in?" answer four rows below, word for word, and repeating it here put the
       //     first-week checklist (a document) and the first-fortnight sheet (a file) in one
       //     paragraph, where they read as the same thing described twice at two different lengths.
-      `One vetted business opportunity, written up as ${PACK_DOCUMENTS.length} documents. Among them: an executive summary, a build spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing assets, the evidence in one place, and a QA report with a source behind every claim. One zip, one payment, instant download.`,
+      `One vetted business opportunity, written up as ${PACK_DOCUMENTS.length} documents. Among them an executive summary, a build spec and a financial model. Every claim in them carries a source, and the QA report is where you check it. One zip, one payment, instant download.`,
     ],
   },
   { category: 'packs',
@@ -112,7 +112,7 @@ export const FAQS: FaqItem[] = [
       // asserting a number found in no retrieved passage (programme doc §33). What IS enforced is
       // that every verdict publishes the passages it was ruled on, and that an unverifiable check
       // is labelled rather than dropped. Say only that until 33-A gates the shelf.
-      'Every verdict ships with the sources it was ruled on, so you can open them and judge the evidence yourself. Anything the engine could not verify is marked unverifiable rather than quietly dropped. The QA report inside the pack is the audit trail.',
+      'Every verdict ships with the sources it was ruled on, so you can open them and judge the evidence yourself. Anything the engine could not verify is marked unverifiable, and nothing is quietly dropped. The QA report inside the pack is the audit trail.',
     ],
   },
   { category: 'packs',
@@ -120,13 +120,13 @@ export const FAQS: FaqItem[] = [
     answer: [
       // Per email §6: 50 words, the only question that gets a longer answer because the answer
       // is the whole product.
-      'In practice, almost nobody executes. And most packs win on a local patch (one school, one council, one trade) where the first mover in your area is the only one who matters. The research is shared; the ground isn’t.',
+      'In practice, almost nobody executes. And most packs win on a local patch (one school, one council, one trade) where the first mover in your area is the only one who matters. The research is shared. The ground is not.',
     ],
   },
   { category: 'process',
     question: 'Are the opportunities guaranteed to work?',
     answer: [
-      'No. The research is done and sourced; the execution is yours. No one can promise a business outcome, and we don’t.',
+      'No. The research is done and sourced. The execution is yours. No one can promise a business outcome, and we don’t.',
     ],
   },
   { category: 'payment',
@@ -161,7 +161,7 @@ export const FAQS: FaqItem[] = [
       // asks BEFORE paying. It was also the sentence the founder's objection was aimed at: it
       // names two tools most readers do not use to make a point ("it opens anywhere") that the
       // formats now make on their own, and it sold a research product as a developer artefact.
-      'A zip you open like any other. A web page for reading the whole pack, a typeset PDF for printing, a one-page plan for your first fortnight, a spreadsheet of the assumptions, and the marketing copy as plain text to paste. Nothing to install, no account.',
+      'A zip you open like any other. Inside: a web page for reading the whole pack, a typeset PDF for printing, and a spreadsheet of the assumptions. The first-fortnight plan and the marketing copy come as plain text. Nothing to install, no account.',
     ],
   },
   { category: 'process',

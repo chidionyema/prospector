@@ -153,7 +153,7 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
         width="7xl"
         eyebrow={`${total} ${total === 1 ? 'pack' : 'packs'}`}
         title="Every pack"
-        lead="The complete index. The catalogue page shows the newest first and holds the rest back; this page holds nothing back."
+        lead="The complete index. The catalogue page shows the newest first and holds the rest back. This page holds nothing back."
       />
 
       <Section bg="white" width="7xl">
