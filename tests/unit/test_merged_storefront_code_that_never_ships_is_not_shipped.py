@@ -44,6 +44,21 @@ def test_the_production_overlay_pins_store_web_at_a_commit_this_repository_holds
     """A pin ghcr never built is not a stale shop, it is an ImagePullBackOff."""
     pin = _pins()[WEB_IMAGE]
     assert re.fullmatch(r"[0-9a-f]{40}", pin), f"not a commit sha: {pin!r}"
+
+    # A shallow checkout holds exactly one commit, so `git cat-file -e` says "not a valid object
+    # name" for a sha that is perfectly real on main -- a typo and a depth-1 clone produce the
+    # identical message. It cost one red run on 2026-08-30. The job that runs this suite now
+    # fetches full history (.github/workflows/ci.yml, the `python` job); this asserts the
+    # precondition so that if it is ever taken away again, the failure names the checkout and
+    # not the sha.
+    shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"], cwd=ROOT, capture_output=True, text=True
+    )
+    assert shallow.stdout.strip() == "false", (
+        "this checkout is shallow, so no sha can be found here and this test cannot measure "
+        "anything: give the job running it `fetch-depth: 0`"
+    )
+
     found = subprocess.run(
         ["git", "cat-file", "-e", f"{pin}^{{commit}}"], cwd=ROOT, capture_output=True
     )

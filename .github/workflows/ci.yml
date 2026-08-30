@@ -523,7 +523,16 @@ jobs:
     timeout-minutes: 40
 
     steps:
+      # Full history, because a test in this suite reads it. The default depth is 1, so
+      # `git cat-file -e <sha>` answers "not a valid object name" for EVERY commit except
+      # the one checked out -- which reads exactly like a typo. That is what it looked like
+      # on 2026-08-30: tests/unit/test_merged_storefront_code_that_never_ships_is_not_shipped.py
+      # asks whether the production overlay pins store-web at a commit this repository holds,
+      # and the answer was a false red on a sha that IS on main. The `changes` and `guard` jobs
+      # in this same workflow already fetch full history, so the cost is one the run pays anyway.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       # tests/unit/test_secrets_recipients_survive_reencryption.py declares needs_tool("age"):
       # its assertion is about who can decrypt real ciphertext, which a fake binary cannot
