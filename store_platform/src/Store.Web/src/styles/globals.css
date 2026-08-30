@@ -106,6 +106,27 @@
     letter-spacing: -0.014em;
   }
 
+  /* THE SAME GAP ON THE LEGAL PAGES, AND IT WAS SILENT FOR LONGER. The drawing writes a clause
+     heading as a bare heading inside the `.legal` column (`mockups/refund.html:464`), and the
+     only heading rule the bundle gives that column is `.legal h4{font-size:17.5px;
+     font-weight:640;letter-spacing:-.014em;margin:28px 0 9px}` (mumchimp.css:237). Our clause
+     head is an `<h2>` -- correctly, the page's h1 is the policy title and the clauses sit under
+     it -- so that rule reached nothing. It carried `text-h3` instead, a class whose token was
+     deleted when the scale was cut to six steps, and an unmapped utility in Tailwind v4 emits
+     nothing at all: every clause heading on /terms, /privacy and /refund rendered at 16px, the
+     body size, measured on the built pages 2026-08-30.
+
+     `:not(.sec)` is load-bearing. `.closing` sits inside the same column and its heading is
+     `h2.sec` (mumchimp.css:14, clamp(24px,4.6vw,32px)), which ties this selector on specificity
+     and loses on source order, so without the exclusion this rule would shrink the closing line
+     from 32px to 17.5px. The margin half of `.legal h4` is not repeated -- the article already
+     spaces its sections with `space-y-8`. */
+  .legal h2:not(.sec) {
+    font-size: 17.5px;
+    font-weight: 640;
+    letter-spacing: -0.014em;
+  }
+
   /* The same gap, one level further down. The specimen's `.doc-body` is drawn with an h3 head
      per section and one sub-head under the failed check ("The strongest case against this
      idea"), but the bundle gives `.doc-body` a rule for `p` and nothing else, so that sub-head

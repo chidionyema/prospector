@@ -175,11 +175,16 @@ test.describe('typography', () => {
   ];
 
   /*
-   * The one heading on the site the drawing sets AT body size or below, so the size assertion
-   * below has to let it through: `mumchimp.css:377` draws `.othersrc h3` as a 12px uppercase mono
-   * label -- the footnote apparatus under a check, which is a label and not a title.
+   * The headings the drawing itself sets AT body size or below, so the size assertion has to let
+   * them through. Each is a label rather than a title, and each is drawn that way on purpose:
+   * `mumchimp.css:377` gives `.othersrc h3` a 12px uppercase mono label under a check, and
+   * `mumchimp.css:384-385` give `.docitem h3` and `.file h3` 15.5px -- the bundle's own later
+   * revision of the rows it first drew at 15px. The two size utilities are here for a different
+   * reason: `text-meta` (14px) and `text-caption` (12px) are explicit steps on the scale, so a
+   * heading wearing one has been sized deliberately and cannot be the thing this test hunts,
+   * which is a heading NO size rule reached.
    */
-  const DRAWN_SMALL = '.othersrc h3';
+  const DRAWN_SMALL = '.othersrc h3, .docitem h3, .file h3, .text-meta, .text-caption';
 
   for (const route of ROUTES) {
     test(`every visible heading on ${route} is set as a heading`, async ({ page }) => {
@@ -211,7 +216,12 @@ test.describe('typography', () => {
      * have to invent a step the drawing never drew. So a heading in an unnamed container still
      * renders at body size while passing the weight assertion above, and the page looks slightly
      * wrong in a way nobody can point at. Four such headings were found by hand on the home page
-     * on 2026-08-30 and fixed one at a time; nothing pinned them.
+     * on 2026-08-30 and fixed one at a time; nothing pinned them. Widening this from five
+     * routes to twelve immediately found eight more, on four routes, from one cause:
+     * `text-h3`, whose token was deleted when the scale was cut to six steps.
+     * `everyTextUtilityResolves.test.ts` is the guard for that cause and runs in CI; this
+     * one is the guard for the symptom, and catches it whatever the next cause turns out
+     * to be.
      */
     test(`every visible heading on ${route} is set above the body size`, async ({ page }) => {
       await page.goto(route);
