@@ -378,7 +378,7 @@ export default function SamplePage() {
             <div className="rounded-card border border-border bg-surface p-8 md:p-9">
               <span className="text-caption font-medium text-muted">The pack</span>
               <h2 className="sec">{report.title}</h2>
-              <p className="mt-4 max-w-[68ch] lede">
+              <p className="mt-4 lede">
                 {report.oneLiner}
               </p>
             </div>
@@ -462,7 +462,7 @@ export default function SamplePage() {
               <h2 className="mt-3 max-w-[28ch] sec">
                 You have read the reporting. The rest is the working half.
               </h2>
-              <p className="mt-4 max-w-[68ch] lede">
+              <p className="mt-4 lede">
                 Three sections of {report.sectionsTotal}. What you have just read is what we found
                 out; the {WITHHELD.length} below are what you would do about it: what it costs,
                 what would sink it, what to build first, and how to know inside a month whether you
@@ -481,7 +481,7 @@ export default function SamplePage() {
                   fortnight plan -- because the document was written to be read whole. Leaving
                   those references intact and explaining them is more honest than editing the
                   excerpt to hide that it is one. */}
-              <p className="mt-7 max-w-[68ch] border-t border-warning/30 pt-5 lede">
+              <p className="mt-7 border-t border-warning/30 pt-5 lede">
                 The excerpt refers to two of these by name. That is the pack talking to its own
                 reader, not a tease, and we did not rewrite it to pretend the sample is the whole
                 document.

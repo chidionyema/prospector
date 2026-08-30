@@ -221,7 +221,7 @@ export function LegalText({ children }: { children: React.ReactNode }) {
   // `max-w-[68ch]` and `leading-[1.68]`: the drawing's `.legal p` (`mockups/refund.html`). The
   // measure lives on the paragraph now rather than on a `max-w-2xl` wrapper, so the clause rail
   // sits beside a document whose own text sets its width.
-  return <p className="max-w-[68ch] leading-[1.68] lede">{children}</p>;
+  return <p className="lede">{children}</p>;
 }
 
 /** Bulleted list inside a legal doc. */

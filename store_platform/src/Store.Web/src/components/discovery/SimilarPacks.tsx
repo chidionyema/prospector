@@ -22,7 +22,7 @@ export function SimilarPacks({ items }: { items: Pack[] }) {
   return (
     <section className="mt-12">
       <h2 className="sec">Same mechanics, different world</h2>
-      <p className="mt-2 max-w-[60ch] lede">
+      <p className="mt-2 lede">
         Like how this one makes money but not the industry it sits in? These work the same way somewhere
         else.
       </p>

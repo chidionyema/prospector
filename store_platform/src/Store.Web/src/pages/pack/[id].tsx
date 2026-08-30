@@ -854,7 +854,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 missing or comes through cut, which is the case the docblock above was written for.
                 Nothing is lost when it stands down: its audience framing is the `whoPays` row
                 below, and the full description is in the sections under that. */}
-            {lead && <p className="mt-4 max-w-[60ch] lede">{lead}</p>}
+            {lead && <p className="mt-4 lede">{lead}</p>}
 
             {/* THE OPPORTUNITY, ABOVE THE FOLD (2026-08-16, founder: "the title and description
                 say what it is and what it does, not the opportunity presented, market size,
@@ -920,7 +920,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 is enforced here by hand. It also opened on a negation, which read as zero
                 content. Say what the buyer GETS, in the affirmative, naming only things that
                 literally appear in the sections below. */}
-            <p className="mt-4 max-w-[60ch] lede">
+            <p className="mt-4 lede">
               You get the checking already done: the evidence behind the idea, the sources it came
               from, and the objections it survived, all open below so you can judge them yourself.
             </p>
@@ -1033,7 +1033,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   or fewer get through
                 </span>
               </p>
-              <p className="max-w-[52ch] lede">
+              <p className="lede">
                 <span>This is one of them.</span>{' '}
                 {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas went through the filter
                 and {RESEARCH_STATS.rejectRateLabel} of them died on cited evidence.{' '}
@@ -1229,7 +1229,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             {(pack.market || pack.timeToFirstRevenue) && (
               <div className="mt-12">
                 <h2 className="sec">Could you run this?</h2>
-                <p className="mt-2 max-w-[60ch] lede">
+                <p className="mt-2 lede">
                   Behind the research is a business somebody has to actually operate. Here is the
                   market it runs in, and how soon the first money arrives.
                 </p>
@@ -1285,7 +1285,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             {pack.sampleExtract && pack.sampleExtract.length > 0 && (
               <div className="mt-12">
                 <h2 className="sec">A look inside</h2>
-                <p className="mt-2 max-w-[60ch] lede">
+                <p className="mt-2 lede">
                   Real, sourced lines taken straight from the pack. Every source below is a live
                   link: open one and check the claim before you buy.
                 </p>
@@ -1361,7 +1361,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <p className="max-w-[60ch] lede">
+                  <p className="lede">
                     {/* WAS "Six things we measure", hardcoded, above a `dl` whose length is
                         `axes.length` -- a count the page reads off the snapshot and does not
                         control. Same defect class as the 6-vs-8 above, one scroll further down. */}
@@ -1413,7 +1413,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             {/* The per-pack table of contents. The generic four-asset breakdown is higher up the page. */}
             <div className="mt-12">
               <h2 className="sec">The table of contents</h2>
-              <p className="mt-2 max-w-[60ch] lede">
+              <p className="mt-2 lede">
                 Exactly what this pack covers, plus a blurred look at the document you receive.
               </p>
 
@@ -1466,7 +1466,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   `openSources.length > 0` test below, so a pack with nothing openable printed
                   "Open any of these 0 now." followed by nothing at all. The block below already
                   gives the instruction once, against a list that exists. */}
-              <p className="max-w-[60ch] lede">
+              <p className="lede">
                 {typeof pack.sourceCount === 'number' && pack.sourceCount > 0
                   ? `${pack.sourceCount} sources, each cited against the claim it supports.`
                   : 'Every claim in this pack is cited against the source it rests on.'}

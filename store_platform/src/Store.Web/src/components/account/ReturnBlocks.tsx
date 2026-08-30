@@ -67,7 +67,7 @@ function Block({
   return (
     <section className="mt-12">
       <h2 className="sec">{title}</h2>
-      <p className="mt-2 max-w-[62ch] lede">{lead}</p>
+      <p className="mt-2 lede">{lead}</p>
       {/* `rounded-card`, not `rounded-md`. A bordered box on `--surface` holding rows IS a card,
           and 12px is what every other card on the site draws. The account area was the one place
           that gave its cards the 8px CONTROL corner, which is the sort of difference nobody names

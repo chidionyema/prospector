@@ -177,7 +177,7 @@ export default function AboutPage() {
           <h2 className="sec">
             Where the engine came from
           </h2>
-          <p className="mt-3 max-w-[60ch] lede">
+          <p className="mt-3 lede">
             It started as the questions I made myself answer before starting anything: is the pain
             real, would anyone pay, is there any way to reach them. Those questions are the checks
             now, asked by software that has to fetch a source before it may answer. Every claim is

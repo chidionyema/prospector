@@ -986,7 +986,7 @@ function CatalogBrowser({
           first version described each of the three controls in turn, which the controls do
           themselves, immediately below. The only thing a reader cannot see by looking is whether
           using the second undoes the first, so that is the only thing left. */}
-      <p className="mb-4 max-w-prose lede">Use one or all three. They combine.</p>
+      <p className="mb-4 lede">Use one or all three. They combine.</p>
 
       {/* Toolbar: search, count, sort. */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1135,7 +1135,7 @@ function CatalogBrowser({
             ? "We can't reach the catalogue right now."
             : 'No packs are live right now.'}
         </p>
-        <p className="mx-auto mt-1 max-w-sm lede">
+        <p className="mx-auto mt-1 lede">
           {catalogUnavailable
             ? 'This is on our side, not yours. Nothing has sold out. Refresh in a moment.'
             : 'We publish an opportunity the moment it clears every check. Check back shortly.'}
@@ -2418,7 +2418,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               the same way the survivor count was: 80 ideas cleared the gates, 50 are on the shelf.
               A reader cannot check it either way, so it bought nothing and risked the one thing
               this page is selling. What is left claims only what the shelf can show. */}
-          <p className="mt-4 max-w-[60ch] lede">
+          <p className="mt-4 lede">
             A claim without a source dies before it ever goes on sale. Every pack here came out
             the other side.
           </p>
