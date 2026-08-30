@@ -14,6 +14,7 @@ import { formatPriceForMarket, type Currency } from '@/lib/fx';
 import { CardProof } from '@/components/ui/ProofLine';
 import { packMarket } from '@/lib/market';
 import { paybackMultiple, type PackLeadStat } from '@/lib/packStat';
+import { sectorImage } from '@/lib/sectorImage';
 import { trackCardClick } from '@/lib/analytics';
 import { useCardImpressions } from '@/lib/useCardImpressions';
 
@@ -326,6 +327,20 @@ export function PackTileGrid({
             href={`/pack/${pack.id}`}
             onClick={() => trackCardClick(pack.id, i + 1)}
           >
+            {/* THE SECTOR PICTURE. One image per sector, reused by every pack in it, so a pack
+                published tonight in a sector already drawn arrives with its picture and costs
+                nothing (`lib/sectorImage.ts`). `alt=""` and `aria-hidden` because it is
+                decoration: the sector is already stated in words by the eyebrow directly below,
+                and a screen reader announcing it twice is worse than not announcing it at all.
+                `loading="lazy"` on every tile past the first screen; the browser decides.
+                No wrapper element -- `.htile` is a flex column and the image is one of its
+                children, which is what lets the negative margin take it to the card's edge. */}
+            {sectorImage(pack.sector) && (
+              /* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
+                 intrinsic size and no variants to serve; `next/image` would add a loader round
+                 trip and a wrapper div that breaks the full-bleed margin. */
+              <img className="cover" src={sectorImage(pack.sector) as string} alt="" aria-hidden width={800} height={450} loading="lazy" />
+            )}
             {/* GATED ON `tagged`, like every other sector render site (`PackRow.tsx:152`,
                 `index.tsx:322`). This tile was added with the three-up row and did not carry the
                 guard, so it printed "Not yet tagged" -- a status message about our own pipeline --

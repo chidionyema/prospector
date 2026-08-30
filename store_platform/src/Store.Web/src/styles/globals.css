@@ -164,6 +164,53 @@
     font-weight: 655;
   }
 
+  /* ─────────────────────────────────────────────────────────────────────────────────────────
+     THE SECTOR PICTURES. Not a deviation from the bundle -- the bundle has no rule for these,
+     because when it was drawn the site had no imagery at all. That is the condition the founder
+     set on 2026-08-14 when he had the near-black media blocks taken out: "Remove the black media
+     block until there is real imagery for it" (docs/SITE_SPEC_PROGRAM.md:1007). There is real
+     imagery now, one drawing per sector in this stylesheet's own tokens, so the slot comes back
+     as the picture rather than as a frame around a generated mark. `lib/sectorImage.ts` owns
+     which file a pack gets.
+
+     `.cover` is the picture inside a `.htile`. The negative margin and the matching width are
+     what take it out to the card's border: `.htile` carries `padding:var(--pad)`
+     (mumchimp.css:304), so without them the image sits inset in a white frame. Top corners take
+     the card's radius less its 1px border, bottom two stay square, because the image meets the
+     text rather than the page. `--brand-tint` is the ground while the file loads, so a slow
+     connection shows a pale teal band instead of a white hole that then jumps.
+
+     `.packcover` is the same picture on the product page, where it is inside no card and so
+     takes the full radius and no negative margin. 3:1 rather than the file's own 16:9: it sits
+     directly above the `h1` in the 1.55fr column of `.two` (mumchimp.css:73), which measures
+     about 620px on a 1280px screen, and 16:9 there is a 350px band that pushes the title and the
+     lead sentence off a laptop fold. Below 900px `.two` collapses to one column
+     (mumchimp.css:432) and there is nothing beside it to push, so it takes the file's own ratio
+     back. `object-fit:cover` crops rather than squashes at both. */
+  .htile .cover {
+    display: block;
+    width: calc(100% + var(--pad) * 2);
+    margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 14px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: var(--brand-tint);
+    border-radius: calc(var(--r-card) - 1px) calc(var(--r-card) - 1px) 0 0;
+  }
+  .packcover {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 1;
+    object-fit: cover;
+    background: var(--brand-tint);
+    border-radius: var(--r-card);
+    margin-bottom: 20px;
+  }
+  @media (max-width: 900px) {
+    .packcover {
+      aspect-ratio: 16 / 9;
+    }
+  }
+
   /* `.f-col h2` WAS HERE and is deleted (2026-08-18). It restated `.f-col h6` because our footer
      used an `<h2>` to keep heading order legal. The bundle ships `.f-col .colh`
      (mumchimp.css:393) and its own footer writes `<p class="colh">`, so the copy is not needed

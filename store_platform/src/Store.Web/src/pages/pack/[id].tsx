@@ -12,6 +12,7 @@ import { buttonClasses, Glyph, Icon, ErrorState, Breadcrumbs, SourcedLine, Citat
 import { parseCitations } from '@/lib/citations';
 import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
+import { sectorImage } from '@/lib/sectorImage';
 import { COMMON_CHECKS, checkForGate } from '@/lib/checks';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_DOCUMENTS, PACK_CONTENTS, PACK_EXTRAS } from '@/components/marketing/PackContents';
@@ -810,6 +811,29 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 `PackCover` itself is untouched and still exported; this page was its only caller,
                 so nothing else moves. */}
 
+            {/* THE IMAGERY THE MASTHEAD WAS WAITING FOR. The founder's 2026-08-14 ruling above is
+                "Remove the black media block until there is real imagery for it", and the block
+                went because a shop with no photography should not draw a frame for photography it
+                does not have. There is imagery now: one drawing per sector, generated on MiniMax
+                in this stylesheet's own tokens, reused by every pack in the sector
+                (`lib/sectorImage.ts`). So the condition the ruling set is met and the slot comes
+                back -- as the picture itself, not as a frame around a generated mark.
+
+                It states nothing, exactly as the strip stated nothing: the sector is already in
+                words in the breadcrumb's last crumb directly above. Hence `alt=""` and
+                `aria-hidden`, and hence no label drawn on it. */}
+            {sectorImage(pack.sector) && (
+              /* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
+                 intrinsic size and no variants to serve. */
+              <img
+                className="packcover"
+                src={sectorImage(pack.sector) as string}
+                alt=""
+                aria-hidden
+                width={1280}
+                height={720}
+              />
+            )}
             {/* No `md:text-display` (48px). Titles here average ~90 characters, so at 48px the
                 h1 alone consumed ~400px and was still unfinished at the fold. One step, 32px.
                 24px on a phone, for the same reason one step further down: 32px on a 390px screen
