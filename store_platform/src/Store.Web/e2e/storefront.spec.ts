@@ -153,7 +153,33 @@ test.describe('basket drawer', () => {
  * or below is the reset's value, which is the exact signature of a heading no rule reached.
  */
 test.describe('typography', () => {
-  const ROUTES = ['/', '/ideas', '/kill-log', '/how-it-works', '/pricing'];
+  /*
+   * Twelve routes since 2026-08-30, not five. The defect this block exists for is a heading in a
+   * container no rule names, and a container is exactly the thing that differs between pages, so
+   * covering a third of the site was covering a third of the risk. Every static marketing route
+   * the sitemap carries is here; the pack page is dynamic and is graded by the pack specs above.
+   */
+  const ROUTES = [
+    '/',
+    '/packs',
+    '/ideas',
+    '/kill-log',
+    '/about',
+    '/pricing',
+    '/how-it-works',
+    '/faq',
+    '/terms',
+    '/privacy',
+    '/refund',
+    '/sample',
+  ];
+
+  /*
+   * The one heading on the site the drawing sets AT body size or below, so the size assertion
+   * below has to let it through: `mumchimp.css:377` draws `.othersrc h3` as a 12px uppercase mono
+   * label -- the footnote apparatus under a check, which is a label and not a title.
+   */
+  const DRAWN_SMALL = '.othersrc h3';
 
   for (const route of ROUTES) {
     test(`every visible heading on ${route} is set as a heading`, async ({ page }) => {
@@ -175,6 +201,39 @@ test.describe('typography', () => {
       expect(
         unstyled,
         'a heading rendering at the body weight is a heading no stylesheet rule reached',
+      ).toEqual([]);
+    });
+
+    /*
+     * WEIGHT WAS ONLY HALF THE SIGNATURE. Tailwind's preflight sets headings to
+     * `font-size:inherit` as well as `font-weight:inherit`, and `globals.css` carries a weight
+     * floor for headings no rule reaches but deliberately no size floor -- a size floor would
+     * have to invent a step the drawing never drew. So a heading in an unnamed container still
+     * renders at body size while passing the weight assertion above, and the page looks slightly
+     * wrong in a way nobody can point at. Four such headings were found by hand on the home page
+     * on 2026-08-30 and fixed one at a time; nothing pinned them.
+     */
+    test(`every visible heading on ${route} is set above the body size`, async ({ page }) => {
+      await page.goto(route);
+      const flat = await page.$$eval(
+        'h1,h2,h3,h4,h5,h6',
+        (els, drawnSmall) => {
+          const body = parseFloat(getComputedStyle(document.body).fontSize);
+          return els
+            .filter((el) => (el as HTMLElement).offsetParent !== null)
+            .filter((el) => !el.matches(drawnSmall))
+            .map((el) => ({
+              tag: el.tagName,
+              size: getComputedStyle(el).fontSize,
+              text: (el.textContent || '').trim().slice(0, 60),
+            }))
+            .filter((h) => parseFloat(h.size) <= body);
+        },
+        DRAWN_SMALL,
+      );
+      expect(
+        flat,
+        'a heading rendering at the body size is a heading no size rule reached',
       ).toEqual([]);
     });
   }
@@ -204,6 +263,27 @@ test.describe('the bundle is not overpainted', () => {
       expect(weights, 'mumchimp.css:27 draws .tlink at font-weight 550').toEqual(['550']);
     });
   }
+
+  test('every FAQ question and answer is drawn at the bundle size', async ({ page }) => {
+    /*
+     * The drawing writes the FAQ as `<details><summary>` and this page uses a button, so the
+     * bundle's own `.faq summary` / `.faq p` rules can only reach it through the markup and the
+     * port in `globals.css`. When they did not, the question wore `.sub` and rendered at the size
+     * of a section heading -- 23px against 16.5px, on every question on the page -- and the answer
+     * rendered at 16px against 15px. Neither is visible to a source-level guard.
+     */
+    await page.goto('/faq');
+    const q = await page.$$eval('.faq h2', (els) =>
+      els.map((el) => `${getComputedStyle(el).fontSize}/${getComputedStyle(el).fontWeight}`),
+    );
+    expect(q.length, 'no FAQ question to measure').toBeGreaterThan(4);
+    expect([...new Set(q)], 'mumchimp.css:142 draws .faq summary at 16.5px weight 620').toEqual([
+      '16.5px/620',
+    ]);
+    const a = await page.$$eval('.faq p', (els) => els.map((el) => getComputedStyle(el).fontSize));
+    expect(a.length, 'no FAQ answer to measure').toBe(q.length);
+    expect([...new Set(a)], 'mumchimp.css:146 draws .faq p at 15px').toEqual(['15px']);
+  });
 
   test('the signature card key strip is drawn at the bundle size', async ({ page }) => {
     await page.goto('/how-it-works');

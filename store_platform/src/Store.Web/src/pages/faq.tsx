@@ -63,8 +63,13 @@ function AccordionItem({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-start justify-between gap-4 py-4 text-left"
       >
-        {/* mockups/faq.html:185 `.faq summary{font-size:16.5px;font-weight:620;letter-spacing:-.014em}` */}
-        <h2 className="tracking-[-0.014em] leading-snug sub">{item.question}</h2>
+        {/* mumchimp.css:142 `.faq summary{font-size:16.5px;font-weight:620;letter-spacing:-.014em}`,
+            drawn on this page at `globals.css` `.faq h2` because the disclosure is a button, not a
+            native `<details>`, so the bundle's own selector cannot reach it. The class this line
+            used to carry was `sub`, which is the SECTION sub-head (`h2.sub`, globals.css:176,
+            clamp(19px,3.4vw,23px) at weight 655): every question on the page measured 23px / 655
+            against the 16.5px / 620 this very comment cited. */}
+        <h2>{item.question}</h2>
         {/* mockups/faq.html:187-188: the marker is a typographic + that becomes a minus when open,
             20px, weight 400, in --ink-3. It was a rotating arrow glyph, which is a different
             control. U+2212 MINUS SIGN, not an en dash: `__tests__/dashFree.test.ts` bans both
@@ -82,15 +87,20 @@ function AccordionItem({
           own rule is that the structured data must match what the page actually shows. `hidden`
           keeps the text present and gives the same "not shown" result visually and to the
           accessibility tree, without the SSR gap. */}
-      {/* mockups/faq.html:189 `.faq p{font-size:15px;line-height:1.62;max-width:66ch;margin-top:11px}`.
-          The answer sits on the same left edge as its question (no horizontal padding), the
-          measure is capped at 66ch rather than by the container, and the row closes with the
-          same 16px it opened with: `pb-4` minus the 5px the 11px top margin already spends. */}
+      {/* mumchimp.css:146 `.faq p{font-size:15px;color:var(--ink-2);line-height:1.62;max-width:66ch;
+          margin-top:11px}`. The answer sits on the same left edge as its question (no horizontal
+          padding), the measure is capped at 66ch, and the row closes with the same 16px it opened
+          with: `pb-4` minus the 5px the 11px top margin already spends.
+          IT IS A `<p>` SINCE 2026-08-30. It was a `div` wearing `text-body leading-relaxed
+          text-muted`, so the bundle's own rule -- the one this comment cites -- matched nothing on
+          the page and the answer measured 16px against the drawn 15px, sitting 5px high because the
+          `-mt-[5px]` above compensates for an 11px margin that was never applied. The utilities are
+          gone with the div: every value they set is one the drawn rule already sets. */}
       <div className="-mt-[5px] pb-4" hidden={!open}>
-          <div className="max-w-[66ch] text-body leading-relaxed text-muted">
-            <Answer item={item} />
-          </div>
-        </div>
+        <p>
+          <Answer item={item} />
+        </p>
+      </div>
     </div>
   );
 }

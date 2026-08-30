@@ -91,6 +91,21 @@
     margin-bottom: 6px;
     max-width: 58ch;
   }
+  /* THE SAME GAP ON THE FAQ, AND IT WAS THE LOUDEST ONE ON THE SITE. The drawing writes the FAQ
+     list as `<details><summary>` (mockups/faq.html:469), so the question type lives in
+     `.faq summary` (mumchimp.css:142). This page's disclosure is a button plus a hidden panel --
+     deliberately, so a crawler that never clicks still sees the answer -- and no `<summary>`
+     means the drawn rule matched nothing. The question was classed `sub` instead and measured
+     23px / weight 655 on the built page against the 16.5px / 620 the drawing gives it: every
+     question on /faq was set at the size of a section heading. Same declarations, at the markup
+     this page uses. The layout half of `.faq summary` is not repeated -- the button already
+     supplies the flex row. */
+  .faq h2 {
+    font-size: 16.5px;
+    font-weight: 620;
+    letter-spacing: -0.014em;
+  }
+
   /* The same gap, one level further down. The specimen's `.doc-body` is drawn with an h3 head
      per section and one sub-head under the failed check ("The strongest case against this
      idea"), but the bundle gives `.doc-body` a rule for `p` and nothing else, so that sub-head
