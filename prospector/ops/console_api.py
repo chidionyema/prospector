@@ -4094,6 +4094,12 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                     "into the repo checkout, to be committed. The engine runs "
                                     "from a detached mirror of main, so a button here would "
                                     "write a file nothing ever reads and no one can commit",
+    "tools/gen_pack_images.py": "draws one picture per pack on MiniMax and writes the jpegs plus "
+                                "a generated manifest into the repo checkout, to be committed. "
+                                "The engine runs from a detached mirror of main, so a button here "
+                                "would write files nothing ever reads and no one can commit. It "
+                                "also spends money per click, which is not a thing an ops page "
+                                "should offer",
     # libraries and experiments, not commands
     "tools/_backfill_driver.py": "a library for backfill_missing_listings.sh, not a CLI",
     "tools/l8_ab.sh": "the COST_PROGRAM §L8 A/B experiment harness",
