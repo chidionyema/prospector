@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { SECTOR } from '@/lib/facets';
-import { sectorImage, SECTOR_IMAGE_DIR } from '@/lib/sectorImage';
+import { packImage, sectorImage, SECTOR_IMAGE_DIR } from '@/lib/sectorImage';
 
 /**
  * A picture that 404s is worse than no picture: the card keeps the space, the browser draws its
@@ -33,5 +33,22 @@ describe('sector images', () => {
     expect(sectorImage('not_a_sector')).toBeNull();
     expect(sectorImage(null)).toBeNull();
     expect(sectorImage(undefined)).toBeNull();
+  });
+
+  /**
+   * The live catalogue on 2026-08-30 held 77 packs and 13 of them carried `sector: null`. A render
+   * site that called `sectorImage` directly drew those 13 as a card with a hole in it, on a shelf
+   * where every card beside them had a picture. `packImage` is what a render site calls, and the
+   * only thing this has to guarantee is that it never returns nothing.
+   */
+  it('never leaves a card without a picture, whatever the pack carries', () => {
+    expect(packImage('housing_rental')).toBe('/sector/housing_rental.jpg');
+    expect(packImage(null)).toBe('/sector/other.jpg');
+    expect(packImage(undefined)).toBe('/sector/other.jpg');
+    expect(packImage('a_sector_the_engine_invented_tonight')).toBe('/sector/other.jpg');
+  });
+
+  it('ships the file every fallback lands on', () => {
+    expect(existsSync(path.join(IMAGES, 'other.jpg'))).toBe(true);
   });
 });

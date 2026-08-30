@@ -211,6 +211,76 @@
     }
   }
 
+  /* `.rowcover` is the same picture on the dense shelf, and the dense shelf is most of the shop:
+     the tile grid draws three packs (`pages/index.tsx:1258`) and the rows draw the rest, 63 pack
+     links on the live home page on 2026-08-30.
+
+     `.row` is `grid-template-columns:1fr auto` with `.top`, `h3`, `.d` and `.proof` pinned to
+     column 1 and `.side` spanning column 2 (mumchimp.css:94-101). A picture makes it three
+     columns, so the track list is re-declared here and the text and the price stack shift one
+     column right. Every rule is scoped with `:has(> .rowcover)`, so a row with no picture --
+     a sector we have not drawn, or a pack with no sector at all -- still renders exactly as the
+     bundle draws it, with no third track and no shifted children.
+
+     104px, not larger. `.row` is `padding:18px var(--pad)` and its four text lines run about
+     104px tall at the bundle's own sizes (17.5px title at 1.3, two 14.5px description lines at
+     1.5, one 12.5px proof line), so a 16:9 picture at this width is 58px and sits inside the
+     row's existing height without making the shelf taller. A taller picture would set the row
+     height itself and turn a dense list into a grid.
+
+     Below 640px it becomes a band across the top instead of a column beside the text. A 104px
+     thumbnail is a third of a 350px phone, which leaves the title nowhere to wrap; the same
+     picture full width above the title costs the row height but stays legible, and the phone is
+     where the shop is read. */
+  .row:has(> .rowcover) {
+    grid-template-columns: 104px 1fr auto;
+  }
+  .row:has(> .rowcover) > .top,
+  .row:has(> .rowcover) > h3,
+  .row:has(> .rowcover) > .d,
+  .row:has(> .rowcover) > .proof {
+    grid-column: 2;
+  }
+  .row:has(> .rowcover) > .side {
+    grid-column: 3;
+  }
+  .rowcover {
+    display: block;
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    align-self: start;
+    width: 104px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: var(--brand-tint);
+    border-radius: 6px;
+    margin-top: 6px;
+  }
+  @media (max-width: 640px) {
+    .row:has(> .rowcover) {
+      grid-template-columns: 1fr auto;
+    }
+    .row:has(> .rowcover) > .top,
+    .row:has(> .rowcover) > h3,
+    .row:has(> .rowcover) > .d,
+    .row:has(> .rowcover) > .proof {
+      grid-column: 1;
+    }
+    /* Row 2, not the bundle's row 1: the picture takes row 1 across both columns, and a `.side`
+       still claiming row 1 would be placed on top of it. */
+    .row:has(> .rowcover) > .side {
+      grid-column: 2;
+      grid-row: 2 / span 4;
+    }
+    .rowcover {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      width: 100%;
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+  }
+
   /* `.f-col h2` WAS HERE and is deleted (2026-08-18). It restated `.f-col h6` because our footer
      used an `<h2>` to keep heading order legal. The bundle ships `.f-col .colh`
      (mumchimp.css:393) and its own footer writes `<p class="colh">`, so the copy is not needed

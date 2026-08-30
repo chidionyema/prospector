@@ -30,3 +30,23 @@ export function sectorImage(sector: Sector | string | null | undefined): string 
   if (!(SECTOR as readonly string[]).includes(sector)) return null;
   return `${SECTOR_IMAGE_DIR}/${sector}.jpg`;
 }
+
+/**
+ * WHAT A RENDER SITE ACTUALLY CALLS, and it never returns null.
+ *
+ * Measured against the live catalogue on 2026-08-30: 77 packs, and 13 of them carry
+ * `sector: null` -- the publish path never set one. Left to `sectorImage` those 13 render a card
+ * with a hole where every card beside them has a picture, which reads worse than a shop with no
+ * pictures at all.
+ *
+ * `other` is not a fallback invented for this. It is a real code in `SECTOR`, its drawing is an
+ * assortment of unrelated tools, and "we could not say which trade this belongs to" is exactly
+ * what it means. So an unset or unrecognised sector gets the picture that already says so.
+ *
+ * The right fix is upstream -- the publish path should set a sector on every pack -- and this is
+ * not a reason to skip it. It is the reason a missing one cannot reach a buyer as a broken card
+ * while that work is done.
+ */
+export function packImage(sector: Sector | string | null | undefined): string {
+  return sectorImage(sector) ?? `${SECTOR_IMAGE_DIR}/other.jpg`;
+}

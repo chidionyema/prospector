@@ -12,7 +12,7 @@ import { buttonClasses, Glyph, Icon, ErrorState, Breadcrumbs, SourcedLine, Citat
 import { parseCitations } from '@/lib/citations';
 import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
-import { sectorImage } from '@/lib/sectorImage';
+import { packImage } from '@/lib/sectorImage';
 import { COMMON_CHECKS, checkForGate } from '@/lib/checks';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_DOCUMENTS, PACK_CONTENTS, PACK_EXTRAS } from '@/components/marketing/PackContents';
@@ -822,18 +822,16 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 It states nothing, exactly as the strip stated nothing: the sector is already in
                 words in the breadcrumb's last crumb directly above. Hence `alt=""` and
                 `aria-hidden`, and hence no label drawn on it. */}
-            {sectorImage(pack.sector) && (
-              /* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
-                 intrinsic size and no variants to serve. */
-              <img
-                className="packcover"
-                src={sectorImage(pack.sector) as string}
-                alt=""
-                aria-hidden
-                width={1280}
-                height={720}
-              />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
+                intrinsic size and no variants to serve. */}
+            <img
+              className="packcover"
+              src={packImage(pack.sector)}
+              alt=""
+              aria-hidden
+              width={1280}
+              height={720}
+            />
             {/* No `md:text-display` (48px). Titles here average ~90 characters, so at 48px the
                 h1 alone consumed ~400px and was still unfinished at the fold. One step, 32px.
                 24px on a phone, for the same reason one step further down: 32px on a 390px screen

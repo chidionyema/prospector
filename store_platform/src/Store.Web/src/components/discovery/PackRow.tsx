@@ -14,7 +14,7 @@ import { formatPriceForMarket, type Currency } from '@/lib/fx';
 import { CardProof } from '@/components/ui/ProofLine';
 import { packMarket } from '@/lib/market';
 import { paybackMultiple, type PackLeadStat } from '@/lib/packStat';
-import { sectorImage } from '@/lib/sectorImage';
+import { packImage } from '@/lib/sectorImage';
 import { trackCardClick } from '@/lib/analytics';
 import { useCardImpressions } from '@/lib/useCardImpressions';
 
@@ -148,6 +148,29 @@ export function PackRow({
       onClick={() => trackCardClick(pack.id, position)}
       className={cx('row', className)}
     >
+      {/* THE SECTOR PICTURE, and this is the shelf that carries most of the shop: the tile grid
+          renders three packs, the rows render the rest. Same file as the tile
+          (`lib/sectorImage.ts`), drawn once per sector and reused by every pack in it.
+
+          FIRST CHILD ON PURPOSE. `.row` is a two-column grid (mumchimp.css:94) whose children
+          pin themselves to column 1 and whose `.side` spans column 2 for all four rows. The
+          picture makes it three columns, so `globals.css` re-declares the track list and shifts
+          the text and the price stack one column right -- scoped with `:has(> .rowcover)` so a
+          row without a picture still renders exactly as the bundle draws it.
+
+          `alt=""` and `aria-hidden` because it states nothing: the sector is already in words in
+          the eyebrow immediately beside it. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
+          intrinsic size and no variants to serve. */}
+      <img
+        className="rowcover"
+        src={packImage(pack.sector)}
+        alt=""
+        aria-hidden
+        width={800}
+        height={450}
+        loading="lazy"
+      />
       {(cat.tagged || offMarket) && (
         <span className="top">
           {cat.tagged && <span className="eyebrow">{cat.label.toUpperCase()}</span>}
@@ -335,12 +358,10 @@ export function PackTileGrid({
                 `loading="lazy"` on every tile past the first screen; the browser decides.
                 No wrapper element -- `.htile` is a flex column and the image is one of its
                 children, which is what lets the negative margin take it to the card's edge. */}
-            {sectorImage(pack.sector) && (
-              /* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
-                 intrinsic size and no variants to serve; `next/image` would add a loader round
-                 trip and a wrapper div that breaks the full-bleed margin. */
-              <img className="cover" src={sectorImage(pack.sector) as string} alt="" aria-hidden width={800} height={450} loading="lazy" />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
+                intrinsic size and no variants to serve; `next/image` would add a loader round
+                trip and a wrapper div that breaks the full-bleed margin. */}
+            <img className="cover" src={packImage(pack.sector)} alt="" aria-hidden width={800} height={450} loading="lazy" />
             {/* GATED ON `tagged`, like every other sector render site (`PackRow.tsx:152`,
                 `index.tsx:322`). This tile was added with the three-up row and did not carry the
                 guard, so it printed "Not yet tagged" -- a status message about our own pipeline --
