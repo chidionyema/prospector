@@ -160,7 +160,12 @@ export default function AboutPage() {
             <dd><b className="num">{totals.researched.toLocaleString('en-GB')}</b></dd>
           </div>
           <div>
-            <dt><span>Killed, published</span></dt>
+            {/* "Killed, published" until 2026-08-30. 1,364 is the killed count; the published
+                count is 400, and /kill-log says so one click away ("This page publishes 400 of
+                those kills, not all 1,364"). The label was the last place the 2026-08-13 defect
+                survived: the guard in `numbersReconcile.test.ts` only scanned SENTENCES, so a
+                two-word caption made the same claim under it. It scans labels now. */}
+            <dt><span>Killed</span></dt>
             <dd><b className="num">{totals.killed.toLocaleString('en-GB')}</b></dd>
           </div>
           <div>
