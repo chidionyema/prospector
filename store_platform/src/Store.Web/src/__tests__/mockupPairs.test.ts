@@ -79,9 +79,12 @@ describe('mockup_diff PAIRS names drawings and pages that exist', () => {
     expect(mocks.length - new Set(mocks).size, 'duplicate drawing in PAIRS').toBe(0);
   });
 
-  it('would have caught the collections row', () => {
-    expect(existsSync(join(MOCKUPS, 'collections.html'))).toBe(false);
-    expect(routeResolves('/collections')).toBe(false);
+  /* Both halves of the check have to be able to say no, or the two assertions above pass by
+     being unable to fail. The dead route this was written for cannot be named here: it is banned
+     from source by collectionsRename.test.ts, which is the right ban. The docblock names it. */
+  it('both halves can actually refuse something', () => {
+    expect(existsSync(join(MOCKUPS, 'no-such-drawing.html'))).toBe(false);
+    expect(routeResolves('/no-such-page')).toBe(false);
   });
 
   /* Vacuity: both roots have to be the real directories, or every assertion above is checking
