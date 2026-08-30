@@ -201,7 +201,7 @@ export default function AboutPage() {
             <p className="mt-1 lede">
               One idea taken through the checks end to end, with every source it was judged on.
             </p>
-            <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta font-medium')}>
+            <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta')}>
               Read it <Icon name="arrowRight" size={12} />
             </span>
           </Link>
@@ -221,7 +221,7 @@ export default function AboutPage() {
               Most ideas die. Every kill is public, with the argument that made it. The log is
               the evidence behind the catalogue; the catalogue is what’s left.
             </p>
-            <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta font-medium')}>
+            <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta')}>
               Read it <Icon name="arrowRight" size={12} />
             </span>
           </Link>

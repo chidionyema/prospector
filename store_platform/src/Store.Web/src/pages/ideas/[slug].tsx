@@ -112,11 +112,11 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
         />
         <Section bg="white" width="7xl">
           <p className="lede">
-            <Link href="/" className={textLinkClass('font-medium')}>
+            <Link href="/" className={textLinkClass()}>
               Browse every pack
             </Link>{' '}
             or{' '}
-            <Link href="/ideas" className={textLinkClass('font-medium')}>
+            <Link href="/ideas" className={textLinkClass()}>
               see the other categories
             </Link>
             .
@@ -169,11 +169,11 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
         <p className="mt-10 lede">
           Every pack on this page faced the same checks: {checksSentence()}. Each then survived an
           adversarial review.{' '}
-          <Link href="/how-it-works" className={textLinkClass('font-medium')}>
+          <Link href="/how-it-works" className={textLinkClass()}>
             How the checks work
           </Link>
           , and the{' '}
-          <Link href="/kill-log" prefetch={false} className={textLinkClass('font-medium')}>
+          <Link href="/kill-log" prefetch={false} className={textLinkClass()}>
             kill log
           </Link>{' '}
           lists what it killed.

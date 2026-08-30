@@ -409,7 +409,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         <div className="closing">
           <p>
             Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
-            <Link href="/kill-log" prefetch={false} className={textLinkClass('font-medium')}>
+            <Link href="/kill-log" prefetch={false} className={textLinkClass()}>
               kill log
             </Link>{' '}
             with the sourced reason why.

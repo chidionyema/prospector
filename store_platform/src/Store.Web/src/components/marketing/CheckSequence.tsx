@@ -147,7 +147,7 @@ export function CheckSequence({ className }: { className?: string }) {
         </p>
         <Link
           href="/sample"
-          className={textLinkClass('text-meta font-medium')}
+          className={textLinkClass('text-meta')}
         >
           Read the whole evidence record
         </Link>

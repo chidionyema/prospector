@@ -207,10 +207,19 @@ interface LegalHeadingProps {
   id?: string;
 }
 
-/** Section heading inside a legal doc. `scroll-mt-24` clears the sticky header on a jump. */
+/**
+ * Section heading inside a legal doc. `scroll-mt-24` clears the sticky header on a jump.
+ *
+ * THE TYPE COMES FROM `globals.css` `.legal h2:not(.sec)`, NOT FROM A UTILITY HERE. This line
+ * used to read `text-h3 font-semibold`, and `--text-h3` has been deleted from the scale since
+ * `tokens.css` cut it to six steps -- so the class emitted no rule, preflight's
+ * `font-size: inherit` stood, and every clause heading on /terms, /privacy and /refund rendered
+ * at 16px, the body size. `font-semibold` goes with it: it is 600 in `layer(utilities)` and
+ * would overrule the 640 the drawing gives this slot.
+ */
 export function LegalHeading({ children, id }: LegalHeadingProps) {
   return (
-    <h2 id={id} className="scroll-mt-24 pt-4 text-h3 font-semibold text-text">
+    <h2 id={id} className="scroll-mt-24 pt-4 text-text">
       {children}
     </h2>
   );

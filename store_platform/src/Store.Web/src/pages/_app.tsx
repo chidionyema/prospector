@@ -14,18 +14,22 @@ import { track } from "@/lib/analytics";
 //
 // `next/font/google` loaded Geist + Geist Mono and published their family names as
 // --font-sans-pref / --font-mono-pref onto the wrapper <div> below. Spec §3.2 names Switzer and
-// Commit Mono, and both are now self-hosted @font-face declarations in styles/tokens.css, which
-// also declares those same two custom properties at :root.
+// Commit Mono; the faces that actually ship are Inter Variable and IBM Plex Mono, which is what
+// the mockups are drawn in (tokens.css:46-60 gives the reason). Both are self-hosted @font-face
+// declarations in styles/tokens.css, which also declares those same two custom properties at
+// :root.
 //
 // This import had to GO, not merely stop being used. A next/font `variable` class sets the
 // property on an ELEMENT, and an element declaration beats a :root one on every descendant -- so
 // leaving the wrapper wearing `geist.variable` would have silently kept rendering Geist while
-// tokens.css sat there declaring Switzer, with both files looking correct in isolation. The
+// tokens.css sat there declaring the self-hosted face, with both files looking correct in
+// isolation. The
 // symptom would have been "the new font does not apply" and the cause would have been two files
 // away. Deleting the import is what makes :root the only declaration site.
 //
-// The weight policy the deleted comment described still holds, and matters MORE now: Switzer is
-// a VARIABLE face with a declared 100-900 axis, so a stray `font-bold` no longer gets synthesised
+// The weight policy the deleted comment described still holds, and matters MORE now: the sans
+// face is a VARIABLE one with a declared 100-900 axis (tokens.css:65), so a stray `font-bold`
+// no longer gets synthesised
 // by smearing a 600 -- it renders a real 700 and simply violates the policy silently.
 // `weightAndCasePolicy.test.ts` is now the only thing catching that.
 

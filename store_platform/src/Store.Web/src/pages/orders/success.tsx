@@ -230,7 +230,7 @@ export default function OrderSuccess() {
                     void navigator.clipboard?.writeText(`${origin}${firstItem.orderPath}`);
                     setCopied(true);
                   }}
-                  className={textLinkClass('font-medium')}
+                  className={textLinkClass()}
                 >
                   {copied ? (
                     <span className="flex items-center gap-1">

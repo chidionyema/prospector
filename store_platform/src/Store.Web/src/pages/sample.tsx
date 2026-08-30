@@ -341,7 +341,12 @@ export default function SamplePage() {
                 framing the page adds -- the sections below are the document's own words. */}
             {UNSETTLED.length > 0 && (
               <section id="unsettled" className="mb-10 scroll-mt-24 rounded-md border border-warning bg-warning-bg p-8 md:p-9">
-                <h2 className="text-h3 font-semibold text-warning-strong">
+                {/* `sub` -- `mumchimp.css:15` `h3.sub{clamp(19px,3.4vw,23px);-.02em;655}`, ported
+                    to this element at `globals.css`. One step under the `sec` every other
+                    heading on this page wears, because the box is an aside to the report and
+                    must not read louder than the report's own title. It carried the dead
+                    `text-h3` until 2026-08-30 and rendered at 16px, the body size. */}
+                <h2 className="sub text-warning-strong">
                   {UNSETTLED.length === 1
                     ? 'One question the evidence would not settle'
                     : `${UNSETTLED.length} questions the evidence would not settle`}

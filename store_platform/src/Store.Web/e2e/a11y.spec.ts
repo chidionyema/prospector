@@ -54,27 +54,14 @@ const KNOWN: Record<string, Known> = {
     expires: '2026-11-19',
   },
 
-  'link-in-text-block': {
-    // AN OPEN DEFECT, NOT AN ACCEPTED TRADE. It is here only because the fix is a style change
-    // and B3 says write no CSS without asking. The short expiry is the point: this entry is meant
-    // to be deleted, not renewed.
-    //
-    // Measured against the live site 2026-08-19, 6 of 16 tests: `/`, `/ideas` and `/how-it-works`
-    // at both widths. The breadcrumb link is #2447c9 on --subtle #8B9096 surrounding text, which
-    // is 2.31:1 where WCAG needs 3:1, and `a{text-decoration:none}` (mumchimp.css:7) means there
-    // is no underline to fall back on. Colour is the only thing marking it as a link, and it is
-    // not enough colour.
-    //
-    // Two lines cause it, both in the byte-locked bundle: mumchimp.css:47 sets .crumb to --ink-3
-    // and :48 sets .crumb a to --link. So it shares a root cause with the entry above -- --subtle
-    // is being asked to sit behind text it does not have the contrast to sit behind.
-    //
-    // The fix is one rule in globals.css underlining .crumb a, which needs a founder decision.
-    reason:
-      'Breadcrumb link #2447c9 on --subtle #8B9096 is 2.31:1 against a 3:1 floor, with no ' +
-      'underline (mumchimp.css:7, :47, :48). Awaiting a decision on underlining .crumb a.',
-    expires: '2026-09-19',
-  },
+  // `link-in-text-block` WAS HERE AND IS FIXED, 2026-08-30. It was carried as an open defect
+  // rather than an accepted trade -- 6 of 16 tests, the breadcrumb link at #2447c9 on --subtle
+  // #8B9096, 2.31:1 against a 3:1 floor with `a{text-decoration:none}` (mumchimp.css:7) leaving
+  // nothing to fall back on -- and the entry said the fix was one rule in globals.css that needed
+  // a founder decision. He gave it on 2026-08-30 ("really polish the site thoroughly as best as
+  // we possibly can, attention to details"). `.crumb a` and `.src a` now carry an underline
+  // (globals.css, `@layer components`); the colours are untouched. The entry is deleted rather
+  // than renewed, which is what an exception with an expiry is for.
 };
 
 /** An exception that has run out of time is not an exception. */

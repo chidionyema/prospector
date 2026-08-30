@@ -1207,7 +1207,7 @@ function CatalogBrowser({
           and the four-line version of this paragraph failed it by 16px. */}
       <p className="mb-4 max-w-[68ch] text-caption text-subtle">
         Same {PACK_DOCUMENTS.length} documents in every pack. Bigger opportunity, higher price.{' '}
-        <Link href="/pricing" className={textLinkClass('font-medium')}>
+        <Link href="/pricing" className={textLinkClass()}>
           Why prices differ
         </Link>
       </p>
