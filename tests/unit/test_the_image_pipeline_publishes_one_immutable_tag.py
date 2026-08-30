@@ -51,6 +51,11 @@ def mutable_tag_specs(tags_block: str) -> list[str]:
             offending.append(line)
             continue
         kind = line.split("=", 1)[1].split(",", 1)[0]
+        if kind == "raw" and "${{ github.sha }}" in line:
+            # A raw value that embeds the full commit sha names exactly one commit, so it cannot
+            # move: `main-<run>-<sha>` is the estate's orderable shape (crew#693). A raw value
+            # without the sha is still refused below.
+            continue
         if kind in _MOVING_TYPES:
             offending.append(line)
         elif kind == "sha" and not re.search(r"\bprefix=(,|$)", line):
@@ -88,6 +93,7 @@ def test_the_pipeline_emits_only_an_immutable_tag():
     "spec",
     [
         "type=raw,value=latest",
+        "type=raw,value=main-${{ github.run_number }}",  # a run number alone can be rebuilt onto
         "type=ref,event=branch",
         "type=edge",
         "type=sha,format=long",  # the default prefix `sha-` is still a pin, but not the one the
@@ -101,7 +107,14 @@ def test_the_checker_refuses_a_tag_that_can_move(spec: str):
     assert mutable_tag_specs(spec) == [spec]
 
 
-@pytest.mark.parametrize("spec", ["type=sha,format=long,prefix=", "type=semver,pattern={{version}}"])
+@pytest.mark.parametrize(
+    "spec",
+    [
+        "type=sha,format=long,prefix=",
+        "type=semver,pattern={{version}}",
+        "type=raw,value=main-${{ github.run_number }}-${{ github.sha }},enable={{is_default_branch}}",
+    ],
+)
 def test_the_checker_permits_a_tag_that_cannot_move(spec: str):
     """The must-permit half. A guard that refuses correct work is an outage (LAW 38)."""
     assert mutable_tag_specs(spec) == []

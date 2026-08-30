@@ -25,9 +25,11 @@ name: container images
 # purpose: publish exactly one immutable tag per commit, and let promotion be a commit that names
 # it (deploy/k8s/README.md, register row F-54).
 #
-# The last step prints the two lines to paste into an overlay's `images:` block. That is the whole
-# handover between this file and a deploy: no automation writes back to the repository, because a
-# CI job that commits to main is a second way to change what production runs.
+# Since crew#693 (2026-08-30) each image also carries main-<run>-<sha>: still one immutable name
+# per build, never a moving tag, and the run number is what lets Flux's ImagePolicy in the platform
+# repository pick the newest build. Promotion is still a commit that names the tag -- written by
+# the image-automation-controller into idp/clusters/oke/edge.yaml and merged through a pull request
+# there, never by a CI job in this repository, which keeps this file free of any write token.
 
 on:
   push:
@@ -121,8 +123,12 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
-          # The bare 40-character commit SHA, and nothing else. See the header.
-          tags: type=sha,format=long,prefix=
+          # Two immutable names for the one image (see the header): the bare 40-character commit
+          # SHA that `gh attestation verify` and the overlay name, and main-<run>-<sha>, whose run
+          # number lets the cluster's ImagePolicy order builds (crew#693). Neither ever moves.
+          tags: |
+            type=sha,format=long,prefix=
+            type=raw,value=main-${{ github.run_number }}-${{ github.sha }},enable={{is_default_branch}}
 
       - name: build and push
         id: build
