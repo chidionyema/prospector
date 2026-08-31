@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-signoz", "https-alertmanager", "https-prometheus"}
+PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz", "https-alertmanager", "https-prometheus"}
 
 
 def _listeners() -> dict[str, dict]:
@@ -69,3 +69,9 @@ def test_incident_crew684_alertmanager_and_prometheus_listeners_name_the_monitor
     the metrics store ran 43 hours with no hostname; idp's HTTPRoutes in `monitoring` need a parent."""
     assert _listeners()["https-alertmanager"]["hostname"] == "alertmanager.${ESTATE_ZONE}"
     assert _listeners()["https-prometheus"]["hostname"] == "prometheus.${ESTATE_ZONE}"
+
+
+def test_incident_crew736_otto_listener_names_the_webhook_hostname() -> None:
+    """crew#736: otto.<zone> attaches from the idp `hermes-agent` namespace; Telegram's webhook
+    calls this hostname, so a listener missing here leaves the idp HTTPRoute with no parent."""
+    assert _listeners()["https-otto"]["hostname"] == "otto.${ESTATE_ZONE}"
