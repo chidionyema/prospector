@@ -93,6 +93,18 @@ const ALLOW = new Map<string, string>([
     "src/pages/kill-log.tsx:bars:items-stretch",
     "Same list reuse: rows fill the width instead of aligning to the chart baseline.",
   ],
+  [
+    "src/components/marketing/EvidenceBands.tsx:bars:h-auto",
+    "The kill-gate band now draws the same ranked .barline list the kill log does, so it " +
+      "inherits the same geometry gap: .bars is one class name over two components, and the " +
+      "sparkline's 44px height lands on a list of labelled rows. Measured at 1280 on " +
+      "2026-08-30 before this: six cells at 44.0, 14.5, 13.6, 10.1, 5.7 and 3.5px tall.",
+  ],
+  [
+    "src/components/marketing/EvidenceBands.tsx:bars:items-stretch",
+    "Same list reuse: rows fill the width so every bar starts on one baseline, which is what " +
+      ".barline{grid-template-columns:1fr 48px} was drawn for.",
+  ],
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {
