@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { textLinkClass } from '@/components/ui';
 import killTotals from '@/data/kill-log-totals.json';
 import { RESEARCH_STATS } from '@/lib/stats';
 
@@ -106,8 +107,16 @@ export function KillGateBand() {
               reader who counts them is owed the fact that more causes exist, and the count comes
               from the data rather than being typed. The kill log holds the rest. */}
           <p className="barkey">The six commonest of {ranked.length} recorded causes.</p>
+          {/* `textLinkClass`, NOT a bare link inside `.src`. The bundle gives `.src a` a colour
+              and nothing else (`mumchimp.css:.src a{color:var(--link)}`), and the paragraph around
+              it is `--ink-3`. axe measured that pair at 2.31:1 on the live site on 2026-08-30
+              (run 33339472255, `link-in-text-block`, serious, at both 390 and 1280): under the
+              3:1 minimum, and with no underline there is no second cue, so the link is invisible
+              to anyone who cannot separate those two greys. The helper is the one in-prose link
+              treatment in this tree and carries a permanent underline for exactly this reason. */}
           <p className="src num">
-            Every kill published with its reason · <Link href="/kill-log" prefetch={false}>read the kill log</Link>
+            Every kill published with its reason ·{' '}
+            <Link href="/kill-log" prefetch={false} className={textLinkClass()}>read the kill log</Link>
           </p>
         </div>
       </div>
@@ -131,9 +140,11 @@ export function SourcesBand({ sourcesTotal, packCount }: { sourcesTotal: number;
             tables, Companies House filings, council policy documents. Where a claim could not be
             verified, the pack says so and marks it, rather than filling the gap.
           </p>
+          {/* The same defect as the band above, and axe reported it as the second node on the
+              same rule. `textLinkClass` for the same reason. */}
           <p className="src num">
             Average {Math.round(sourcesTotal / packCount)} sources per pack ·{' '}
-            <Link href="/how-it-works">how the filter works</Link>
+            <Link href="/how-it-works" className={textLinkClass()}>how the filter works</Link>
           </p>
         </div>
       </div>
