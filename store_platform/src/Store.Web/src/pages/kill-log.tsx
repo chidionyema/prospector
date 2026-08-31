@@ -445,7 +445,14 @@ export default function KillLogPage({
                   {/* The bar is drawn against the LARGEST cause, not against the total. Against the
                       total every bar but one is a sliver and the chart shows nothing; against the
                       max, the comparison the reader came for is the one the picture makes. */}
-                  <span className="bar max-sm:w-full">
+                  {/* `flex-none` BELOW `sm`, OR THE BAR HAS NO HEIGHT AT ALL. `.t` above turns
+                      into a column at this width, and in a column container the bar's height is
+                      its flex-basis rather than the `height:9px` on `.barline .bar`. Measured on
+                      the built page at 390 on 2026-08-31: the bar computed `flex: 1 0 100%` and
+                      rendered 0px tall, so every row on this chart drew a label and a count with
+                      nothing between them. It has been that way on a phone since this chart
+                      shipped on 2026-08-18. `flex-none` returns the basis to auto. */}
+                  <span className="bar max-sm:w-full max-sm:flex-none">
                     <i
                       /* NEUTRAL BOTH WAYS (2026-08-14 colour audit, finding 2). These bars were
                          `bg-kill` when published and grey when not, on the one page that defines

@@ -84,7 +84,14 @@ export function KillGateBand() {
                   <span className="lab max-sm:max-w-none max-sm:whitespace-normal">
                     {GATE_LABELS[gate] ?? gate}
                   </span>
-                  <span className="bar max-sm:w-full">
+                  {/* `flex-none` BELOW `sm`, OR THE BAR HAS NO HEIGHT AT ALL. `.t` turns into a
+                      column here, and in a column container the bar's height is its flex-basis,
+                      not the `height:9px` on `.barline .bar`. Measured on the built page at 390
+                      on 2026-08-31, on `/kill-log` which has shipped this markup since
+                      2026-08-18: the bar computed `flex: 1 0 100%` and RENDERED 0px tall, so the
+                      chart drew labels and counts with no bars under them. `flex-none` puts the
+                      basis back to auto, which is what lets the 9px through. */}
+                  <span className="bar max-sm:w-full max-sm:flex-none">
                     <i
                       className="max-w-none"
                       style={{ width: `${Math.max((n / max) * 100, 0.6)}%` }}

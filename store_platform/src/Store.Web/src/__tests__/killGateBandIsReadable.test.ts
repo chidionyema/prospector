@@ -49,6 +49,17 @@ describe('the kill-gate band draws a chart with labels, not a sparkline', () => 
     expect(source).toMatch(/className="max-w-none"/);
   });
 
+  it('gives the bar a height on a phone, where the row turns into a column', () => {
+    // `.t` carries `max-sm:flex-col`, and in a column flex container the bar's main size is its
+    // flex-basis rather than the `height:9px` on `.barline .bar`. Measured on the built page at
+    // 390 on 2026-08-31, on `/kill-log` which has shipped this markup since 2026-08-18: the bar
+    // computed `flex: 1 0 100%` and rendered 0px tall, so the chart drew labels and counts with
+    // nothing between them. `flex-none` returns the basis to auto and the 9px applies.
+    const bar = /<span className="(bar[^"]*)"/.exec(source);
+    expect(bar).not.toBeNull();
+    expect(bar![1].split(/\s+/)).toContain('max-sm:flex-none');
+  });
+
   it('pairs every bar with its own label, drawn by `.barline`', () => {
     expect(source).toMatch(/className="barline"/);
     expect(source).toMatch(/className="lab[^"]*"/);
