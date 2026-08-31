@@ -227,6 +227,26 @@ spec:
               idp.estate/edge-attach: "true"
     # The estate's job monitor (idp platform/healthchecks, crew#177): the screen behind the one
     # login and /ping/ for the jobs' curl, both HTTPRoutes in the idp namespace `healthchecks`.
+    # The Architect's Telegram webhook door (idp platform/hermes-agent, crew#736). Telegram POSTs
+    # updates to otto.<zone>/telegram; the HTTPRoute lives in idp's `hermes-agent` namespace and the
+    # adapter refuses to start without the secret token that authenticates every POST
+    # (hermes-agent GHSA-3vpc-7q5r-276h), so this door is never fail-open. Same one-Secret
+    # certificate as every listener: cert-manager adds the SAN.
+    - name: https-otto
+      protocol: HTTPS
+      port: 8443
+      hostname: otto.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
     - name: https-hc
       protocol: HTTPS
       port: 8443
