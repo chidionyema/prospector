@@ -2163,7 +2163,12 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             </Link>
           </div>
           <div>
-            <p className="lbl">Researched, not listed</p>
+            {/* "Researched, not listed" until 2026-08-30, over the KILLED count. Two things
+                were wrong with it. It read as inventory waiting to be listed, when every one of
+                these ideas was rejected on cited evidence; and it did not even hold arithmetically
+                -- researched-but-unlisted is 1,444 - 77 = 1,367, not 1,364. /how-it-works calls
+                the same figure "Killed on cited evidence", so this says that. */}
+            <p className="lbl">Killed on cited evidence</p>
             <b className="n num">
               {RESEARCH_STATS.killed.toLocaleString('en-GB')}
             </b>

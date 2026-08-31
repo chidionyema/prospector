@@ -71,8 +71,8 @@ const PUSHED_BACK = report.total - report.supported;
 /*
   THE DRAWING'S SOURCE LIST (`mockups/sample.html`, `.srclist`): the pack's own "everything we
   read, once" section, a numbered list at the foot of the sheet. Derived from the excerpt rather
-  than typed, so it can only ever name pages this page actually quotes. The hero says "six of them
-  quoted below"; this is that six, listed where the drawing lists them.
+  than typed, so it can only ever name pages this page actually quotes. The hero counts this same
+  array, so the two cannot disagree; it used to say "six" and this list held four.
 */
 const QUOTED_SOURCES = EXCERPT.flatMap((s) => s.blocks).filter(
   (b): b is SourceBlock => b.type === 'source',
@@ -317,7 +317,12 @@ export default function SamplePage() {
                   section the rail also lists. */}
               <a href={`#${EXCERPT[2]?.id ?? 'boundary'}`} className={textLinkClass('inline-flex items-center gap-2')}>
                 <Glyph name="source" className="text-success" />
-                {`${sourcesLabel(report.sourceCount)} cited, six of them quoted below`}
+                {/* Derived, never typed (2026-08-30). The literal here read "six" while the
+                    sheet 100 lines below counted the same list and rendered "4 of 29 read": one
+                    load, one page, two numbers for one fact. This is the page the founder's
+                    2026-08-15 ruling says exists to prove the site does not overclaim, so it is
+                    the one page a wrong count costs the most. Both now count the same array. */}
+                {`${sourcesLabel(report.sourceCount)} cited, ${QUOTED_SOURCES.length} of them quoted below`}
               </a>
               {freshnessLabel(report.verifiedAt) && (
                 <span className="inline-flex items-center gap-2">

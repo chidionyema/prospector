@@ -260,7 +260,11 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             <dt>
               <span className="inline-flex items-center gap-1.5">
                 <Icon name="verified" size={14} className="text-success" />
-                Ideas killed, published
+                {/* "Ideas killed, published" until 2026-08-30: 1,364 were killed and 400 of
+                    those kills are published, which /kill-log states one click away. Same
+                    correction as `about.tsx` and the home page band; the guard now scans
+                    labels, not only sentences. */}
+                Ideas killed
               </span>
             </dt>
             <dd><b className="num">{killTotals.killed.toLocaleString('en-GB')}</b></dd>
