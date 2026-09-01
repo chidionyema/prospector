@@ -15,7 +15,7 @@ which is the part that has produced wrong answers twice (§25 of the readiness p
     outlive listings. 21 of 77 receipt files have no live listing at all.
   * `store_platform/.../store.db` is NOT the catalogue — it is a DEV database containing
     `demo-pack-001`. Querying it says a live, selling product is absent.
-  * The catalogue is the production API: `GET https://api.mumchimp.com/catalog`.
+  * The catalogue is the production API: `GET https://api.<the estate zone>/catalog`.
 
 So this reads the production catalogue and asks one question per row. Read-only, zero LLM,
 one HTTP GET. Exit 1 when any selling pack lacks a PASS, so it can be wired into the estate

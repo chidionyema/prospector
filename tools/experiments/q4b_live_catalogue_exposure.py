@@ -21,7 +21,7 @@ THE DENOMINATOR IS THE HARD PART, and getting it wrong is the whole risk in this
   * `store_platform/src/Store.Api/store.db` is NOT the catalogue either. It is a DEV database
     holding 13 packs including `demo-pack-001`/`demo-pack-002`. Querying it says a live, selling
     product is absent — which nearly produced a retraction of a correct finding.
-  * The catalogue is the production API. `GET https://api.mumchimp.com/catalog`.
+  * The catalogue is the production API. `GET https://api.<the estate zone>/catalog`.
 
 So this probe reads the production catalogue over the network by default, and tiers its evidence
 through `prospector.admissibility` — the SAME module the shipped gate uses, never a second copy, so

@@ -21,7 +21,7 @@
 set -uo pipefail
 
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-DOMAIN="${STORE_DOMAIN:-mumchimp.com}"
+DOMAIN="${STORE_DOMAIN:-${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone (crew#796)}}"
 SITE="${SITE_URL:-https://$DOMAIN}"
 API="${STORE_API_BASE:-https://api.$DOMAIN}"
 ENV_FILE="${PROSPECTOR_ENV_PATH:-$REPO_ROOT/.env}"
@@ -49,8 +49,8 @@ if [ -z "$SKEY" ] && [ -f "$ENV_FILE" ]; then
   SKEY=$(grep -E '^STRIPE_API_KEY=' "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"'"'"' ')
 fi
 case "$SKEY" in
-  *_live_*) SMODE=live ;;
-  *_test_*) SMODE=test ;;
+  *_live_*) SMODE="live" ;;
+  *_test_*) SMODE="test" ;;
   "")       SMODE=none ;;
   *)        SMODE=unknown ;;
 esac
