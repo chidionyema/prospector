@@ -172,7 +172,8 @@ export function PackRow({
         aria-hidden
         width={800}
         height={450}
-        loading="lazy"
+        loading={position != null && position <= 8 ? 'eager' : 'lazy'}
+        fetchPriority={position != null && position <= 2 ? 'high' : 'auto'}
       />
       {(cat.tagged || offMarket) && (
         <span className="top">
