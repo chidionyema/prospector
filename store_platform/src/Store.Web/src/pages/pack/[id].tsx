@@ -859,7 +859,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 #225 resolved the double paragraph by keeping `subhead` whenever one exists, on the
                 reasoning in the docblock above: `oneLine` was cut at 150 characters on 34 of 63
                 packs, so the complete sentence won. That premise has expired at the source.
-                Measured against the live catalogue on 2026-08-16 (61 packs, `api.mumchimp.com`):
+                Measured against the live catalogue on 2026-08-16 (61 packs, the live store API):
                 61 of 61 `oneLine` values end in a full stop, none carries a truncation mark, and
                 the longest is 268 characters. The publish path is no longer cutting them, so what
                 the rule does today is swap an intact sentence for a different one on the 52 packs
@@ -1174,7 +1174,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                       `COMMON_CHECKS` -- the ones that run on every idea in every lane -- and the
                       buy rail four inches away states this pack's OWN denominator. So the live
                       page said "7 of 8 checks cleared" above a list a reader can count to six,
-                      and never closed the gap (verified on mumchimp.com/pack/08b22037fc2afc07,
+                      and never closed the gap (verified on the live storefront's page for pack 08b22037fc2afc07,
                       2026-08-08). On a storefront whose pitch is that it checks its arithmetic,
                       an unexplained 6-vs-8 is the most expensive two digits on the page.
 

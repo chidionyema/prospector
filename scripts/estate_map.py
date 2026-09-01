@@ -42,7 +42,7 @@ from pathlib import Path
 FLY_APPS = {
     "prospector-engine": "makes the packs; the thing the business sells",
     "prospector-store-api": "the money rail: catalogue, checkout, entitlements, delivery",
-    "prospector-store-web": "mumchimp.com, the storefront a buyer sees",
+    "prospector-store-web": "the storefront a buyer sees",
     "prospector-searxng": "private search the engine grounds against",
     "prospector-hermes": "the operator surface: Telegram, coordinator, Otto",
     "prospector-ci": "runs CI. Two Linux container runners, label 'heavy'. CI does NOT run "
@@ -55,9 +55,9 @@ FLY_KEEP = ("tie-api", "tie-db", "tie-smoke", "tie-smoke-db", "tie-web")
 
 # url -> (expected status, what a bad answer means)
 ENDPOINTS = {
-    "https://mumchimp.com/": (200, "the storefront is down; buyers see nothing"),
-    "https://api.mumchimp.com/catalog": (200, "the money rail is down; nobody can buy"),
-    "https://api.mumchimp.com/healthz/money-rail": (200, "the rail's own self-check is unhappy"),
+    f"https://{os.environ['ESTATE_ZONE']}/": (200, "the storefront is down; buyers see nothing"),
+    f"https://api.{os.environ['ESTATE_ZONE']}/catalog": (200, "the money rail is down; nobody can buy"),
+    f"https://api.{os.environ['ESTATE_ZONE']}/healthz/money-rail": (200, "the rail's own self-check is unhappy"),
     "https://prospector-store-web.fly.dev/": (200, "the storefront's Fly hostname is down"),
     "https://prospector-engine.fly.dev/": (200, "the ops console is down; the estate is unreadable"),
 }

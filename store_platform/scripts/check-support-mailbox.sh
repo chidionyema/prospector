@@ -13,7 +13,7 @@
 #   bash store_platform/scripts/check-support-mailbox.sh --live   # also assert the live pages agree
 set -uo pipefail
 
-DEFAULT_DOMAIN="mumchimp.com"
+DEFAULT_DOMAIN="${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone}"
 DOMAIN="${SUPPORT_DOMAIN:-$DEFAULT_DOMAIN}"
 ADDR="${SUPPORT_ADDR:-support@$DOMAIN}"
 

@@ -11,7 +11,7 @@ moves legacy packs the moment it lands is a catalogue-wide incident, not a featu
 WHICH rung is chosen changed on 2026-08-15. The founder's standing objection to this
 module was never the trailing digit — it was "a user should be able to intuit why one
 pack is priced more or less than another". Measured that day against the live catalogue
-(59 rows, ``GET https://api.mumchimp.com/catalog``), price ran BACKWARDS against the only
+(59 rows, ``GET /catalog`` on the live store API), price ran BACKWARDS against the only
 quantitative field a buyer can see on a row, ``sourceCount``:
 
     £29.99 -> 36.5 mean sources    £79.99 -> 40.7

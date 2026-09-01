@@ -101,7 +101,7 @@ done
 if [ -f "$STACK_ENV" ]; then
   printf '   ok  %s\n' "${STACK_ENV#"$REPO"/}"
 else
-  printf '   -   deploy/compose/stack.env absent; compose defaults (mumchimp.com) apply\n'
+  printf '   -   deploy/compose/stack.env absent; compose defaults (built from ESTATE_ZONE) apply\n'
 fi
 
 # THE DATABASE IS THE BUSINESS. Everything else here is replaceable in ten minutes.
@@ -268,8 +268,16 @@ printf '   angle 1, container health:\n'
 _ssh "cd $REMOTE_DIR && docker compose -f compose/docker-compose.yml ps --format '      {{.Name}}\t{{.Status}}'" || true
 
 printf '   angle 2, through the edge:\n'
-SITE_HOST="$(grep -E '^SITE_DOMAIN=' "$STACK_ENV" 2>/dev/null | cut -d= -f2 || echo mumchimp.com)"
-API_HOST="$(grep -E '^API_DOMAIN=' "$STACK_ENV" 2>/dev/null | cut -d= -f2 || echo api.mumchimp.com)"
+# stack.env spells every hostname as <label>.${ESTATE_ZONE} and declares the zone once on its own
+# ESTATE_ZONE line (crew#796): read the zone first, then expand it in the two hostnames. The file
+# is read, not sourced, because its edge lines hold comma-separated lists a shell would run.
+stack_env_value() { grep -E "^$1=" "$STACK_ENV" 2>/dev/null | head -1 | cut -d= -f2-; }
+ESTATE_ZONE="${ESTATE_ZONE:-$(stack_env_value ESTATE_ZONE)}"
+: "${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone, in deploy/compose/stack.env or the environment}"
+SITE_HOST="$(stack_env_value SITE_DOMAIN | sed "s/\${ESTATE_ZONE}/$ESTATE_ZONE/g")"
+SITE_HOST="${SITE_HOST:-$ESTATE_ZONE}"
+API_HOST="$(stack_env_value API_DOMAIN | sed "s/\${ESTATE_ZONE}/$ESTATE_ZONE/g")"
+API_HOST="${API_HOST:-api.$ESTATE_ZONE}"
 
 # THIS BLOCK USED TO END IN `|| true` AND THE BANNER BELOW PRINTED REGARDLESS.
 # Measured 2026-08-24 on the rehearsal box: both probes returned HTTP 000 -- the API was in a
@@ -321,7 +329,7 @@ cat <<EOF
    What the world resolves right now:
        .venv/bin/python scripts/dns_zone.py --check
 
-   The cutover itself is changing the A records for mumchimp.com, www and api to this box.
+   The cutover itself is changing the A records for the estate zone's apex, www and api to this box.
    That script now exists, in the survival-stack repo, because that is where the Cloudflare
    credential and the zone tooling already live:
 

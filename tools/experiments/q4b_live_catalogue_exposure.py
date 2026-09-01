@@ -15,7 +15,7 @@ THE DENOMINATOR IS THE HARD PART, and getting it wrong is the whole risk in this
 
   * `store/listings/*.json` is NOT the catalogue. It is a local receipt.
     `prospector/decay.py:52-56` records the incident: four candidates re-vetted to KILL "kept
-    selling live on mumchimp.com because store/listings/{cid}.json and Store.Api's IsListed both
+    selling on the live store because store/listings/{cid}.json and Store.Api's IsListed both
     outlive the kill". Receipts outlive listings, and (measured 2026-08-07) 21 of 77 receipt files
     have no live listing at all — including two mock fixtures (§23.3).
   * `store_platform/src/Store.Api/store.db` is NOT the catalogue either. It is a DEV database
@@ -52,7 +52,7 @@ from prospector.admissibility import (  # noqa: E402
     tier,
 )
 
-CATALOGUE_URL = "https://api.mumchimp.com/catalog"
+CATALOGUE_URL = (os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}") + "/catalog"
 RULED = {"supported", "refuted"}
 HERE = os.path.dirname(os.path.abspath(__file__))
 RECEIPTS = os.path.join(HERE, "q4b_live_catalogue_exposure_receipts.json")

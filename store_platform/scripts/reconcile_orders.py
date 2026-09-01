@@ -47,7 +47,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = Path(os.environ.get("PROSPECTOR_ENV_PATH", REPO_ROOT / ".env"))
 EXCEPTIONS_PATH = REPO_ROOT / "store_platform" / "data" / "reconcile-exceptions.json"
 STRIPE_API = "https://api.stripe.com/v1"
-DEFAULT_API_BASE = "https://api.mumchimp.com"
+DEFAULT_API_BASE = os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}"
 
 
 def load_env(path: Path) -> dict:

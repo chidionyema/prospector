@@ -25,7 +25,7 @@ cd "$(dirname "$0")/.."
 SLOTS="${SLOTS:-10}"
 APPLY="${1:-}"
 OUT="${OUT:-.backfill-logs}"
-API="${STORE_API_URL:-https://api.mumchimp.com}"
+API="${STORE_API_URL:-https://api.${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone}}"
 
 [ -x .venv/bin/python ] || { echo "FATAL: .venv/bin/python missing"; exit 1; }
 .venv/bin/python -c 'import fpdf' 2>/dev/null \

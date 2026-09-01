@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -56,8 +57,8 @@ WEB_DIR = REPO / "store_platform" / "src" / "Store.Web"
 # @playwright/test no matter what cwd it is given.
 GEOMETRY = WEB_DIR / "scripts" / "prove_live_geometry.mjs"
 
-DEFAULT_API = "https://api.mumchimp.com"
-DEFAULT_SITE = "https://mumchimp.com"
+DEFAULT_API = os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}"
+DEFAULT_SITE = os.environ.get("SITE_URL") or f"https://{os.environ['ESTATE_ZONE']}"
 
 GRN, RED, YEL, OFF = "\033[32m", "\033[31m", "\033[33m", "\033[0m"
 

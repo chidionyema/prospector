@@ -21,8 +21,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV_FILE="${ENV_FILE:-$REPO_ROOT/.env}"
-API="${API_URL:-https://api.mumchimp.com}"
-SITE="${SITE_URL:-https://mumchimp.com}"
+API="${API_URL:-https://api.${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone}}"
+SITE="${SITE_URL:-https://${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone}}"
 
 red() { printf '\033[31m%s\033[0m\n' "$*"; }
 grn() { printf '\033[32m%s\033[0m\n' "$*"; }

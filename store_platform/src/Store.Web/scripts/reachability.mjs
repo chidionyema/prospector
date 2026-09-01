@@ -23,7 +23,15 @@
 import { parseArgs } from 'node:util';
 
 const { positionals } = parseArgs({ allowPositionals: true });
-const BASE = (positionals[0] || 'https://mumchimp.com').replace(/\/$/, '');
+// The live storefront's origin. The estate zone is declared once (the platform's
+// clusters/<cluster>/estate-config.yaml; ESTATE_ZONE in the environment here) and never
+// spelled in this repo (crew#796); a missing zone stops the run rather than aiming it elsewhere.
+function liveSite() {
+  const zone = process.env.ESTATE_ZONE;
+  if (!zone) throw new Error('ESTATE_ZONE is not set; it is the one place the estate zone lives');
+  return `https://${zone}`;
+}
+const BASE = (positionals[0] || liveSite()).replace(/\/$/, '');
 const MAX_CLICKS = 2;
 
 /* The routes a stranger can actually arrive on: what we link, what search indexes, what we put in

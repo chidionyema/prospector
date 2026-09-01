@@ -129,22 +129,22 @@ spec:
             # redirect every customer to itself and a 404
             # (store_platform/src/Store.Api/Payments/MoneyRailConfigGate.cs).
             - name: Store__StorefrontUrl
-              value: https://mumchimp.com
+              value: https://${ESTATE_ZONE}
             # Where verification, password-reset and OAuth landing links point. The compose file
             # has carried it since the store shipped; this manifest had not, and the API refused
             # to start on OKE on 2026-08-25 (MoneyRailConfigGate.GuardEmailWebBaseUrl).
             - name: Email__WebBaseUrl
-              value: https://mumchimp.com
+              value: https://${ESTATE_ZONE}
             - name: STORE_STOREFRONT_URL
-              value: https://mumchimp.com
+              value: https://${ESTATE_ZONE}
             - name: STORE_PUBLIC_URL
-              value: https://api.mumchimp.com
+              value: https://api.${ESTATE_ZONE}
             # Comma-separated because a site on a custom domain has more than one origin: the
             # apex and the www. form are distinct to a browser. The .fly.dev hostname the live app
             # still allows is deliberately absent — an origin allow-list is exactly where a dead
             # vendor's name survives a migration unnoticed.
             - name: STORE_ALLOWED_ORIGIN
-              value: https://mumchimp.com,https://www.mumchimp.com
+              value: https://${ESTATE_ZONE},https://www.${ESTATE_ZONE}
             - name: RateLimiting__PermitPerMinute
               value: "600"
             - name: Security__KnownNetworks

@@ -1,7 +1,9 @@
 """Every platform hostname on the edge is a listener other namespaces can attach to.
 
 RUNG 2 (property), per the test ladder in `~/AGENTS.md`: for every Gateway listener whose
-hostname is under `${ESTATE_ZONE}` (a platform row: catalogue, auth, llm), the listener
+hostname is under `${ESTATE_ZONE}` and is not one of the store's own three (apex, www, api;
+since crew#796 every hostname is spelled from the zone, so the name, not the spelling, tells
+the store's listeners from the platform's), the listener
 terminates TLS with the shared edge cert and allows routes from any namespace labelled
 `idp.estate/edge-attach: "true"`. The rows live in idp, not here, so a listener that only
 allowed routes from `prospector` would accept the hostname and serve nothing.
@@ -17,6 +19,9 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz"}
+# The store's own rows: routes attach from this namespace only, and the storefront and API behind
+# them are what a buyer sees. They share the zone since crew#796; they never share the selector.
+STORE_LISTENERS = {"https-apex", "https-www", "https-api"}
 
 
 def _listeners() -> dict[str, dict]:
@@ -26,8 +31,19 @@ def _listeners() -> dict[str, dict]:
     raise AssertionError("Gateway prospector-edge not found in edge.yaml")
 
 
+def _platform_listeners() -> dict[str, dict]:
+    return {
+        n: l for n, l in _listeners().items()
+        if "${ESTATE_ZONE}" in str(l.get("hostname")) and n not in STORE_LISTENERS
+    }
+
+
 def test_every_estate_zone_listener_accepts_platform_routes() -> None:
-    zone = {n: l for n, l in _listeners().items() if "${ESTATE_ZONE}" in str(l.get("hostname"))}
+    listeners = _listeners()
+    for name in STORE_LISTENERS:
+        assert "${ESTATE_ZONE}" in str(listeners[name]["hostname"]), name
+        assert listeners[name]["allowedRoutes"]["namespaces"]["from"] == "Same", name
+    zone = _platform_listeners()
     assert set(zone) == PLATFORM_LISTENERS, set(zone) ^ PLATFORM_LISTENERS
     for name, l in zone.items():
         assert l["port"] == 8443 and l["protocol"] == "HTTPS", name
@@ -73,7 +89,7 @@ def test_incident_otto_outage_2026_09_01_no_listener_without_a_route() -> None:
     listeners = _listeners()
     assert "https-alertmanager" not in listeners
     assert "https-prometheus" not in listeners
-    assert not {n for n, l in listeners.items() if "${ESTATE_ZONE}" in str(l.get("hostname"))} - PLATFORM_LISTENERS
+    assert not set(_platform_listeners()) - PLATFORM_LISTENERS
 
 
 def test_incident_crew736_otto_listener_names_the_webhook_hostname() -> None:

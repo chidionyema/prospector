@@ -1343,7 +1343,7 @@ def _decay_pass(cfg, n_decay: int) -> dict | None:
     a KILL, but it holds no Fly credentials, so the queue is inert until something drains it —
     and until 2026-08-07 nothing in production did. That cost real money twice: 4 packs on
     2026-08-06 and 2 more on 2026-08-07 (`f75365e48af08750`, `839afa0ef83b82be`) stayed on sale
-    at £49 on mumchimp.com with only a `.kill.json` dossier on disk. Draining even when
+    at £49 on the live store with only a `.kill.json` dossier on disk. Draining even when
     `n_decay` is 0 matters because switching the sweep off must not strand a queue an earlier
     tick already wrote.
     """

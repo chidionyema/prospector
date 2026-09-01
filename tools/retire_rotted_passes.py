@@ -83,7 +83,7 @@ def queue_unlist(cid: str, title: str, reason: str, *, apply: bool) -> bool:
     A retirement that leaves the pack ON THE SHELF is worse than doing nothing: it deletes the
     engine's evidence trail while the pack keeps taking money. That is the exact defect
     `decay.py`'s docstring records — 4 candidates re-vetted to KILL kept selling on
-    mumchimp.com because `store/listings/{cid}.json` and Store.Api's `IsListed` both outlive
+    the live store because `store/listings/{cid}.json` and Store.Api's `IsListed` both outlive
     the engine's change of mind with nothing to tell them otherwise.
 
     This mirrors `decay.py::_queue_unlist` deliberately, including writing through

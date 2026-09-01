@@ -27,7 +27,6 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-POLICY_DIR="$REPO/deploy/k8s/policies"
 
 CLUSTER="${REHEARSAL_CLUSTER_NAME:-prospector-rehearsal}"
 CTX="k3d-$CLUSTER"
@@ -607,7 +606,12 @@ first: a webhook that will never answer does not answer any faster with a longer
   # it is not congestion.
   local oi=1 otries="${OVERLAY_APPLY_TRIES:-4}" oerr
   oerr="$(mktemp -t overlay-apply-err)"
-  until k apply --server-side -k "$REPO/deploy/k8s/overlays/staging" >/dev/null 2>"$oerr"; do
+  # The manifests spell every hostname as <label>.${ESTATE_ZONE} and Flux substitutes the zone on the
+  # cluster (postBuild.substituteFrom estate-config). There is no Flux here, so render, substitute
+  # from the environment, then apply; an unset zone stops the drill instead of applying a literal.
+  until { k kustomize "$REPO/deploy/k8s/overlays/staging" \
+          | sed "s/\${ESTATE_ZONE}/${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone from clusters/<cluster>/estate-config.yaml}/g" \
+          | k apply --server-side -f -; } >/dev/null 2>"$oerr"; do
     if [ "$oi" -ge "$otries" ]; then
       note "last error from the API server, after $oi attempts:"
       sed 's/^/       /' "$oerr" | tail -6
@@ -827,7 +831,7 @@ spec:
       env:
         - { name: Jwt__Issuer,   value: store-api }
         - { name: Jwt__Audience, value: store-web }
-        - { name: STORE_API_URL, value: "https://api.mumchimp.com" }
+        - { name: STORE_API_URL, value: "https://api.${ESTATE_ZONE}" }
       resources: { requests: { memory: 32Mi }, limits: { memory: 64Mi } }
 YAML
 

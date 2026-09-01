@@ -49,10 +49,10 @@ public class DeliveryUrlsTests
         var result = DeliveryUrls.ResolveStorefrontBaseUrl(
             storefrontUrl: null, storefrontUrlEnv: null,
             allowedOrigin: null,
-            allowedOriginEnv: $"https://mumchimp.com,https://www.mumchimp.com,{Storefront}",
+            allowedOriginEnv: $"https://example.test,https://www.example.test,{Storefront}",
             requestHostUrl: RequestHost);
 
-        Assert.Equal("https://mumchimp.com", result);
+        Assert.Equal("https://example.test", result);
     }
 
     [Fact]
@@ -62,10 +62,10 @@ public class DeliveryUrlsTests
         // "https://mumchimp.com//orders/success".
         var result = DeliveryUrls.ResolveStorefrontBaseUrl(
             storefrontUrl: null, storefrontUrlEnv: null,
-            allowedOrigin: " https://mumchimp.com/ , https://www.mumchimp.com ",
+            allowedOrigin: " https://example.test/ , https://www.example.test ",
             allowedOriginEnv: null, requestHostUrl: RequestHost);
 
-        Assert.Equal("https://mumchimp.com", result);
+        Assert.Equal("https://example.test", result);
     }
 
     [Fact]

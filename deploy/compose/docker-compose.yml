@@ -83,7 +83,9 @@ services:
       PROSPECTOR_STORE_DIR: /data/store
       PROSPECTOR_USAGE_WALL_MARKER: /data/state/claude_usage_limit.json
       CLAUDE_CONFIG_DIR: /data/state/claude
-      STORE_API_URL: ${STORE_API_URL:-https://api.mumchimp.com}
+      STORE_API_URL: ${STORE_API_URL:-https://api.${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}}
+      # The zone itself, for every script the engine runs that names a live host (crew#796).
+      ESTATE_ZONE: ${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}
       # Off unless the operator says otherwise, for the reason in the header.
       ENGINE_BACKUPS_ENABLED: ${ENGINE_BACKUPS_ENABLED:-false}
 
@@ -154,7 +156,7 @@ services:
       ConnectionStrings__DefaultConnection: Data Source=/data/store.db
       payments__active_provider: stripe
       # One value drives every link the API puts in an email.
-      Email__WebBaseUrl: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com}
+      Email__WebBaseUrl: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}}
 
       # WITHOUT THESE TWO THE API DOES NOT BOOT AT ALL. AddAuthPipeline throws
       # `Jwt:Issuer and Jwt:Audience must both be configured`
@@ -201,13 +203,13 @@ services:
 
       # CONFIG. Where the buyer is sent back to after paying. Unset, the API refuses to boot
       # rather than redirect every paying customer to itself and a 404.
-      Store__StorefrontUrl: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com}
-      STORE_STOREFRONT_URL: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com}
-      STORE_PUBLIC_URL: ${SITE_SCHEME:-https}://${API_DOMAIN:-api.mumchimp.com}
+      Store__StorefrontUrl: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}}
+      STORE_STOREFRONT_URL: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}}
+      STORE_PUBLIC_URL: ${SITE_SCHEME:-https}://${API_DOMAIN:-api.${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}}
       # The live app also allows https://prospector-store-web.fly.dev. That one is deliberately
       # absent here: it is the hostname being eradicated, and an origin allow-list is exactly
       # the place a dead vendor's name survives a migration unnoticed.
-      STORE_ALLOWED_ORIGIN: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com},${SITE_SCHEME:-https}://www.${SITE_DOMAIN:-mumchimp.com}
+      STORE_ALLOWED_ORIGIN: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}},${SITE_SCHEME:-https}://www.${SITE_DOMAIN:-${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}}
       # The data-protection key ring. Same path as Fly's, inside the ./data-api mount, so the
       # key that decrypts existing cookies and tokens travels with the database.
       Data__KeyRingPath: ${DATA_KEYRING_PATH:-/data/keys}
@@ -224,7 +226,7 @@ services:
       Authentication__Google__ClientSecret: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       MAILJET_API_KEY: ${MAILJET_API_KEY:-}
       MAILJET_API_SECRET: ${MAILJET_API_SECRET:-}
-      MAILJET_FROM_EMAIL: ${MAILJET_FROM_EMAIL:-orders@${SITE_DOMAIN:-mumchimp.com}}
+      MAILJET_FROM_EMAIL: ${MAILJET_FROM_EMAIL:-orders@${SITE_DOMAIN:-${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}}}
 
     ports:
       - "127.0.0.1:${API_PORT:-5291}:8080"
@@ -294,8 +296,8 @@ services:
       # domain requires a REBUILD, not a restart - which is the honest cost of a rename and
       # is worth knowing before the day you do it.
       args:
-        NEXT_PUBLIC_SITE_URL: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com}
-        NEXT_PUBLIC_API_URL: ${SITE_SCHEME:-https}://${API_DOMAIN:-api.mumchimp.com}
+        NEXT_PUBLIC_SITE_URL: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}}
+        NEXT_PUBLIC_API_URL: ${SITE_SCHEME:-https}://${API_DOMAIN:-api.${ESTATE_ZONE:?ESTATE_ZONE is set once in deploy/compose/stack.env}}
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
         NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:-}
         NEXT_PUBLIC_BING_SITE_VERIFICATION: ${NEXT_PUBLIC_BING_SITE_VERIFICATION:-}

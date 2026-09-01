@@ -31,7 +31,7 @@ public sealed class MailjetEmailSenderTests
 {
     private const string Key = "public-key-abc";
     private const string Secret = "private-secret-xyz";
-    private const string From = "orders@mumchimp.com";
+    private const string From = "orders@example.test";
     private const string Buyer = "buyer@example.com";
 
     // ---- configuration gating ----------------------------------------------------------------

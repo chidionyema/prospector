@@ -31,7 +31,7 @@ SPF = ("mumchimp.com", "TXT", '"v=spf1 include:_spf.google.com include:spf.mailj
 def write_zone(tmp_path, records, monkeypatch):
     """Point the module at a throwaway zone directory holding exactly `records`."""
     monkeypatch.setattr(dns_zone, "ZONE_DIR", tmp_path)
-    (tmp_path / "mumchimp.com.zone").write_text(dns_zone.render("mumchimp.com", set(records)))
+    (tmp_path / "estate.zone").write_text(dns_zone.render("mumchimp.com", set(records)))
 
 
 def test_a_semicolon_inside_a_value_is_not_a_comment(tmp_path, monkeypatch):
@@ -48,7 +48,7 @@ def test_a_semicolon_inside_a_value_is_not_a_comment(tmp_path, monkeypatch):
 
 def test_whole_line_comments_are_still_skipped(tmp_path, monkeypatch):
     write_zone(tmp_path, {APEX}, monkeypatch)
-    path = tmp_path / "mumchimp.com.zone"
+    path = tmp_path / "estate.zone"
     path.write_text("; a header line\n;\n" + path.read_text())
     assert dns_zone.committed("mumchimp.com") == {APEX}
 

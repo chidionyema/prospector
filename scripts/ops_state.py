@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -41,7 +42,7 @@ def _sh(cmd: list[str], timeout: float = 25.0) -> tuple[int, str]:
     """Run a command, return (exit_code, combined output). Never raises.
 
     Argument list only, never a shell string. A shell string used to be accepted, and
-    exactly one probe used it: `whois mumchimp.com | grep -iE ...`. That carried two
+    exactly one probe used it: `whois <the zone> | grep -iE ...`. That carried two
     defects at once. The shell is a hole nobody needed here, and a pipeline reports the
     exit status of its LAST stage, so a whois that answered fine but matched no line
     returned grep's 1 and the probe printed UNREACHABLE. Filter in Python instead.
@@ -219,7 +220,7 @@ def p_dat1() -> str:
 
 def p_catalog() -> str:
     code, out = _sh(["curl", "-sS", "--max-time", "20",
-                     "https://api.mumchimp.com/catalog/stats"], timeout=25)
+                     f"https://api.{os.environ['ESTATE_ZONE']}/catalog/stats"], timeout=25)
     if code:
         return "UNREACHABLE: " + out[:120]
     return out[:160]
@@ -231,7 +232,7 @@ _WHOIS_FIELDS = ("expiry", "registrar:", "name server")
 
 
 def p_dns1() -> str:
-    code, out = _sh(["whois", "mumchimp.com"], timeout=30)
+    code, out = _sh(["whois", os.environ["ESTATE_ZONE"]], timeout=30)
     if code:
         return "UNREACHABLE: " + out[:120]
     hits = [ln.strip() for ln in out.splitlines()
@@ -240,7 +241,7 @@ def p_dns1() -> str:
 
 
 def p_dns3() -> str:
-    code, out = _sh(["dig", "+short", "TXT", "google._domainkey.mumchimp.com"], timeout=20)
+    code, out = _sh(["dig", "+short", "TXT", f"google._domainkey.{os.environ['ESTATE_ZONE']}"], timeout=20)
     if code:
         return "UNREACHABLE: " + out[:120]
     return out[:120] or "EMPTY — DKIM not published"

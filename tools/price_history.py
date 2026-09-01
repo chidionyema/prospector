@@ -51,7 +51,7 @@ from prospector.run import _load_dotenv
 # The storefront (mumchimp.com) 404s on /catalog; the API is a separate host. Pointing this
 # at the storefront returns HTML that json-decodes into an exception rather than a 404, so
 # the default is the API and the failure mode of overriding it wrongly is loud.
-DEFAULT_API_URL = "https://api.mumchimp.com"
+DEFAULT_API_URL = os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}"
 
 
 def fetch_history(api_url: str, pack_id: str, key: str, *,

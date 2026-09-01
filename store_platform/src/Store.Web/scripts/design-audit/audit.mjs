@@ -17,7 +17,15 @@ const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '../../../../..');
 
-const BASE = process.env.AUDIT_BASE ?? 'https://mumchimp.com';
+// The live storefront's origin. The estate zone is declared once (the platform's
+// clusters/<cluster>/estate-config.yaml; ESTATE_ZONE in the environment here) and never
+// spelled in this repo (crew#796); a missing zone stops the run rather than aiming it elsewhere.
+function liveSite() {
+  const zone = process.env.ESTATE_ZONE;
+  if (!zone) throw new Error('ESTATE_ZONE is not set; it is the one place the estate zone lives');
+  return `https://${zone}`;
+}
+const BASE = process.env.AUDIT_BASE ?? liveSite();
 const OUTDIR = path.resolve(process.env.AUDIT_OUT ?? path.join(REPO_ROOT, 'docs/audit'));
 const ONLY = process.env.AUDIT_ONLY ? new Set(process.env.AUDIT_ONLY.split(',')) : null;
 

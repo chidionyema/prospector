@@ -3,7 +3,8 @@
 # Score = number of checks passed (higher = better)
 # Exit 0 = all critical checks pass, exit 1 = failures remain
 
-cd /Users/chidionyema/Documents/code/prospector
+# The checkout this script lives in, never a fixed path on one machine.
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 score=0
 total=0
@@ -51,15 +52,15 @@ check "tsc compiles" \
 
 # 8. Buy buttons functional
 check "Unlock for £49 buttons present" \
-    "curl -s https://mumchimp.com 2>/dev/null | grep -q 'Unlock for'"
+    "curl -s https://${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone} 2>/dev/null | grep -q 'Unlock for'"
 
 # 9. Progressive flow visible
 check "StepFlow on page load" \
-    "curl -s https://mumchimp.com 2>/dev/null | grep -q 'What skills do you bring'"
+    "curl -s https://${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone} 2>/dev/null | grep -q 'What skills do you bring'"
 
 # 10. Brand consistency: Hanken Grotesk only
 check "single font family (Hanken) in HTML" \
-    "! curl -s https://mumchimp.com 2>/dev/null | grep -o 'font-family[^;]*' | grep -v 'Hanken Grotesk\|sans-serif' | head -1"
+    "! curl -s https://${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone} 2>/dev/null | grep -o 'font-family[^;]*' | grep -v 'Hanken Grotesk\|sans-serif' | head -1"
 
 # --- Output score ---
 echo "SCORE: $score"

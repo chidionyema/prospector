@@ -7,6 +7,7 @@ import type { GetServerSideProps } from 'next';
 // the site's own authority behind it. §1 of the fact-ownership contract: one source per fact.
 import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { fetchCatalog, type Pack } from '@/lib/api/client';
+import { LEGAL } from '@/lib/config';
 import { checksSentence } from '@/lib/checks';
 import { priceRange, formatGbp } from '@/lib/priceRange';
 import { PACK_DISCLAIMER, PACK_SCOPE } from '@/lib/disclaimer';
@@ -139,7 +140,7 @@ ${packs.length > 0 ? packs.slice(0, MAX_PACKS).map((pack) => packLine(pack, orig
 
 - [Full URL list](${origin}/sitemap.xml): every indexable page, including packs beyond the ${MAX_PACKS} listed above.
 - [Terms](${origin}/terms) · [Privacy](${origin}/privacy) · [Refund policy](${origin}/refund)
-- Contact: support@mumchimp.com
+- Contact: ${LEGAL.supportEmail}
 `;
 
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');

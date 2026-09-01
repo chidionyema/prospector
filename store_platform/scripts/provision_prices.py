@@ -37,7 +37,8 @@ from pathlib import Path
 # from one machine: no staging dry-run, and a silent failure for anyone else. Resolve the repo
 # root relative to this file instead, and take the API base from the environment.
 ENV_PATH = Path(os.environ.get("PROSPECTOR_ENV_PATH", Path(__file__).resolve().parents[2] / ".env"))
-API_BASE = os.environ.get("STORE_API_BASE", "https://api.mumchimp.com").rstrip("/")
+API_BASE = os.environ.get("STORE_API_BASE") or f"https://api.{os.environ['ESTATE_ZONE']}"
+API_BASE = API_BASE.rstrip("/")
 STRIPE_API = "https://api.stripe.com/v1"
 CURRENCY = "gbp"
 # Bumped when a re-provision must create NEW Stripe objects rather than return the cached

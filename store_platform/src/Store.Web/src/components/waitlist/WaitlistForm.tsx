@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 import { Button, Checkbox, Input } from '@/components/ui';
 import { joinWaitlist } from '@/lib/api/client';
+import { LEGAL } from '@/lib/config';
 
 /**
  * The one waitlist form, shared by every placement.
@@ -97,7 +98,7 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
     return (
       <p className="lede">
         <span className="font-semibold text-text">You&apos;re in the queue.</span> We&apos;ll email you from
-        support@mumchimp.com {query ? 'if a pack in this space survives the checks' : 'if a new pack survives the checks'}. Nothing else.
+        {LEGAL.supportEmail} {query ? 'if a pack in this space survives the checks' : 'if a new pack survives the checks'}. Nothing else.
       </p>
     );
   }

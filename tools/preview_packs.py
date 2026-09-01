@@ -46,7 +46,7 @@ import webbrowser
 import zipfile
 from pathlib import Path
 
-DEFAULT_API_URL = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
+DEFAULT_API_URL = os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}"
 CACHE = Path(os.environ.get("PROSPECTOR_PREVIEW_CACHE", ".cache/pack_preview"))
 
 #: The four documents that carry the work. The executive summary, the checklist and the QA

@@ -521,6 +521,10 @@ jobs:
     # making CI any faster and without touching the cause. The ceiling stays at 40; a runner
     # young enough to get its own CPU finishes the same 7093 tests in 156 seconds.
     timeout-minutes: 40
+    env:
+      # The estate's DNS zone is declared once outside this repo; tests pin a fixture zone so no
+      # module that names a live host KeyErrors at import (crew#796; tests/conftest.py pins it too).
+      ESTATE_ZONE: example.test
 
     steps:
       # Full history, because a test in this suite reads it. The default depth is 1, so
@@ -827,6 +831,10 @@ jobs:
     if: needs.changes.outputs.python == 'true'
     runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 30
+    env:
+      # The estate's DNS zone is declared once outside this repo; tests pin a fixture zone so no
+      # module that names a live host KeyErrors at import (crew#796; tests/conftest.py pins it too).
+      ESTATE_ZONE: example.test
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

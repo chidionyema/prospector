@@ -13,7 +13,7 @@ import type { PackDetails } from '@/lib/api/client';
   `scripts/site_spec_probe.py` reads SITE_SPEC 5.2 out of prose (JSX text and sentence-shaped
   string literals) and it reported PASS -- "0 reader-facing instances of
   catalog/shot/grounded/gauntlet/dossier" -- on 2026-08-08, the same day
-  `curl https://mumchimp.com/pack/8d5a441749448b69` returned `dossier:8d5a441749448b69` in the
+  `curl` of the live storefront's page for pack 8d5a441749448b69 returned `dossier:8d5a441749448b69` in the
   served HTML.
 
   Both statements were true. The probe scans SOURCE, and the leaking string existed in no source

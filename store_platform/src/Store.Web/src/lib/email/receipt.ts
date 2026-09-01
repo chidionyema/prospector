@@ -16,6 +16,8 @@
  * the input to the worker's render step.
  */
 
+import { SITE_URL } from '../config';
+
 export interface ReceiptOrder {
   id: string;
   packTitle: string;
@@ -68,6 +70,8 @@ export function renderReceiptHtml(order: ReceiptOrder, brand: string): string {
   const safeOrderPath = escapeHtml(order.orderPath);
   const safePackTitle = escapeHtml(order.packTitle);
   const safeBrand = escapeHtml(brand);
+  // Links in an email must be absolute; the origin is the configured site, never a literal.
+  const siteOrigin = SITE_URL ?? '';
   return [
     '<!doctype html>',
     '<html>',
@@ -76,13 +80,13 @@ export function renderReceiptHtml(order: ReceiptOrder, brand: string): string {
     '<div style="max-width:600px;margin:0 auto;padding:32px 24px;">',
     `<p style="margin:0 0 24px 0;font-size:12px;font-weight:500;color:#71717A;">${safeBrand}</p>`,
     `<h1 style="margin:0 0 16px 0;font-size:28px;font-weight:800;line-height:1.15;letter-spacing:-0.02em;color:#0A0A0A;">Your pack is ready.</h1>`,
-    `<p style="margin:0 0 24px 0;font-size:16px;color:#0A0A0A;">${safePackTitle} is yours. Every claim in it cites a retrievable source. The QA report inside the pack lists every source, and the <a href="${safeBrand === 'Mumchimp' ? 'https://mumchimp.com/kill-log' : '/kill-log'}" style="color:#0A0A0A;text-decoration:underline;">kill log</a> lists the ${'{count}'} ideas that did not survive the checks.</p>`,
+    `<p style="margin:0 0 24px 0;font-size:16px;color:#0A0A0A;">${safePackTitle} is yours. Every claim in it cites a retrievable source. The QA report inside the pack lists every source, and the <a href="${siteOrigin}/kill-log" style="color:#0A0A0A;text-decoration:underline;">kill log</a> lists the ${'{count}'} ideas that did not survive the checks.</p>`,
     '<div style="margin:0 0 24px 0;padding:16px;border:1px solid #E5E5E5;background-color:#F7F7F5;">',
     '<p style="margin:0 0 8px 0;font-size:12px;font-weight:500;color:#71717A;">Permanent access link</p>',
     `<p style="margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:13px;word-break:break-all;color:#0A0A0A;">${safeOrderPath}</p>`,
     '</div>',
     `<p style="margin:0 0 24px 0;font-size:14px;color:#0A0A0A;">Bookmark it or copy it somewhere safe. This is the only way back to your pack if you lose the link.</p>`,
-    `<p style="margin:0 0 24px 0;font-size:14px;color:#0A0A0A;">If the pack is not what the description said, email us within ${REFUND_WINDOW_DAYS} days and we refund in full. No forms, no friction. The full policy is on the <a href="${safeBrand === 'Mumchimp' ? 'https://mumchimp.com/refund' : '/refund'}" style="color:#0A0A0A;text-decoration:underline;">refund page</a>.</p>`,
+    `<p style="margin:0 0 24px 0;font-size:14px;color:#0A0A0A;">If the pack is not what the description said, email us within ${REFUND_WINDOW_DAYS} days and we refund in full. No forms, no friction. The full policy is on the <a href="${siteOrigin}/refund" style="color:#0A0A0A;text-decoration:underline;">refund page</a>.</p>`,
     '<hr style="border:0;border-top:1px solid #E5E5E5;margin:24px 0;">',
     `<p style="margin:0;font-size:11px;color:#6B6B6B;">The voice is source-or-die. Sourced, not sold. Refutational, not promotional.</p>`,
     '</div>',

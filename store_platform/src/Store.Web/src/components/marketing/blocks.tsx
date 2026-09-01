@@ -228,7 +228,7 @@ export function PageHero({
      <Link href="/">Catalogue</Link> / {crumb ?? eyebrow}</p>` here, and `MarketingLayout` renders
      `<Breadcrumbs>` -- the drawing's same `.crumb` line -- immediately above it, so every one of
      the five pages that draws a hero drew the trail TWICE. Measured on the live site
-     (`curl -s https://mumchimp.com/packs`, 2026-08-30):
+     (`curl -s` of the live storefront's /packs page, 2026-08-30):
 
          Catalogue / Every pack      <- MarketingLayout <Breadcrumbs>
          Catalogue / 77 packs        <- this component

@@ -70,7 +70,7 @@ describe('preopenedCheckoutUrl', () => {
    * and the session fails in a way that looks like a broken overlay.
    */
   it('escapes the percent sequences so the secret survives a round trip', () => {
-    const url = preopenedCheckoutUrl('https://mumchimp.com', 'pack-1', REAL_LIVE);
+    const url = preopenedCheckoutUrl('https://example.test', 'pack-1', REAL_LIVE);
 
     expect(url).toContain('%252F');
     expect(url).not.toContain('%2F&');
@@ -81,7 +81,7 @@ describe('preopenedCheckoutUrl', () => {
   });
 
   it('does not double up a slash when the origin has a trailing one', () => {
-    const url = preopenedCheckoutUrl('https://mumchimp.com/', 'pack-1', LIVE);
-    expect(url.startsWith('https://mumchimp.com/pack/pack-1?')).toBe(true);
+    const url = preopenedCheckoutUrl('https://example.test/', 'pack-1', LIVE);
+    expect(url.startsWith('https://example.test/pack/pack-1?')).toBe(true);
   });
 });

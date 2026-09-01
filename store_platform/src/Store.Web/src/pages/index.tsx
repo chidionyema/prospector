@@ -1979,7 +1979,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           {/* HIDDEN BELOW 901px, WHICH IS THE STYLESHEET'S OWN HERO BREAKPOINT, NOT A GUESS.
               `mumchimp.css:432` is `@media(max-width:900px){.hero{grid-template-columns:1fr}}`:
               below 901px the hero stops being two columns and this figure stacks UNDER the
-              headline instead of beside it. Measured on live mumchimp.com at a 400px viewport on
+              headline instead of beside it. Measured on the live storefront at a 400px viewport on
               2026-08-19: `figure.gridwrap` is 550px tall, the hero band is 1070px, and the first
               visible pack card sits at y=1288 -- a shop whose home page opens with no product on
               screen on every phone size we test.
@@ -2014,7 +2014,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
              (`bg-surface`, see `PackSpotlight`), but the heading above it and the
              padding around it were not, so ticker text rendered legibly through the gap --
              "...Builder  The value would n[ot last]" sitting directly above "New this week"
-             (ss_0456bw1wg, live mumchimp.com/, 2026-08-09). That column is gone, so nothing
+             (ss_0456bw1wg, the live storefront's home page, 2026-08-09). That column is gone, so nothing
              shows through any more; the fill stays because `--surface` and `--bg` are the same
              white (tokens.css:80,81) and removing it would be a no-op edit on a card whose
              background is otherwise inherited from whatever band it is dropped into. */

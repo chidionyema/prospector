@@ -43,13 +43,13 @@ patches:
     patch: |-
       - op: replace
         path: /spec/listeners/1/hostname
-        value: staging.mumchimp.com
+        value: staging.${ESTATE_ZONE}
       - op: replace
         path: /spec/listeners/2/hostname
-        value: www.staging.mumchimp.com
+        value: www.staging.${ESTATE_ZONE}
       - op: replace
         path: /spec/listeners/3/hostname
-        value: api.staging.mumchimp.com
+        value: api.staging.${ESTATE_ZONE}
   - target:
       group: gateway.networking.k8s.io
       version: v1
@@ -59,10 +59,10 @@ patches:
     patch: |-
       - op: replace
         path: /spec/hostnames/0
-        value: staging.mumchimp.com
+        value: staging.${ESTATE_ZONE}
       - op: replace
         path: /spec/hostnames/1
-        value: www.staging.mumchimp.com
+        value: www.staging.${ESTATE_ZONE}
   - target:
       group: gateway.networking.k8s.io
       version: v1
@@ -72,7 +72,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/hostnames/0
-        value: api.staging.mumchimp.com
+        value: api.staging.${ESTATE_ZONE}
   # Let's Encrypt's STAGING directory. Its certificates are signed by a root no browser trusts,
   # which is correct — a staging site should show a warning rather than look like the shop. What it
   # proves is the part that matters: that the challenge was solved, the order completed and the

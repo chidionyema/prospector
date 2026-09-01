@@ -125,6 +125,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sqlite3
 import sys
 import urllib.request
@@ -137,7 +138,7 @@ from prospector.classify import classify_tier  # noqa: E402
 from prospector.config import load_config  # noqa: E402
 from prospector.models import Candidate  # noqa: E402
 
-CATALOG_URL = "https://api.mumchimp.com/catalog"
+CATALOG_URL = (os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}") + "/catalog"
 # The same chain the pipeline uses for generation/prescreen/score — imported, not re-declared,
 # so this script cannot drift from production the way a copied tuple would.
 from prospector.run import _NONCRITICAL_ORDER as NONCRITICAL_ORDER  # noqa: E402

@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
  * with no `.env` in this package the whole suite would otherwise run in exactly that state and the
  * populated assertions would all pass vacuously against `undefined`.
  */
-const SITE = 'https://mumchimp.com';
+const SITE = 'https://example.test';
 
 async function loadSchema(siteUrl: string | undefined) {
   vi.resetModules();
@@ -90,7 +90,7 @@ describe('organizationNode / webSiteNode', () => {
     expect(contact).toEqual({
       '@type': 'ContactPoint',
       contactType: 'customer support',
-      email: 'support@mumchimp.com',
+      email: 'support@example.test',
       availableLanguage: 'English',
     });
   });

@@ -187,7 +187,7 @@ def c_inf2():
 
 
 def c_inf3():
-    return MANUAL, "needs a live header fetch of mumchimp.com"
+    return MANUAL, "needs a live header fetch of the live store"
 
 
 def c_dat1():

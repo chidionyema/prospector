@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -70,10 +71,10 @@ except Exception:  # noqa: BLE001 - a probe never dies because an import moved
 DEPLOYABLES: list[dict] = [
     {
         "name": "store-web",
-        "what": "the storefront at mumchimp.com",
+        "what": "the storefront a buyer sees",
         "app": "prospector-store-web",
         "workflow": None,  # deploy-web.yml deleted 2026-08-26 (crew#203); this probe goes in PR 2
-        "url": "https://mumchimp.com",
+        "url": f"https://{os.environ['ESTATE_ZONE']}",
     },
     {
         "name": "store-api",

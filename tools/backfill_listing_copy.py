@@ -85,7 +85,7 @@ from prospector.trimming import cap_words
 # Env-overridable so a backfill can be pointed at staging. This script PATCHes live
 # catalogue rows; a hardcoded production constant means there is no way to rehearse
 # one except against the real store.
-DEFAULT_API_URL = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
+DEFAULT_API_URL = os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}"
 DOSSIER_GLOB = "store/dossiers/*.json"
 
 # Below this there is not enough grounded material to write a listing from, and the honest

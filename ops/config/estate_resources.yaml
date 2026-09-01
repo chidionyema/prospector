@@ -44,7 +44,9 @@
 # ---------------------------------------------------------------------------------------------
 owns:
   fly_app_prefixes: [prospector-, hermes-]
-  domains: [mumchimp.com]
+  # ${ESTATE_ZONE} is the estate's DNS zone, declared once in the platform and read from the
+  # environment by scripts/estate_inventory.py; missing is an error there, never an empty zone.
+  domains: ["${ESTATE_ZONE}"]
   ci_app: prospector-ci
   log_host_app: prospector-engine
   github_repo: chidionyema/prospector
@@ -121,8 +123,8 @@ resources:
         account fails after the money is taken, not before.
 
   # --- dns -----------------------------------------------------------------------------------
-  "dns:mumchimp.com":
-    described_by: deploy/dns/mumchimp.com.zone
+  "dns:*":
+    described_by: deploy/dns/estate.zone
     restore_gap:
       issue: 589
       why: >-

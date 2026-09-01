@@ -33,10 +33,10 @@ spec:
         - name: api
           env:
             - name: Store__StorefrontUrl
-              value: https://staging.mumchimp.com
+              value: https://staging.${ESTATE_ZONE}
             - name: STORE_STOREFRONT_URL
-              value: https://staging.mumchimp.com
+              value: https://staging.${ESTATE_ZONE}
             - name: STORE_PUBLIC_URL
-              value: https://api.staging.mumchimp.com
+              value: https://api.staging.${ESTATE_ZONE}
             - name: STORE_ALLOWED_ORIGIN
-              value: https://staging.mumchimp.com
+              value: https://staging.${ESTATE_ZONE}

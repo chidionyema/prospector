@@ -145,6 +145,11 @@ spec:
               value: /var/run/secrets/prospector
             - name: PROSPECTOR_STORE_DIR
               value: /data/store
+            # The estate's DNS zone, declared once in the platform's clusters/<cluster>/estate-config.yaml
+            # and substituted by Flux (crew#796). Every script that names a live host builds it from
+            # this and stops, rather than aiming at the wrong estate, when it is missing.
+            - name: ESTATE_ZONE
+              value: ${ESTATE_ZONE}
             # With a read-only root filesystem Python cannot write .pyc files next to the source,
             # and it does not need to: they are already in the image.
             - name: PYTHONDONTWRITEBYTECODE

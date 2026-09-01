@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Every probe prints "STATE detail" and `row` takes those words as separate arguments, so the
+# unquoted $(probe) below is the design, not an oversight; ShellCheck's SC2046 is off for that.
+# shellcheck disable=SC2046
 # Where is the estate running right now, and can it be flipped?
 #
 #   deploy/stack.sh status        # one screen: every component, on both platforms
@@ -53,8 +56,8 @@ WEB_PORT="${WEB_PORT:-3000}"
 # and it was right to say DOWN, because it had just asked the laptop whether Fly was serving.
 # One variable cannot name two platforms. These two are separate names, are never written by
 # stack.env, and are what the fly rows probe.
-PROD_API="${PROSPECTOR_PROD_API:-api.mumchimp.com}"
-PROD_SITE="${PROSPECTOR_PROD_SITE:-mumchimp.com}"
+PROD_API="${PROSPECTOR_PROD_API:-api.${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone}}"
+PROD_SITE="${PROSPECTOR_PROD_SITE:-${ESTATE_ZONE:?set ESTATE_ZONE, the estate zone}}"
 
 VERB="${1:-status}"
 case "$VERB" in status|recover) shift || true ;; -h|--help|help) VERB=usage ;; esac

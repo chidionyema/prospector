@@ -5,7 +5,7 @@ Nothing in the engine walks the selling catalogue after a re-vet. That gap is no
 hypothetical: `467187f2c95cb3b5` ("The Brief Winnow") was found SELLING with only a KILL
 dossier on disk — 1 of 57 — and it took a bundle backfill to notice. `decay.py:52-56`
 records the same class from the other direction: four candidates re-vetted to KILL "kept
-selling live on mumchimp.com because store/listings/{cid}.json and Store.Api's IsListed both
+selling on the live store because store/listings/{cid}.json and Store.Api's IsListed both
 outlive the kill".
 
 The check itself is trivial and always was. What makes it worth a file is the DENOMINATOR,
@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -39,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from prospector.paths import repo_path  # noqa: E402
 
-DEFAULT_CATALOGUE_URL = "https://api.mumchimp.com/catalog"
+DEFAULT_CATALOGUE_URL = (os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}") + "/catalog"
 
 
 def fetch_catalogue(url: str, timeout: int = 30) -> list[dict]:

@@ -48,6 +48,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import os
 import re
 from pathlib import PurePosixPath
 from types import SimpleNamespace
@@ -65,7 +66,17 @@ MANIFEST_FILENAME = "manifest.jsonld"
 
 # The vocabulary this document extends schema.org with. A URL, because JSON-LD terms are IRIs; it
 # does not need to resolve for the document to expand correctly, and nothing here fetches it.
-PROSPECTOR_NS = "https://mumchimp.com/ns/prospector#"
+# It hangs off the estate zone, declared once (ESTATE_ZONE; crew#796), and is resolved when a
+# manifest is built rather than at import, so the engine still loads where the zone is unset.
+def prospector_ns() -> str:
+    return f"https://{os.environ['ESTATE_ZONE']}/ns/prospector#"
+
+
+def __getattr__(name: str):
+    # `pack_manifest.PROSPECTOR_NS` keeps working for readers; it is computed on first read.
+    if name == "PROSPECTOR_NS":
+        return prospector_ns()
+    raise AttributeError(name)
 
 MANIFEST_VERSION = "pack-manifest-1"
 
@@ -328,7 +339,7 @@ def render_manifest(
     graph.extend(source_nodes.values())
 
     document = {
-        "@context": ["https://schema.org", {"prospector": PROSPECTOR_NS}],
+        "@context": ["https://schema.org", {"prospector": prospector_ns()}],
         "prospector:manifestVersion": MANIFEST_VERSION,
         # SELF-DESCRIBING ON PURPOSE. An agent reading `"alternateName": "unverifiable"` off a
         # rating has no way to know that it is a real third outcome here rather than a missing

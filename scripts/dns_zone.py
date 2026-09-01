@@ -9,7 +9,7 @@ document ends in "repoint DNS" and none of them said to what.
 Two modes, and neither writes to DNS:
 
     dns_zone.py --export        print the live zone in the committed format
-    dns_zone.py --check         diff live DNS against deploy/dns/<zone>.zone, exit 1 on drift
+    dns_zone.py --check         diff live DNS against deploy/dns/estate.zone, exit 1 on drift
 
 `--check` is the drill. It is deliberately symmetric: a record that appeared is drift and a record
 that vanished is drift, because the failure being caught is "something changed and nobody knows".
@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -87,7 +88,10 @@ def live(zone: str, labels: tuple[str, ...]) -> set[tuple[str, str, str]]:
 
 
 def zone_path(zone: str) -> Path:
-    return ZONE_DIR / f"{zone}.zone"
+    # One committed copy, named for what it is rather than for the zone it holds, so a zone
+    # migration (ESTATE_ZONE, declared once in the platform) never renames a file (crew#796).
+    del zone
+    return ZONE_DIR / "estate.zone"
 
 
 def _rel(path: Path) -> str:
@@ -148,7 +152,8 @@ def labels_for(zone: str) -> tuple[str, ...]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--zone", default="mumchimp.com")
+    ap.add_argument("--zone", default=os.environ.get("ESTATE_ZONE"),
+                    help="the estate's DNS zone; default ESTATE_ZONE from the environment")
     ap.add_argument("--export", action="store_true", help="print the live zone, do not compare")
     ap.add_argument("--check", action="store_true", help="diff live against the committed file")
     ap.add_argument("--write", action="store_true", help="with --export, write the file")
@@ -156,6 +161,9 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     zone = args.zone
+    if not zone:
+        print("CANNOT ESTABLISH DNS: no --zone and ESTATE_ZONE is not set", file=sys.stderr)
+        return 2
     try:
         found = live(zone, labels_for(zone))
     except Exception as exc:  # noqa: BLE001 -- cannot measure is its own exit code

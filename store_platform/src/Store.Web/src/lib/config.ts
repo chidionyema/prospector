@@ -19,6 +19,17 @@ export const BRAND = {
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || undefined;
 
 /**
+ * The host the support mailbox lives at: the site's own host without a leading `www.`, so the
+ * estate zone is never spelled here (crew#796). It follows NEXT_PUBLIC_SITE_URL, the same value
+ * every canonical URL is built from; an unconfigured build gets `localhost`, which no page ships.
+ */
+const SUPPORT_MAILBOX_HOST = (SITE_URL ?? 'http://localhost')
+  .replace(/^https?:\/\//, '')
+  .replace(/^www\./, '')
+  .split('/')[0]
+  .split(':')[0];
+
+/**
  * The person behind the shop. EMPTY ON PURPOSE, and the site is correct with it empty.
  *
  * The problem it exists to solve is measured, not speculative: on 2026-08-06 the storefront named
@@ -135,8 +146,8 @@ export const LEGAL = {
   // someone else and parked on a resale service, so every refund request went to a stranger.
   //
   // RESOLVED 2026-07-30, the MX dependency this block used to warn about is satisfied:
-  //   $ dig +short MX mumchimp.com @8.8.8.8   ->   5 smtp.google.com.
-  // So support@mumchimp.com RECEIVES; a buyer's refund or privacy request arrives. The probe
+  //   $ dig +short MX <the zone> @8.8.8.8   ->   5 smtp.google.com.
+  // So the support mailbox RECEIVES; a buyer's refund or privacy request arrives. The probe
   // re-checks this every run (`verify_store.sh` step 5), do not re-assert it in prose here.
   //
   // DNS is managed at 123-reg (dcc.123-reg.co.uk -> DNS Management), NOT GoDaddy, even though
@@ -144,10 +155,10 @@ export const LEGAL = {
   // founder to the wrong control panel; the nameserver host is not the registrar.
   //
   // STILL OPEN, and it is the *sending* direction, not this constant: the apex has no SPF and
-  // no DKIM at any selector, while _dmarc is already `p=quarantine`. Mail sent AS @mumchimp.com
+  // no DKIM at any selector, while _dmarc is already `p=quarantine`. Mail sent AS the zone
   // therefore fails DMARC. Receiving is unaffected. See verify_store.sh step 6.
-  contactEmail: 'support@mumchimp.com',
-  supportEmail: 'support@mumchimp.com',
+  contactEmail: `support@${SUPPORT_MAILBOX_HOST}`,
+  supportEmail: `support@${SUPPORT_MAILBOX_HOST}`,
 } as const;
 
 /**

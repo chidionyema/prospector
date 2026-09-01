@@ -25,10 +25,11 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import sys
 import urllib.request
 
-API = sys.argv[1] if len(sys.argv) > 1 else "https://api.mumchimp.com"
+API = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}"
 
 
 def fetch(url: str):

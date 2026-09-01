@@ -1,7 +1,7 @@
 {
   "fly": {
     "files": {
-      "deploy/dns/mumchimp.com.zone": 2,
+      "deploy/dns/estate.zone": 2,
       "deploy/engine/Dockerfile": 2,
       "deploy/engine/supervisord.conf": 7,
       "deploy/runners.sh": 15,

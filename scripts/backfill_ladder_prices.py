@@ -65,7 +65,7 @@ from prospector.models import Candidate, ScoreResult  # noqa: E402
 from prospector.price_rationale import write_rationale  # noqa: E402
 from prospector.pricing import price_for  # noqa: E402
 
-STORE_API = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
+STORE_API = os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}"
 ACTOR = "claude:C1-ladder-backfill"
 SOURCE = "scripts/backfill_ladder_prices.py"
 

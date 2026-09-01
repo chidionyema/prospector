@@ -60,4 +60,6 @@ classes:
 # What "fully operational, ready to sell" is checked against once the move is done.
 # The prober is slice S5; this block is the seam it reads.
 sell_check:
-  storefront_url: https://mumchimp.com/
+  # <label>.${ESTATE_ZONE}, the same form the manifests use: the zone is declared once in the
+  # platform and a reader expands it from the environment (crew#796).
+  storefront_url: https://${ESTATE_ZONE}/

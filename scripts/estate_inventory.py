@@ -185,6 +185,10 @@ def discover_object_storage(cfg: dict) -> Sweep:
 def discover_dns(cfg: dict) -> Sweep:
     """One resource per zone we own. The record-level diff is `scripts/dns_zone.py` (M9)."""
     domains = cfg.get("owns", {}).get("domains") or []
+    # `${ESTATE_ZONE}` in the declaration is the estate's DNS zone, declared once in the platform
+    # (crew#796). A missing zone is an error here, never an empty zone that reads as "nothing owned".
+    domains = [d.replace("${ESTATE_ZONE}", os.environ["ESTATE_ZONE"]) if "${ESTATE_ZONE}" in d else d
+               for d in domains]
     return Sweep([Found("dns", d, "godaddy") for d in domains])
 
 

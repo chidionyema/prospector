@@ -17,13 +17,14 @@ alone charges the buyer an amount the fulfilment fence then rejects.
 from __future__ import annotations
 
 import json
+import os
 import urllib.request
 
 from prospector.config import load_config
 from prospector.models import Candidate
 from prospector.pricing import price_for
 
-CATALOGUE_URL = "https://api.mumchimp.com/catalog"
+CATALOGUE_URL = (os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}") + "/catalog"
 # Cloudflare 1010s a bare urllib User-Agent (memory: cloudflare-blocks-urllib-user-agent).
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")

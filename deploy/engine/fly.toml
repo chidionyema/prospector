@@ -59,7 +59,9 @@ kill_timeout = "45s"
   # The storefront API. On the laptop this defaulted to http://localhost:5291
   # (prospector/bridge.py:610), which in a container resolves to the container itself and
   # would fail every publish with a connection refused that reads like an API outage.
-  STORE_API_URL = "https://api.mumchimp.com"
+  # STORE_API_URL is api.<ESTATE_ZONE>; the zone is declared once in the platform and Fly is retired
+# (founder ruling R1), so this file carries no live hostname (crew#796). The compose and Kubernetes
+# manifests set it from ${ESTATE_ZONE}.
   # Our own metasearch, deployed by deploy/searxng/. It has NO public IP; .internal is Fly's
   # private 6PN network, so only apps in this org can reach it. It is declared here rather than
   # left as a hand-set `fly secrets` value because a hostname is not a secret, and because a

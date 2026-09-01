@@ -95,7 +95,7 @@ def main() -> int:
                     help="mint Stripe prices and write the catalogue")
     ap.add_argument("--sleep", type=float, default=0.5,
                     help="seconds between writes; the Store API rate-limits its own callers")
-    ap.add_argument("--api", default=os.environ.get("STORE_API_URL", "https://api.mumchimp.com"),
+    ap.add_argument("--api", default=os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}",
                     help="Store API base URL")
     args = ap.parse_args()
 

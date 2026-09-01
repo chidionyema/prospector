@@ -70,7 +70,7 @@ sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2]
 from prospector.admissibility import host_of, tier  # noqa: E402
 
 DOSSIERS = "store/dossiers/*.json"
-CATALOGUE_URL = "https://api.mumchimp.com/catalog"
+CATALOGUE_URL = (os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}") + "/catalog"
 RULED = {"supported", "refuted"}
 MOAT = {"claude_cli", "claude", "claude-cli/default"}
 # Mirrors verify.py:477. Read, not guessed — if that constant moves this probe is wrong.

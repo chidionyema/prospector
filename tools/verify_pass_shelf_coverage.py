@@ -41,7 +41,7 @@ import sys
 import urllib.request
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CATALOG_URL = os.environ.get("PROSPECTOR_CATALOG_URL", "https://api.mumchimp.com/catalog")
+CATALOG_URL = os.environ.get("PROSPECTOR_CATALOG_URL") or f"https://api.{os.environ['ESTATE_ZONE']}/catalog"
 
 
 def _store(repo: str) -> str:

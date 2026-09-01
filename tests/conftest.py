@@ -62,6 +62,12 @@ def _strip_inherited_git_env() -> list[str]:
 
 STRIPPED_GIT_ENV = _strip_inherited_git_env()
 
+# The estate's DNS zone is declared once outside this repo (the platform's estate-config.yaml) and
+# read as ESTATE_ZONE by every module that names a live host; a missing value is a KeyError, on
+# purpose. The suite pins a fixture zone so imports never depend on the machine (crew#796).
+# Set at import, before the first environment snapshot, for the reason given above.
+os.environ.setdefault("ESTATE_ZONE", "example.test")
+
 
 
 # Variables pytest itself owns and rewrites around every test. PYTEST_CURRENT_TEST carries the

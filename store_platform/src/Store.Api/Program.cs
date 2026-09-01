@@ -482,10 +482,16 @@ app.MapPost("/catalog/waitlist", async (
     // Echo nothing back that could be used to enumerate or confirm an address, and say
     // plainly what will and will not happen next — the success copy on the storefront makes
     // the same promise, and the two must not drift.
+    // The address named is the one the store actually sends from (Mailjet:FromEmail, the same
+    // value MailjetEmailSender reads), so the promise and the sender cannot drift and no hostname
+    // is spelled here (crew#796). With no sender configured the message names no address.
+    var fromAddress = config["Mailjet:FromEmail"]
+        ?? Environment.GetEnvironmentVariable("MAILJET_FROM_EMAIL");
+    var sender = string.IsNullOrWhiteSpace(fromAddress) ? "our support address" : fromAddress;
     return Results.Accepted(value: new
     {
         status = "queued",
-        message = "You're in the queue. We'll email you from support@mumchimp.com if one ships."
+        message = $"You're in the queue. We'll email you from {sender} if one ships."
     });
 })
 .WithName("JoinCatalogWaitlist")

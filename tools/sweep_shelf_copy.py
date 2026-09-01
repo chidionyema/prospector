@@ -218,8 +218,8 @@ def push_live(api_url: str, key: str, dry: bool) -> int:
 
     `--fix` writes the local dossier and the local DB, and a reader of this tool could
     reasonably think that is the shelf. It is not: `store/prospector.db` is this engine's
-    own record, and mumchimp.com serves `oneLine` from the catalogue row behind
-    `api.mumchimp.com/catalog`. Sixteen lines were repaired on 2026-08-16 and every one of
+    own record, and the live store serves `oneLine` from the catalogue row behind
+    `/catalog` on the live store API. Sixteen lines were repaired on 2026-08-16 and every one of
     them was still live in its old wording afterwards.
 
     The door is `PATCH /internal/catalog/{id}/copy` — the narrow one, which reaches copy and
@@ -280,7 +280,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="with --push: show the diff, send nothing")
     ap.add_argument("--pull", action="store_true",
                     help="copy live copy back into the local record where the shelf is ahead")
-    ap.add_argument("--api-url", default="https://api.mumchimp.com")
+    ap.add_argument("--api-url", default=os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}")
     ap.add_argument("--limit", type=int, default=0, help="stop after N rewrites")
     ap.add_argument("--jobs", type=int, default=8,
                     help="rewrites in flight at once (default 8, the measured-clean MiniMax figure)")

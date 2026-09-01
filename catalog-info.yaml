@@ -15,14 +15,14 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: prospector-store-web
-  description: Storefront at mumchimp.com
+  description: The storefront a buyer sees
   annotations:
     github.com/project-slug: chidionyema/prospector
   links:
     - title: Open
-      url: https://mumchimp.com
+      url: https://${ESTATE_ZONE}
     - title: Open (www)
-      url: https://www.mumchimp.com
+      url: https://www.${ESTATE_ZONE}
 spec:
   type: website
   lifecycle: production
@@ -33,12 +33,12 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: prospector-store-api
-  description: Store API at api.mumchimp.com
+  description: The store API, catalogue, checkout, entitlements and delivery
   annotations:
     github.com/project-slug: chidionyema/prospector
   links:
     - title: Open
-      url: https://api.mumchimp.com
+      url: https://api.${ESTATE_ZONE}
 spec:
   type: service
   lifecycle: production

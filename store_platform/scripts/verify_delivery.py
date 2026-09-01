@@ -34,13 +34,14 @@ import argparse
 import hashlib
 import io
 import json
+import os
 import time
 import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
 
-API_BASE = "https://api.mumchimp.com"
+API_BASE = os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}"
 STATE_DIR = Path(__file__).resolve().parents[1] / ".delivery-proof"
 
 # The probe pack's deliverable is byte-deterministic (build_probe_content.py), so the exact

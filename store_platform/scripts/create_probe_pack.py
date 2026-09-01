@@ -49,7 +49,8 @@ import urllib.request
 from pathlib import Path
 
 ENV_PATH = Path(os.environ.get("PROSPECTOR_ENV_PATH", Path(__file__).resolve().parents[2] / ".env"))
-API_BASE = os.environ.get("STORE_API_BASE", "https://api.mumchimp.com").rstrip("/")
+API_BASE = os.environ.get("STORE_API_BASE") or f"https://api.{os.environ['ESTATE_ZONE']}"
+API_BASE = API_BASE.rstrip("/")
 STRIPE_API = "https://api.stripe.com/v1"
 
 # Fixed so the script is idempotent: re-running refreshes the same pack rather than littering the

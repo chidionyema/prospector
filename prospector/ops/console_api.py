@@ -1012,7 +1012,7 @@ def _store_api() -> tuple[str, str]:
     """
     origin = (os.environ.get("STORE_API_ORIGIN")
               or os.environ.get("PROSPECTOR_ENTITLEMENTS_API")
-              or "https://api.mumchimp.com").rstrip("/")
+              or f"https://api.{os.environ['ESTATE_ZONE']}").rstrip("/")
     key = os.environ.get("STORE_INTERNAL_API_KEY", "")
     return origin, key
 
@@ -1162,7 +1162,7 @@ def _act_catalogue_listing(cfg, payload: dict, preview: bool) -> dict:
             "currently_listed_basis": seen.get("listed_note"),
             "no_change": now_listed == listed,
             "after": listed,
-            "effect": ("the pack becomes buyable on mumchimp.com"
+            "effect": ("the pack becomes buyable on the live store"
                        if listed else "the pack disappears from the shelf; existing buyers keep "
                                       "their entitlement"),
             "warning": (None if listed else
@@ -3866,8 +3866,7 @@ TOOLS: list[dict] = [
        risk="external"),
     _t("scripts/restore_drill.py", "Prove the backup restores", False, "/tools"),
     _t("scripts/dns_zone.py", "Has DNS drifted from the committed zone", False,
-       "/tools", cmd=".venv/bin/python scripts/dns_zone.py --check "
-                     "--zone mumchimp.com"),
+       "/tools", cmd=".venv/bin/python scripts/dns_zone.py --check"),
     _t("scripts/store_audit.py", "Audit the operator's store", False, "/tools"),
     _t("scripts/rework_metrics.py", "Rework rate: the guard on the cost scoreboard",
        False, "/method"),

@@ -6,7 +6,7 @@ Why this exists
 `decay.py::_queue_unlist` writes an entry here the moment a re-vet turns a published PASS into
 a KILL. It cannot call Store.Api itself (no credentials belong inside an unattended re-vet
 sweep), so the queue is inert until something drains it. Found and fixed manually 2026-08-06:
-4 candidates were re-vetted to KILL and kept selling live on mumchimp.com because nothing
+4 candidates were re-vetted to KILL and kept selling on the live store because nothing
 closed this loop. A queue with no drain caller is the exact "no production caller" bug
 decay.py's own docstring describes — do not let this script become the next one.
 
@@ -56,7 +56,7 @@ from prospector import paths  # noqa: E402
 from prospector.jsonl_atomic import append_jsonl, consume_jsonl, read_jsonl  # noqa: E402
 from prospector.run import _load_dotenv  # noqa: E402
 
-DEFAULT_API_URL = "https://api.mumchimp.com"
+DEFAULT_API_URL = os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}"
 _TIMEOUT_S = 25
 
 

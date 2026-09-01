@@ -3,7 +3,7 @@
 
 WHY THIS EXISTS. Measured 2026-08-20, before this file existed: `scripts/watch_engine.py`
 makes no HTTP request at all (it tails local files), no scheduled job probed a public URL, and
-the only code that asked mumchimp.com anything ran when a human clicked it. Founder,
+the only code that asked the live store anything ran when a human clicked it. Founder,
 2026-08-20: "needs to be absolutely rock solid and bulletproof, rollback also, verified with
 automated tests and a drill function in ops and realtime notifying".
 
@@ -66,9 +66,9 @@ SERVICES: dict[str, dict] = {
     "store-api": {
         "app": "prospector-store-api",
         "probe": [
-            {"url": "https://api.mumchimp.com/catalog", "expect": "200",
+            {"url": f"https://api.{os.environ['ESTATE_ZONE']}/catalog", "expect": "200",
              "means": "the catalogue serves"},
-            {"url": "https://api.mumchimp.com/healthz/money-rail", "expect_body": '"mode":"live"',
+            {"url": f"https://api.{os.environ['ESTATE_ZONE']}/healthz/money-rail", "expect_body": '"mode":"live"',
              "means": "the money rail is still on a LIVE key, not a test one"},
         ],
         "restarts": "checkout and fulfilment restart; a buyer mid-checkout retries",
@@ -76,7 +76,7 @@ SERVICES: dict[str, dict] = {
     "store-web": {
         "app": "prospector-store-web",
         "probe": [
-            {"url": "https://mumchimp.com/", "expect": "200", "means": "the shop serves"},
+            {"url": f"https://{os.environ['ESTATE_ZONE']}/", "expect": "200", "means": "the shop serves"},
         ],
         "restarts": "the storefront restarts; buyers see a few seconds of the old page",
     },

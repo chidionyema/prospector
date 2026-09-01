@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Probe the live state of the mumchimp.com site spec.
+"""Probe the live state of the storefront's site spec.
 
 `docs/SITE_SPEC_PROGRAM.md` carries a status ledger. Until now that ledger was PROSE, updated by
 hand at the end of a session, and it drifted in both directions within a day of being written:

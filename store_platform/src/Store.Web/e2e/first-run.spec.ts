@@ -163,7 +163,7 @@ for (const route of ROUTES) {
       test.skip(
         !/href="\/pack\//.test(home),
         'no catalogue behind this server, so /ideas has no data to link to; graded against a ' +
-          'seeded build or WEB_BASE_URL=https://mumchimp.com',
+          'seeded build or WEB_BASE_URL=<the live storefront>',
       );
     }
     expect(

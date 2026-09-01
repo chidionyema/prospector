@@ -59,6 +59,8 @@ jobs:
         working-directory: store_platform/src/Store.Web/
 
     steps:
+      - name: The estate zone is a repository variable
+        run: test -n "${{ vars.ESTATE_ZONE }}" || { echo "::error::repository variable ESTATE_ZONE is not set; it is the one place the zone lives for workflows"; exit 1; }
       # On a workflow_run event the default checkout is the default branch, which is what we want:
       # the specs must match the code that was just deployed from main, not whatever branch
       # triggered anything else.
@@ -80,7 +82,7 @@ jobs:
       - name: Storefront smoke against live
         run: npm run test:e2e
         env:
-          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
+          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || format('https://{0}', vars.ESTATE_ZONE) }}
 
       - name: Upload Playwright report
         if: always()
@@ -110,6 +112,8 @@ jobs:
         working-directory: store_platform/src/Store.Web/
 
     steps:
+      - name: The estate zone is a repository variable
+        run: test -n "${{ vars.ESTATE_ZONE }}" || { echo "::error::repository variable ESTATE_ZONE is not set; it is the one place the zone lives for workflows"; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
@@ -128,7 +132,7 @@ jobs:
       - name: axe-core against live
         run: npm run test:a11y
         env:
-          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
+          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || format('https://{0}', vars.ESTATE_ZONE) }}
 
       - name: Upload Playwright report
         if: always()
@@ -154,6 +158,8 @@ jobs:
         working-directory: store_platform/src/Store.Web/
 
     steps:
+      - name: The estate zone is a repository variable
+        run: test -n "${{ vars.ESTATE_ZONE }}" || { echo "::error::repository variable ESTATE_ZONE is not set; it is the one place the zone lives for workflows"; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
@@ -193,7 +199,7 @@ jobs:
           export CHROME_PATH
           npm run test:lighthouse
         env:
-          LHCI_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
+          LHCI_URL: ${{ vars.WEB_BASE_URL || format('https://{0}', vars.ESTATE_ZONE) }}
 
       - name: Upload Lighthouse reports
         if: always()
@@ -228,6 +234,8 @@ jobs:
         working-directory: store_platform/src/Store.Web/
 
     steps:
+      - name: The estate zone is a repository variable
+        run: test -n "${{ vars.ESTATE_ZONE }}" || { echo "::error::repository variable ESTATE_ZONE is not set; it is the one place the zone lives for workflows"; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.ref_name }}
@@ -248,7 +256,7 @@ jobs:
       - name: Shoot the baselines
         run: npm run test:visual:update
         env:
-          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
+          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || format('https://{0}', vars.ESTATE_ZONE) }}
 
       - name: Commit them
         run: |
@@ -320,7 +328,7 @@ jobs:
           behind="$(git log --oneline "$pin..origin/main" -- store_platform/src/Store.Web/)"
           if [ -n "$behind" ]; then
             echo "$behind"
-            echo "::error::merged storefront commits are built in ghcr and are NOT on https://mumchimp.com. Set newTag for prospector-store-web in $overlay to $(git rev-parse origin/main)."
+            echo "::error::merged storefront commits are built in ghcr and are NOT on the live storefront. Set newTag for prospector-store-web in $overlay to $(git rev-parse origin/main)."
             exit 1
           fi
           echo "nothing merged is waiting to be released"
@@ -413,7 +421,7 @@ jobs:
             const body = [
               '**The live storefront smoke is failing.** This issue was opened by',
               '`.github/workflows/e2e-live-smoke.yml` and will CLOSE ITSELF as soon as the smoke',
-              'passes again, so while it is open, https://mumchimp.com is failing its checks now.',
+              'passes again, so while it is open, the live storefront is failing its checks now.',
               '',
               line,
               '',
@@ -467,7 +475,7 @@ jobs:
             }
 
             const body = [
-              '**Storefront code is merged and built, and https://mumchimp.com is not running it.**',
+              '**Storefront code is merged and built, and the live storefront is not running it.**',
               'Nothing is broken; the shop is simply older than `main`. Opened by',
               '`.github/workflows/e2e-live-smoke.yml`, and it CLOSES ITSELF the morning the shop',
               'catches up.',

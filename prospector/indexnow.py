@@ -48,7 +48,7 @@ KEY_PATH = "/indexnow-key.txt"
 
 
 def _site_url() -> Optional[str]:
-    """The public storefront origin, e.g. `https://mumchimp.com`.
+    """The public storefront origin: the scheme and host of the live store.
 
     `STORE_SITE_URL` is read first so the engine can be pointed at a staging storefront without
     disturbing `NEXT_PUBLIC_SITE_URL`, which is the web app's own build-time variable and may be

@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -149,7 +150,7 @@ def money(x: float) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ledger", default=str(store_root() / "prospector.jsonl"))
-    ap.add_argument("--api", default="https://api.mumchimp.com")
+    ap.add_argument("--api", default=os.environ.get("STORE_API_URL") or f"https://api.{os.environ['ESTATE_ZONE']}")
     ap.add_argument("--gbp-usd", type=float, default=1.27, help="FX for pricing the shelf in USD")
     args = ap.parse_args()
 
