@@ -149,7 +149,14 @@ const COMPONENTS = [
     ],
   },
   { name: 'hero figure', mock: ['index.html', 'figure.gridwrap'], app: ['/', 'figure.gridwrap'] },
-  { name: 'featured card', mock: ['index.html', '.featured'], app: ['/', '.featured'] },
+  {
+    name: 'featured card',
+    mock: ['index.html', '.featured'],
+    app: ['/', '.featured'],
+    allowExtra: [
+      { token: 'img', why: 'real sector imagery now exists; the drawing predates photography' },
+    ],
+  },
   /* THE CHECK ROW IS MEASURED ON /how-it-works, NOT ON THE PACK PAGE. The drawing renders a
      check's question, its evidence sentence, its source count and its verdict. The public pack
      payload carries none of those: it has `qaVerdictSummary`, one string of the form

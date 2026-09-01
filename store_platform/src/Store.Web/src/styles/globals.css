@@ -163,16 +163,25 @@
   }
 
   /* ─────────────────────────────────────────────────────────────────────────────────────────
-     SHOP CARDS WRAP LIKE SHOP CARDS. Founder, 2026-09-01, on /packs and the home cards:
-     wrapping and images look rubbish. A pass in this file unclamped `.row .d` and `.htile p`,
-     so it fought the bundle's 2-line / 3-line clamps (mumchimp.css:98, :307) and every
-     description ran to its full stop. The title column next to the thumbnail went ragged.
-     Stop overriding the clamp. Wrap at words. Titles clamp to two lines.
-     `text-wrap: pretty` stays: it is the founder's polish layer, not the unclamp. */
+     SHOP CARDS WRAP LIKE SHOP CARDS. Founder, 2026-09-01: wrapping and images look rubbish,
+     then "the whole site", then "polished to the highest standard starting from the landing
+     page." A pass in this file unclamped `.row .d` and `.htile p`, so it fought the bundle's
+     2-line / 3-line clamps (mumchimp.css:98, :307). Stop overriding the clamp. Wrap at words.
+     Titles clamp to two lines on the list formats. `text-wrap: pretty` stays.
+
+     Tailwind preflight sets `img { max-width: 100% }`. The tile cover is sized
+     `calc(100% + pad*2)` so it bleeds to the card edge; max-width:100% clipped that to the
+     content box and left a pad-wide empty plate on the right. `flex:1` on `.htile p` stretched
+     the description into a tall empty box so three tiles could share a footer line. */
   .row > .top,
   .row > h3,
   .row > .d,
-  .row > .proof {
+  .row > .proof,
+  .featured h3,
+  .featured .d,
+  .catrow h4,
+  .catrow p,
+  .pagetop h1 {
     min-width: 0;
     overflow-wrap: break-word;
     word-break: normal;
@@ -186,10 +195,16 @@
     -webkit-line-clamp: 2;
     overflow: hidden;
   }
+  .featured h3 {
+    overflow-wrap: break-word;
+    hyphens: none;
+  }
   .row .d,
-  .htile p {
+  .htile p,
+  .featured .d {
     overflow-wrap: break-word;
     word-break: normal;
+    hyphens: none;
   }
   .row .d,
   .htile p,
@@ -198,52 +213,23 @@
   main li {
     text-wrap: pretty;
   }
-
-  /* THE DRAWING WRITES SUB-HEADS AS <h3>. Pages that already spent their <h3> on a level below
-     need the same look one level up, and heading order is not negotiable, so the drawing's
-     `h3.sub` declarations are repeated for the other two levels. Same numbers, no new design. */
-  h2.sub,
-  h4.sub {
-    font-size: clamp(19px, 3.4vw, 23px);
-    letter-spacing: -0.02em;
-    font-weight: 655;
+  /* The bundle's `.htile p { flex: 1 }` (mumchimp.css:307) is what stretched the description
+     box. Keep the footer at the bottom of the tile; do not grow the paragraph to get there. */
+  .htile p {
+    flex: none;
+  }
+  .htile .foot {
+    margin-top: auto;
   }
 
-  /* AN INLINE LINK INSIDE A SENTENCE NEEDS MORE THAN ITS COLOUR. The bundle strips every
-     underline (`mumchimp.css:7`, `a{text-decoration:none}`) and then colours these links
-     `--link` on `--ink-3` text (`mumchimp.css:47,48,63,64,354,355`). Measured with axe-core:
-     link #2447C9 against surrounding #8B9096 is 2.31:1, under the 3:1 that WCAG 1.4.1 requires
-     when colour is the only thing separating a link from the words around it. It fired on the
-     breadcrumbs on `/`, `/ideas` and `/how-it-works` at both widths (live, 2026-08-19) and on
-     both links in the kill-gate band on `/` -- "read the kill log", "how the filter works"
-     (built page, 2026-08-30).
-
-     Colour is not touched: the drawing's palette is the founder's call (2026-08-18, "pixel
-     perfect ... to colours"), and the two tokens are 2.31:1 apart whatever we do to the link.
-     The second signal is the underline instead, which is what the rest of the web uses for
-     exactly this and what the bundle itself already uses on `.tlink:hover`. It is drawn at 45%
-     of the link colour so it reads as a rule under the words rather than a second line of ink,
-     and goes solid on hover.
-
-     `e2e/a11y.spec.ts` carried this as an open defect awaiting a style decision rather than as
-     an accepted trade; the founder gave it on 2026-08-30 ("really polish the site thoroughly as
-     best as we possibly can, attention to details"), so the exception is deleted rather than
-     renewed. Scoped to these two: they are links set in running text. A card that IS a link
-     stays undecorated. */
-  .crumb a,
-  .src a {
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    text-decoration-thickness: 1px;
-    text-decoration-color: color-mix(in srgb, var(--link) 45%, transparent);
-  }
-  .crumb a:hover,
-  .src a:hover {
-    text-decoration-color: var(--link);
+  /* THE SAME GAP ON THE FAQ questions: a long question in a flex row next to the + marker
+     must shrink and wrap, not overflow the band. */
+  .faq h2 {
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
-  /* ─────────────────────────────────────────────────────────────────────────────────────────
-     THE SECTOR PICTURES. Not a deviation from the bundle -- the bundle has no rule for these,
+  /* THE SECTOR PICTURES. Not a deviation from the bundle -- the bundle has no rule for these,
      because when it was drawn the site had no imagery at all. That is the condition the founder
      set on 2026-08-14 when he had the near-black media blocks taken out: "Remove the black media
      block until there is real imagery for it" (docs/SITE_SPEC_PROGRAM.md:1007). There is real
@@ -259,12 +245,13 @@
      connection shows a pale teal band instead of a white hole that then jumps.
 
      `.packcover` is the same picture on the product page, where it is inside no card and so
-     takes the full radius and no negative margin. 3:1 rather than the file's own 16:9: it sits
+     takes the full radius and no negative margin. 2:1 rather than the file's own 16:9: it sits
      directly above the `h1` in the 1.55fr column of `.two` (mumchimp.css:73), which measures
      about 620px on a 1280px screen, and 16:9 there is a 350px band that pushes the title and the
-     lead sentence off a laptop fold. Below 900px `.two` collapses to one column
-     (mumchimp.css:432) and there is nothing beside it to push, so it takes the file's own ratio
-     back. `object-fit:cover` crops rather than squashes at both. */
+     lead sentence off a laptop fold. 3:1 cropped the drawing to a letterbox. 2:1 is a shop
+     product plate that still leaves the title on a 900px window. Below 900px `.two` collapses
+     to one column (mumchimp.css:432) and there is nothing beside it to push, so it takes the
+     file's own ratio back. `object-fit:cover` crops rather than squashes at both. */
   .htile {
     overflow: hidden;
   }
@@ -272,6 +259,7 @@
     display: block;
     flex: none;
     width: calc(100% + var(--pad) * 2);
+    max-width: none;
     margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 14px;
     aspect-ratio: 16 / 9;
     object-fit: cover;
@@ -282,8 +270,10 @@
   .packcover {
     display: block;
     width: 100%;
-    aspect-ratio: 3 / 1;
+    max-width: none;
+    aspect-ratio: 2 / 1;
     object-fit: cover;
+    object-position: center;
     background: var(--brand-tint);
     border-radius: var(--r-card);
     margin-bottom: 20px;
@@ -291,6 +281,61 @@
   @media (max-width: 900px) {
     .packcover {
       aspect-ratio: 16 / 9;
+    }
+  }
+
+  /* THE FEATURED PACK IS A PRODUCT, not a text slab. The drawing's `.featured` predates
+     photography; the landing is the brand and a diligence engineer meets it first. Same picture
+     the tiles and rows already use, flush left on desktop, full-bleed 16:9 above the copy on a
+     phone. Still the drawing's featured article -- not a third card format. */
+  .featured:has(> .cover) {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    align-items: stretch;
+    overflow: hidden;
+    padding: 0;
+  }
+  .featured:has(> .cover) > .cover {
+    grid-column: 1;
+    grid-row: 1 / span 8;
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    min-height: 280px;
+    object-fit: cover;
+    object-position: center;
+    background: var(--brand-tint);
+  }
+  .featured:has(> .cover) > :not(.cover) {
+    grid-column: 2;
+    min-width: 0;
+    margin-left: 28px;
+    margin-right: var(--pad);
+  }
+  .featured:has(> .cover) > :not(.cover):nth-child(2) {
+    margin-top: 26px;
+  }
+  .featured:has(> .cover) > .foot {
+    margin-bottom: 22px;
+  }
+  @media (max-width: 860px) {
+    .featured:has(> .cover) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .featured:has(> .cover) > .cover {
+      grid-column: 1;
+      grid-row: auto;
+      width: 100%;
+      height: auto;
+      min-height: 0;
+      aspect-ratio: 16 / 9;
+    }
+    .featured:has(> .cover) > :not(.cover) {
+      margin-left: var(--pad);
+    }
+    .featured:has(> .cover) > :not(.cover):nth-child(2) {
+      margin-top: 18px;
     }
   }
 
@@ -304,10 +349,11 @@
      2026-09-01: images look rubbish. The thumbnail is a square crop. The text track is
      `minmax(0, 1fr)` so it wraps as a shop card instead of overflowing into the price.
 
-     Below 640px the picture stays a 64px thumbnail beside the text. A full-width 16:9 band
-     was about 197px tall per row and left the title nowhere useful to sit. */
+     Below 640px the picture stays a thumbnail beside the text. A full-width 16:9 band
+     was about 197px tall per row and left the title nowhere useful to sit. The row is already
+     one link, so the "View" caption is dropped on a phone to give the title the column. */
   .row:has(> .rowcover) {
-    grid-template-columns: 96px minmax(0, 1fr) auto;
+    grid-template-columns: 112px minmax(0, 1fr) auto;
     column-gap: 16px;
   }
   .row:has(> .rowcover) > .top,
@@ -340,9 +386,10 @@
     grid-column: 1;
     grid-row: 1 / span 4;
     align-self: start;
-    width: 96px;
-    height: 96px;
-    min-height: 96px;
+    width: 112px;
+    height: 112px;
+    min-height: 112px;
+    max-width: none;
     aspect-ratio: 1 / 1;
     object-fit: cover;
     object-position: center;
@@ -352,7 +399,7 @@
   }
   @media (max-width: 640px) {
     .row:has(> .rowcover) {
-      grid-template-columns: 64px minmax(0, 1fr) auto;
+      grid-template-columns: 72px minmax(0, 1fr) auto;
       column-gap: 12px;
     }
     .row:has(> .rowcover) > .top,
@@ -364,14 +411,19 @@
     .row:has(> .rowcover) > .side {
       grid-column: 3;
       grid-row: 1 / span 4;
+      justify-content: flex-start;
+      gap: 0;
     }
     .rowcover {
       grid-column: 1;
       grid-row: 1 / span 4;
-      width: 64px;
-      height: 64px;
-      min-height: 64px;
+      width: 72px;
+      height: 72px;
+      min-height: 72px;
       margin: 0;
+    }
+    .row .view {
+      display: none;
     }
   }
 
@@ -966,6 +1018,16 @@ section {
   padding-top: 0;
   padding-bottom: 0;
 }
+
+/* The drawing's `h1{max-width:12ch}` is sized for the landing slogan. On the pack page the
+   title is a ~90-character product name in the 1.55fr column of `.two`; 12ch wraps it into a
+   crushed strip under a 610px picture. The column decides the measure. Unlayered so it beats
+   the drawing rule in `components`. */
+.two h1 {
+  max-width: none;
+  overflow-wrap: break-word;
+}
+
 
 @media print {
   header, footer { display: none; }

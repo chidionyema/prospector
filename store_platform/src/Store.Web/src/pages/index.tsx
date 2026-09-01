@@ -60,6 +60,7 @@ import { priceRange, formatGbp } from '@/lib/priceRange';
 // `type Category` was imported here for `PackCoverArt`'s `category` prop and went with it
 // (2026-08-14). The card reads the object off `categoryFor(pack)` locally and never passes it.
 import { allCategories, categoryFor } from '@/lib/category';
+import { packImage } from '@/lib/sectorImage';
 // The card's lead figure. The priority order, and why the modelled MONEY figure is deliberately
 // not in it, are written out in the module -- this is the only import site that matters.
 import { packLeadStat, type PackLeadStat } from '@/lib/packStat';
@@ -280,7 +281,7 @@ function PackSpotlight({
   viewed?: boolean;
 }) {
   const cat = categoryFor(pack);
-  /* The card's lead figure, and the card's only visual. Computed once here and rendered by all
+  /* The card's lead figure. The picture is the other visual, added 2026-09-01: Computed once here and rendered by all
      three variants, so a pack cannot lead with one number on the shelf and another in the
      "recently viewed" row. `null` only when the pack carries no number at all, which no live
      pack does -- the ladder's floor is the source count and that is populated 62 of 62. */
@@ -319,6 +320,18 @@ function PackSpotlight({
      recording the same event from the same card. */
   return (
     <article className="featured w-full">
+      {/* eslint-disable-next-line @next/next/no-img-element -- static sector drawing, same file
+          the tiles and rows already load; a wrapper from next/image would break the bleed. */}
+      <img
+        className="cover"
+        src={packImage(pack)}
+        alt=""
+        aria-hidden
+        width={800}
+        height={450}
+        loading="eager"
+        fetchPriority="high"
+      />
       {cat.tagged && <span className="eyebrow">{cat.label.toUpperCase()}</span>}
       <h3>{heading}</h3>
       {line && <p className="d">{line}</p>}

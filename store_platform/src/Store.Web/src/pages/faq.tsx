@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { PageHero, SectionBand } from '@/components/marketing/blocks';
+import { PageHero, SectionBand, HeroList } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { buttonClasses, chipClasses, Icon, SearchInput, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
@@ -153,6 +153,12 @@ export default function Faq() {
         title="Common questions."
         lead="What you’re buying, how it arrives and what we do and don’t promise."
         width="6xl"
+        aside={
+          <HeroList
+            label="The three topics"
+            items={CATEGORIES.map((c) => c.label)}
+          />
+        }
       />
 
       {/* Search, filters and the answers they filter, in ONE band.
