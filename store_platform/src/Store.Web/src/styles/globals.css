@@ -163,40 +163,33 @@
   }
 
   /* ─────────────────────────────────────────────────────────────────────────────────────────
-     NO DESCRIPTION IS EVER CUT. Deliberate deviation from the copied drawing, 2026-08-18.
-
-     Founder, on the live site: "broken titles still coming thru ... with ....". Measured with
-     Playwright against https://mumchimp.com the same day, at 390px and 1280px: NO title is
-     clipped anywhere on / or /ideas. Every one of those ellipses is the DESCRIPTION. `.row .d`
-     is a 2-line box -- 44px tall -- and the text inside it measured 65px to 87px on 17 of 17
-     cards at 390px and 5 of 5 at 1280px. So `-webkit-line-clamp` was firing on 100% of the
-     shelf, and the ellipsis a clamp paints is the "...." the founder was reading.
-
-     The drawing is not wrong about the shape; it is drawn against copy that fits. Ours does not:
-     the live catalogue's `oneLine` runs 124 to 268 characters (median 169, measured from
-     /api/store/catalog, 74 packs), and two lines of 14.5px type in this column hold about 120.
-     Raising the clamp to 3 or 4 only moves the cut. Removing it is the only setting under which
-     the founder's own acceptance test -- "no rendered description ends mid-word" -- is true for
-     every pack rather than for most of them.
-
-     WHAT THIS DOES NOT FIX, stated rather than buried: the founder also asked for the
-     description to exist in "short and long form". The catalogue has no short description. It
-     has a short TITLE (`cardLine`, 34-60 chars, which `cardHeading` already consumes as the
-     heading) and one long description. A real short form is a publish-path change, tracked in
-     docs/SITE_SPEC_PROGRAM.md; until it lands, the honest render is the whole sentence.
-
-     Cutting at the first FULL STOP instead was measured on 2026-08-30 and does nothing: of the 77
-     live `oneLine` values, 69 are a single sentence, and the cut lands under 120 characters on 2
-     of 77. There is no short form hiding inside this field. Do not re-derive this.
-
-     `text-wrap: pretty` is from the founder's polish layer section 3.2 and belongs with this
-     change rather than after it: unclamped body copy is exactly where a one-word last line
-     shows. */
+     SHOP CARDS WRAP LIKE SHOP CARDS. Founder, 2026-09-01, on /packs and the home cards:
+     wrapping and images look rubbish. A pass in this file unclamped `.row .d` and `.htile p`,
+     so it fought the bundle's 2-line / 3-line clamps (mumchimp.css:98, :307) and every
+     description ran to its full stop. The title column next to the thumbnail went ragged.
+     Stop overriding the clamp. Wrap at words. Titles clamp to two lines.
+     `text-wrap: pretty` stays: it is the founder's polish layer, not the unclamp. */
+  .row > .top,
+  .row > h3,
+  .row > .d,
+  .row > .proof {
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+  .row h3,
+  .htile h3 {
+    overflow-wrap: break-word;
+    hyphens: none;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
   .row .d,
   .htile p {
-    display: block;
-    -webkit-line-clamp: none;
-    overflow: visible;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
   .row .d,
   .htile p,
@@ -272,12 +265,17 @@
      lead sentence off a laptop fold. Below 900px `.two` collapses to one column
      (mumchimp.css:432) and there is nothing beside it to push, so it takes the file's own ratio
      back. `object-fit:cover` crops rather than squashes at both. */
+  .htile {
+    overflow: hidden;
+  }
   .htile .cover {
     display: block;
+    flex: none;
     width: calc(100% + var(--pad) * 2);
     margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 14px;
     aspect-ratio: 16 / 9;
     object-fit: cover;
+    object-position: center;
     background: var(--brand-tint);
     border-radius: calc(var(--r-card) - 1px) calc(var(--r-card) - 1px) 0 0;
   }
@@ -296,29 +294,21 @@
     }
   }
 
-  /* `.rowcover` is the same picture on the dense shelf, and the dense shelf is most of the shop:
-     the tile grid draws three packs (`pages/index.tsx:1258`) and the rows draw the rest, 63 pack
-     links on the live home page on 2026-08-30.
+  /* `.rowcover` is the same picture on the dense shelf. `.row` is
+     `grid-template-columns:1fr auto` with text in column 1 and `.side` in column 2
+     (mumchimp.css:94-101). A picture makes it three columns, scoped with `:has(> .rowcover)`.
 
-     `.row` is `grid-template-columns:1fr auto` with `.top`, `h3`, `.d` and `.proof` pinned to
-     column 1 and `.side` spanning column 2 (mumchimp.css:94-101). A picture makes it three
-     columns, so the track list is re-declared here and the text and the price stack shift one
-     column right. Every rule is scoped with `:has(> .rowcover)`, so a row with no picture --
-     a sector we have not drawn, or a pack with no sector at all -- still renders exactly as the
-     bundle draws it, with no third track and no shifted children.
+     A 104px 16:9 plate is 58px tall and pinned to the top of the row, so it sat as a postage
+     stamp in the corner while the text column wrapped into the leftover 1fr. Stretching it
+     with the row made a 72 by 176 tower on a phone and squeezed the title. Founder,
+     2026-09-01: images look rubbish. The thumbnail is a square crop. The text track is
+     `minmax(0, 1fr)` so it wraps as a shop card instead of overflowing into the price.
 
-     104px, not larger. `.row` is `padding:18px var(--pad)` and its four text lines run about
-     104px tall at the bundle's own sizes (17.5px title at 1.3, two 14.5px description lines at
-     1.5, one 12.5px proof line), so a 16:9 picture at this width is 58px and sits inside the
-     row's existing height without making the shelf taller. A taller picture would set the row
-     height itself and turn a dense list into a grid.
-
-     Below 640px it becomes a band across the top instead of a column beside the text. A 104px
-     thumbnail is a third of a 350px phone, which leaves the title nowhere to wrap; the same
-     picture full width above the title costs the row height but stays legible, and the phone is
-     where the shop is read. */
+     Below 640px the picture stays a 64px thumbnail beside the text. A full-width 16:9 band
+     was about 197px tall per row and left the title nowhere useful to sit. */
   .row:has(> .rowcover) {
-    grid-template-columns: 104px 1fr auto;
+    grid-template-columns: 96px minmax(0, 1fr) auto;
+    column-gap: 16px;
   }
   .row:has(> .rowcover) > .top,
   .row:has(> .rowcover) > h3,
@@ -334,35 +324,37 @@
     grid-column: 1;
     grid-row: 1 / span 4;
     align-self: start;
-    width: 104px;
-    aspect-ratio: 16 / 9;
+    width: 96px;
+    height: 96px;
+    min-height: 96px;
+    aspect-ratio: 1 / 1;
     object-fit: cover;
+    object-position: center;
     background: var(--brand-tint);
-    border-radius: 6px;
-    margin-top: 6px;
+    border-radius: 8px;
   }
   @media (max-width: 640px) {
     .row:has(> .rowcover) {
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 64px minmax(0, 1fr) auto;
+      column-gap: 12px;
     }
     .row:has(> .rowcover) > .top,
     .row:has(> .rowcover) > h3,
     .row:has(> .rowcover) > .d,
     .row:has(> .rowcover) > .proof {
-      grid-column: 1;
-    }
-    /* Row 2, not the bundle's row 1: the picture takes row 1 across both columns, and a `.side`
-       still claiming row 1 would be placed on top of it. */
-    .row:has(> .rowcover) > .side {
       grid-column: 2;
-      grid-row: 2 / span 4;
+    }
+    .row:has(> .rowcover) > .side {
+      grid-column: 3;
+      grid-row: 1 / span 4;
     }
     .rowcover {
-      grid-column: 1 / -1;
-      grid-row: 1;
-      width: 100%;
-      margin-top: 0;
-      margin-bottom: 10px;
+      grid-column: 1;
+      grid-row: 1 / span 4;
+      width: 64px;
+      height: 64px;
+      min-height: 64px;
+      margin: 0;
     }
   }
 
