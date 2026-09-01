@@ -247,12 +247,15 @@ export function PageHero({
     /* `page-hero` on the BAND, not the measure: `globals.css` uses it as an adjacent-sibling hook
        to stop the section below opening with a full 96px on top of this band's own closing space.
        See the note there for the measurement. `pb` comes down with it -- 64px under a lead, above
-       a rule, above another 96px, was the larger half of a 160px gap. */
+       a rule, above another 96px, was the larger half of a 160px gap.
+       Interior pages still looked unfinished at `pt-10 md:pt-14`: a shop index should open on
+       the goods, not a slab of white. Home already uses `pt-8 md:pt-0` because `.hero` carries
+       its own drawing padding; these routes have no `.hero`, so the band itself has to be short. */
     <SectionBand
       bg={bg}
       width={width}
       outerClassName="page-hero"
-      className="pt-10 pb-10 md:pt-14 md:pb-12 animate-settle"
+      className="pt-6 pb-4 md:pt-8 md:pb-6 animate-settle"
     >
       <div
         className={
@@ -268,8 +271,8 @@ export function PageHero({
       <div className="max-w-[46rem]">
         <div className="pagetop">
           {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-          <h1 className="max-w-[20ch]" style={{ marginTop: 12 }}>{title}</h1>
-          {lead && <div className="lede big mt-4">{lead}</div>}
+          <h1 className="max-w-[20ch]" style={{ marginTop: 8 }}>{title}</h1>
+          {lead && <div className="lede big mt-2">{lead}</div>}
         </div>
         {(primary || secondary) && (
           <div className="ctarow mt-8">
@@ -291,7 +294,7 @@ export function PageHero({
       </div>
         {aside}
       </div>
-      {children && <div className="mt-12 w-full md:mt-16">{children}</div>}
+      {children && <div className="mt-8 w-full md:mt-10">{children}</div>}
     </SectionBand>
   );
 }

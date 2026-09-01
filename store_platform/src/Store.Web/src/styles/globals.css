@@ -319,6 +319,22 @@
   .row:has(> .rowcover) > .side {
     grid-column: 3;
   }
+  /* Denser shelf. The bundle's `.row` is padding:18px and the title/description margins
+     (6px / 5px / 10px) were drawn for a short two-line clamp. Descriptions now run to their
+     full stop (this file's own unclamp), so those margins made each listing a tall card.
+     Shop density is the same drawing, tighter padding. Lives here, not in mumchimp.css. */
+  .row {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .row h3 {
+    margin-top: 2px;
+    margin-bottom: 4px;
+  }
+  .row .d {
+    margin-bottom: 6px;
+  }
+
   .rowcover {
     display: block;
     grid-column: 1;
@@ -332,6 +348,7 @@
     object-position: center;
     background: var(--brand-tint);
     border-radius: 8px;
+    margin-top: 2px;
   }
   @media (max-width: 640px) {
     .row:has(> .rowcover) {
@@ -934,12 +951,20 @@ section {
   it by accident.
 */
 .page-hero + section > div {
-  padding-top: 1.75rem;
+  padding-top: 0.75rem;
 }
 @media (min-width: 768px) {
   .page-hero + section > div {
-    padding-top: 2.5rem;
+    padding-top: 1.25rem;
   }
+}
+
+/* `.pagetop` is the drawing's 14px/8px page-top padding. Inside PageHero that padding sits on
+   top of the band's own padding and recreates the empty slab the band just lost. Zero it only
+   here; pages that still use `.pagetop` without PageHero keep the drawing. */
+.page-hero .pagetop {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 @media print {
