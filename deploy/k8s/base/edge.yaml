@@ -262,40 +262,14 @@ spec:
           selector:
             matchLabels:
               idp.estate/edge-attach: "true"
-    # The estate's alert console and its metrics store (idp platform/monitoring, crew#684; founder
-    # 2026-08-30 "i need all cluster monitoring tools now"): the catalogue said "no public address
-    # yet" for 43 hours while nobody could open either. Both HTTPRoutes live in idp's `monitoring`
-    # namespace, behind the one login, on their own listener each like every other platform door.
-    - name: https-alertmanager
-      protocol: HTTPS
-      port: 8443
-      hostname: alertmanager.${ESTATE_ZONE}
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - kind: Secret
-            name: prospector-edge-tls
-      allowedRoutes:
-        namespaces:
-          from: Selector
-          selector:
-            matchLabels:
-              idp.estate/edge-attach: "true"
-    - name: https-prometheus
-      protocol: HTTPS
-      port: 8443
-      hostname: prometheus.${ESTATE_ZONE}
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - kind: Secret
-            name: prospector-edge-tls
-      allowedRoutes:
-        namespaces:
-          from: Selector
-          selector:
-            matchLabels:
-              idp.estate/edge-attach: "true"
+    # No listener lands before its HTTPRoute exists in idp. The alertmanager.<zone> and
+    # prometheus.<zone> listeners (crew#684, a72c9d3, 2026-08-30) waited here for routes that never
+    # merged (idp branch feat/crew684-alertmanager-and-prometheus-have-a-door), so external-dns had
+    # no route to publish and neither name resolved. Every listener above shares prospector-edge-tls,
+    # and cert-manager orders one certificate for all of them: two names that HTTP-01 can never
+    # reach failed the whole order, and the certificate stayed at its 2026-08-27 set of names, so
+    # otto.<zone> served the Traefik placeholder certificate and Telegram delivered nothing (Otto
+    # outage, 2026-08-31T23:18Z onward). The two listeners return in the same wave as their routes.
 ---
 # Everything on port 80 becomes a 301 to the same URL on 443. This is the `force_https` Fly used to
 # supply and the last thing Fly was still doing that the compose stack could not do for itself.

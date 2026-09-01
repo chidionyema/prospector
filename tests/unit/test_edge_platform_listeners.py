@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz", "https-alertmanager", "https-prometheus"}
+PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz"}
 
 
 def _listeners() -> dict[str, dict]:
@@ -64,11 +64,16 @@ def test_incident_crew495_signoz_listener_names_the_telemetry_backend_hostname()
     assert _listeners()["https-signoz"]["hostname"] == "signoz.${ESTATE_ZONE}"
 
 
-def test_incident_crew684_alertmanager_and_prometheus_listeners_name_the_monitoring_hostnames() -> None:
-    """crew#684 (founder 2026-08-30, "i need all cluster monitoring tools now"): the alert console and
-    the metrics store ran 43 hours with no hostname; idp's HTTPRoutes in `monitoring` need a parent."""
-    assert _listeners()["https-alertmanager"]["hostname"] == "alertmanager.${ESTATE_ZONE}"
-    assert _listeners()["https-prometheus"]["hostname"] == "prometheus.${ESTATE_ZONE}"
+def test_incident_otto_outage_2026_09_01_no_listener_without_a_route() -> None:
+    """Otto outage 2026-08-31T23:18Z to 2026-09-01: the alertmanager and prometheus listeners
+    (crew#684) landed before their idp HTTPRoutes merged, so external-dns published no record for
+    either name; cert-manager orders one certificate for every listener sharing prospector-edge-tls,
+    the two unreachable names failed the order, and otto.<zone> kept the Traefik placeholder
+    certificate that Telegram refuses. A listener lands in the same wave as its route, never before."""
+    listeners = _listeners()
+    assert "https-alertmanager" not in listeners
+    assert "https-prometheus" not in listeners
+    assert not {n for n, l in listeners.items() if "${ESTATE_ZONE}" in str(l.get("hostname"))} - PLATFORM_LISTENERS
 
 
 def test_incident_crew736_otto_listener_names_the_webhook_hostname() -> None:
