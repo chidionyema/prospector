@@ -155,6 +155,7 @@ const COMPONENTS = [
     app: ['/', '.featured'],
     allowExtra: [
       { token: 'img', why: 'real sector imagery now exists; the drawing predates photography' },
+      { token: 'figure.gridwrap', why: 'the shop proof number sits on the featured card grid, not as a second hero card' },
     ],
   },
   /* THE CHECK ROW IS MEASURED ON /how-it-works, NOT ON THE PACK PAGE. The drawing renders a

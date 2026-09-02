@@ -51,9 +51,13 @@ export interface HeroRatioProps {
   /** The listed catalogue. Only its LENGTH is used: the legend states what is buyable today. */
   packCount: number;
   className?: string;
+  /** Shop-proof treatment on the featured card. The rate stays; the second-card chrome and
+      the long caption go, so the number sits in the product card's own grid instead of
+      floating beside the headline. */
+  compact?: boolean;
 }
 
-export default function HeroRatio({ packCount, className }: HeroRatioProps) {
+export default function HeroRatio({ packCount, className, compact = false }: HeroRatioProps) {
   const survivors = survivorDots();
   if (survivors === null) return null;
 
@@ -65,7 +69,9 @@ export default function HeroRatio({ packCount, className }: HeroRatioProps) {
     <figure className={cx('gridwrap', className)}>
       <p className="ratiofig num">{RESEARCH_STATS.survivorBoundLabel}</p>
       <p className="ratiosub">
-        or fewer survive the checks. Every square below is a hundredth of what we researched.
+        {compact
+          ? 'or fewer survive the checks.'
+          : 'or fewer survive the checks. Every square below is a hundredth of what we researched.'}
       </p>
       {/* One image with one name. The dots are not a hundred announcements. */}
       <div
@@ -85,6 +91,7 @@ export default function HeroRatio({ packCount, className }: HeroRatioProps) {
           This does not reopen the 2026-08-13 directive ("saying 80 when only 50 are listed should
           never happen"). That bars claiming MORE survivors than are listed; this prints exactly
           what is listed, which is the number that directive wanted. */}
+      {!compact && (
       <div className="gridkey">
         <span>
           <i aria-hidden className="sw alive" />
@@ -95,6 +102,8 @@ export default function HeroRatio({ packCount, className }: HeroRatioProps) {
           <b className="num">{killedLabel}</b> killed
         </span>
       </div>
+      )}
+      {!compact && (
       <figcaption className="gridcap">
         {/* THE DRAWING'S SENTENCE, WITH ITS ONE FALSE CLAIM REMOVED. It states the claim in the
             absolute, over all kills, and that is not true of this catalogue:
@@ -110,6 +119,7 @@ export default function HeroRatio({ packCount, className }: HeroRatioProps) {
           Read the kill log
         </Link>
       </figcaption>
+      )}
     </figure>
   );
 }

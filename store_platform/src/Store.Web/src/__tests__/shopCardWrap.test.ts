@@ -43,6 +43,17 @@ describe('shop card wrap and thumbnail', () => {
     expect(stripped).toMatch(/\.featured:has\(> \.cover\)/);
   });
 
+  it('places the featured picture as a plate, not a stretch-span', () => {
+    expect(stripped).toMatch(/\.featured:has\(> \.cover\) > \.cover\s*\{[^}]*aspect-ratio:\s*4 \/ 3/s);
+    expect(stripped).not.toMatch(/grid-row:\s*1 \/ span 8/);
+    expect(stripped).not.toMatch(/min-height:\s*280px/);
+  });
+
+  it('puts the hero product in one column so 6 in 100 sits on the card grid', () => {
+    expect(stripped).toMatch(/\.hero \.featured:has\(> \.cover\)\s*\{[^}]*grid-template-areas:/s);
+    expect(stripped).toMatch(/\.featured \.ratiofig\s*\{[^}]*font-size:\s*28px/s);
+  });
+
   it('lets a pack-page title use the column, not the landing slogan measure', () => {
     expect(stripped).toMatch(/\.two h1\s*\{[^}]*max-width:\s*none/s);
   });

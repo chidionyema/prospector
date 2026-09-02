@@ -747,7 +747,6 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             answers the question the gates raise -- "how hard is this actually?" -- before the
             gates are read rather than after. It renders nothing if the derived label ever stops
             being a rate we can parse. */}
-        <SixInHundred className="mt-[26px]" />
         {/* `.two` is the drawing's own grid: 1.55fr of prose to 1fr of rail at a 36px gap,
             collapsing to one column at 900px (`mumchimp.css`). It was a flex row at `lg`, which
             put the collapse at 1024 while the drawing puts it at 900, so the rail and the mobile
@@ -877,6 +876,8 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 Nothing is lost when it stands down: its audience framing is the `whoPays` row
                 below, and the full description is in the sections under that. */}
             {lead && <p className="mt-4 lede">{lead}</p>}
+
+            <SixInHundred />
 
             {/* THE OPPORTUNITY, ABOVE THE FOLD (2026-08-16, founder: "the title and description
                 say what it is and what it does, not the opportunity presented, market size,

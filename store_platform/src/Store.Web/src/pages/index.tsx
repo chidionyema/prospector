@@ -265,6 +265,7 @@ function PackSpotlight({
   currency,
   viewerMarket,
   viewed = false,
+  shopProof,
 }: {
   pack: Pack;
   currency: Currency;
@@ -279,6 +280,10 @@ function PackSpotlight({
      visit is the first visit again. Server-rendered from the cookie, so it is in the first paint
      and never flashes in after hydration. */
   viewed?: boolean;
+  /* The shop's own proof number, only on the hero product. "6 in 100" belongs on this card's
+     grid — the rate that made the pack buyable — not as a second card floating next to the
+     headline. Other spotlights stay pack-only. */
+  shopProof?: { packCount: number };
 }) {
   const cat = categoryFor(pack);
   /* The card's lead figure. The picture is the other visual, added 2026-09-01: Computed once here and rendered by all
@@ -335,12 +340,13 @@ function PackSpotlight({
       {cat.tagged && <span className="eyebrow">{cat.label.toUpperCase()}</span>}
       <h3>{heading}</h3>
       {line && <p className="d">{line}</p>}
-      {stat && <PackFigure stat={stat} weight="spotlight" />}
+      {shopProof && <HeroRatio packCount={shopProof.packCount} compact />}
+      {!shopProof && stat && <PackFigure stat={stat} weight="spotlight" />}
       {/* The drawing's `.spark` is a decorative row of bars. Ours is `EvidenceBar`, which draws
           the same shape from the pack's REAL cited-source count and prints that count beside it,
           so the bars mean something a buyer can check. It IS the `.spark-row` now -- the wrapper
           that used to sit here made an element the drawing does not have. */}
-      <EvidenceBar count={pack.sourceCount} label={evidenceLabel} />
+      {!shopProof && <EvidenceBar count={pack.sourceCount} label={evidenceLabel} />}
       <div className="foot">
         {/* One element, not two. `.price-lg` (mumchimp.css:340) sets the size, weight and
             tracking; a nested `PriceText` span inside it added a second box for no rule. */}
@@ -942,8 +948,15 @@ function CatalogBrowser({
      newest pack the two differ -- and hiding `gridPacks[0]` there would hide a card they had
      never been shown. */
   const rowHasFeatured = editorial && !!featuredId && gridPacks[0]?.id === featuredId;
-  const newestRow = editorial ? gridPacks.slice(0, rowHasFeatured ? 4 : 3) : [];
-  const tailPacks = editorial ? gridPacks.slice(newestRow.length) : gridPacks;
+  /* Featured now sits in the hero at every width, so the three-up never repeats it.
+     Three tiles either way; the tail starts after those three (and after the hero pack
+     when that pack is also the newest in this market). */
+  const newestRow = editorial
+    ? (rowHasFeatured ? gridPacks.slice(1, 4) : gridPacks.slice(0, 3))
+    : [];
+  const tailPacks = editorial
+    ? gridPacks.slice(rowHasFeatured ? 4 : 3)
+    : gridPacks;
   const shown = showAll ? tailPacks.length : Math.min(SHELF_PAGE, tailPacks.length);
 
   // The most recent verification across the live shelf, rendered once, in the toolbar. It used to
@@ -2005,63 +2018,20 @@ export default function Home({ packs, stats, flags, initialState, market, curren
 
               It is a utility class, so `scripts/parity.mjs` is unaffected -- it compares tag names
               and mumchimp.css classes only, and the element stays in the DOM either way. */}
-          <HeroRatio packCount={packs.length} className="hidden min-[901px]:block" />
+          {featured ? (
+            <div ref={featuredSlotRef} className="min-w-0">
+              <PackSpotlight
+                pack={featured}
+                currency={currency}
+                viewerMarket={market}
+                viewed={viewedIds.includes(featured.id)}
+                shopProof={{ packCount: packs.length }}
+              />
+            </div>
+          ) : (
+            <HeroRatio packCount={packs.length} className="hidden min-[901px]:block" />
+          )}
         </div>
-        {/* THE PRODUCT, not the filter log.
-            What stood here was `LiveKillCard` -- the killed/survived ledger. Beside a headline
-            promising researched business ideas, the largest and only coloured object on the
-            first screen was three ideas we had thrown away. A shop's first screen shows the
-            thing you can buy.
-
-            Desktop only, and there is no mobile duplicate any more: the whole `hidden lg:block`
-            / `lg:hidden` pair is gone, because the reason it existed was to place a panel that
-            is no longer in the hero.
-
-            `featured.id` is handed to the shelf so this card and the shelf's "Newest survivors"
-            row cannot show the same pack at the same time -- they did, on the first screen at
-            1440x900, until the row was made breakpoint-aware (see `rowHasFeatured`). On mobile
-            this slot is not rendered and the pack is simply the first card in the grid. */}
-        {featured && (
-          /* `relative z-10 bg-surface` was added because this slot sat directly over
-             `AmbientKillColumn` (`absolute inset-y-0 right-0 z-0`): the card itself is opaque
-             (`bg-surface`, see `PackSpotlight`), but the heading above it and the
-             padding around it were not, so ticker text rendered legibly through the gap --
-             "...Builder  The value would n[ot last]" sitting directly above "New this week"
-             (ss_0456bw1wg, live mumchimp.com/, 2026-08-09). That column is gone, so nothing
-             shows through any more; the fill stays because `--surface` and `--bg` are the same
-             white (tokens.css:80,81) and removing it would be a no-op edit on a card whose
-             background is otherwise inherited from whatever band it is dropped into. */
-          <div
-            ref={featuredSlotRef}
-            /* NO CARD CHROME ON THE WRAPPER. `PackSpotlight` is the drawing's `.featured` article now,
-               which carries its own surface, hairline and 12px radius; a `rounded-card bg-surface
-               p-4` parent around it draws a second card 16px outside the first. */
-            /* FULL WIDTH, NO 420px CAP. The drawing's `article.featured`
-               (`mockups/index.html` section 7) is 1040px wide -- the whole content measure --
-               and ours was capped at 420px while sitting in a full-width row of its own.
-               Measured at 1280 on 2026-08-18: the card drew x=120..540 in a band running
-               120..1160, so 620px to its right was empty, and the founder read the result as
-               a hole in the page. `.featured`'s own CSS is written for the full measure, so
-               removing the cap is what makes the card the drawn object rather than a
-               narrow copy of it. */
-            className="relative z-10 mt-10 hidden w-full lg:block"
-          >
-            {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
-                on the shelf below. It was `uppercase tracking-wide text-caption`, which the
-                house policy forbids (`__tests__/weightAndCasePolicy.test.ts`): CSS caps leave
-                the accessible name in sentence case while a screen reader may spell out the
-                rendered form, and this label sits directly above the one product on screen. */}
-            <h2 className="mb-3 text-meta font-semibold text-text">
-              New this week
-            </h2>
-            <PackSpotlight
-              pack={featured}
-              currency={currency}
-              viewerMarket={market}
-              viewed={viewedIds.includes(featured.id)}
-            />
-          </div>
-        )}
         </div>
       </SectionBand>
 

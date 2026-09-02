@@ -284,58 +284,189 @@
     }
   }
 
-  /* THE FEATURED PACK IS A PRODUCT, not a text slab. The drawing's `.featured` predates
-     photography; the landing is the brand and a diligence engineer meets it first. Same picture
-     the tiles and rows already use, flush left on desktop, full-bleed 16:9 above the copy on a
-     phone. Still the drawing's featured article -- not a third card format. */
+  /* THE FEATURED PACK IS A PRODUCT. Named areas, not "image spans 8 rows and every other
+     child is a loose column-2 item". The picture is a 4:3 plate pinned to the top of its
+     column — stretching it with the text made a mint tower and left the 44px stat floating
+     in a void. Still `.featured`, still the drawing's article. */
   .featured:has(> .cover) {
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr);
-    align-items: stretch;
+    grid-template-columns: minmax(200px, 34%) minmax(0, 1fr);
+    grid-template-areas:
+      "pic eye"
+      "pic title"
+      "pic desc"
+      "pic proof"
+      "pic packstat"
+      "pic bars"
+      "pic foot";
+    align-items: start;
+    column-gap: 0;
     overflow: hidden;
     padding: 0;
   }
   .featured:has(> .cover) > .cover {
-    grid-column: 1;
-    grid-row: 1 / span 8;
+    grid-area: pic;
+    align-self: start;
     display: block;
     width: 100%;
-    height: 100%;
+    height: auto;
     max-width: none;
-    min-height: 280px;
+    min-height: 0;
+    aspect-ratio: 4 / 3;
     object-fit: cover;
     object-position: center;
     background: var(--brand-tint);
   }
-  .featured:has(> .cover) > :not(.cover) {
-    grid-column: 2;
-    min-width: 0;
-    margin-left: 28px;
-    margin-right: var(--pad);
+  .featured:has(> .cover) > .eyebrow {
+    grid-area: eye;
+    margin: 20px var(--pad) 0 24px;
   }
-  .featured:has(> .cover) > :not(.cover):nth-child(2) {
-    margin-top: 26px;
+  .featured:has(> .cover) > h3 {
+    grid-area: title;
+    margin: 8px var(--pad) 0 24px;
+  }
+  .featured:has(> .cover) > .d {
+    grid-area: desc;
+    margin: 8px var(--pad) 0 24px;
+    margin-bottom: 0;
+  }
+  .featured:has(> .cover) > .gridwrap {
+    grid-area: proof;
+    min-width: 0;
+  }
+  .featured:has(> .cover) > .stat {
+    grid-area: packstat;
+    margin: 10px var(--pad) 0 24px;
+  }
+  .featured:has(> .cover) > .spark-row {
+    grid-area: bars;
+    margin: 10px var(--pad) 0 24px;
   }
   .featured:has(> .cover) > .foot {
-    margin-bottom: 22px;
+    grid-area: foot;
+    margin: 16px var(--pad) 20px 24px;
   }
+
+  /* Hero column is ~400px. A side-by-side card crushes there. Stack: picture, copy, shop
+     proof, money. The drawing's `.featured` margin is for a full-measure slab; inside `.hero`
+     it is the column, so the margin goes. */
+  .hero .featured {
+    margin: 0;
+  }
+  .hero .featured:has(> .cover) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "pic"
+      "eye"
+      "title"
+      "desc"
+      "proof"
+      "packstat"
+      "bars"
+      "foot";
+  }
+  .hero .featured:has(> .cover) > .cover {
+    aspect-ratio: 16 / 9;
+  }
+  .hero .featured:has(> .cover) > .eyebrow {
+    margin: 16px var(--pad) 0;
+  }
+  .hero .featured:has(> .cover) > h3 {
+    margin: 8px var(--pad) 0;
+    font-size: 22px;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+  .hero .featured:has(> .cover) > .d {
+    margin: 8px var(--pad) 0;
+    max-width: none;
+  }
+  .hero .featured:has(> .cover) > .stat {
+    margin: 10px var(--pad) 0;
+  }
+  .hero .featured:has(> .cover) > .spark-row {
+    margin: 8px var(--pad) 0;
+  }
+  .hero .featured:has(> .cover) > .foot {
+    margin: 14px var(--pad) 18px;
+  }
+
+  /* "6 in 100" is a proof number ON the product, not a second card. Number and a stamp-sized
+     field share one row of the card grid — the way a shop puts a rating next to stars.
+     Inner card chrome is gone so it cannot float. */
+  .featured .gridwrap {
+    display: grid;
+    grid-template-columns: auto 88px;
+    grid-template-areas:
+      "fig dots"
+      "sub dots";
+    align-items: center;
+    column-gap: 14px;
+    justify-content: start;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 14px var(--pad) 0 24px;
+    margin: 0;
+  }
+  .hero .featured .gridwrap {
+    padding: 14px var(--pad) 0;
+  }
+  .featured .ratiofig {
+    grid-area: fig;
+    font-size: 28px;
+  }
+  .featured .ratiosub {
+    grid-area: sub;
+    font-size: 13.5px;
+    margin-top: 2px;
+    max-width: none;
+  }
+  .featured .ratio {
+    grid-area: dots;
+    max-width: 88px;
+    width: 88px;
+    gap: 3px;
+    margin: 0;
+  }
+  .hero .featured .stat .big {
+    font-size: 22px;
+  }
+
   @media (max-width: 860px) {
     .featured:has(> .cover) {
       grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        "pic"
+        "eye"
+        "title"
+        "desc"
+        "proof"
+        "packstat"
+        "bars"
+        "foot";
     }
     .featured:has(> .cover) > .cover {
-      grid-column: 1;
-      grid-row: auto;
-      width: 100%;
-      height: auto;
-      min-height: 0;
       aspect-ratio: 16 / 9;
     }
-    .featured:has(> .cover) > :not(.cover) {
-      margin-left: var(--pad);
+    .featured:has(> .cover) > .eyebrow {
+      margin: 16px var(--pad) 0;
     }
-    .featured:has(> .cover) > :not(.cover):nth-child(2) {
-      margin-top: 18px;
+    .featured:has(> .cover) > h3,
+    .featured:has(> .cover) > .d,
+    .featured:has(> .cover) > .stat,
+    .featured:has(> .cover) > .spark-row {
+      margin-left: var(--pad);
+      margin-right: var(--pad);
+    }
+    .featured:has(> .cover) > .foot {
+      margin: 14px var(--pad) 18px;
+    }
+    .featured .gridwrap {
+      padding: 12px var(--pad) 0;
     }
   }
 
@@ -1027,6 +1158,28 @@ section {
   max-width: none;
   overflow-wrap: break-word;
 }
+
+/* Signature proof on the pack page lives in the product column, not as a full-width
+   slab above the split. Keep the drawing's card; drop the extra top margin the old
+   placement needed to clear the trail. */
+.two .sigcard {
+  margin-top: 22px;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 900px) {
+  .two .sigcard {
+    padding: 16px var(--pad);
+  }
+  .two .sigcard .fig {
+    font-size: 28px;
+  }
+  .two .sigcard .cap {
+    font-size: 14px;
+    max-width: none;
+  }
+}
+
 
 
 @media print {
