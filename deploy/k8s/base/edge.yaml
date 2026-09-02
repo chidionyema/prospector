@@ -190,6 +190,25 @@ spec:
           selector:
             matchLabels:
               idp.estate/edge-attach: "true"
+    # The founder's boardroom dashboard (idp platform/observability, Metabase; crew#R74 CP1).
+    # Until this listener existed the metabase HTTPRoute in idp's `observability` namespace had
+    # nothing to attach to: no DNS record, no certificate SAN, no page. Same shape as langfuse:
+    # behind the one login, one shared Secret, cert-manager adds the SAN from this hostname.
+    - name: https-metabase
+      protocol: HTTPS
+      port: 8443
+      hostname: metabase.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
     # The estate's telemetry backend (idp platform/observability, SigNoz; crew#495 CP8). Until this
     # listener existed SigNoz had no hostname at all: nobody could open it, and the SigNoz Terraform
     # provider had no endpoint to declare alert rules against. Same shape as langfuse: the HTTPRoute
