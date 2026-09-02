@@ -27,16 +27,16 @@ describe('shop card wrap and thumbnail', () => {
   });
 
   it('keeps the phone thumbnail beside the text, not a full-width band', () => {
-    expect(stripped).not.toMatch(/\.rowcover\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/s);
+    expect(stripped).not.toMatch(/\.rowcover\s*\{[^}]*grid-column:\s*1\s*\/\s*-1);
     expect(stripped).toMatch(/grid-template-columns:\s*72px minmax\(0,\s*1fr\) auto/);
   });
 
   it('lets the tile cover bleed past Tailwind\'s img max-width', () => {
-    expect(stripped).toMatch(/\.htile \.cover\s*\{[^}]*max-width:\s*none/s);
+    expect(stripped).toMatch(/\.htile \.cover\s*\{[^}]*max-width:\s*none);
   });
 
   it('does not stretch the tile description to fill the card', () => {
-    expect(stripped).toMatch(/\.htile p\s*\{[^}]*flex:\s*none/s);
+    expect(stripped).toMatch(/\.htile p\s*\{[^}]*flex:\s*none);
   });
 
   it('gives the featured pack a picture, same as the tiles and rows', () => {
@@ -44,17 +44,17 @@ describe('shop card wrap and thumbnail', () => {
   });
 
   it('places the featured picture as a plate, not a stretch-span', () => {
-    expect(stripped).toMatch(/\.featured:has\(> \.cover\) > \.cover\s*\{[^}]*aspect-ratio:\s*4 \/ 3/s);
+    expect(stripped).toMatch(/\.featured:has\(> \.cover\) > \.cover\s*\{[^}]*aspect-ratio:\s*4 \/ 3);
     expect(stripped).not.toMatch(/grid-row:\s*1 \/ span 8/);
     expect(stripped).not.toMatch(/min-height:\s*280px/);
   });
 
   it('puts the hero product in one column so 6 in 100 sits on the card grid', () => {
-    expect(stripped).toMatch(/\.hero \.featured:has\(> \.cover\)\s*\{[^}]*grid-template-areas:/s);
-    expect(stripped).toMatch(/\.featured \.ratiofig\s*\{[^}]*font-size:\s*28px/s);
+    expect(stripped).toMatch(/\.hero \.featured:has\(> \.cover\)\s*\{[^}]*grid-template-areas:);
+    expect(stripped).toMatch(/\.featured \.ratiofig\s*\{[^}]*font-size:\s*28px);
   });
 
   it('lets a pack-page title use the column, not the landing slogan measure', () => {
-    expect(stripped).toMatch(/\.two h1\s*\{[^}]*max-width:\s*none/s);
+    expect(stripped).toMatch(/\.two h1\s*\{[^}]*max-width:\s*none);
   });
 });
