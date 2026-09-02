@@ -54,8 +54,11 @@ const top = gates[0];
 
 export function KillGateBand() {
   const max = top[1];
+  /* No `.wrap` here. This band sits inside the catalogue Section's 1080
+     measure; a second wrap added 20px gutters on top of the section's, so
+     the band read 40px narrower than the tiles above it and the filters
+     below it. The band is the section's child and shares that edge. */
   return (
-    <div className="wrap">
       <section className="band">
       <div className="band-in">
         <p className="fig dead num">{top[1].toLocaleString('en-GB')}</p>
@@ -121,7 +124,6 @@ export function KillGateBand() {
         </div>
       </div>
     </section>
-    </div>
   );
 }
 

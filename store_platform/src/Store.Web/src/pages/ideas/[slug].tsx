@@ -4,7 +4,7 @@ import { textLinkClass } from '@/components/ui';
 import type { GetServerSideProps } from 'next';
 
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
+import { PageHero, Section, CtaBand, HeroList } from '@/components/marketing/blocks';
 import { PackGrid } from '@/components/discovery/PackGrid';
 import { Seo } from '@/components/Seo';
 import { fetchCatalog, type Pack } from '@/lib/api/client';
@@ -156,6 +156,14 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
         eyebrow={`${packs.length} researched ${packs.length === 1 ? 'pack' : 'packs'}`}
         title={landingH1(landing.slug, variant)}
         lead={landing.slug === 'automated-business-ideas' ? VARIANTS[variant].automatedIdeasIntro : landing.intro}
+        aside={
+          siblings.length > 0 ? (
+            <HeroList
+              label="Other ways in"
+              items={siblings.slice(0, 6).map((s) => s.h1)}
+            />
+          ) : undefined
+        }
       />
 
       <Section bg="white" width="7xl">

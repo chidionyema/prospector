@@ -31,8 +31,8 @@ import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
  * (`curl -s https://mumchimp.com/terms` carries the footer's Store column). So `/packs` is one
  * click from every entry route and every pack is two.
  *
- * It is deliberately the least designed surface on the site. A second shelf that competed with the
- * home page's would need its own art direction and its own review; an index does not.
+ * This is a shop index, not a second marketing page. Same row, same type, same picture as the
+ * home shelf; no cap, no filters. The job is to look like a list of goods a buyer can scan.
  */
 
 /** Exported so `src/__tests__/everyPackIsListed.test.tsx` can hand the real props straight from
@@ -153,12 +153,12 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
         width="7xl"
         eyebrow={`${total} ${total === 1 ? 'pack' : 'packs'}`}
         title="Every pack"
-        lead="The complete index. The catalogue page shows the newest first and holds the rest back. This page holds nothing back."
+        lead="Every researched pack we sell. Alphabetical, this market first."
       />
 
       <Section bg="white" width="7xl">
         {groups.map((group, i) => (
-          <div key={group.key} className={i === 0 ? undefined : 'mt-12'}>
+          <div key={group.key} className={i === 0 ? undefined : 'mt-8'}>
             {/* The visitor's own market has no heading: it is the first thing on the page and
                 labelling it "United Kingdom" tells a UK reader something they did not ask. Every
                 OTHER market gets one, because a US pack in a UK reader's list needs to say so. */}

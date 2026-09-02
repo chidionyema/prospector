@@ -12,7 +12,7 @@ import type { Props } from '@/pages/packs';
  * FR-10 of `docs/FIRST_RUN_AND_NAVIGATION_PROGRAM.md`. Measured 2026-08-21 against live: 14 of
  * 77 packs were reachable from no page in fewer than three clicks, because the home page caps
  * its shelf (`pages/index.tsx:1445`, `:1494`) and `/ideas` links categories rather than packs.
- * `/packs` is the page that closes that gap, and it closes it only while it holds nothing back.
+ * `/packs` is the page that closes that gap, and it closes it only while every pack is listed.
  *
  * THE FAILURE THIS EXISTS TO CATCH is one character: a `.slice(0, n)` added to this page for a
  * perfectly good reason (it got long, it got slow), which silently returns 14 packs -- or 40 --
