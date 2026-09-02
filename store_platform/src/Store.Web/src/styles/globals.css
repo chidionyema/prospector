@@ -139,27 +139,42 @@
     letter-spacing: -0.014em;
     margin-bottom: 5px;
   }
-  /* THE ONE REAL COLLISION, AND IT SURVIVES INTO THE SHIPPED STYLESHEET. Both drawings declare `.bars`: index.html
-     draws a row of kill-gate columns, pack-detail.html draws a stack of score bars, and
-     pack-detail wins. mumchimp.css:103 ships `flex-direction:column` with mumchimp.css:356 `i{flex:1;max-width:26px}`, which is the merged pair. Scoping index's version to the band it lives
-     in restores it without touching either drawing's rules. */
+  /* THE BAND DRAWS RANKED `.barline` ROWS NOW, NOT THE SPARKLINE.
+     Both drawings declare `.bars`. pack-detail wins in the merged sheet
+     (`flex-direction:column` plus `i{flex:1;max-width:26px}`). An earlier
+     restore in this file put the index sparkline back — `flex-direction:row`
+     and `height:44px` — which is what the founder is looking at: six
+     truncated stubs in one 22px strip, 20px inset from the shelf. The
+     component has used `.barline` since 2026-08-30; this block now matches
+     that markup. mumchimp.css is untouched. */
   .band .bars {
     display: flex;
-    flex-direction: row;
-    gap: 3px;
-    align-items: flex-end;
-    height: 44px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    height: auto;
+    width: 100%;
     margin-top: 16px;
   }
-  .band .bars i {
-    flex: 1;
-    max-width: 26px;
-    background: var(--dead);
-    border-radius: 1px;
-  }
-  .band .bars i.hot {
+  .band .barline .bar i {
+    flex: none;
+    max-width: none;
+    display: block;
+    height: 100%;
     background: var(--kill);
-    opacity: 0.85;
+    border-radius: 2px;
+    opacity: 0.82;
+  }
+  /* 624 (and the other row counts) sat in a 48px column with no pad,
+     7px from the bar. Widen the count column past the padding so the
+     figure sits as a number, not glued to the track. */
+  .band .barline {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .band .barline .n {
+    padding: 4px 8px 4px 12px;
+    margin-left: 8px;
+    min-width: 3.25ch;
   }
 
   /* ─────────────────────────────────────────────────────────────────────────────────────────
@@ -345,6 +360,14 @@
   .featured:has(> .cover) > .foot {
     grid-area: foot;
     margin: 16px var(--pad) 20px 24px;
+  }
+
+  /* Hero columns share one top edge. The bundle centres them
+     (`align-items:center`, mumchimp.css:274). At 1280 the left column
+     sat 118px lower than the product card. Start both on the hero's
+     own padding. */
+  .hero {
+    align-items: start;
   }
 
   /* Hero column is ~400px. A side-by-side card crushes there. Stack: picture, copy, shop
