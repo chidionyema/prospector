@@ -36,4 +36,11 @@ echo "packages audited: $n of $(wc -l < /tmp/all-packages.txt | tr -d ' ')"
 # smaller. This is the check that proves the scan and the suite share one venv, which is the
 # whole reason it is safe to run the two at the same time.
 [ "$n" -ge 20 ] || { echo "::error::froze $n packages, so this is not the venv the suite runs"; exit 1; }
-uvx pip-audit -r /tmp/frozen.txt
+# PYSEC-2026-3740 / GHSA-8mgp-746c-j5xp (nltk, high): the model-artifact loading APIs bypass
+# pathsec and can touch files outside allowed roots. Every released nltk is affected
+# (range <= 3.10.3, first_patched_version null as of 2026-09-02), so there is nothing to
+# upgrade to. This repo imports exactly one nltk symbol, PorterStemmer
+# (prospector/retrieval.py) — a pure algorithm that loads no artifact and opens no file —
+# so the vulnerable surface is never reached. Remove this flag the day a patched nltk
+# exists: `uvx pip-audit -r <(echo nltk)` goes green again and this ignore is then dead.
+uvx pip-audit -r /tmp/frozen.txt --ignore-vuln PYSEC-2026-3740
