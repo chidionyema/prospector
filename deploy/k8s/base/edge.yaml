@@ -190,14 +190,14 @@ spec:
           selector:
             matchLabels:
               idp.estate/edge-attach: "true"
-    # The founder's boardroom dashboard (idp platform/observability, Metabase; crew#R74 CP1).
-    # Until this listener existed the metabase HTTPRoute in idp's `observability` namespace had
+    # The founder's boardroom dashboard (idp platform/observability, Superset; crew#R74 CP1).
+    # Until this listener existed the superset HTTPRoute in idp's `observability` namespace had
     # nothing to attach to: no DNS record, no certificate SAN, no page. Same shape as langfuse:
     # behind the one login, one shared Secret, cert-manager adds the SAN from this hostname.
-    - name: https-metabase
+    - name: https-superset
       protocol: HTTPS
       port: 8443
-      hostname: metabase.${ESTATE_ZONE}
+      hostname: superset.${ESTATE_ZONE}
       tls:
         mode: Terminate
         certificateRefs:
