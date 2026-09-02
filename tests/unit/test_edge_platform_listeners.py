@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz"}
+PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz", "https-superset"}
 
 
 def _listeners() -> dict[str, dict]:
@@ -62,6 +62,14 @@ def test_incident_crew458_mcp_listener_names_the_mcp_gateway_hostname() -> None:
 def test_incident_crew495_signoz_listener_names_the_telemetry_backend_hostname() -> None:
     """crew#495 CP8: SigNoz had no listener, so no person and no Terraform run could reach it."""
     assert _listeners()["https-signoz"]["hostname"] == "signoz.${ESTATE_ZONE}"
+
+
+def test_incident_decision_0018_superset_listener_names_the_dashboard_hostname() -> None:
+    """idp decision 0018 (2026-09-02): Superset replaces Metabase because its free tier takes the
+    gateway's word (header trust), so the dashboard keeps the one login. Main went red when the
+    metabase listener landed with no route and no row here; the rename to https-superset and this
+    row are that fix, landing in the same wave as idp's HTTPRoute."""
+    assert _listeners()["https-superset"]["hostname"] == "superset.${ESTATE_ZONE}"
 
 
 def test_incident_otto_outage_2026_09_01_no_listener_without_a_route() -> None:
