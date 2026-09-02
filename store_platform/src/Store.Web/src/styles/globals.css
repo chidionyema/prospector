@@ -104,6 +104,8 @@
     font-size: 16.5px;
     font-weight: 620;
     letter-spacing: -0.014em;
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
   /* THE SAME GAP ON THE LEGAL PAGES, AND IT WAS SILENT FOR LONGER. The drawing writes a clause
@@ -235,13 +237,6 @@
   }
   .htile .foot {
     margin-top: auto;
-  }
-
-  /* THE SAME GAP ON THE FAQ questions: a long question in a flex row next to the + marker
-     must shrink and wrap, not overflow the band. */
-  .faq h2 {
-    min-width: 0;
-    overflow-wrap: break-word;
   }
 
   /* THE SECTOR PICTURES. Not a deviation from the bundle -- the bundle has no rule for these,
