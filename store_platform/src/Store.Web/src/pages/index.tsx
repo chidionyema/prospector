@@ -281,7 +281,7 @@ function PackSpotlight({
      and never flashes in after hydration. */
   viewed?: boolean;
   /* The shop's own proof number, only on the hero product. "6 in 100" belongs on this card's
-     grid — the rate that made the pack buyable — not as a second card floating next to the
+     grid: the rate that made the pack buyable, not as a second card floating next to the
      headline. Other spotlights stay pack-only. */
   shopProof?: { packCount: number };
 }) {
