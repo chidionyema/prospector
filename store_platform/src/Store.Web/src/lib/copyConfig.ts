@@ -116,7 +116,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // "Skip 6 months of research. Launch a business or side hustle.", the live h1 from 05e47bc9 (2026-07-29).
     // New visitors are split 50/50 in `pickVisitorVariant`; crawlers stay on a.
     // Founder, 2026-09-03: the July line is the strong headline. It is the default.
-    globalHookLead: 'Skip 6 months of research. Launch a business or side hustle.',
+    globalHookLead: 'Business ideas with the research already done.',
     // CUT from 175 characters to ~80 (2026-08-06). At 390px the long version wrapped to four
     // lines and cost 200px of the first screen on its own, which was the single largest reason a
     // phone's opening screen contained no product at all. What it listed -- buyer, price, unit
@@ -131,7 +131,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // this is, written as a reason to buy. No new line, because the 175-to-80 cut above was
     // measured against the fold and a third paragraph would spend that back.
     globalHookDescription:
-      'The buyer, the price and the plan, checked against sourced evidence before it goes on sale.',
+      'We feed market gaps into our AI research engine to stress-test the buyer, the price, and the execution. Only the top 6 in 100 survive our checks.',
 
     howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Six common checks. Sourced evidence. Only what passes goes on sale.',
@@ -169,9 +169,9 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   },
 
   b: {
-    globalHookLead: 'Business opportunities with the research already done.',
+    globalHookLead: 'Business ideas with the research already done.',
     globalHookDescription:
-      'The buyer, the numbers and the plan, checked by an AI paid to find the flaw.',
+      'We feed market gaps into our AI research engine to stress-test the buyer, the price, and the execution. Only the top 6 in 100 survive our checks.',
 
     howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Every idea is checked against sourced evidence.',
@@ -196,9 +196,9 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   },
 
   c: {
-    globalHookLead: 'Business opportunities with a source behind every number.',
+    globalHookLead: 'Business ideas with the research already done.',
     globalHookDescription:
-      'The buyer, the price and the plan. An AI checked every number against a page you can open.',
+      'We feed market gaps into our AI research engine to stress-test the buyer, the price, and the execution. Only the top 6 in 100 survive our checks.',
 
     // VARIANT C DE-JARGONED (2026-08-13). C is the proof-hungry reader, and its copy had been
     // reading that as Latinate abstraction: "regulatory friction", "margin compression",

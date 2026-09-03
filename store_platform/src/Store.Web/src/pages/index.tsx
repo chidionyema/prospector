@@ -1002,8 +1002,8 @@ function CatalogBrowser({
       {/* Named, because an unlabelled control panel sitting mid-shelf reads as debris. It says
           what it is FOR, which is the thing the old placement never had to say because it was
           simply in the way. */}
-      <h3 className="sub">Narrow it down</h3>
-      <p className="lede">Four filters. Use one, or all of them, they combine.</p>
+      <h3 className="sub">Filter the Archive</h3>
+      <p className="lede">Combine filters to find the right blueprint for your skills and budget.</p>
 
       {/* THE THREE CONTROLS ARE ONE FILTER (founder review, 2026-08-15).
           A search field, a sector rail and a three-question router stack vertically in this block
@@ -1131,8 +1131,8 @@ function CatalogBrowser({
           FOUR stacked controls competing; one row of four is a different object, and the drawing
           gives it this line. No dash in it (founder's standing rule on copy): the mockup's em dash
           is a full stop here. */}
-      <h3 className="sub">Narrow it down</h3>
-      <p className="lede mb-4">Four filters. Use one, or all of them. They combine.</p>
+      <h3 className="sub">Filter the Archive</h3>
+      <p className="lede mb-4">Combine filters to find the right blueprint for your skills and budget.</p>
       <FilterBar
         packs={packs}
         state={state}
@@ -1792,9 +1792,8 @@ export default function Home({ packs, stats, flags, initialState, market, curren
                 the founder's instruction of 2026-08-18 is that the page match the drawing, and
                 the drawing sets mono here. Both halves of the line are quantities -- a price and
                 a count -- which is the declared scope of `monoIsTheDataVoice.test.ts`. */}
-            <p className="kicker num">
-              {range ? (range.uniform ? `${range.label} each` : `From ${formatGbp(range.min)}`) : 'One payment'}
-              {` · ${packs.length} packs for sale`}
+            <p className="kicker">
+              RESEARCHED. PRICED. READY TO BUILD.
             </p>
             {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
                 "0", so it means a different number of pixels in every font: the old max-w-[24ch]
@@ -2077,48 +2076,29 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             THE RESEARCH TOTAL IS STILL HERE, in the right cell's sentence. It has to be: on a
             phone `KillGrid` is not rendered and this strip is the only place the total appears
             at all. */}
-        <div className="split">
+        <div className="split split-3">
           <div>
-            <p className="lbl">Available now</p>
-            <b className="n num">
-              {packs.length}
-            </b>
-            <p>
-              {/* The drawing says "Passed all six checks". The number of checks varies by
-                  idea, so `fixedCheckCount.test.ts` refuses a closed count in shipped copy.
-                  The drawing's second sentence stands as written. */}
-              Passed every check they faced. Every claim sourced, every number traceable.
-            </p>
-            <Link
-              href="#catalog"
-              className="tlink"
-            >
-              Browse the packs
-              <Icon name="arrowRight" size={14} />
-            </Link>
+            <p className="lbl">Passed and published</p>
+            <b className="n num">{packs.length}</b>
           </div>
           <div>
-            {/* "Researched, not listed" until 2026-08-30, over the KILLED count. Two things
-                were wrong with it. It read as inventory waiting to be listed, when every one of
-                these ideas was rejected on cited evidence; and it did not even hold arithmetically
-                -- researched-but-unlisted is 1,444 - 77 = 1,367, not 1,364. /how-it-works calls
-                the same figure "Killed on cited evidence", so this says that. */}
-            <p className="lbl">Rejected, with the source</p>
-            <b className="n num">
-              {RESEARCH_STATS.killed.toLocaleString('en-GB')}
-            </b>
-            <p>
-              {`We have researched ${RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas. ${killsSummary()}, and the evidence behind it.`}
-            </p>
-            <Link
-              href="/rejected" prefetch={false}
-              className="tlink"
-            >
-              Read the rejected ideas
-              <Icon name="arrowRight" size={14} />
-            </Link>
+            <p className="lbl">Killed by AI</p>
+            <b className="n num">{RESEARCH_STATS.killed.toLocaleString('en-GB')}</b>
+          </div>
+          <div>
+            <p className="lbl">Total ideas researched</p>
+            <b className="n num">{RESEARCH_STATS.researched.toLocaleString('en-GB')}</b>
           </div>
         </div>
+        <p className="lede mt-6">
+          We do not just publish the winners. Every killed idea includes the exact check it failed and the cited evidence that disproved it.
+        </p>
+        <p className="mt-3">
+          <Link href="/kill-log" prefetch={false} className="tlink">
+            View the Kill Log
+            <Icon name="arrowRight" size={14} />
+          </Link>
+        </p>
       </Section>
 
       <div id="catalog" className="scroll-mt-20" />

@@ -16,12 +16,12 @@
  * printing its raw key with underscores is a visible bug rather than a silent one.
  */
 export const GATE_LABELS: Record<string, string> = {
-  min_composite: 'Scored below the bar overall',
-  incumbency: 'Incumbents already own the space',
-  moat_ungrounded: 'The defensibility claim was not evidence-backed',
-  adversarial_decisive: 'It failed the second round of checks',
-  value_durability: 'The value would not last',
-  payer_solvency: 'The payer cannot actually pay',
+  min_composite: 'Did not score high enough to be viable',
+  incumbency: 'Too much existing competition',
+  moat_ungrounded: 'No proof the business could protect against copycats',
+  adversarial_decisive: 'Failed our second round of deep research',
+  value_durability: 'The value to the customer would not last',
+  payer_solvency: 'The target buyer lacks the budget',
   source_or_die: 'Its own claims could not be sourced',
   legality: 'There is a legal landmine',
   route_to_market: 'There is no route to the buyer',

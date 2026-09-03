@@ -3,7 +3,6 @@ import React from 'react';
 
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORY_LABEL } from '@/components/ui/PackCardHeader';
-import { PriceText } from '@/components/ui/Money';
 import { cx } from '@/components/ui/cx';
 import { marketLabel, type Pack } from '@/lib/api/client';
 import { categoryFor } from '@/lib/category';
@@ -197,9 +196,8 @@ export function PackRow({
           the 44px `.stat` device on the featured card, not for a 12.5px row. The longest of them
           also carried `truncate` (nowrap), which is what pushed the line past the right edge of
           the card at 390px. `CardProof` renders the drawing's own two forms and nothing else. */}
-      <CardProof sources={pack.sourceCount} payback={paybackMultiple(pack)} />
+      <CardProof sources={pack.sourceCount} payback={paybackMultiple(pack)} price={price} />
       <span className="side">
-        <PriceText className="price num">{price}</PriceText>
         <span className="view">View &rarr;</span>
       </span>
     </Link>
@@ -415,10 +413,7 @@ export function PackTileGrid({
             <h3>{listHeading(heading)}</h3>
             <p>{cardLine(repairTruncation(pack.oneLine) || sub, Infinity)}</p>
             <span className="foot">
-              {/* The same one proof line as the row (fix prompt D4), rendered as a `span`:
-                  `.foot` is a `<span>` here, and a `<p>` inside it is invalid nesting. */}
-              <CardProof as="span" sources={pack.sourceCount} payback={paybackMultiple(pack)} />
-              <PriceText className="price num">{formatPriceForMarket(pack.price, cur)}</PriceText>
+              <CardProof as="span" sources={pack.sourceCount} payback={paybackMultiple(pack)} price={formatPriceForMarket(pack.price, cur)} />
             </span>
           </Link>
         );

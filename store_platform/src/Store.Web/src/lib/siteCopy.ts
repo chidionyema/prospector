@@ -31,7 +31,7 @@ export const SITE_COPY = {
    * D2, a BLOCKER in the founder's fix prompt: the home page H1 is this sentence exactly, with
    * the full stop. `mockups/index.html`. `.verify.mjs` asserts the rendered page equals it.
    */
-  heroH1: 'Skip 6 months of research. Launch a business or side hustle.',
+  heroH1: 'Business ideas with the research already done.',
 
   /* WHAT THESE THREE MAY CLAIM, AND WHY.
      Every one of them read "a full pack free" until 2026-08-21. /sample stopped being a full
@@ -50,7 +50,7 @@ export const SITE_COPY = {
    * The `dash-free-ignore` pragma must sit on the same line as the character it exempts
    * (`src/__tests__/dashFree.test.ts:68` tests `line.includes(IGNORE)`).
    */
-  /* dash-free-ignore */ sampleLinkHero: 'Read a pack free',
+  /* dash-free-ignore */ sampleLinkHero: 'Read a free sample pack — no email required',
 
   /** `mockups/pack-detail.html:529`, the buy rail's link under the button. */
   sampleLinkPanel: 'Read the opening of a real pack free first',

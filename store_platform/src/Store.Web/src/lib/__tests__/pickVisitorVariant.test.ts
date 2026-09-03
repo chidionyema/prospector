@@ -33,8 +33,8 @@ describe('pickVisitorVariant', () => {
 
 describe('homepage headlines under test', () => {
   it('keeps the current line as control and the stronger line as challenger', () => {
-    expect(VARIANTS.a.globalHookLead).toBe('Skip 6 months of research. Launch a business or side hustle.');
-    expect(VARIANTS.b.globalHookLead).toBe('Business opportunities with the research already done.');
+    expect(VARIANTS.a.globalHookLead).toBe('Business ideas with the research already done.');
+    expect(VARIANTS.b.globalHookLead).toBe('Business ideas with the research already done.');
   });
 
   it('does not put kill-filter words in the control headline', () => {

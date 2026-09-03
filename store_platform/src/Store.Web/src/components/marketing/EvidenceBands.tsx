@@ -67,12 +67,12 @@ export function KillGateBand() {
               (mumchimp.css:352, `.band h3`: 19px / 650 / -.018em). As an h4 it matched no rule
               and rendered at 16px / weight 400 on the built page, measured 2026-08-30. The
               outline is unaffected: the band sits under the h2 that heads its section. */}
-          <h3>What 1,364 ideas didn&apos;t pass, and why</h3>
+          <h3>Why most ideas fail our checks.</h3>
           <p>
-            Of {RESEARCH_STATS.killed.toLocaleString('en-GB')} rejections, {top[1].toLocaleString('en-GB')}{' '}
-            failed on the same one: the idea cleared every hard gate and still did not score high
-            enough to be worth your money. Not illegal, not already taken, not unfounded. Just not
-            good enough to publish.
+            Out of {RESEARCH_STATS.killed.toLocaleString('en-GB')} killed ideas,{' '}
+            {top[1].toLocaleString('en-GB')} failed for the exact same reason: they simply were not
+            good enough. They were not illegal. The market was not crowded. But they did not score
+            high enough in our AI engine to be worth your time or money.
           </p>
           {/* Every bar is drawn against the LARGEST cause, not against the total. Against the
               total every bar but the first is a sliver and the picture says nothing; against the
@@ -118,8 +118,7 @@ export function KillGateBand() {
               to anyone who cannot separate those two greys. The helper is the one in-prose link
               treatment in this tree and carries a permanent underline for exactly this reason. */}
           <p className="src num">
-            Every rejection published with its reason ·{' '}
-            <Link href="/rejected" prefetch={false} className={textLinkClass()}>read the rejected ideas</Link>
+            <Link href="/kill-log" prefetch={false} className={textLinkClass()}>Read the full Kill Log and the cited evidence</Link>
           </p>
         </div>
       </div>
