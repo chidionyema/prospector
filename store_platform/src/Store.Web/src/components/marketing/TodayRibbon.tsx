@@ -26,7 +26,7 @@ import latestKill from '@/data/latest-kill.json';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** "2026-08-07" becomes "Killed 7 Aug". An unparseable date falls back to the bare verb. */
+/** "2026-08-07" becomes "Rejected 7 Aug". An unparseable date falls back to the bare verb. */
 export function killTagLabel(isoDate: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
   if (!m) return 'Rejected';

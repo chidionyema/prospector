@@ -110,11 +110,11 @@ check(`C12 paper background ${tag}`, paper === 'rgb(250, 250, 247)', paper);
 await page.goto(BASE + '/?variant=a', { waitUntil: 'networkidle' });
 
 const h1 = (await page.locator('h1').first().innerText()).trim();
-check('C13 exact H1', h1 === 'Business ideas with the research already done.', h1);
+check('C13 exact H1', h1 === "Skip 6 months of research. Launch a business or side hustle.", h1);
 
 await page.goto(BASE + '/?variant=b', { waitUntil: 'networkidle' });
 const h1b = (await page.locator('h1').first().innerText()).trim();
-check('C13b challenger H1', h1b === "Skip 6 months of research. Launch a business that's already vetted.", h1b);
+check('C13b challenger H1', h1b === 'Business opportunities with the research already done.', h1b);
 
 const dots = await page.$$eval('.ratio i', els => ({
 total: els.length,

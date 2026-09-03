@@ -377,7 +377,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
                   <b>Mum</b>chimp
                 </span>
               </Link>
-              <p>Business ideas that survived the filter. Fully sourced, ready to build.</p>
+              <p>Sourced business opportunities, ready to build.</p>
               {/* `tightDecimal` on both figures: they are the two biggest numbers on the page and
                   the decimal comma sets loose at this weight. */}
               <div className="f-stats">
@@ -419,7 +419,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
                   Browse
                 </Link>
                 <Link className="tlink" href="/rejected" prefetch={false} style={{ alignSelf: 'center' }}>
-                  See what we killed
+                  See what didn&apos;t pass
                 </Link>
               </div>
             </div>

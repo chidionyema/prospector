@@ -70,14 +70,14 @@ export default function HeroRatio({ packCount, className, compact = false }: Her
       <p className="ratiofig num">{RESEARCH_STATS.survivorBoundLabel}</p>
       <p className="ratiosub">
         {compact
-          ? 'or fewer survive the checks.'
-          : 'or fewer survive the checks. Every square below is a hundredth of what we researched.'}
+          ? 'or fewer pass the checks.'
+          : 'or fewer pass the checks. Every square below is a hundredth of what we researched.'}
       </p>
       {/* One image with one name. The dots are not a hundred announcements. */}
       <div
         className="ratio"
         role="img"
-        aria-label={`${RESEARCH_STATS.survivorBoundLabel.replace(/^(\d+) in 100$/, 'Six in one hundred')} ideas survive the checks`}
+        aria-label={`${RESEARCH_STATS.survivorBoundLabel.replace(/^(\d+) in 100$/, 'Six in one hundred')} ideas pass the checks`}
       >
         {Array.from({ length: TOTAL }, (_, i) => (
           <i key={i} className={live.has(i) ? 'alive' : undefined} />
@@ -99,7 +99,7 @@ export default function HeroRatio({ packCount, className, compact = false }: Her
         </span>
         <span>
           <i aria-hidden className="sw dead" />
-          <b className="num">{killedLabel}</b> killed
+          <b className="num">{killedLabel}</b> didn&apos;t pass
         </span>
       </div>
       )}
@@ -113,10 +113,10 @@ export default function HeroRatio({ packCount, className, compact = false }: Her
             1,364" -- two pages, one contradiction, on the site whose pitch is that its
             arithmetic checks out. Every published kill DOES carry the check it failed, so the
             claim is narrowed to the one the data supports and the drawing's words survive. */}
-        {researchedLabel} ideas researched so far. Every kill we publish carries the check it
+        {researchedLabel} ideas researched so far. Every rejection we publish carries the check that
         failed.{' '}
         <Link className="tlink" href="/kill-log" prefetch={false}>
-          Read the kill log
+          See what didn&apos;t pass
         </Link>
       </figcaption>
       )}

@@ -145,7 +145,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
           ),
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/ideas' },
+            { name: 'Opportunities', path: '/ideas' },
             { name: landing.h1, path: `/ideas/${landing.slug}` },
           ]),
         )}

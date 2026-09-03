@@ -36,7 +36,8 @@ const PAGE = readFileSync(
  * covers /about and /how-it-works, which render the same objects.
  */
 function checkLines(): string[] {
-  return COMMON_CHECKS.map((check) => check.refutation);
+  // Brief 2026-09-02 §5.2: the pack page renders the brief's exact question wording.
+  return COMMON_CHECKS.map((check) => check.question);
 }
 
 /** The block that renders CHECKS, isolated the same way. */
@@ -86,7 +87,7 @@ describe('the six-checks block claims no per-pack finding', () => {
     // The defect this whole file guards against comes back the moment the page re-declares its
     // own array, because the guard above would then be testing a list nothing renders.
     expect(PAGE, 'the pack page must map the shared checks').toContain(
-      'COMMON_CHECKS.map((check) => check.refutation)',
+      'COMMON_CHECKS.map((check) => check.question)',
     );
   });
 
@@ -104,7 +105,8 @@ describe('the six-checks block claims no per-pack finding', () => {
 
   it('says out loud that finding nothing is not a green light', () => {
     // The block's own prose is what carries the honest reading now that the lines are neutral.
-    const heading = PAGE.slice(PAGE.indexOf('How we tried to kill it'));
+    // The heading is "The checks" since the 2026-09-02 rebuild; the disclaimer stays beside it.
+    const heading = PAGE.slice(PAGE.indexOf('<h2 className="sec">The checks</h2>'));
     expect(heading.slice(0, 900)).toContain('not the same as finding a green light');
   });
 });

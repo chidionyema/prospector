@@ -14,3 +14,4 @@ Append only. Dated. One line each. Founder brief: `/Users/chidionyema/.claude/do
 - 2026-09-03: Homepage per-market sections are gone. Market is a filter. The homepage sample is a passed gated check, not the cookie-banner payer row.
 - 2026-09-03: Catalogue URLs accept cat, skill, and price as aliases for sector, advantage, and maxp.
 - 2026-09-03: Catalogue is internal. Public word is Packs. Section heading is What's for sale.
+- 2026-09-03: Listed packs are opportunities. The researched population stays ideas. Footer and homepage title say opportunity.

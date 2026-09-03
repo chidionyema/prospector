@@ -223,8 +223,9 @@ describe('US-2 — Pack cards with pack art', () => {
       // not the place to reinstate it at display size. See lib/packStat.ts.
       expect(stat).toEqual({
         kind: 'price_multiple',
-        figure: '17×',
-        label: 'payback',
+        // Brief 2026-09-02 §4.2: the card states the return in words, so the label is empty.
+        figure: '17× first-year return',
+        label: '',
       });
     });
 

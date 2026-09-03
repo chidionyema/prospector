@@ -137,8 +137,8 @@ export default function IdeasHub({ categories, total, variant }: Props) {
       breadcrumbsWidth="7xl"
     >
       <Seo
-        title="Business ideas by category"
-        description="Browse researched business ideas by industry. Every pack cites a source for every claim."
+        title="Business opportunities by category"
+        description="Browse researched business opportunities by industry. Every pack cites a source for every claim."
         jsonLd={graph(
           itemListNode(
             categories.map((c) => ({ name: c.h1, path: `/ideas/${c.slug}` })),

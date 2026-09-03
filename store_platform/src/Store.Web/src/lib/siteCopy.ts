@@ -31,7 +31,7 @@ export const SITE_COPY = {
    * D2, a BLOCKER in the founder's fix prompt: the home page H1 is this sentence exactly, with
    * the full stop. `mockups/index.html`. `.verify.mjs` asserts the rendered page equals it.
    */
-  heroH1: 'Business ideas with the research already done.',
+  heroH1: 'Skip 6 months of research. Launch a business or side hustle.',
 
   /* WHAT THESE THREE MAY CLAIM, AND WHY.
      Every one of them read "a full pack free" until 2026-08-21. /sample stopped being a full

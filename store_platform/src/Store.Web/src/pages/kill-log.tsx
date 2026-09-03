@@ -586,7 +586,7 @@ export default function KillLogPage({
               which is why no responsive utilities are written here: the class already does it. */}
           <ul
             className="rows list-none p-0"
-            aria-label="Rejected ideas, with the check each one failed, its published sources and the date it was assessed. Select a row to read the argument."
+            aria-label="Rejected ideas, with the check each one failed and its published sources. Select a row to read the argument."
           >
             {visible.map((entry) => {
               const isOpen = open.has(entry.slug);

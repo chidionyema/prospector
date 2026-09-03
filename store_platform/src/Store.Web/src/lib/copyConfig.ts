@@ -113,9 +113,10 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // distinct promise (research done / economics verified / every number sourced) rather than
     // three overlapping paragraphs, which is also the only shape an A/B result can be read from.
     // Homepage h1, variant a. The live line since 2026-08-18. Variant b is the stronger
-    // "Skip 6 months of research. Launch a business that's already vetted." — the live h1 from 05e47bc9 (2026-07-29).
+    // "Skip 6 months of research. Launch a business or side hustle.", the live h1 from 05e47bc9 (2026-07-29).
     // New visitors are split 50/50 in `pickVisitorVariant`; crawlers stay on a.
-    globalHookLead: 'Business ideas with the research already done.',
+    // Founder, 2026-09-03: the July line is the strong headline. It is the default.
+    globalHookLead: 'Skip 6 months of research. Launch a business or side hustle.',
     // CUT from 175 characters to ~80 (2026-08-06). At 390px the long version wrapped to four
     // lines and cost 200px of the first screen on its own, which was the single largest reason a
     // phone's opening screen contained no product at all. What it listed -- buyer, price, unit
@@ -133,7 +134,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
       'The buyer, the price and the plan, checked against sourced evidence before it goes on sale.',
 
     howItWorksEyebrow: 'The checks',
-    howItWorksTitle: 'Six checks. Sourced evidence. Only what passes goes on sale.',
+    howItWorksTitle: 'Six common checks. Sourced evidence. Only what passes goes on sale.',
     howItWorksLead:
       'Before anything reaches the store, it faces the checks: AI agents that each hunt for the reason it fails. Here is exactly how an idea earns its place.',
     howItWorksSeoDescription:
@@ -168,7 +169,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   },
 
   b: {
-    globalHookLead: 'Skip 6 months of research. Launch a business that\'s already vetted.',
+    globalHookLead: 'Business opportunities with the research already done.',
     globalHookDescription:
       'The buyer, the numbers and the plan, checked by an AI paid to find the flaw.',
 
@@ -195,7 +196,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   },
 
   c: {
-    globalHookLead: 'Business ideas with a source behind every number.',
+    globalHookLead: 'Business opportunities with a source behind every number.',
     globalHookDescription:
       'The buyer, the price and the plan. An AI checked every number against a page you can open.',
 

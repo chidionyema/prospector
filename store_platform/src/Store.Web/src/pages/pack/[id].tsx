@@ -695,7 +695,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           // "Mumchimp › Business ideas › <pack>" instead of a 16-hex-character id.
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/ideas' },
+            { name: 'Opportunities', path: '/ideas' },
             { name: pack.title, path: `/pack/${pack.id}` },
           ]),
         )}
@@ -1147,7 +1147,10 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               <h2 className="sec">The checks</h2>
               <div className="mt-4">
                 <p className="lede">
-                  Each check asks one question. {outcomeSentence} See how each check works on{' '}
+                  Each check asks one question. {outcomeSentence}{' '}
+                  {/* checksBlock.test.ts reads this sentence whole: keep it on one line. */}
+                  A pass is not the same as finding a green light: it means no cited evidence went against the idea on that check.
+                  {' '}See how each check works on{' '}
                   <Link
                     href="/how-it-works"
                     className={textLinkClass()}
@@ -1474,8 +1477,9 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 heading, one honest sentence, the two buttons side by side, and the small print.
                 The price comes from the pack, never the drawing's hardcoded 49.99. */}
             {/* Closing buy box deleted (brief 2026-09-02 §7): one buy box only. */}
+          </div>
 
-                    {/* Right: Checkout (desktop sticky).
+          {/* Right: Checkout (desktop sticky).
               THIS RAIL ONLY STARTED STICKING ON 2026-08-14. `sticky top-24` had been here for
               months and computed as `sticky`, but `SectionBand`'s inner div was `overflow-hidden`,
               which made it a scroll container and therefore the containing block for this rail --

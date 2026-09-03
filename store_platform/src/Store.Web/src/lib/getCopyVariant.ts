@@ -56,13 +56,14 @@ export function appendSetCookie(
 /**
  * First-visit assignment for the homepage headline test (founder 2026-09-03).
  * Crawlers stay on a. A query or cookie wins. Otherwise a or b at 50/50; c is preview only.
- * `roll` is passed in so tests do not depend on Math.random.
+ * `roll` defaults to a fresh draw; tests pass one in so they never depend on Math.random,
+ * and the page never calls it (usTwoPackArt bans a random call in card-rendering files).
  */
 export function pickVisitorVariant(
   queryParam: string | string[] | undefined,
   cookieValue: string | undefined,
   userAgent: string | undefined,
-  roll: number,
+  roll: number = Math.random(),
 ): { key: VariantKey; persist: boolean } {
   if (
     userAgent &&

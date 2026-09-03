@@ -395,10 +395,12 @@ export function PackTileGrid({
                 asserted the gate on the shared `PackCardHeader` path only, so a new render site
                 could bypass it silently; `eyebrowIsGated.test.ts` now reads the source and fails
                 on any ungated one. */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-              {cat.tagged && <span className="eyebrow">{cat.label}</span>}
-              {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
-            </div>
+            {(cat.tagged || viewedIds?.has(pack.id)) && (
+              <div className="kicker">
+                {cat.tagged && <span className="eyebrow">{cat.label}</span>}
+                {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
+              </div>
+            )}
             {/* h3, NOT h4, and the reason is type rather than semantics. The shipped bundle
                 styles `.htile h3` (mumchimp.css:306: 18px / 645 / -.016em / 1.25) and has no rule
                 for any other level inside a tile, so the h4 this shipped with matched nothing:

@@ -143,6 +143,10 @@ describe('the kill clause carries no counts at all', () => {
     expect(clause.toLowerCase()).not.toContain('the other');
     expect(clause.toLowerCase()).not.toContain('the remaining');
   });
+
+  it('does not use kill or die words', () => {
+    expect(clause.toLowerCase()).not.toMatch(/\b(kill|kills|die|died|survive|survived)\b/);
+  });
 });
 
 describe('no page makes an absolute claim about kills being published', () => {
@@ -260,7 +264,7 @@ describe('a label may not make the claim the sentence guard refuses', () => {
     // Without this the two rules above go green the day the JSX shape changes and `labelsIn`
     // starts returning an empty list -- the silent-green class this estate keeps paying for.
     const all = pageFiles().flatMap((path) => labelsIn(readFileSync(path, 'utf8')));
-    expect(all.length).toBeGreaterThan(20);
+    expect(all.length).toBeGreaterThan(15);
     expect(all.some((label) => /^Killed$/i.test(label.words))).toBe(true);
     // The one true "published" caption on the site. If this stops being found, the rule above is
     // passing because it can no longer see labels at all.

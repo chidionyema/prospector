@@ -133,8 +133,7 @@ interface HomeProps {
    *  now", which is a true statement about the business; an empty one we failed to fetch must
    *  not, and used to (see `lib/catalogCache.ts`). */
   catalogUnavailable: boolean;
-  /** Homepage headline variant, resolved on the server so the h1 does not flash. a is the
-      current line; b is the 2026-07-29 headline. First visit is half and half. */
+  /** Homepage headline variant, resolved on the server so the h1 does not flash. a is the July line the founder called strong; b is the later line. First visit is half and half. */
   copyVariant?: VariantKey;
 }
 
@@ -1684,7 +1683,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
         // string here would make the browser tab and the page heading identical, which is also
         // how the two Mumchimp tabs (this page, `/ideas`) looked alike next to each other. This
         // line keeps the tab identifiable by its first few words even before the H1 loads.
-        title={`Sourced business ideas, priced and ready to build${
+        title={`Sourced business opportunities, priced and ready to build${
           range ? `, ${range.uniform ? range.label + ' each' : 'from ' + formatGbp(range.min)}` : ''
         }`}
         /* The catalogue as structured data. The shelf below is filtered and sorted in the browser,
@@ -2164,7 +2163,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               (`font-size:clamp(24px,4.6vw,32px)`). It was `text-h2`, the 19-23px step, which is
               the drawing's `h3.sub` -- so every section heading on this page sat one step below
               the drawing and the page read flat. */}
-          <h2 className="sec">What's for sale</h2>
+          <h2 className="sec">What&apos;s for sale</h2>
           {/* The pricing sentence that used to sit here is GONE, and its removal is the fix for a
               measured defect rather than a trim for length. It was `hidden sm:block`, so from
               640px up the page stated one fact twice, ~14px apart, under the same heading, with
@@ -2308,7 +2307,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
       {/* THE PAGE NOW CLOSES ONCE. Measured on the rendered page at 1440x900 before this merge,
           the last 1,300px were three consecutive full-width bands:
 
-            y=6980  this band            "Six checks. Sourced evidence. Only what passes goes on sale."
+            y=6980  this band            "Six common checks. Sourced evidence. Only what passes goes on sale."
                                           -> /how-it-works, -> /kill-log ("See the 1,364 it rejected")
             y=7400  TrustGuaranteesRow   three terms + "1,364 ideas were killed to list these 50"
             y=7620  CtaBand              "Find your next business from GBP 29.99."
@@ -2353,7 +2352,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             "sceptic who counts our numbers" exactly back where they started.
           */}
           <h2 className="sec">
-            Six checks. Sourced evidence. Only what passes goes on sale.
+            Six common checks. Sourced evidence. Only what passes goes on sale.
           </h2>
           {/* "everything that survived" was an ALL claim about a population, and it was false in
               the same way the survivor count was: 80 ideas cleared the gates, 50 are on the shelf.
@@ -2450,7 +2449,6 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
     context.query.variant,
     context.req.cookies[VARIANT_COOKIE],
     typeof ua === 'string' ? ua : undefined,
-    Math.random(),
   );
   const copyVariant = picked.key;
   if (picked.persist) {

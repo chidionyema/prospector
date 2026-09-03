@@ -15,6 +15,7 @@
  * MAILJET_API_KEY/SECRET configured). When configured, this template is
  * the input to the worker's render step.
  */
+import { SITE_URL } from '@/lib/config';
 
 export interface ReceiptOrder {
   id: string;
@@ -66,6 +67,9 @@ export function renderReceiptText(order: ReceiptOrder, brand: string): string {
  */
 export function renderReceiptHtml(order: ReceiptOrder, brand: string): string {
   const safeOrderPath = escapeHtml(order.orderPath);
+  // The site's own origin, from NEXT_PUBLIC_SITE_URL (one place, src/lib/config.ts); no hostname
+  // is written here. Without it the link stays relative, as it always did for a second brand.
+  const rejectedUrl = SITE_URL ? `${SITE_URL}/rejected` : '/rejected';
   const safePackTitle = escapeHtml(order.packTitle);
   const safeBrand = escapeHtml(brand);
   return [
@@ -76,7 +80,7 @@ export function renderReceiptHtml(order: ReceiptOrder, brand: string): string {
     '<div style="max-width:600px;margin:0 auto;padding:32px 24px;">',
     `<p style="margin:0 0 24px 0;font-size:12px;font-weight:500;color:#71717A;">${safeBrand}</p>`,
     `<h1 style="margin:0 0 16px 0;font-size:28px;font-weight:800;line-height:1.15;letter-spacing:-0.02em;color:#0A0A0A;">Your pack is ready.</h1>`,
-    `<p style="margin:0 0 24px 0;font-size:16px;color:#0A0A0A;">${safePackTitle} is yours. Every claim in it cites a retrievable source. The QA report inside the pack lists every source, and the <a href="${safeBrand === 'Mumchimp' ? 'https://mumchimp.com/rejected' : '/rejected'}" style="color:#0A0A0A;text-decoration:underline;">rejected ideas</a> lists the ${'{count}'} ideas that did not pass the checks.</p>`,
+    `<p style="margin:0 0 24px 0;font-size:16px;color:#0A0A0A;">${safePackTitle} is yours. Every claim in it cites a retrievable source. The QA report inside the pack lists every source, and the <a href="${rejectedUrl}" style="color:#0A0A0A;text-decoration:underline;">rejected ideas</a> lists the ${'{count}'} ideas that did not pass the checks.</p>`,
     '<div style="margin:0 0 24px 0;padding:16px;border:1px solid #E5E5E5;background-color:#F7F7F5;">',
     '<p style="margin:0 0 8px 0;font-size:12px;font-weight:500;color:#71717A;">Permanent access link</p>',
     `<p style="margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:13px;word-break:break-all;color:#0A0A0A;">${safeOrderPath}</p>`,
