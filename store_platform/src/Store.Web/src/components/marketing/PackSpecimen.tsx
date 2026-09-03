@@ -98,7 +98,7 @@ const PAGE_NUMBER = SAMPLE_INDEX + 1;
 const FAILED = SAMPLE;
 
 /** The check printed immediately above this one, for the mid-sentence opening. */
-const PRECEDING = CHECKS[Math.max(0, (FAILED_INDEX >= 0 ? FAILED_INDEX : CHECKS.length - 1) - 1)];
+const PRECEDING = CHECKS[Math.max(0, SAMPLE_INDEX - 1)];
 
 /**
  * The tail of a sentence, cut at a word boundary -- the fragment a page inherits from the page
@@ -174,9 +174,7 @@ export function PackSpecimen({ className }: { className?: string }) {
     <section className={cx('sample', className)}>
       <span className="eyebrow">A page from the free sample</span>
       <h2 className="sec mt-3 max-w-[24ch]">
-        {FAILED_INDEX >= 0
-          ? 'This is what a passed check looks like.'
-          : 'This is what one check looks like.'}
+        {SAMPLE ? 'This is what a passed check looks like.' : 'This is what one check looks like.'}
       </h2>
       <p className="meta num">
         {CHECKS.length} checks · {report.sourceCount} sources · 5,000+ words · free, no email

@@ -34,7 +34,7 @@ export default function AboutPage() {
   const totals = RESEARCH_STATS;
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'About' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'About' }]}
       breadcrumbsWidth="6xl"
     >
       <Seo

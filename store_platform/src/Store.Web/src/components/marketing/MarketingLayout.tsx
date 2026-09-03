@@ -36,7 +36,7 @@ export const MARKETING_NAV = [
   // instead of being reachable only from a sitemap and its siblings.
   // Label shortened from "Browse by category": at 14px the four-word item was wider than the
   // other three combined, so the nav read as one long phrase rather than four destinations.
-  { href: '/', label: 'Catalogue' },
+  { href: '/', label: 'Packs' },
   { href: '/how-it-works', label: 'How it works' },
   { href: '/rejected', label: 'Rejected' },
   { href: '/sample', label: 'Sample' },
@@ -280,7 +280,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
               accessible name is also the better one: "Search" alone tells a screen-reader user
               nothing about what is being searched. Invisible to the drawing -- `parity.mjs` drops
               aria-label, and the button renders an icon, not this text. */}
-          <button type="button" className="icon-btn" aria-label="Search the catalogue" onClick={openSearch}>
+          <button type="button" className="icon-btn" aria-label="Search the packs" onClick={openSearch}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <circle cx="9" cy="9" r="6.25" stroke="currentColor" strokeWidth="1.7" />
               <path d="m13.8 13.8 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -393,7 +393,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             </div>
             <div className="f-col">
               <p className="colh">Store</p>
-              <Link href="/">Catalogue</Link>
+              <Link href="/">Packs</Link>
               {/* FR-10. This is the ONLY link to `/packs`, and it is load-bearing: the footer
                   renders on every page including the legal ones, so this one anchor is what puts
                   all 77 packs two clicks from the whole site. Measured 2026-08-21, before it

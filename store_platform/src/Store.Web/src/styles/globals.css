@@ -149,6 +149,16 @@
      truncated stubs in one 22px strip, 20px inset from the shelf. The
      component has used `.barline` since 2026-08-30; this block now matches
      that markup. mumchimp.css is untouched. */
+  /* 624 sat flush on the left of the band (founder 2026-09-03). mumchimp
+     .band is padding 30px 0; a little side pad keeps the figure off the corner. */
+  .band {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .band .fig {
+    margin-left: 4px;
+  }
+
   .band .bars {
     display: flex;
     flex-direction: column;

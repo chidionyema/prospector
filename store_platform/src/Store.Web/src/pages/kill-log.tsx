@@ -228,7 +228,7 @@ export default function KillLogPage({
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Rejected' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Rejected' }]}
       breadcrumbsWidth="6xl"
     >
       <Seo
@@ -275,7 +275,7 @@ export default function KillLogPage({
               it. Nothing here promises a reason for all 1,364: only 400 came with an argument, and
               that sentence is already in the caveat rather than contradicted by this headline. */}
           <h1 className="mt-3">
-            {killed.toLocaleString('en-GB')} ideas that didn&apos;t pass.
+            {`${killed.toLocaleString('en-GB')} ideas that didn't pass.`}
           </h1>
           <p className="lede big mt-5">
             Each with the check it failed and the source that decided it.

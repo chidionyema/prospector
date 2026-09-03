@@ -163,8 +163,8 @@ export default function OrderSuccess() {
   // is rendered via the Breadcrumbs component directly. Same data shape as MarketingLayout's
   // `breadcrumbs` prop, named the same, so the source-level test that scans for breadcrumbs
   // does not have to special-case this route.
-  // breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Order complete' }]}
-  const breadcrumbs = [{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Order complete' }];
+  // breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Order complete' }]}
+  const breadcrumbs = [{ href: '/', label: 'Packs' }, { href: '#', label: 'Order complete' }];
 
   return (
     <main id="main" className="min-h-dvh bg-bg">

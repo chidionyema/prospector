@@ -112,13 +112,10 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // paragraph directly below; it was stated three times within 120px. Each variant now tests one
     // distinct promise (research done / economics verified / every number sourced) rather than
     // three overlapping paragraphs, which is also the only shape an A/B result can be read from.
-    // NOT WIRED TO THE HERO ANY MORE, and kept deliberately. The h1 in `pages/index.tsx` prints
-    // the founder's line directly (2026-08-18) instead of reading this slot, so nothing on the
-    // site renders `globalHookLead` today. The field stays because the A/B variants below are the
-    // record of three tested headline promises; deleting the control would leave b and c with
-    // nothing to be a variant OF. Variant a tracks the live h1 verbatim so the control is never
-    // stale copy -- if the A/B is ever rewired, a is what the page already shows.
-    globalHookLead: 'Business ideas with the research and starter packs ready.',
+    // Homepage h1, variant a. The live line since 2026-08-18. Variant b is the stronger
+    // "Skip 6 months of research. Launch a business that's already vetted." — the live h1 from 05e47bc9 (2026-07-29).
+    // New visitors are split 50/50 in `pickVisitorVariant`; crawlers stay on a.
+    globalHookLead: 'Business ideas with the research already done.',
     // CUT from 175 characters to ~80 (2026-08-06). At 390px the long version wrapped to four
     // lines and cost 200px of the first screen on its own, which was the single largest reason a
     // phone's opening screen contained no product at all. What it listed -- buyer, price, unit
@@ -171,7 +168,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   },
 
   b: {
-    globalHookLead: 'Business ideas with the economics already verified.',
+    globalHookLead: 'Skip 6 months of research. Launch a business that\'s already vetted.',
     globalHookDescription:
       'The buyer, the numbers and the plan, checked by an AI paid to find the flaw.',
 

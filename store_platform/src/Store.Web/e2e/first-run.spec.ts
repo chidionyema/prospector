@@ -135,7 +135,7 @@ for (const route of ROUTES) {
       if (!box || box.height === 0) continue;
       if (box.y >= heading!.y) continue;
       /* The site header is exempt, and only the site header. A nav label sits in a list of its
-         peers -- Catalogue, How it works, Rejected, Sample, Account -- and a stranger reads that
+         peers -- Packs, How it works, Rejected, Sample, Account -- and a stranger reads that
          list as navigation, not as a claim about the product. What the founder was hit by was a
          SENTENCE above the brand with nothing around it. Anything outside <header> is graded. */
       if (await el.evaluate((n) => !!n.closest('header'))) continue;

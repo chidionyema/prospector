@@ -13,3 +13,4 @@ Append only. Dated. One line each. Founder brief: `/Users/chidionyema/.claude/do
 - 2026-09-03: Pack page keeps one buy box (rail + mobile bar). Closing bar, Could you run this, and the second table of contents are gone.
 - 2026-09-03: Homepage per-market sections are gone. Market is a filter. The homepage sample is a passed gated check, not the cookie-banner payer row.
 - 2026-09-03: Catalogue URLs accept cat, skill, and price as aliases for sector, advantage, and maxp.
+- 2026-09-03: Catalogue is internal. Public word is Packs. Section heading is What's for sale.

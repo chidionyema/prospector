@@ -70,7 +70,7 @@ export function KillGateBand() {
           <h3>What 1,364 ideas didn&apos;t pass, and why</h3>
           <p>
             Of {RESEARCH_STATS.killed.toLocaleString('en-GB')} rejections, {top[1].toLocaleString('en-GB')}{' '}
-            died on the same one: the idea cleared every hard gate and still did not score high
+            failed on the same one: the idea cleared every hard gate and still did not score high
             enough to be worth your money. Not illegal, not already taken, not unfounded. Just not
             good enough to publish.
           </p>

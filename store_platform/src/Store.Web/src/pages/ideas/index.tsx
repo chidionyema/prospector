@@ -133,7 +133,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Categories' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Categories' }]}
       breadcrumbsWidth="7xl"
     >
       <Seo
@@ -284,7 +284,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             inside the p exactly as the drawing has it. */}
         {!search && (
           <div className="sigcard mb-10">
-            <p className="eyebrow">The shape of the catalogue</p>
+            <p className="eyebrow">The shape of what is for sale</p>
             <CollectionMosaic
               tiles={filtered.map((cat) => ({
                 slug: cat.slug,

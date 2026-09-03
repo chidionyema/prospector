@@ -122,7 +122,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
   const { variant } = useCopyVariant();
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'How it works' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'How it works' }]}
       breadcrumbsWidth="6xl"
     >
       <Seo
@@ -263,7 +263,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         width="6xl"
         title="One idea, all the way through"
         rule
-        intro="Every pack in the catalogue carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
+        intro="Every pack for sale carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
       >
         <CheckSequence />
       </Section>

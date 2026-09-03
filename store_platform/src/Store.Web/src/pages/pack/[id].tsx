@@ -719,7 +719,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                £ and sells packs about Section 46 notices and DVSA inspections. A stranger does
                not consciously register the spelling -- they register that the site was assembled
                by more than one hand, on the page where they are about to enter a card number. */
-            { href: '/', label: 'Catalogue' },
+            { href: '/', label: 'Packs' },
             { href: '/ideas', label: 'Browse by category' },
             // Was `{ href: '#', label: pack.title }`. The title was rendered three times inside
             // the fold (breadcrumb, cover caption, h1) on a page where titles run past 100

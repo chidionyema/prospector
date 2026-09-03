@@ -111,7 +111,7 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: title }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: title }]}
       breadcrumbsWidth="6xl"
     >
       <Seo title={title} />

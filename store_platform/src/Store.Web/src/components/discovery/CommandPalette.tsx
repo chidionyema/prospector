@@ -139,7 +139,7 @@ export function SearchTrigger({
       className={cx('fld w-full text-left transition-colors', className)}
     >
       <Icon name="search" size={16} className="flex-none text-subtle" />
-      <span className="flex-1 text-meta text-subtle">Search the catalogue</span>
+      <span className="flex-1 text-meta text-subtle">Search the packs</span>
       {shortcut && (
         <kbd className="hidden rounded-md border border-border bg-surface2 px-1.5 py-0.5 font-mono text-caption text-subtle sm:block">
           {shortcut}
@@ -298,7 +298,7 @@ function PaletteDialog({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Search the catalogue"
+        aria-label="Search the packs"
         className="w-full max-w-2xl overflow-hidden rounded-md border border-border bg-surface"
       >
         <div className="flex items-center gap-3 border-b border-border px-4 py-3 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-focus">
@@ -312,7 +312,7 @@ function PaletteDialog({
               setActive(0);
             }}
             placeholder="Search packs, buyers, problems…"
-            aria-label="Search the catalogue"
+            aria-label="Search the packs"
             role="combobox"
             aria-expanded
             aria-controls="command-palette-results"
@@ -405,7 +405,7 @@ function PaletteDialog({
           {rows.length === 0 && (
             <li className="px-4 py-6">
               <p className="lede">
-                Nothing in the catalogue matches “{query.trim()}”.
+                Nothing matches “{query.trim()}”.
               </p>
               {/* Not a dead end: the old copy said "close this and we'll show you what to do
                   next", which handed the buyer homework. One tap lands them on the shelf's own
