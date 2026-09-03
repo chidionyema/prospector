@@ -30,7 +30,7 @@
 
 export const OG = {
   /** Headings, the title, the price pill's fill. */
-  ink: '#17191C',
+  ink: '#1A1A1A',
   /** The card ground. Near-white rather than pure white on purpose: a social card renders against
    *  an arbitrary background, and a pure-white card disappears into a light timeline. */
   cream: '#FAFAFA',

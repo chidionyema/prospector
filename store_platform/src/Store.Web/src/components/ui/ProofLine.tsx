@@ -1,6 +1,4 @@
 import React from 'react';
-import { paybackLabel, type Payback } from '@/lib/payback';
-
 import { cx } from '@/components/ui/cx';
 
 /**
@@ -65,6 +63,7 @@ export function verifiedLabel(verifiedAt: string): string {
 export function CardProof({
   sources,
   payback,
+  price,
   className,
   /* `span` for the three-up tile. Its `.foot` is a `<span>` in the drawing
      (`mockups/index.html` section 5), and a `<p>` inside a `<span>` is invalid HTML: the parser
@@ -73,25 +72,35 @@ export function CardProof({
   as: Tag = 'p',
 }: {
   sources?: number | null;
-  payback?: number | null;
+  /**
+   * Pre-computed label from `paybackLabel(paybackEquation(...), 'card')`, e.g.
+   * "Pays back in 8 months." or "8× first-year return.". Null/undefined → omitted.
+   * Cards suppress ≤ 1× and > 18 months at the call site (brief §4.2).
+   */
+  payback?: string | null;
+  price?: string | null;
   className?: string;
   as?: 'p' | 'span';
 }) {
   const parts: React.ReactNode[] = [];
-  if (typeof payback === 'number' && payback > 0) {
-    const label = paybackLabel({ priceLabel: '', revenueLabel: '', multiple: payback, paybackMonths: null }, 'card');
-    if (label) {
-      parts.push(
-        <React.Fragment key="payback">
-          {label}
-        </React.Fragment>,
-      );
-    }
-  }
   if (typeof sources === 'number' && sources > 0) {
     parts.push(
       <React.Fragment key="sources">
-        <b>{sources}</b> {sources === 1 ? 'source' : 'sources'}
+        <b>{sources}</b> Sources
+      </React.Fragment>,
+    );
+  }
+  if (payback) {
+    parts.push(
+      <React.Fragment key="payback">
+        {payback}
+      </React.Fragment>,
+    );
+  }
+  if (price) {
+    parts.push(
+      <React.Fragment key="price">
+        {price}
       </React.Fragment>,
     );
   }
@@ -101,7 +110,7 @@ export function CardProof({
     <Tag className={cx('proof num', className)}>
       {parts.map((part, i) => (
         <React.Fragment key={i}>
-          {i > 0 && ' \u00B7 '}
+          {i > 0 && ' | '}
           {part}
         </React.Fragment>
       ))}

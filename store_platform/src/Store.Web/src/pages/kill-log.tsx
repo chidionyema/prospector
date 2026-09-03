@@ -232,7 +232,7 @@ export default function KillLogPage({
       breadcrumbsWidth="6xl"
     >
       <Seo
-        title="Ideas that did not pass, and the sourced reason why"
+        title="Rejected ideas: failed checks, with the cited reason"
         description={`We researched ${researched.toLocaleString('en-GB')} business ideas and rejected ${rejectRateLabel} of them. Here are ${publishedKills} of the rejections, each with the evidence that rejected it.`}
       />
 
@@ -278,7 +278,7 @@ export default function KillLogPage({
             {`${killed.toLocaleString('en-GB')} ideas that didn't pass.`}
           </h1>
           <p className="lede big mt-5">
-            Each with the check it failed and the source that decided it.
+            Every published kill names the check it failed and the cited evidence that disproved it.
           </p>
           {/* THE DRAWING'S `.facts` PANEL (`mockups/kill-log.html`): three bordered cells across
               the measure, each a mono uppercase label over a 24px figure. It was a `.metastrip` of
@@ -355,7 +355,7 @@ export default function KillLogPage({
             publishable cause reads 188 incumbency rows as a pattern rather than as repetition. */}
         <section aria-labelledby="distribution-heading" className="rounded-card border border-border bg-surface p-6 md:p-7">
           <h2 id="distribution-heading" className="sec">
-            What these ideas didn&apos;t pass, and why
+            Why these ideas failed our checks.
           </h2>
           <p className="mt-2 lede">
             Every rejection across all {killed.toLocaleString('en-GB')} ideas, by the check that

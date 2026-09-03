@@ -84,7 +84,7 @@ export const LANDINGS: Landing[] = [
     shortName: 'Sells to businesses',
     metaTitle: 'B2B business ideas, researched and sourced',
     metaDescription:
-      'Vetted B2B business ideas where the customer is a company with a budget. Each pack names the buyer, the price they pay, and the evidence behind both.',
+      'Researched B2B business ideas where the customer is a company with a budget. Each pack names the buyer, the price they pay, and the evidence behind both.',
     intro:
       'These are the packs where the customer is another business. The buyer has a budget line and an approval process, so the sale is a conversation held over weeks. One signed customer can be worth a hundred consumer ones. The payer check, can this customer afford it, is answered against company accounts.',
   },
@@ -96,7 +96,7 @@ export const LANDINGS: Landing[] = [
     shortName: 'Sells to consumers',
     metaTitle: 'B2C business ideas, researched and sourced',
     metaDescription:
-      'Vetted consumer business ideas with the buyer, the price and the route to reach them all sourced. One payment per researched pack.',
+      'Researched consumer business ideas with the buyer, the price and the route to reach them all sourced. One payment per researched pack.',
     intro:
       'Here the person paying is a member of the public, usually at a moment when something has gone wrong or come due. The sale is short and there is no account to manage. The hard part is being findable at the exact moment of need, so the distribution check does most of the work on these packs.',
   },
@@ -108,7 +108,7 @@ export const LANDINGS: Landing[] = [
     value: 'evenings',
     h1: 'Business ideas you can start in the evenings',
     shortName: 'Evenings',
-    metaTitle: 'Evening side business ideas that survived a kill-first filter',
+    metaTitle: 'Evening side business ideas that survived our research checks',
     metaDescription:
       'Researched business ideas that fit around a full-time job, evenings and weekends. Each pack cites a source for every claim.',
     intro:
@@ -252,7 +252,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas around wages, entitlements and employment admin, with the legality check applied. One payment per pack.',
     intro:
-      'Wages, entitlements and the disputes that follow when they are wrong. This sector carries real regulatory weight, so the legality check does more work here than anywhere else. Ideas in this space have been killed outright at that gate, and the kill log records why.',
+      'Wages, entitlements and the disputes that follow when they are wrong. This sector carries real regulatory weight, so the legality check does more work here than anywhere else. Ideas in this space have been killed outright at that gate, and the rejected ideas page records why.',
   },
   {
     slug: 'care-and-benefits-ideas',

@@ -180,7 +180,7 @@ export default function AboutPage() {
 
         <div className="mt-8">
           <h2 className="sec">
-            Where the engine came from
+            Where the research engine came from
           </h2>
           <p className="mt-3 lede">
             It started as the questions I made myself answer before starting anything: is the pain
@@ -239,16 +239,16 @@ export default function AboutPage() {
         <div className="closing">
           <p className="eyebrow">Read before you buy</p>
           <h2 className="sec">
-            See the work first.
+            Read the research first.
           </h2>
           <p>
-            Read a full report, unredacted. Every check, every verdict, every source link. Judge
-            the pack by it.
+            Read the free sample pack. Every check, every verdict, every source link. Judge
+            the research by it.
           </p>
           {/* `.ctarow`: the free report, then the shelf. Two actions, gap 12px. */}
           <div className="ctarow">
             <Link href="/sample" className="btn">
-              Read the free report
+              Read a free sample pack
               <Icon name="arrowRight" size={14} />
             </Link>
             {/* `/#catalog`, not `/` -- see the same note on `pages/faq.tsx`. */}

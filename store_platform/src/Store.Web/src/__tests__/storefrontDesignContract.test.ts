@@ -67,9 +67,9 @@ describe('Design contract — global tokens (globals.css)', () => {
     // files reach them through Tailwind utilities -- so the VALUES moved and the brief's names
     // ship as aliases beside them. What this test guards is unchanged: five separately-nameable
     // greys, declared once, in one file.
-    assertContains('page bg', css, /--bg:\s*#FAFAF7/i);
+    assertContains('page bg', css, /--bg:\s*#F9F8F6/i);
     assertContains('surface', css, /--surface:\s*#FFFFFF/i);
-    assertContains('text', css, /--text:\s*#17191C/i);
+    assertContains('text', css, /--text:\s*#1A1A1A/i);
     assertContains('muted', css, /--muted:\s*#565B62/i);
     assertContains('border', css, /--border:\s*#E7E7E1/i);
   });

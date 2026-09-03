@@ -332,19 +332,19 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
   // those it would claim a clean sweep the dossier does not support. Partial results say so.
   const panelChecks = parseCheckCounts(pack.qaVerdictSummary);
   const checksLine = !panelChecks
-    ? 'Survived every check'
+    ? 'Passed every research check'
     : panelChecks.cleared === panelChecks.total
-      ? `Survived all ${panelChecks.total} checks`
+      ? `Passed all ${panelChecks.total} research checks`
       : `${panelChecks.cleared} of ${panelChecks.total} checks cleared`;
 
   // The same line as JSX, because the drawing bolds the figure inside it
   // (`mockups/pack-detail.html:532`: `Survived all <b>6</b> checks`). Same three cases as
   // `checksLine` above, same refusal to claim a sweep the summary does not state.
   const checksListItem = !panelChecks ? (
-    <>Survived every check</>
+    <>Passed every research check</>
   ) : panelChecks.cleared === panelChecks.total ? (
     <>
-      Survived all <b>{panelChecks.total}</b> checks
+      Passed all <b>{panelChecks.total}</b> research checks
     </>
   ) : (
     <>
@@ -684,7 +684,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
   return (
     <MarketingLayout>
       <Seo
-        title={`${pack.title} · A business idea that survived our filter`}
+        title={`${pack.title} · A researched business idea`}
         description={pack.oneLine || undefined}
         ogType="product"
         ogImagePath={packOgImagePath(pack.id)}

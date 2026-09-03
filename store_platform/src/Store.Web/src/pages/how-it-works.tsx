@@ -147,7 +147,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         lead={variant.howItWorksLead}
         aside={
           <HeroList
-            label="What each agent tries to prove"
+            label="What each check tries to prove"
             ordered
             items={COMMON_CHECKS.map((c) => c.refutation)}
           />
@@ -237,7 +237,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
        * funnel is the shape of the process, the cascade is the count at every step of it.
        */}
       <Section bg="surface" outerClassName="!border-b-0">
-        <h2 className="sec">Where the ideas went</h2>
+        <h2 className="sec">Why most ideas fail our checks.</h2>
         <p className="mt-3 lede">
           Every check that killed something, in the order of how much it killed, with the number
           taken off the total each time.
@@ -261,7 +261,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
       <Section
         bg="white"
         width="6xl"
-        title="One idea, all the way through"
+        title="One idea, taken through the research"
         rule
         intro="Every pack for sale carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
       >
@@ -362,7 +362,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
       <Section
         bg="white"
         width="6xl"
-        title="Then a second wave of agents attacks the survivor."
+        title="Then a second wave of research attacks the survivor."
         rule
       >
         <div className="max-w-3xl space-y-4">
@@ -440,7 +440,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
       <Section
         bg="white"
         width="6xl"
-        title="The kill log"
+        title="Rejected ideas"
         rule
       >
         <div className="max-w-3xl space-y-6">
@@ -457,7 +457,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             href="/rejected" prefetch={false}
             className={buttonClasses({ size: 'lg' })}
           >
-            Read the kill log{' '}
+            Read the rejected ideas{' '}
             <Icon name="arrowRight" size={15} />
           </Link>
         </div>
@@ -483,10 +483,10 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
 
       <CtaBand
         width="6xl"
-        title="See what made it through."
+        title="See what survived the checks."
         lead=""
         primary={{ href: '/', label: 'Browse the packs' }}
-        secondary={{ href: '/sample', label: 'Read the free sample first' }}
+        secondary={{ href: '/sample', label: 'Read a free sample pack' }}
       />
     </MarketingLayout>
   );

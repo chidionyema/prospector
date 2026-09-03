@@ -137,7 +137,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
       breadcrumbsWidth="7xl"
     >
       <Seo
-        title="Business opportunities by category"
+        title="Researched business ideas, filed by category"
         description="Browse researched business opportunities by industry. Every pack cites a source for every claim."
         jsonLd={graph(
           itemListNode(
@@ -173,7 +173,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
       <PageHero
         width="7xl"
         eyebrow="Categories"
-        title="Find one that suits how you work."
+        title="Filter the archive by how you work."
         /*
          * THE WORDS ARE THE FOUNDER'S AND THEY STAY (2026-08-15), and this is the promised fix.
          *
@@ -193,7 +193,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         lead={
           total > 0
             ? `${total} packs, researched and sorted six ways.`
-            : 'Researched packs, sorted six ways.'
+            : 'Researched packs, filed six ways.'
         }
         aside={
           <HeroList

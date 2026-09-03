@@ -133,12 +133,12 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     globalHookDescription:
       'The buyer, the price and the plan, checked against sourced evidence before it goes on sale.',
 
-    howItWorksEyebrow: 'The checks',
-    howItWorksTitle: 'Six common checks. Sourced evidence. Only what passes goes on sale.',
+    howItWorksEyebrow: 'The research',
+    howItWorksTitle: 'Every idea is stress-tested before it can go on sale.',
     howItWorksLead:
-      'Before anything reaches the store, it faces the checks: AI agents that each hunt for the reason it fails. Here is exactly how an idea earns its place.',
+      'We run market gaps through our AI research engine to stress-test the buyer, the price, and the plan. Only the top 6% survive the checks.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every pack is a sourced business opportunity, checked against sourced evidence before it goes on sale.',
+      'How Mumchimp works: every pack is a sourced business idea, stress-tested against cited evidence before it goes on sale.',
 
     // NOT "Six checks, in order." The bare cardinal is the same closed-set promise corrected in
     // variant b below, and it survived because `fixedCheckCount.test.ts` only banned a numeral
@@ -173,12 +173,12 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     globalHookDescription:
       'The buyer, the numbers and the plan, checked by an AI paid to find the flaw.',
 
-    howItWorksEyebrow: 'The checks',
-    howItWorksTitle: 'Every idea is checked against sourced evidence.',
+    howItWorksEyebrow: 'The research',
+    howItWorksTitle: 'Every idea is checked against cited evidence first.',
     howItWorksLead:
-      'Before an idea reaches the store, it faces the checks. They hunt for hidden legal red tape, a lack of real demand, and bad profit margins. If it passes, it gets published. If it does not, we document exactly why.',
+      'Before a pack reaches the catalogue, the research engine hunts for hidden red tape, a buyer who cannot pay, and a price that will not hold. What passes is published. What fails is logged with the check that killed it.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every idea is checked against sourced evidence before it can be listed.',
+      'How Mumchimp works: every idea is stress-tested against cited evidence before it can be listed.',
 
     // NOT "The checks every pack faced". It sat above a list of exactly six steps, which made
     // the heading assert that the six ARE the set -- the same falsehood corrected in about.tsx
@@ -211,9 +211,9 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksEyebrow: 'The methodology',
     howItWorksTitle: 'We try to prove every idea wrong first.',
     howItWorksLead:
-      'Before an idea is listed, the checks look for rules that make it illegal, buyers who cannot pay, or competitors already doing it. What passes is published with its sources. What does not is published on /rejected, with the evidence.',
+      'The research engine looks for a legal block, a buyer who cannot pay, or a market already taken. What passes is published with its sources. What fails is published on /rejected, with the evidence.',
     howItWorksSeoDescription:
-      'How Mumchimp works: each idea is checked against sourced evidence, and the ideas that fail are published too, with the evidence.',
+      'How Mumchimp works: each idea is stress-tested against cited evidence, and the ideas that fail are published too, with the evidence.',
 
     sixChecksTitle: 'The same bar, every time',
     sixChecksDescription:

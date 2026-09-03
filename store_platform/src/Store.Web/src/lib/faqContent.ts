@@ -168,7 +168,7 @@ export const FAQS: FaqItem[] = [
     question: 'What happens to ideas that do not pass?',
     answer: [
       // Per email §6: short, link to the log.
-      'They go on /rejected, in public, with the evidence.',
+      'They are published in public. Each row names the check it failed and the cited evidence.',
     ],
   },
   { category: 'packs',
