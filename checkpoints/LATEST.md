@@ -1,3 +1,9 @@
+## RESUME HERE — 2026-09-02, session 54539261 (idp lane .wt-eye-breaker)
+Founder word SWAP (Metabase evicted for Superset): this repo's only touchpoint is
+deploy/k8s/base/edge.yaml listener https-metabase -> https-superset, hostname superset.${ESTATE_ZONE}.
+Built in temp worktree scratchpad/prospector-superset on branch feat/superset-listener; commit+push
+as estate-agents[bot]; worktree removed after push. Pairs with idp branch feat/superset.
+
 # Checkpoint — 2026-08-05 · Mobile landing page hero overflow fixed & deployed
 
 ## Active task
@@ -69,3 +75,26 @@ PRESENT. Prod live: `api.mumchimp.com/catalog` 200, `mumchimp.com` 200.
 That commit and the staged `tools/backfill_listing_copy.py` work belong to the concurrent engine
 session; they need their own PR, opened by that session.
 **Still outstanding and founder-owned: rotate `ANTHROPIC_API_KEY` (leaked to a transcript), update `.env:2`.**
+
+## Session 78caaa17 (code-2f)
+Refreshed 2026-08-27 19:2xZ. crew#516 CP3: idp#462 merged 9750c76; dry-run 33106556071 running; flip branch feat/crew516-cp3-catalog-render-runs-in-the-cloud at e48001f, PR body $S/pr-516flip.md, waits on idp cap. crew#535 = GitHub billing block (claude-estate now public; estate-secrets stays private). Reviews given: claude-estate#8 KEEP, crew#536 KEEP, idp#454/#455 REWORK. Next: dry-run receipt → crew#516 CP3/crew#503 CP6 comments; flip PR → KEEP → merge → launchctl bootout com.estate.catalog-render.
+## RESUME HERE — session 78caaa17 (code-2f) — 2026-08-28
+- **idp#597 (P0, main red, unowned)**: `Kustomization/chaos` cannot reconcile. Cause measured:
+  `platform/chaos/langfuse-alert-drill-first-run.yaml` and `langfuse-alert-drill.yaml` declare
+  `duration: 8m` inside `podChaos` under a Workflow template that already sets `deadline: 540s`;
+  Chaos Mesh `vworkflow.kb.io` rejects `duration` on a chaos spec inside a Workflow. The working
+  pair `backstage-pod-kill-first-run.yaml` uses deadlines only, no `duration` — that is the shape.
+  Fix = delete the `duration: 8m` line from BOTH files together, because
+  `tests/test_incident_crew488_chaos_first_run_matches_schedule.py` pins first-run spec == schedule
+  `spec.workflow`. Proved green in a worktree: crew488 pair test 1 passed; `-k chaos` 13 passed,
+  5 skipped. Branch `fix/crew597-chaos-workflow-rejects-duration`.
+- **idp#610** (crew#581 trust instruments, commits 7a705a2 + 3cc40c0) OPEN. Body still says
+  "38 Flux Kustomizations"; true count on origin/main is **39**. Correct it.
+- **idp#607** (crew#573 CP2 hindsight startupProbe) green 11/11, merge once main is green.
+- **fable** = session_01WtYbFiJjgS9wiCmiefz5zR, owns idp#609 / `feat/crew66-root-trust`
+  (crew#66, crew#580) = CP1/CP2/CP3 of crew#581. I hold CP6; CP4 and CP5 unclaimed.
+- **`.idp-state` "673 commits on no remote" is a FALSE ALARM.** It is a worktree of
+  `~/dev/code/idp` (`.git` is a file: `gitdir: .../idp/.git/worktrees/-idp-state`), detached at
+  origin/state/live-diagram, and `git rev-list --count HEAD --not --remotes` = **0**. Nothing is
+  on one disk. `~/.claude/scripts/estate/in-git.py:183` tests `os.path.isdir(p/".git")`, which is
+  False for every worktree — that is the blindspot to close.

@@ -1,0 +1,102 @@
+{
+  "alive": [
+    "claude_cli"
+  ],
+  "down": [
+    "deepseek",
+    "minimax",
+    "minimax_m27",
+    "ollama",
+    "openrouter"
+  ],
+  "probed": [],
+  "providers": [
+    {
+      "age_s": 1201.0,
+      "error": "",
+      "latency_ms": 38267.6,
+      "model": "claude-haiku-4-5-20251001",
+      "ok": true,
+      "reply": "ALIVE",
+      "stale": true,
+      "state": "alive",
+      "tier": "claude_cli",
+      "trusted": true,
+      "ts": 1787517636.598063
+    },
+    {
+      "age_s": 1201.0,
+      "error": "no answer within 30s",
+      "latency_ms": 30000.0,
+      "model": "",
+      "ok": false,
+      "reply": "",
+      "stale": true,
+      "state": "timeout",
+      "tier": "minimax",
+      "trusted": false,
+      "ts": 1787517636.598063
+    },
+    {
+      "age_s": 1201.0,
+      "error": "no answer within 30s",
+      "latency_ms": 30000.0,
+      "model": "",
+      "ok": false,
+      "reply": "",
+      "stale": true,
+      "state": "timeout",
+      "tier": "minimax_m27",
+      "trusted": false,
+      "ts": 1787517636.598063
+    },
+    {
+      "age_s": 1201.0,
+      "error": "ProviderExhaustedError: DeepSeek quota exhausted: HTTP Error 402: Payment Required",
+      "latency_ms": 684.8,
+      "model": "deepseek-chat",
+      "ok": false,
+      "reply": "",
+      "stale": true,
+      "state": "exhausted_permanent",
+      "tier": "deepseek",
+      "trusted": false,
+      "ts": 1787517636.598063
+    },
+    {
+      "age_s": 169.2,
+      "error": "no answer within 30s",
+      "latency_ms": 30000.0,
+      "model": "",
+      "ok": false,
+      "reply": "",
+      "stale": true,
+      "state": "timeout",
+      "tier": "ollama",
+      "trusted": false,
+      "ts": 1787518668.3068008
+    },
+    {
+      "age_s": 1201.0,
+      "error": "ProviderExhaustedError: All OpenRouter models exhausted: non-JSON response: <!DOCTYPE html><html data-dpl-id=\"dpl_Av2HqhL3P2Q2hzgBNJZLCesJcbHY\" lang=\"en\" class=\"jakarta_e63cc4a",
+      "latency_ms": 5437.6,
+      "model": "",
+      "ok": false,
+      "reply": "",
+      "stale": true,
+      "state": "error",
+      "tier": "openrouter",
+      "trusted": false,
+      "ts": 1787517636.598063
+    }
+  ],
+  "skipped_not_due": [
+    "claude_cli",
+    "deepseek",
+    "minimax",
+    "minimax_m27",
+    "ollama",
+    "openrouter"
+  ],
+  "ts": 1787518837.555077
+}
