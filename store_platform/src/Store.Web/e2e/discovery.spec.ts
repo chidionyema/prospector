@@ -253,7 +253,7 @@ test('the command palette opens by click and by ⌘K, and searches as you type',
   // Click first, deliberately. The ⌘K listener is attached on hydration, so pressing the key
   // straight after `goto` is a race against React, not a test of the shortcut. Clicking a button
   // waits for actionability, which puts us safely past hydration for the keyboard check below.
-  await page.getByRole('button', { name: /Search the catalogue/ }).first().click();
+  await page.getByRole('button', { name: /Search the packs/ }).first().click();
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
@@ -289,7 +289,7 @@ test('the command palette opens by click and by ⌘K, and searches as you type',
  */
 test('the header search button opens the palette from a page with no catalogue', async ({ page }) => {
   await page.goto('/faq');
-  const headerSearch = page.locator('header').getByRole('button', { name: /Search the catalogue/ });
+  const headerSearch = page.locator('header').getByRole('button', { name: /Search the packs/ });
   await expect(headerSearch).toBeVisible();
   await headerSearch.click();
 
@@ -301,7 +301,7 @@ test('the header search button opens the palette from a page with no catalogue',
 
 test('the header search button opens the palette in place on the catalogue', async ({ page }) => {
   await page.goto('/');
-  const headerSearch = page.locator('header').getByRole('button', { name: /Search the catalogue/ });
+  const headerSearch = page.locator('header').getByRole('button', { name: /Search the packs/ });
   await headerSearch.click();
   await expect(page.getByRole('dialog')).toBeVisible();
   // No navigation: the event path must not fall through to the `/?search=1` push.

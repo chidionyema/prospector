@@ -41,7 +41,7 @@ for (const phone of PHONES) {
     await page.setViewportSize({ width: phone.width, height: phone.height });
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    const shelfHeading = page.getByRole('heading', { name: 'What survived' }).first();
+    const shelfHeading = page.getByRole('heading', { name: "What's for sale" }).first();
     await expect(shelfHeading).toBeAttached();
 
     const box = await shelfHeading.boundingBox();
@@ -67,7 +67,7 @@ for (const phone of PHONES) {
 
     const headerSearch = page
       .locator('header')
-      .getByRole('button', { name: /Search the catalogue/ });
+      .getByRole('button', { name: /Search the packs/ });
     await expect(headerSearch).toBeVisible();
   });
 }
