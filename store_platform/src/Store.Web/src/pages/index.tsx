@@ -23,6 +23,7 @@ import { PACK_DOCUMENTS, PackContentsSection } from '@/components/marketing/Pack
 // claim that component's own eyebrow ("A real page from a real pack") was already making. The file
 // is left in the tree, unused, rather than deleted in the same commit that replaces it.
 import { PackSpecimen } from '@/components/marketing/PackSpecimen';
+import { packsOnShelf } from '@/lib/summaryLint';
 // `LiveKillCard` is no longer imported here: its render site below the shelf was removed on
 // 2026-08-14 (see the record where it stood). The component is untouched and still used elsewhere.
 import { HeroEvidenceStrip } from '@/components/marketing/HeroEvidenceStrip';
@@ -1064,7 +1065,7 @@ function CatalogBrowser({
 
       {/* The sector filter, in the same place the eye already met the sector: the pills on the
           cards. */}
-      <SectorChips packs={packs} state={state} onChange={apply} />
+      <SectorChips packs={shelfPacks} state={state} onChange={apply} />
 
       <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
 
@@ -1468,70 +1469,9 @@ function CatalogBrowser({
                   already capped itself, and that is most of the 3,900px this page runs over the
                   drawing. The rest arrive with the same "show all" the shelf uses, so nothing is
                   hidden, it is just not all printed before anyone asked. */}
-              {(showAll ? grouped.others : grouped.others.slice(0, 2)).map((group) => (
-                /* A REAL RULE, NOT A GAP (2026-08-14, founder review at 390px). The boundary
-                   between the reader's own shelf and this appendix was `mt-16` and a
-                   `text-meta` heading -- on a phone, after forty rows, that is whitespace
-                   followed by a line barely heavier than the body text. Every row below it
-                   correctly prints "US rules", and the founder read them as UK rows that had
-                   been mistagged: a correct flag on the wrong side of an invisible border
-                   looks exactly like a data bug. The divider carries the same weight as the
-                   distinction it is making now. */
-                <div key={group.market}>
-                  {/* US PACKS DIVIDER (email §1). The divider is about what the buyer would be
-                      BUILDING, not what the page has written, and the subtitle states the
-                      consequence plainly: the research is American, and the package cannot be
-                      transplanted.
+              {/* Per-market appendices deleted (brief 2026-09-02 §5): market is a filter, not a section. */}
 
-                      "market", not "rules" (founder, 2026-08-15). The subtitle directly under it
-                      already says what travels with the country -- "the buyers, numbers and legal
-                      steps" -- and only the last of those three is a rule, so the heading was
-                      naming the smallest part of its own argument. Same change on the row chip
-                      (`PackRow.tsx:144`), so the shelf says one thing. */}
-                  {/* THE DRAWING'S MARKET HEADER (`mockups/index.html` section 13): a flex row
-                      holding an `h2.sec` and a mono pack-count chip, then the lede under it.
-                      It was an `h3.sub` with Tailwind utilities, which cannot look like the
-                      drawing: mumchimp.css is imported into the `components` layer and every
-                      property a utility also sets wins over it. */}
-                  <div className="mkt-h">
-                    <h2 className="sec">Built for the {group.label} market</h2>
-                    <span className="mkt-tag num">
-                      {group.packs.length} {group.packs.length === 1 ? 'pack' : 'packs'}
-                    </span>
-                  </div>
-                  <p className="lede mb-[18px]">
-                    The buyers, the numbers and the legal steps all follow {group.label} rules.
-                    Read them anywhere; build them there.
-                  </p>
-                  {/* Rows, not cards. This group is explicitly secondary -- the copy directly
-                      above says the numbers and legal steps will not transfer -- so giving it the
-                      same card treatment as the on-market shelf contradicted the sentence
-                      introducing it. Rows keep every pack fully present and linkable while
-                      reading as an appendix, which is what it is. Each row still prints its
-                      "<market> rules" flag, since `viewerMarket` is deliberately not passed. */}
-                  {/* CAPPED, like the shelf above it (2026-08-18). Every off-market group printed
-                      in full, so the landing page ran to 14,239px against the drawing's 8,653 --
-                      five market appendices, forty rows, below a shelf that had already capped
-                      itself at nine. `mockups/index.html` section 13 shows two market groups of a
-                      few rows each. Same `showAll` toggle as the main shelf, so one press opens
-                      the whole catalogue and there is still exactly one control for it. */}
-                  <PackRowList
-                    className="mt-6"
-                    packs={showAll ? group.packs : group.packs.slice(0, 3)}
-                    currency={currency}
-                    viewedIds={viewedSet}
-                  />
-                  {!showAll && group.packs.length > 3 && (
-                    <div className="more-row">
-                      <button type="button" className="more" onClick={() => setShowAll(true)}>
-                        Show the other {group.packs.length - 3} {group.label} packs
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* The three-question router USED TO RENDER HERE, after the whole shelf, and the
+                            {/* The three-question router USED TO RENDER HERE, after the whole shelf, and the
                   note that put it here argued the only reader it helps is one who scanned every
                   card and picked nothing. That is right about who it helps and silent about what
                   it cost everyone else: measured on prod it sat at y=4054, 5.1 screens down, past
@@ -1660,7 +1600,8 @@ export default function Home({ packs, stats, flags, initialState, market, curren
      hero and the shelf cannot disagree about what is newest. It is NOT a second copy of the card:
      the featured slot is `hidden lg:block`, and on mobile the reader simply meets it as the first
      card in the grid. */
-  const featured = packs[0];
+  const shelfPacks = packsOnShelf(packs);
+  const featured = shelfPacks[0];
 
   /* MASTER-BRIEF section 9. Three page-level beacons, wired here because each is about the page
      rather than about any one component inside it. */
@@ -1713,7 +1654,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
 
   /* THE KILL TOTAL IS STATED ONCE ON THIS PAGE, in the proof strip below the hero. It was in
      `HeroEvidenceStrip` as well until 2026-08-13, which put "1,364" and an identically-worded
-     "Read the kill log" link at y=735 and again at y~1180 of the same 1440x900 screen. The strip
+     "Read the rejected ideas" link at y=735 and again at y~1180 of the same 1440x900 screen. The strip
      is the copy that stayed because it is the only one a phone ever reaches: `HeroEvidenceStrip`
      is `hidden md:block` and `KillGrid` is desktop only.
 
@@ -2151,7 +2092,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
                 these ideas was rejected on cited evidence; and it did not even hold arithmetically
                 -- researched-but-unlisted is 1,444 - 77 = 1,367, not 1,364. /how-it-works calls
                 the same figure "Killed on cited evidence", so this says that. */}
-            <p className="lbl">Killed on cited evidence</p>
+            <p className="lbl">Rejected, with the source</p>
             <b className="n num">
               {RESEARCH_STATS.killed.toLocaleString('en-GB')}
             </b>
@@ -2159,10 +2100,10 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               {`We have researched ${RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas. ${killsSummary()}, and the evidence behind it.`}
             </p>
             <Link
-              href="/kill-log" prefetch={false}
+              href="/rejected" prefetch={false}
               className="tlink"
             >
-              Read the kill log
+              Read the rejected ideas
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>
@@ -2211,7 +2152,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               (`font-size:clamp(24px,4.6vw,32px)`). It was `text-h2`, the 19-23px step, which is
               the drawing's `h3.sub` -- so every section heading on this page sat one step below
               the drawing and the page read flat. */}
-          <h2 className="sec">What survived</h2>
+          <h2 className="sec">The catalogue</h2>
           {/* The pricing sentence that used to sit here is GONE, and its removal is the fix for a
               measured defect rather than a trim for length. It was `hidden sm:block`, so from
               640px up the page stated one fact twice, ~14px apart, under the same heading, with
@@ -2254,7 +2195,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           panel's chip was one of them, and it is the copy with the least context around it -- a bare
           count in a chip. The one that survives is the proof strip under the hero, which states the
           research total and the kill total in one sentence, says in the line under it that the kills
-          are published with their reasons, and carries the only "Read the kill log" link on the
+          are published with their reasons, and carries the only "Read the rejected ideas" link on the
           page. Everything this panel showed is on /kill-log, one click from that link, in full
           rather than three at a time.
 
@@ -2355,7 +2296,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
       {/* THE PAGE NOW CLOSES ONCE. Measured on the rendered page at 1440x900 before this merge,
           the last 1,300px were three consecutive full-width bands:
 
-            y=6980  this band            "Every idea walks into a room built to destroy it."
+            y=6980  this band            "Six checks. Sourced evidence. Only what passes goes on sale."
                                           -> /how-it-works, -> /kill-log ("See the 1,364 it rejected")
             y=7400  TrustGuaranteesRow   three terms + "1,364 ideas were killed to list these 50"
             y=7620  CtaBand              "Find your next business from GBP 29.99."
@@ -2400,14 +2341,14 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             "sceptic who counts our numbers" exactly back where they started.
           */}
           <h2 className="sec">
-            Every idea walks into a room built to destroy it.
+            Six checks. Sourced evidence. Only what passes goes on sale.
           </h2>
           {/* "everything that survived" was an ALL claim about a population, and it was false in
               the same way the survivor count was: 80 ideas cleared the gates, 50 are on the shelf.
               A reader cannot check it either way, so it bought nothing and risked the one thing
               this page is selling. What is left claims only what the shelf can show. */}
           <p className="mt-4 lede">
-            A claim without a source dies before it ever goes on sale. Every pack here came out
+            A claim without a source does not go on sale. Every pack here came out
             the other side.
           </p>
           {/* The kill figure left this row with the second band: the terms column beside it now

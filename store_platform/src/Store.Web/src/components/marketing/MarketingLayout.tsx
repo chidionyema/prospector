@@ -36,13 +36,10 @@ export const MARKETING_NAV = [
   // instead of being reachable only from a sitemap and its siblings.
   // Label shortened from "Browse by category": at 14px the four-word item was wider than the
   // other three combined, so the nav read as one long phrase rather than four destinations.
-  { href: '/ideas', label: 'Categories' },
+  { href: '/', label: 'Catalogue' },
   { href: '/how-it-works', label: 'How it works' },
-  // Promoted out of the footer (2026-08-06). This shop's entire claim is that most ideas are
-  // rejected; the log of what got rejected and why is the evidence for that claim, and it was
-  // reachable only from a footer column. It is the strongest trust asset on the site.
-  { href: '/kill-log', label: 'Kill log' },
-  { href: '/faq', label: 'FAQ' },
+  { href: '/rejected', label: 'Rejected' },
+  { href: '/sample', label: 'Sample' },
 ] as const;
 
 /**
@@ -66,6 +63,7 @@ export const MARKETING_NAV = [
  */
 function isActivePath(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
+  if (href === '/rejected') return pathname === '/rejected' || pathname === '/kill-log' || pathname.startsWith('/rejected/') || pathname.startsWith('/kill-log/');
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -384,7 +382,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
                   the decimal comma sets loose at this weight. */}
               <div className="f-stats">
                 <div>
-                  <span>Killed</span>
+                  <span>Rejected</span>
                   <b className="num whitespace-nowrap">{tightDecimal(RESEARCH_STATS.killed.toLocaleString('en-GB'))}</b>
                 </div>
                 <div>
@@ -403,7 +401,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
               <Link href="/packs">Every pack</Link>
               <Link href="/ideas">Categories</Link>
               <Link href="/how-it-works">How it works</Link>
-              <Link href="/kill-log" prefetch={false}>Kill log</Link>
+              <Link href="/rejected" prefetch={false}>Rejected</Link>
               <Link href="/about">Who makes this</Link>
               <Link href="/faq">FAQ</Link>
             </div>
@@ -420,7 +418,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
                 <Link className="btn sm" href="/">
                   Browse
                 </Link>
-                <Link className="tlink" href="/kill-log" prefetch={false} style={{ alignSelf: 'center' }}>
+                <Link className="tlink" href="/rejected" prefetch={false} style={{ alignSelf: 'center' }}>
                   See what we killed
                 </Link>
               </div>

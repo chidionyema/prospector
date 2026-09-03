@@ -75,7 +75,7 @@ export const FAQS: FaqItem[] = [
     question: 'Why not ask a chatbot?',
     answer: [
       'Because it will agree with you. Ask a chatbot about your idea and you get an encouraging answer full of numbers it invented on the spot. Every figure here links to the page it came from, and the ideas that failed are published too, in the ',
-      { text: 'kill log', href: '/kill-log' },
+      { text: 'rejected ideas', href: '/rejected' },
       '. No chatbot will ever show you that, because it costs nothing to tell you yes.',
     ],
   },
@@ -165,10 +165,10 @@ export const FAQS: FaqItem[] = [
     ],
   },
   { category: 'process',
-    question: 'What happens to ideas that don’t survive?',
+    question: 'What happens to ideas that do not pass?',
     answer: [
       // Per email §6: short, link to the log.
-      'They go in the kill log, in public, with the evidence that killed them.',
+      'They go on /rejected, in public, with the evidence.',
     ],
   },
   { category: 'packs',
