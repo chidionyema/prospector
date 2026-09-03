@@ -89,7 +89,10 @@ describe('the collections rename', () => {
     const layout = readFileSync(join(SRC, 'components/marketing/MarketingLayout.tsx'), 'utf8');
     expect(codeOnly(layout)).not.toContain("label: 'Good for'");
     expect(codeOnly(layout)).not.toContain("label: 'Collections'");
-    expect(layout).toContain("{ href: '/ideas', label: 'Categories' }");
+    // Brief 2026-09-02: the chrome carries four doors (Packs, How it works, Rejected, Sample);
+    // /ideas stays reachable by URL and the redirects above, but no longer sits in the nav.
+    expect(layout).toContain("{ href: '/', label: 'Packs' }");
+    expect(layout).not.toContain("href: '/ideas'");
   });
 });
 

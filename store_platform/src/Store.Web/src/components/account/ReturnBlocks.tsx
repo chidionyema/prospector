@@ -120,7 +120,7 @@ export function ReturnBlocks() {
               : `${cart.lines.length} packs you picked out and have not bought yet.`
           }
           moreHref="/"
-          moreLabel="Back to the catalogue"
+          moreLabel="Back to the packs"
         >
           {cart.lines.map((line) => (
             <PackLine key={line.id} id={line.id} title={line.title} price={line.price} />
@@ -137,7 +137,7 @@ export function ReturnBlocks() {
               : `${fresh.length} packs have cleared the checks and gone on sale since you were last here.`
           }
           moreHref="/"
-          moreLabel="See the whole catalogue"
+          moreLabel="See all the packs"
         >
           {/* Ten at most. The point of the block is a reason to click, and a list long enough to
               scroll is the shelf, which is one link away and better at being the shelf. */}

@@ -136,7 +136,7 @@ const EXCEPT = [
   /* Founder decisions that outrank the drawing. Each one was made on the built page, with the
      reason recorded at the render site, so the drawing's sentence is not a gap. */
   [/^Sixteen ways into the same shelf/i, 'founder kept the built title (2026-08-15)'],
-  [/^Business ideas with the research already done/i, "founder's own h1 supersedes the drawing"],
+  [/^Business opportunities with the research already done/i, "founder's own h1 supersedes the drawing"],
   [/^Or see everything at once/i, 'band deleted 2026-08-13, 350px for a heading and a button'],
 ];
 

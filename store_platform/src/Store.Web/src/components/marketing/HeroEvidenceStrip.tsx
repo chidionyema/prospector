@@ -111,7 +111,7 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
         </span>
 
         <p className="font-mono text-caption text-text">
-          <span className="text-survive">{SURVIVED} survived</span>
+          <span className="text-survive">{SURVIVED} passed</span>
           <span className="text-subtle">{' · '}</span>
           {/* Matches the ticks above, and for the same reason. See the note on their class.
               The token is `--pushed-back-strong` now, not `--warning-strong`: same value, but the

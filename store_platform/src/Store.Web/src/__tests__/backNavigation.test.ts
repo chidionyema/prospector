@@ -25,7 +25,7 @@ describe('every visual route offers a way back', () => {
   it.each(ROUTES)('%s passes breadcrumbs to MarketingLayout', (route) => {
     const src = read(route);
     expect(src).toMatch(/breadcrumbs=\{/);
-    expect(src).toMatch(/label:\s*'Catalogue'/);
+    expect(src).toMatch(/label:\s*'Packs'/);
   });
 
   it('the three legal routes inherit their trail from LegalDoc', () => {

@@ -219,10 +219,10 @@ describe('the check vocabulary is defined once', () => {
 
   it('resolves the distribution gate under both engine spellings', () => {
     // `side_hustle` calls it route_to_market, the other lanes call it distribution. One name.
-    expect(checkForGate('distribution')?.name).toBe('A route to the buyer');
-    expect(checkForGate('route_to_market')?.name).toBe('A route to the buyer');
+    expect(checkForGate('distribution')?.name).toBe('Reach');
+    expect(checkForGate('route_to_market')?.name).toBe('Reach');
     // The catalogue field arrives with the underscores already spaced out.
-    expect(checkForGate('route to market')?.name).toBe('A route to the buyer');
+    expect(checkForGate('route to market')?.name).toBe('Reach');
     expect(checkForGate('buyer_intent'), 'lane-specific gates are not in the common set').toBeNull();
     expect(checkForGate(null)).toBeNull();
   });

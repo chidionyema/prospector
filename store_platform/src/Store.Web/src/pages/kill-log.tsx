@@ -67,7 +67,7 @@ const KILL_PAGE = 40;
 
 const SORTS: { key: Sort; label: string }[] = [
   { key: 'newest', label: 'Newest first' },
-  { key: 'cause', label: 'Cause of death' },
+  { key: 'cause', label: 'Check failed' },
   { key: 'sources', label: 'Most sources' },
 ];
 
@@ -228,12 +228,12 @@ export default function KillLogPage({
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Kill log' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Rejected' }]}
       breadcrumbsWidth="6xl"
     >
       <Seo
-        title="The kill log, the ideas we killed, and the sourced reason why"
-        description={`We researched ${researched.toLocaleString('en-GB')} business ideas and killed ${rejectRateLabel} of them. Here are ${publishedKills} of the kills, each with the evidence that killed it.`}
+        title="Ideas that did not pass, and the sourced reason why"
+        description={`We researched ${researched.toLocaleString('en-GB')} business ideas and rejected ${rejectRateLabel} of them. Here are ${publishedKills} of the rejections, each with the evidence that rejected it.`}
       />
 
       {/* Left-aligned, one column, no centred hero (spec §7.4). A centred 22ch headline over a
@@ -265,7 +265,7 @@ export default function KillLogPage({
             38 characters a line instead of 27. */}
         <div className="grid gap-10 lg:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] lg:items-start lg:gap-12">
         <div className="pagetop max-w-3xl">
-          <p className="eyebrow">The kill log</p>
+          <p className="eyebrow">Rejected</p>
           {/* THE HERO: ONE COUNT. It read "1,364 killed. 80 survived.", and the second half was
               the figure the founder cut on 2026-08-13, because the shelf this page links to holds
               50. The live shelf count is not promoted into the headline to replace it: it is
@@ -275,11 +275,10 @@ export default function KillLogPage({
               it. Nothing here promises a reason for all 1,364: only 400 came with an argument, and
               that sentence is already in the caveat rather than contradicted by this headline. */}
           <h1 className="mt-3">
-            {killed.toLocaleString('en-GB')} ideas killed.
+            {`${killed.toLocaleString('en-GB')} ideas that didn't pass.`}
           </h1>
           <p className="lede big mt-5">
-            Most ideas do not survive. Here is what we rejected, the reason each one failed, and
-            the sources, so you can check the reasoning yourself.
+            Each with the check it failed and the source that decided it.
           </p>
           {/* THE DRAWING'S `.facts` PANEL (`mockups/kill-log.html`): three bordered cells across
               the measure, each a mono uppercase label over a 24px figure. It was a `.metastrip` of
@@ -302,7 +301,7 @@ export default function KillLogPage({
               <dt>
                 <span className="inline-flex items-center gap-1.5">
                   <Glyph name="killed" className="text-kill" />
-                  Killed
+                  Rejected
                 </span>
               </dt>
               <dd><b className="num">{rejectRateLabel}</b></dd>
@@ -336,9 +335,9 @@ export default function KillLogPage({
         <aside className="lg:pt-1">
           <p className="eyebrow">What this page publishes</p>
           <p className="mt-4 border-l border-border pl-4 lede">
-            This page publishes {publishedKills} of those kills, not all {killed.toLocaleString('en-GB')}.
+            This page publishes {publishedKills} of those rejections, not all {killed.toLocaleString('en-GB')}.
             The rest were rejected on a low overall score, with no single finding behind it, so
-            there would be nothing here for you to read. Every kill below names the check it
+            there would be nothing here for you to read. Every row below names the check it
             failed and why, and{` ${withSource}`} of them link the source.
           </p>
         </aside>
@@ -347,7 +346,7 @@ export default function KillLogPage({
 
       <Section bg="bg" width="6xl" className="!pt-6 !pb-24">
         {/* THE DRAWING'S SECTION SEPARATORS (`mockups/kill-log.html`, two `hr.rule2`): a 2px ink
-            rule above "How ideas die" and above the table. `!mt-0` because `.rule2` carries a 44px
+            rule above "What these ideas didn&apos;t pass, and why" and above the table. `!mt-0` because `.rule2` carries a 44px
             top margin for the drawing's flat page, and here the band's own padding is that gap. */}
         <hr className="rule2 !mt-0 mb-7" />
         {/* ── HOW IDEAS DIE ─────────────────────────────────────────────────────────────────────
@@ -356,10 +355,10 @@ export default function KillLogPage({
             publishable cause reads 188 incumbency rows as a pattern rather than as repetition. */}
         <section aria-labelledby="distribution-heading" className="rounded-card border border-border bg-surface p-6 md:p-7">
           <h2 id="distribution-heading" className="sec">
-            How ideas die
+            What these ideas didn&apos;t pass, and why
           </h2>
           <p className="mt-2 lede">
-            Every rejection across all {killed.toLocaleString('en-GB')} kills, by the check that
+            Every rejection across all {killed.toLocaleString('en-GB')} ideas, by the check that
             fired first. The checks stop at the first hard failure, so each idea is counted once,
             against the cheapest gate that killed it.
           </p>
@@ -587,7 +586,7 @@ export default function KillLogPage({
               which is why no responsive utilities are written here: the class already does it. */}
           <ul
             className="rows list-none p-0"
-            aria-label="Killed ideas, with the check that killed each one, its published sources and the date it was assessed. Select a row to read the argument."
+            aria-label="Rejected ideas, with the check each one failed and its published sources. Select a row to read the argument."
           >
             {visible.map((entry) => {
               const isOpen = open.has(entry.slug);
@@ -757,7 +756,7 @@ export default function KillLogPage({
             than the end of the page. */}
         <div className="closing">
           <h2 className="max-w-[26ch] sec">
-            Now read one that survived all of it.
+            Now read one that passed all of it.
           </h2>
           <p>
             Same checks, same sourcing, opposite outcome. One full report is free to read, no card and

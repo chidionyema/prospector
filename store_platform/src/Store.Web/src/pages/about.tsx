@@ -34,12 +34,12 @@ export default function AboutPage() {
   const totals = RESEARCH_STATS;
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'About' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'About' }]}
       breadcrumbsWidth="6xl"
     >
       <Seo
         title={`About ${BRAND.name} - who is behind this`}
-        description={`Why ${BRAND.name} exists, in the words of the person who built it, and where the engine that kills most of the ideas came from.`}
+        description={`Why ${BRAND.name} exists, in the words of the person who built it, and how the checks work.`}
       />
 
       {/* THE SHELL, NOT A COLUMN OF ITS OWN. This was `max-w-3xl px-6 py-10 md:py-24`: a 768px
@@ -121,7 +121,7 @@ export default function AboutPage() {
               product, so it drops to the muted ink the rest of the site uses. */}
           <p className="quiet">
             That is the seed {BRAND.name} grew from. It runs on ideas that are not mine now, and it
-            publishes its workings either way: the few it clears, and the many more it kills.
+            publishes its workings either way: the few it clears, and the many more it rejects.
           </p>
         </div>
 
@@ -218,12 +218,12 @@ export default function AboutPage() {
             catalogue; the catalogue is what's left.
           */}
           <Link
-            href="/kill-log" prefetch={false}
+            href="/rejected" prefetch={false}
             className="card tc transition-colors hover:border-border-strong"
           >
-            <h4>The kill log</h4>
+            <h4>Rejected ideas</h4>
             <p className="mt-1 lede">
-              Most ideas die. Every kill is public, with the argument that made it. The log is
+              Most ideas do not pass. Every rejection is public, with the argument that made it. The log is
               the evidence behind the catalogue; the catalogue is what’s left.
             </p>
             <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta')}>

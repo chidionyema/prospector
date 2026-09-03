@@ -40,7 +40,7 @@ import { PACK_DISCLAIMER } from '@/lib/disclaimer';
 export default function PricingPage({ range, ladder }: { range: PriceRange | null; ladder: LadderRung[] }) {
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Pricing' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Pricing' }]}
       breadcrumbsWidth="6xl"
     >
       <Seo

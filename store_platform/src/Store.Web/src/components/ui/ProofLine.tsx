@@ -1,4 +1,5 @@
 import React from 'react';
+import { paybackLabel, type Payback } from '@/lib/payback';
 
 import { cx } from '@/components/ui/cx';
 
@@ -78,13 +79,14 @@ export function CardProof({
 }) {
   const parts: React.ReactNode[] = [];
   if (typeof payback === 'number' && payback > 0) {
-    // dash-free-ignore -- the multiplication sign is U+00D7, not a dash; named here so a reader
-    // checking the ban does not have to look it up.
-    parts.push(
-      <React.Fragment key="payback">
-        <b>{payback}×</b> payback
-      </React.Fragment>,
-    );
+    const label = paybackLabel({ priceLabel: '', revenueLabel: '', multiple: payback, paybackMonths: null }, 'card');
+    if (label) {
+      parts.push(
+        <React.Fragment key="payback">
+          {label}
+        </React.Fragment>,
+      );
+    }
   }
   if (typeof sources === 'number' && sources > 0) {
     parts.push(

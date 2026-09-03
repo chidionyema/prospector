@@ -241,7 +241,7 @@ export default function SamplePage() {
      rule. The test is what caught it. */
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Sample' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Sample' }]}
       breadcrumbsWidth="6xl"
     >
       {/* Its own description, not the site default, and no longer the word "unredacted". The

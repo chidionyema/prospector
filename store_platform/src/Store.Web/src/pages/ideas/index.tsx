@@ -133,12 +133,12 @@ export default function IdeasHub({ categories, total, variant }: Props) {
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Categories' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Categories' }]}
       breadcrumbsWidth="7xl"
     >
       <Seo
-        title="Business ideas by category"
-        description="Browse researched business ideas by industry. Every pack cites a source for every claim."
+        title="Business opportunities by category"
+        description="Browse researched business opportunities by industry. Every pack cites a source for every claim."
         jsonLd={graph(
           itemListNode(
             categories.map((c) => ({ name: c.h1, path: `/ideas/${c.slug}` })),
@@ -284,7 +284,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             inside the p exactly as the drawing has it. */}
         {!search && (
           <div className="sigcard mb-10">
-            <p className="eyebrow">The shape of the catalogue</p>
+            <p className="eyebrow">The shape of what is for sale</p>
             <CollectionMosaic
               tiles={filtered.map((cat) => ({
                 slug: cat.slug,

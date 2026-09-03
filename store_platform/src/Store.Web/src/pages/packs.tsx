@@ -97,7 +97,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
 
 export default function AllPacks({ groups, total, currency, market, unavailable }: Props) {
   const breadcrumbs = [
-    { href: '/', label: 'Catalogue' },
+    { href: '/', label: 'Packs' },
     { href: '#', label: 'Every pack' },
   ];
 
@@ -113,7 +113,7 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
           width="7xl"
           eyebrow="Temporarily unavailable"
           title="Every pack"
-          lead="The catalogue is briefly unreachable, so this page cannot list the packs right now. Try again in a minute."
+          lead="The packs are briefly unreachable, so this page cannot list them right now. Try again in a minute."
         />
         <Section bg="white" width="7xl">
           {/* `/#catalog`, not `/`. `/` is the top of a long marketing page; the shelf itself is
