@@ -192,6 +192,12 @@ def test_the_scheduler_tick_asks_for_a_researched_signal():
 
     src = inspect.getsource(run_scheduled)
     i = src.index("dossiers = run_signal(")
-    call = src[i : i + 60]
-    assert 'run_signal("")' not in call, "the tick is still generating blue-sky"
-    assert "run_signal(signal" in call
+    # The formatter wraps this call over several lines, so compare it with whitespace
+    # collapsed rather than pinning one layout.
+    call = " ".join(src[i : i + 120].split())
+    assert 'run_signal( "" )' not in call.replace('""', ' "" '), (
+        "the tick is still generating blue-sky"
+    )
+    assert call.startswith("dossiers = run_signal( signal,") or call.startswith(
+        "dossiers = run_signal(signal,"
+    ), call
