@@ -17,6 +17,7 @@ Each cycle re-evaluates the guard, so the switches take effect with no restart:
 
 Under launchd the job is KeepAlive, so a crash restarts the daemon automatically.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -132,8 +133,11 @@ def _interval_s(cfg, fallback: int) -> int:
         logger.warning("schedule.interval_s=%r is not an integer; using %ds", raw, fallback)
         return int(fallback)
     if val < _MIN_INTERVAL_SECONDS:
-        logger.warning("schedule.interval_s=%ds is below the %ds floor; using the floor",
-                       val, _MIN_INTERVAL_SECONDS)
+        logger.warning(
+            "schedule.interval_s=%ds is below the %ds floor; using the floor",
+            val,
+            _MIN_INTERVAL_SECONDS,
+        )
         return _MIN_INTERVAL_SECONDS
     return val
 
@@ -153,8 +157,10 @@ def _queue_target_depth(cfg) -> int:
     try:
         return max(0, int(_sched(cfg, "queue_target_depth", 0) or 0))
     except (TypeError, ValueError):
-        logger.warning("schedule.queue_target_depth=%r is not an integer; treating as off",
-                       _sched(cfg, "queue_target_depth", 0))
+        logger.warning(
+            "schedule.queue_target_depth=%r is not an integer; treating as off",
+            _sched(cfg, "queue_target_depth", 0),
+        )
         return 0
 
 
@@ -195,8 +201,7 @@ def _append_tick(cfg, tick: dict) -> None:
     if "duration_s" not in row:
         try:
             started = datetime.fromisoformat(str(row.get("ts")))
-            row["duration_s"] = round(
-                (datetime.now(timezone.utc) - started).total_seconds(), 1)
+            row["duration_s"] = round((datetime.now(timezone.utc) - started).total_seconds(), 1)
         except (TypeError, ValueError):
             pass
     try:
@@ -229,8 +234,13 @@ def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
     the wall age while the loop is turning normally; a loop that has actually stopped inflates both.
     Written, not yet acted on — see `_liveness`.
     """
-    beat = {"ts": datetime.now(timezone.utc).isoformat(), "mono": time.monotonic(),
-            "pid": os.getpid(), "phase": phase, **extra}
+    beat = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "mono": time.monotonic(),
+        "pid": os.getpid(),
+        "phase": phase,
+        **extra,
+    }
     if _RUNNING_CODE_FP:
         # What this process is RUNNING, so a monitor can diff it against `code_fingerprint()` on
         # disk. The previous freshness check compared the daemon's start time to the newest commit
@@ -418,8 +428,7 @@ def _artifact_budget_floor_s(cfg) -> float:
     restores the pure-share behaviour.
     """
     try:
-        return max(0.0, float(_sched(cfg, "artifact_budget_floor_s",
-                                     _ARTIFACT_BUDGET_FLOOR_S)))
+        return max(0.0, float(_sched(cfg, "artifact_budget_floor_s", _ARTIFACT_BUDGET_FLOOR_S)))
     except (TypeError, ValueError):
         return _ARTIFACT_BUDGET_FLOOR_S
 
@@ -479,20 +488,24 @@ def _backlog_size(cfg) -> int | None:
         from prospector.drain_state import ledger_path, max_attempts, revet_provisional_kills
         from prospector.run import drain_survey
         from prospector.store import Store
+
         cap_attempts = max_attempts(cfg)
         # The SAME exclusion the drain will apply (`run._cmd_resume` reads the same knob), or the
         # brake would sit engaged on 161 rows the automatic drain is no longer working — the
         # deadlock this whole shared-definition arrangement exists to prevent.
         revet_dead = revet_provisional_kills(cfg)
-        survey = drain_survey(Store(cfg), max_attempts=cap_attempts,
-                              revet_provisional_kills=revet_dead)
+        survey = drain_survey(
+            Store(cfg), max_attempts=cap_attempts, revet_provisional_kills=revet_dead
+        )
         if survey.orphaned or survey.stalled or survey.unpublishable:
-            note = (f"↻ backlog brake counts {len(survey.workable)} workable row(s); excluded "
-                    f"{len(survey.orphaned)} orphaned (index row, no dossier JSON) + "
-                    f"{len(survey.stalled)} stalled (>= {cap_attempts} unresolved re-vets, "
-                    f"rm {ledger_path(cfg.store_dir)} to retry) + "
-                    f"{len(survey.unpublishable)} provisional KILLs (already dead; "
-                    f"schedule.revet_provisional_kills: true to work them)")
+            note = (
+                f"↻ backlog brake counts {len(survey.workable)} workable row(s); excluded "
+                f"{len(survey.orphaned)} orphaned (index row, no dossier JSON) + "
+                f"{len(survey.stalled)} stalled (>= {cap_attempts} unresolved re-vets, "
+                f"rm {ledger_path(cfg.store_dir)} to retry) + "
+                f"{len(survey.unpublishable)} provisional KILLs (already dead; "
+                f"schedule.revet_provisional_kills: true to work them)"
+            )
             logger.warning("%s", note)
             print(note, file=sys.stderr, flush=True)
         return len(survey.workable)
@@ -553,11 +566,16 @@ def _subscription_soft_cap_reason(cfg, decision) -> str:
         # burn in a day (see above). An unparseable ceiling is not consent to spend, exactly as
         # `_backlog_size`'s None is not consent to generate; the drain keeps running either way,
         # so this is a brake and not a halt, and the next tick re-reads the config.
-        logger.error("spend.daily_subscription_soft_cap_usd=%r is not a number — the subscription "
-                     "brake cannot be evaluated, so this tick only drains", cap)
-        return (f"subscription soft cap UNREADABLE: daily_subscription_soft_cap_usd={cap!r} is not "
-                f"a number, so the brake cannot prove it is safe to generate — draining only "
-                f"until the config parses")
+        logger.error(
+            "spend.daily_subscription_soft_cap_usd=%r is not a number — the subscription "
+            "brake cannot be evaluated, so this tick only drains",
+            cap,
+        )
+        return (
+            f"subscription soft cap UNREADABLE: daily_subscription_soft_cap_usd={cap!r} is not "
+            f"a number, so the brake cannot prove it is safe to generate — draining only "
+            f"until the config parses"
+        )
     if cap <= 0:
         return ""
     spent = float(getattr(decision, "today_subscription_usd", 0.0) or 0.0)
@@ -567,11 +585,16 @@ def _subscription_soft_cap_reason(cfg, decision) -> str:
     if 0 < hard <= cap:
         # Not fatal, but the operator has expressed a contradiction: the hard wall sits at or
         # below the brake, so guard.evaluate() halts the whole tick first and this never fires.
-        logger.warning("spend.daily_subscription_soft_cap_usd=%.2f >= daily_subscription_cap_usd"
-                       "=%.2f — the hard cap fires first and the drain will NOT keep running",
-                       cap, hard)
-    return (f"subscription soft cap: ${spent:.2f} >= ${cap:.2f} subscription-equivalent today "
-            f"— generating {_batch_size(cfg, None)} more would dig, so this tick only drains")
+        logger.warning(
+            "spend.daily_subscription_soft_cap_usd=%.2f >= daily_subscription_cap_usd"
+            "=%.2f — the hard cap fires first and the drain will NOT keep running",
+            cap,
+            hard,
+        )
+    return (
+        f"subscription soft cap: ${spent:.2f} >= ${cap:.2f} subscription-equivalent today "
+        f"— generating {_batch_size(cfg, None)} more would dig, so this tick only drains"
+    )
 
 
 #: Wall-clock bound on the PER-TICK grounding probe. Bounded at all because an unbounded probe on
@@ -604,6 +627,7 @@ def _probe_grounding_once(cfg, timeout_s: int) -> tuple[str, BaseException | Non
     def _probe() -> None:
         try:
             from prospector.retrieval import DiskCache, make_provider
+
             provider = make_provider(cfg)
             if isinstance(provider, DiskCache):
                 provider = provider.inner
@@ -663,11 +687,15 @@ def _grounding_degraded_reason(cfg) -> str:
     if not kind:
         return ""
     if kind == "timeout":
-        return (f"grounding degraded: the retrieval probe did not answer within "
-                f"{_TICK_PROBE_TIMEOUT_S}s — generating now would mint DEFER rows rather than "
-                f"verdicts, so this tick only drains")
-    return (f"grounding degraded: the retrieval stack failed its probe ({exc}) — generating now "
-            f"would mint DEFER rows rather than verdicts, so this tick only drains")
+        return (
+            f"grounding degraded: the retrieval probe did not answer within "
+            f"{_TICK_PROBE_TIMEOUT_S}s — generating now would mint DEFER rows rather than "
+            f"verdicts, so this tick only drains"
+        )
+    return (
+        f"grounding degraded: the retrieval stack failed its probe ({exc}) — generating now "
+        f"would mint DEFER rows rather than verdicts, so this tick only drains"
+    )
 
 
 def _generation_suppressed(cfg, decision=None) -> str:
@@ -743,16 +771,26 @@ def _generation_suppressed(cfg, decision=None) -> str:
         # freeze: a typo used to be a log line nobody reads, so it now raises a CRITICAL
         # operator alert. The floor-of-last-resort being off is worth waking someone for; it is
         # not worth stopping the supply of the storefront for.
-        logger.critical("schedule.backlog_cap=%r is not an integer — the backlog brake is OFF "
-                        "until this is fixed; generation continues unbraked", cap)
+        logger.critical(
+            "schedule.backlog_cap=%r is not an integer — the backlog brake is OFF "
+            "until this is fixed; generation continues unbraked",
+            cap,
+        )
         try:
             from prospector.scheduler.alerts import emit_alert
-            emit_alert(cfg, severity="critical", key="backlog_cap_unreadable",
-                       title="Backlog brake is OFF: schedule.backlog_cap does not parse",
-                       message=(f"schedule.backlog_cap={cap!r} is not an integer, so the brake "
-                                f"has no threshold to apply. Generation is running UNBRAKED. "
-                                f"Fix the value in config.yaml; the daemon reads it on restart."),
-                       backlog_cap=repr(cap))
+
+            emit_alert(
+                cfg,
+                severity="critical",
+                key="backlog_cap_unreadable",
+                title="Backlog brake is OFF: schedule.backlog_cap does not parse",
+                message=(
+                    f"schedule.backlog_cap={cap!r} is not an integer, so the brake "
+                    f"has no threshold to apply. Generation is running UNBRAKED. "
+                    f"Fix the value in config.yaml; the daemon reads it on restart."
+                ),
+                backlog_cap=repr(cap),
+            )
         except Exception as exc:  # alerting must never decide whether the daemon generates
             logger.error("Could not raise the backlog_cap_unreadable alert: %s", exc)
         return ""
@@ -766,12 +804,16 @@ def _generation_suppressed(cfg, decision=None) -> str:
         # operator opted into this brake explicitly (it is default-off); an unreadable store is
         # not consent to generate. The drain still runs, so this is a pause, not a deadlock —
         # and the very next tick re-counts.
-        return ("backlog brake: the drainable backlog could not be counted, so the brake cannot "
-                "prove it is safe to generate — draining only until the count works")
+        return (
+            "backlog brake: the drainable backlog could not be counted, so the brake cannot "
+            "prove it is safe to generate — draining only until the count works"
+        )
     if backlog < cap:
         return ""
-    return (f"backlog brake: {backlog} drainable rows >= schedule.backlog_cap {cap} "
-            f"— generating {_batch_size(cfg, None)} more would dig, so this tick only drains")
+    return (
+        f"backlog brake: {backlog} drainable rows >= schedule.backlog_cap {cap} "
+        f"— generating {_batch_size(cfg, None)} more would dig, so this tick only drains"
+    )
 
 
 def _moat_brains(cfg) -> list[str]:
@@ -782,6 +824,7 @@ def _moat_brains(cfg) -> list[str]:
     already bind to it.
     """
     from prospector.health import moat_brains
+
     return moat_brains(cfg)
 
 
@@ -816,6 +859,7 @@ def _moat_blind_reason(cfg) -> str:
     measure recovery. This reads the mark; it does not spend the probe.
     """
     from prospector.health import moat_blind_reason
+
     return moat_blind_reason(cfg, trusted_only=False)
 
 
@@ -866,6 +910,7 @@ def _drain_pass(cfg, n_resume: int) -> dict | None:
     # Measured 2026-08-17: 12 candidates abandoned in four days, 10 with no record in `store/`.
     try:
         from prospector.run import recover_abandoned
+
         healed = recover_abandoned(cfg, publish=True)
         if healed.get("orphans"):
             logger.critical("Tick recovery pass: %s", healed, extra={"recovery": healed})
@@ -875,6 +920,7 @@ def _drain_pass(cfg, n_resume: int) -> dict | None:
     if not n_resume:
         return None
     from prospector.run import resume_deferred
+
     d_frac = _drain_budget_frac(cfg)
     drain_budget = (d_frac * _TICK_HARD_DEADLINE_S) if d_frac > 0 else None
     # The per-row artifact ceiling, from the SAME key the vetting batch uses, applied to the
@@ -885,15 +931,25 @@ def _drain_pass(cfg, n_resume: int) -> dict | None:
     drain_art_budget = (a_frac * drain_budget) if (a_frac > 0 and drain_budget) else None
     logger.critical(
         "Drain budget: %s for %d row(s), artifacts/row %s (tick hard deadline %ds)",
-        f"{drain_budget:.0f}s" if drain_budget else "unbounded", n_resume,
+        f"{drain_budget:.0f}s" if drain_budget else "unbounded",
+        n_resume,
         f"{drain_art_budget:.0f}s" if drain_art_budget else "unbounded",
         _TICK_HARD_DEADLINE_S,
-        extra={"drain_budget_s": drain_budget, "drain_artifact_budget_s": drain_art_budget,
-               "n_resume": n_resume, "tick_deadline_s": _TICK_HARD_DEADLINE_S})
+        extra={
+            "drain_budget_s": drain_budget,
+            "drain_artifact_budget_s": drain_art_budget,
+            "n_resume": n_resume,
+            "tick_deadline_s": _TICK_HARD_DEADLINE_S,
+        },
+    )
     try:
-        resumed = resume_deferred(cfg, limit=n_resume, publish=True,
-                                  budget_s=drain_budget,
-                                  artifact_time_budget_s=drain_art_budget)
+        resumed = resume_deferred(
+            cfg,
+            limit=n_resume,
+            publish=True,
+            budget_s=drain_budget,
+            artifact_time_budget_s=drain_art_budget,
+        )
         logger.info("Tick resume pass: %s", resumed)
         # STDERR, not stdout. Under launchd the two streams land in DIFFERENT files
         # (`StandardOutPath`=launchd.out.log, `StandardErrorPath`=launchd.err.log) and
@@ -918,8 +974,11 @@ def _drain_pass(cfg, n_resume: int) -> dict | None:
         # indistinguishable from never having run. A failure that only logs at WARNING is
         # invisible here; that is the whole reason this line is a print. It goes to
         # STDERR for the reason spelled out on the success branch above.
-        print(f"↻ tick resume pass FAILED (generation continues): {resumed['error']}",
-              file=sys.stderr, flush=True)
+        print(
+            f"↻ tick resume pass FAILED (generation continues): {resumed['error']}",
+            file=sys.stderr,
+            flush=True,
+        )
         return resumed
 
 
@@ -1066,18 +1125,24 @@ def _unlist_pass(cfg) -> dict | None:
 
     script = Path(__file__).resolve().parents[2] / "tools" / "unlist_killed.py"
     if not script.exists():
-        logger.critical("pending_unlist.jsonl has entries but %s is missing — killed pack(s) "
-                        "may still be selling", script)
+        logger.critical(
+            "pending_unlist.jsonl has entries but %s is missing — killed pack(s) "
+            "may still be selling",
+            script,
+        )
         return {"error": f"missing {script.name}"}
     try:
-        proc = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
-                              timeout=_UNLIST_TIMEOUT_S)
+        proc = subprocess.run(
+            [sys.executable, str(script)], capture_output=True, text=True, timeout=_UNLIST_TIMEOUT_S
+        )
     except (subprocess.TimeoutExpired, OSError) as exc:
         out = {"error": f"{type(exc).__name__}: {exc}"}
-        logger.critical("Unlist drain FAILED — killed pack(s) may still be selling: %s",
-                        out["error"])
-        print(f"🛒 unlist drain FAILED (tick continues): {out['error']}",
-              file=sys.stderr, flush=True)
+        logger.critical(
+            "Unlist drain FAILED — killed pack(s) may still be selling: %s", out["error"]
+        )
+        print(
+            f"🛒 unlist drain FAILED (tick continues): {out['error']}", file=sys.stderr, flush=True
+        )
         return out
 
     out = {"rc": proc.returncode, "tail": _proc_tail(proc)}
@@ -1087,8 +1152,11 @@ def _unlist_pass(cfg) -> dict | None:
         logger.critical("Unlist drain: %s", out["tail"])
         print(f"🛒 unlist drain: {out['tail']}", file=sys.stderr, flush=True)
     else:
-        logger.critical("Unlist drain rc=%d — killed pack(s) may still be selling: %s",
-                        proc.returncode, out["tail"])
+        logger.critical(
+            "Unlist drain rc=%d — killed pack(s) may still be selling: %s",
+            proc.returncode,
+            out["tail"],
+        )
         print(f"🛒 unlist drain rc={proc.returncode}: {out['tail']}", file=sys.stderr, flush=True)
     return out
 
@@ -1158,7 +1226,7 @@ def _stale_verdicts(cfg, limit: int) -> list[Path]:
 
     retired, never = [], []
     for pack in sorted(Path(str(cfg.store_dir), "dossiers").glob("*.pass.json")):
-        receipt = pack.with_name(pack.name[:-len(".pass.json")] + ".lint.json")
+        receipt = pack.with_name(pack.name[: -len(".pass.json")] + ".lint.json")
         try:
             rec = json.loads(receipt.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -1200,8 +1268,11 @@ def _regate_pass(cfg, n_regate: int) -> dict | None:
     try:
         proc = subprocess.run(
             [sys.executable, str(script), "--dry-run", *[str(p) for p in stale]],
-            capture_output=True, text=True, timeout=_REGATE_TIMEOUT_S,
-            cwd=str(script.parent.parent))
+            capture_output=True,
+            text=True,
+            timeout=_REGATE_TIMEOUT_S,
+            cwd=str(script.parent.parent),
+        )
     except (subprocess.TimeoutExpired, OSError) as exc:
         out = {"error": f"{type(exc).__name__}: {exc}"}
         logger.warning("Re-gate FAILED (tick continues): %s", out["error"])
@@ -1213,26 +1284,40 @@ def _regate_pass(cfg, n_regate: int) -> dict | None:
     sellable = []
     for pack in stale:
         try:
-            rec = json.loads(pack.with_name(
-                pack.name[:-len(".pass.json")] + ".lint.json").read_text(encoding="utf-8"))
+            rec = json.loads(
+                pack.with_name(pack.name[: -len(".pass.json")] + ".lint.json").read_text(
+                    encoding="utf-8"
+                )
+            )
         except (OSError, ValueError):
             continue
         if isinstance(rec, dict) and rec.get("ok"):
-            sellable.append(pack.name[:-len(".pass.json")])
+            sellable.append(pack.name[: -len(".pass.json")])
 
-    out = {"rc": proc.returncode, "regated": len(stale), "clears_the_gate": sellable,
-           # BOTH, joined. `stdout or stderr` drops stderr whenever stdout is non-empty,
-           # and a re-gate that printed progress and then died is exactly that case: the
-           # tail would carry the progress and not the reason.
-           "tail": "\n".join(x for x in (proc.stdout, proc.stderr) if x).strip()[-300:]}
+    out = {
+        "rc": proc.returncode,
+        "regated": len(stale),
+        "clears_the_gate": sellable,
+        # BOTH, joined. `stdout or stderr` drops stderr whenever stdout is non-empty,
+        # and a re-gate that printed progress and then died is exactly that case: the
+        # tail would carry the progress and not the reason.
+        "tail": "\n".join(x for x in (proc.stdout, proc.stderr) if x).strip()[-300:],
+    }
     # CRITICAL for the same reason the unlist drain is: anything below it never reaches
     # launchd.err.log (verified 2026-08-05), and "these packs are sellable and are not on sale"
     # is the one line an operator needs to see.
-    logger.critical("Re-gate: %d pack(s), %d now clear the gate: %s",
-                    len(stale), len(sellable), ", ".join(sellable) or "none")
-    print(f"⟳ re-gate: {len(stale)} pack(s), {len(sellable)} now clear the gate "
-          f"({', '.join(sellable) or 'none'}) — none listed, listing stays deliberate",
-          file=sys.stderr, flush=True)
+    logger.critical(
+        "Re-gate: %d pack(s), %d now clear the gate: %s",
+        len(stale),
+        len(sellable),
+        ", ".join(sellable) or "none",
+    )
+    print(
+        f"⟳ re-gate: {len(stale)} pack(s), {len(sellable)} now clear the gate "
+        f"({', '.join(sellable) or 'none'}) — none listed, listing stays deliberate",
+        file=sys.stderr,
+        flush=True,
+    )
     return out
 
 
@@ -1274,7 +1359,7 @@ def _recover_pass(cfg) -> dict | None:
         if interval and marker.exists() and (time.time() - marker.stat().st_mtime) < interval:
             return None
     except OSError:
-        pass                                   # an unreadable marker means "run it", not "skip"
+        pass  # an unreadable marker means "run it", not "skip"
 
     script = Path(__file__).resolve().parents[2] / "tools" / "recover_stranded_passes.py"
     if not script.exists():
@@ -1298,8 +1383,19 @@ def _recover_pass(cfg) -> dict | None:
     publish = bool(_sched(cfg, "recover_publish", True))
     if publish:
         routes.append("publish")
-    cmd = [sys.executable, str(script), "--apply", "--routes", ",".join(routes),
-           "--limit", str(limit), "--jobs", "2", "--timeout", "240"]
+    cmd = [
+        sys.executable,
+        str(script),
+        "--apply",
+        "--routes",
+        ",".join(routes),
+        "--limit",
+        str(limit),
+        "--jobs",
+        "2",
+        "--timeout",
+        "240",
+    ]
     if publish:
         # The same money-rail action the engine already takes on any fresh PASS, applied to
         # a repaired one: it lists only what the deterministic gate now passes.
@@ -1312,8 +1408,9 @@ def _recover_pass(cfg) -> dict | None:
     # operator's real one on 2026-08-17.
     env = dict(os.environ, PROSPECTOR_STORE_DIR=str(cfg.store_dir))
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True,
-                              timeout=_RECOVER_TIMEOUT_S, env=env)
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=_RECOVER_TIMEOUT_S, env=env
+        )
     except (subprocess.TimeoutExpired, OSError) as exc:
         logger.error("Pack recovery FAILED (tick continues): %s: %s", type(exc).__name__, exc)
         return {"error": f"{type(exc).__name__}: {exc}"}
@@ -1322,7 +1419,7 @@ def _recover_pass(cfg) -> dict | None:
             marker.parent.mkdir(parents=True, exist_ok=True)
             marker.touch()
         except OSError:
-            pass                               # cadence is an optimisation, not a correctness rail
+            pass  # cadence is an optimisation, not a correctness rail
 
     out = {"rc": proc.returncode, "tail": _proc_tail(proc)}
     logger.info("Pack recovery: %s", out["tail"])
@@ -1351,6 +1448,7 @@ def _decay_pass(cfg, n_decay: int) -> dict | None:
     if n_decay:
         # Late import, mirroring `_drain_pass`: a tick that returned early never builds brains.
         from prospector.run import run_decay_sweep
+
         try:
             out = run_decay_sweep(cfg, limit=n_decay)
             logger.info("Tick decay sweep: %s", out)
@@ -1362,8 +1460,11 @@ def _decay_pass(cfg, n_decay: int) -> dict | None:
             # A decay failure must never cost the tick its generation batch. Recorded, not raised.
             out = {"error": f"{type(exc).__name__}: {exc}"}
             logger.warning("Tick decay sweep failed (tick continues): %s", out["error"])
-            print(f"⟳ tick decay sweep FAILED (tick continues): {out['error']}",
-                  file=sys.stderr, flush=True)
+            print(
+                f"⟳ tick decay sweep FAILED (tick continues): {out['error']}",
+                file=sys.stderr,
+                flush=True,
+            )
 
     unlisted = _unlist_pass(cfg)
     if unlisted is not None:
@@ -1413,7 +1514,10 @@ def _market_rotation(cfg) -> list[str]:
             logger.warning(
                 "schedule.market_rotation=%r disabled: %r does not resolve (%s). "
                 "Generation falls back to active_market=%r.",
-                raw, code, exc, getattr(cfg, "active_market", ""),
+                raw,
+                code,
+                exc,
+                getattr(cfg, "active_market", ""),
             )
             return []
     return codes
@@ -1475,6 +1579,7 @@ def _default_generate(cfg, batch_size: int) -> dict:
     the tick's hard deadline can force-exit mid-tick — whatever runs second is what gets dropped.
     It is bounded per tick because the spend guard evaluates once, before the tick.
     """
+    from prospector import research_intake
     from prospector.run import _resolve_lanes, run_signal
 
     # THE CLOCK THE BUDGETS BELOW ARE FRACTIONS OF. The caller arms the hard-deadline Timer
@@ -1558,19 +1663,41 @@ def _default_generate(cfg, batch_size: int) -> dict:
         f"{budget:.0f}s" if budget else "unbounded",
         f"{art_budget:.0f}s" if art_budget else "unbounded",
         f"{vet_budget:.0f}s" if vet_budget else "unbounded",
-        _TICK_HARD_DEADLINE_S, _spent, _left, batch_size,
-        extra={"gen_budget_s": budget, "artifact_budget_s": art_budget,
-               "vet_budget_s": vet_budget, "tick_deadline_s": _TICK_HARD_DEADLINE_S,
-               "drain_spent_s": _spent, "tick_remaining_s": _left,
-               "batch_size": batch_size})
+        _TICK_HARD_DEADLINE_S,
+        _spent,
+        _left,
+        batch_size,
+        extra={
+            "gen_budget_s": budget,
+            "artifact_budget_s": art_budget,
+            "vet_budget_s": vet_budget,
+            "tick_deadline_s": _TICK_HARD_DEADLINE_S,
+            "drain_spent_s": _spent,
+            "tick_remaining_s": _left,
+            "batch_size": batch_size,
+        },
+    )
     # `vet=False` returns after the survivors are queued, so `publish` could only ever be inert
     # in producer mode — it is passed as False rather than left True so the call states what the
     # tick actually does. `_cmd_generate` refuses the same combination outright (run.py:2858).
-    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=not _producer, lanes=lanes,
-                          vet=not _producer,
-                          gen_time_budget_s=budget,
-                          artifact_time_budget_s=art_budget,
-                          vet_time_budget_s=vet_budget)
+    # THE SIGNAL. This was `""` -- blue-sky, the model's priors and nothing else -- for every
+    # batch this scheduler has ever run, which is the mechanical cause of crew#659: a store
+    # front of ideas no one researched. `signal_text_or_empty` returns the estate research
+    # engine's newest researched market, rendered from claims that passed its provenance gate,
+    # and returns `""` on every failure, so the worst case here is the behaviour that was here
+    # before.
+    signal = research_intake.signal_text_or_empty()
+    dossiers = run_signal(
+        signal,
+        cfg=cfg,
+        k=batch_size,
+        publish=not _producer,
+        lanes=lanes,
+        vet=not _producer,
+        gen_time_budget_s=budget,
+        artifact_time_budget_s=art_budget,
+        vet_time_budget_s=vet_budget,
+    )
 
     def _decision(d) -> str:
         # Dossier carries `.decision` (a Decision enum) — NOT `.verdict`. Reading the wrong
@@ -1585,8 +1712,12 @@ def _default_generate(cfg, batch_size: int) -> dict:
     # the trusted moat is down but the cheap tail kept ruling — a silent failure mode that the
     # all-DEFER `moat_deferred` alert misses entirely (provisional batches defer nothing).
     provisional = sum(1 for d in dossiers if getattr(d, "provisional", False))
-    out = {"dossiers": len(dossiers), "passes": passes, "defers": defers,
-           "provisional": provisional}
+    out = {
+        "dossiers": len(dossiers),
+        "passes": passes,
+        "defers": defers,
+        "provisional": provisional,
+    }
     if _producer:
         # THE TICK MUST SAY WHICH KIND OF TICK IT WAS, or the alerter reads a healthy producer
         # as an outage: every row a producer writes is a DEFER, so `defers >= dossiers` — the
@@ -1620,8 +1751,9 @@ def _default_generate(cfg, batch_size: int) -> dict:
 # The watchdog's 'generating' stall threshold is derived from this constant (see _liveness) so
 # the in-process deadline always fires first and the process self-heals before the watchdog acts.
 _TICK_DEADLINE_DEFAULT_S = 10800  # 3h
-_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S",
-                                           str(_TICK_DEADLINE_DEFAULT_S)))
+_TICK_HARD_DEADLINE_S = int(
+    os.environ.get("PROSPECTOR_TICK_DEADLINE_S", str(_TICK_DEADLINE_DEFAULT_S))
+)
 
 
 def _refresh_tick_deadline(cfg) -> int:
@@ -1659,14 +1791,18 @@ def _refresh_tick_deadline(cfg) -> int:
     try:
         val = int(raw)
     except (TypeError, ValueError):
-        logger.warning("schedule.tick_deadline_s=%r is not an integer; using %ds",
-                       raw, _TICK_DEADLINE_DEFAULT_S)
+        logger.warning(
+            "schedule.tick_deadline_s=%r is not an integer; using %ds",
+            raw,
+            _TICK_DEADLINE_DEFAULT_S,
+        )
         _TICK_HARD_DEADLINE_S = _TICK_DEADLINE_DEFAULT_S
         return _TICK_HARD_DEADLINE_S
     # Floored at 60s. A deadline shorter than a single vet force-exits the daemon mid-work every
     # cycle, and launchd's KeepAlive turns that into a crash loop that looks like an outage.
     _TICK_HARD_DEADLINE_S = max(60, val)
     return _TICK_HARD_DEADLINE_S
+
 
 # How often the daemon re-stamps its heartbeat while asleep (see the refresh loop in
 # `run_daemon`). 60s against a 5s sleep slice, so it costs one small file write per twelve slices
@@ -1758,14 +1894,19 @@ def _retry_sleep_s(consecutive: int, interval: int) -> int:
     return max(1, min(interval, backoff))
 
 
-def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None,
-                          *, phase: str = "generation") -> None:
+def _force_exit_hung_tick(
+    batch_size: int, cfg=None, tick: dict | None = None, *, phase: str = "generation"
+) -> None:
     # `phase` because the drain-only branch now arms this timer too, and a breach that says
     # "during generation" on a tick whose batch_size was 0 sends the next reader looking at the
     # wrong half of the daemon.
     logger.critical(
         "TICK HARD DEADLINE (%ds) exceeded during %s (batch=%s) — force-exiting so "
-        "launchd KeepAlive relaunches a clean daemon.", _TICK_HARD_DEADLINE_S, phase, batch_size)
+        "launchd KeepAlive relaunches a clean daemon.",
+        _TICK_HARD_DEADLINE_S,
+        phase,
+        batch_size,
+    )
     # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent os._exit leaves no
     # tick row and no alert, so a repeating deadline breach looks like the daemon never ran
     # (proven live 2026-07-02: 4h of relaunch loops with zero tick rows). The main thread is
@@ -1799,8 +1940,10 @@ def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None,
                     breach_heartbeat = json.loads(hb_path.read_text())
             except (OSError, json.JSONDecodeError):
                 pass
-            tick["error"] = (f"tick_hard_deadline: exceeded {_TICK_HARD_DEADLINE_S}s during "
-                             f"{phase} (batch={batch_size}); force-exited for relaunch")
+            tick["error"] = (
+                f"tick_hard_deadline: exceeded {_TICK_HARD_DEADLINE_S}s during "
+                f"{phase} (batch={batch_size}); force-exited for relaunch"
+            )
             tick["breach_phase"] = phase
             tick["elapsed_s"] = elapsed_s
             tick["breach_heartbeat"] = breach_heartbeat
@@ -1838,7 +1981,9 @@ def _tick_unproductive(tick: dict) -> bool:
     return False
 
 
-def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, generate_fn=None) -> dict:
+def run_tick(
+    cfg, *, dry_run: bool = False, candidates: int | None = None, generate_fn=None
+) -> dict:
     """Execute one scheduler tick: evaluate the guard, then maybe run one batch.
 
     `generate_fn(cfg, batch_size) -> dict` is injectable so tests never spawn real generation.
@@ -1865,8 +2010,11 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
             # Uncountable queue. Generate the plain batch rather than guessing — the same
             # direction `_backlog_size` fails in for the backlog brake, for the same reason: a
             # counting failure must never read as "the queue is empty, mint everything".
-            logger.warning("queue_target_depth is set but the queue could not be counted; "
-                           "generating the full batch of %d", batch_size)
+            logger.warning(
+                "queue_target_depth is set but the queue could not be counted; "
+                "generating the full batch of %d",
+                batch_size,
+            )
         else:
             batch_size = max(0, min(batch_size, queue_target - queue_depth))
 
@@ -1901,14 +2049,16 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         # The queue already holds what the operator asked it to hold. Not an outage and not a
         # failure, so `_tick_unproductive` must not see it as one and escalate the retry
         # backoff — `queue_full` is its own reason, checked there.
-        tick["reason"] = (f"queue_full: {queue_depth} row(s) waiting, target {queue_target}")
+        tick["reason"] = f"queue_full: {queue_depth} row(s) waiting, target {queue_target}"
         tick["queue_full"] = True
         logger.info("Tick generated nothing: %s", tick["reason"])
         _append_tick(cfg, tick)
         return tick
 
     if dry_run:
-        logger.info("Dry run: guard passed (%s); would generate %d candidates", decision.reason, batch_size)
+        logger.info(
+            "Dry run: guard passed (%s); would generate %d candidates", decision.reason, batch_size
+        )
         _append_tick(cfg, tick)
         return tick
 
@@ -1954,8 +2104,11 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
 
         beat = run_heartbeat(cfg)
         if beat["probed"]:
-            tick["heartbeat"] = {"probed": beat["probed"], "alive": beat["alive"],
-                                 "down": beat["down"]}
+            tick["heartbeat"] = {
+                "probed": beat["probed"],
+                "alive": beat["alive"],
+                "down": beat["down"],
+            }
             logger.info("Heartbeat: %d alive, %d down", len(beat["alive"]), len(beat["down"]))
     except Exception as exc:  # noqa: BLE001
         logger.warning("Heartbeat failed, continuing: %s", exc)
@@ -2020,8 +2173,12 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         # ~82 min — so a once-stamped beat spent most of a HEALTHY pass looking stale, which is
         # precisely the reading that produced 47 SIGKILLs of live daemons in the sleeping phase.
         with _beating(cfg, "draining"):
-            deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
-                                       args=(0, cfg, tick), kwargs={"phase": "the drain"})
+            deadline = threading.Timer(
+                _TICK_HARD_DEADLINE_S,
+                _force_exit_hung_tick,
+                args=(0, cfg, tick),
+                kwargs={"phase": "the drain"},
+            )
             deadline.daemon = True
             deadline.start()
             try:
@@ -2039,8 +2196,11 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
                 # So the producer's brake is a plain stop: no generation, no vetting, and the
                 # unlist drain below still runs. It self-releases under the cap on the
                 # consumer's progress rather than its own.
-                resumed = None if producer_mode(cfg) else _drain_pass(
-                    cfg, _drain_only_resume_per_tick(cfg))
+                resumed = (
+                    None
+                    if producer_mode(cfg)
+                    else _drain_pass(cfg, _drain_only_resume_per_tick(cfg))
+                )
                 # Inside the deadline guard, for the reason spelled out above it: this branch is
                 # the daemon's entire workload while the brake is engaged, and `_decay_pass`
                 # swallows every exception by design, so an uncovered sweep could wedge the tick
@@ -2051,8 +2211,12 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
                 recovered = _recover_pass(cfg)
             finally:
                 deadline.cancel()
-        tick["result"] = {"dossiers": 0, "resumed": resumed, "decayed": decayed,
-                          "recovered": recovered}
+        tick["result"] = {
+            "dossiers": 0,
+            "resumed": resumed,
+            "decayed": decayed,
+            "recovered": recovered,
+        }
         _append_tick(cfg, tick)
         _emit_tick_alerts(cfg, tick)
         _emit_tick_digest(cfg, tick)
@@ -2070,8 +2234,9 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     # the instant generation returns. The refresher stops with the block, so the terminal `idle`
     # beat written after this is never overwritten by a straggler.
     with _beating(cfg, "generating", batch_size=batch_size):
-        deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
-                                   args=(batch_size, cfg, tick))
+        deadline = threading.Timer(
+            _TICK_HARD_DEADLINE_S, _force_exit_hung_tick, args=(batch_size, cfg, tick)
+        )
         deadline.daemon = True
         deadline.start()
         try:
@@ -2095,8 +2260,10 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
             # leaves no tick row and no alert, so the founder never learns the daemon died.
             tick["error"] = f"GroundingInfrastructureError: {exc}"
             halt = True
-            logger.critical("GROUNDING LAYER COLLAPSE: all search providers dead. "
-                            "Halting daemon to prevent runaway LLM spend.")
+            logger.critical(
+                "GROUNDING LAYER COLLAPSE: all search providers dead. "
+                "Halting daemon to prevent runaway LLM spend."
+            )
         except Exception as exc:  # noqa: BLE001 — daemon must survive any single batch failing
             tick["error"] = f"{type(exc).__name__}: {exc}"
             logger.error("Tick generation failed (daemon continues): %s", tick["error"])
@@ -2211,12 +2378,15 @@ def _autopause_generation_on_barren_streak(cfg, specs: list, streak: int) -> Non
         from prospector.ops import pause
 
         receipt = pause.arm(
-            cfg, "generation",
+            cfg,
+            "generation",
             actor="autopause:barren_streak",
-            reason=(f"automatic: {ticks} consecutive barren generation ticks. Generation was "
-                    f"minting work no brain could finish, which is how the ops console was "
-                    f"starved on 2026-08-20. The drain keeps running. Resume from the admin "
-                    f"dashboard (/engine, \"Start it again\") once the provider is funded."),
+            reason=(
+                f"automatic: {ticks} consecutive barren generation ticks. Generation was "
+                f"minting work no brain could finish, which is how the ops console was "
+                f"starved on 2026-08-20. The drain keeps running. Resume from the admin "
+                f'dashboard (/engine, "Start it again") once the provider is funded.'
+            ),
         )
     except Exception as exc:  # noqa: BLE001 — a failed STOP must not also kill the tick
         # A stop that fails to arm is the worst state this function can leave behind: the log
@@ -2229,22 +2399,34 @@ def _autopause_generation_on_barren_streak(cfg, specs: list, streak: int) -> Non
         autopause_failed = repr(exc)
         logger.exception("Barren-streak autopause failed to arm")
         emit_alert(
-            cfg, severity=CRITICAL, key="autopause_failed",
+            cfg,
+            severity=CRITICAL,
+            key="autopause_failed",
             title="Generation autopause FAILED to arm",
-            message=(f"{ticks} consecutive barren generation ticks were detected and the "
-                     f"generation half-stop could NOT be armed: {autopause_failed}. "
-                     f"Generation is STILL RUNNING and still minting work no brain can "
-                     f"finish. Arm it by hand from the admin console (/engine -> generation "
-                     f"-> Stop), or by touching store/scheduler/PAUSE_GENERATION."),
-            autopause_failed=autopause_failed, barren_ticks=ticks)
+            message=(
+                f"{ticks} consecutive barren generation ticks were detected and the "
+                f"generation half-stop could NOT be armed: {autopause_failed}. "
+                f"Generation is STILL RUNNING and still minting work no brain can "
+                f"finish. Arm it by hand from the admin console (/engine -> generation "
+                f"-> Stop), or by touching store/scheduler/PAUSE_GENERATION."
+            ),
+            autopause_failed=autopause_failed,
+            barren_ticks=ticks,
+        )
         return
     if not receipt.get("changed"):
         return
     logger.critical(
         "AUTOPAUSED generation after %d barren ticks. The drain keeps running. "
-        "Resume from the admin console (/engine).", ticks)
-    print(f"\u23f8 generation AUTOPAUSED after {ticks} barren ticks — the drain keeps running; "
-          f"resume from the admin console (/engine)", file=sys.stderr, flush=True)
+        "Resume from the admin console (/engine).",
+        ticks,
+    )
+    print(
+        f"\u23f8 generation AUTOPAUSED after {ticks} barren ticks — the drain keeps running; "
+        f"resume from the admin console (/engine)",
+        file=sys.stderr,
+        flush=True,
+    )
 
 
 def _emit_tick_alerts(cfg, tick: dict) -> None:
@@ -2299,8 +2481,9 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
         if key in raised:
             continue
         try:
-            resolve_alert(cfg, key=key,
-                          reason=f"clean tick at {tick.get('ts')}: {tick.get('result')}")
+            resolve_alert(
+                cfg, key=key, reason=f"clean tick at {tick.get('ts')}: {tick.get('result')}"
+            )
         except Exception:  # noqa: BLE001 — recovery bookkeeping must never break the daemon
             logger.exception("Failed to resolve alert '%s'", key)
 
@@ -2342,7 +2525,9 @@ def _run_coverage_check() -> "subprocess.CompletedProcess | None":
     try:
         return subprocess.run(  # noqa: S603 — our own script, fixed argv, no shell
             [sys.executable, str(script)],
-            capture_output=True, text=True, timeout=_COVERAGE_TIMEOUT_S,
+            capture_output=True,
+            text=True,
+            timeout=_COVERAGE_TIMEOUT_S,
         )
     except (subprocess.SubprocessError, OSError) as exc:
         # Narrowed (TimeoutExpired is a SubprocessError) and raised to ERROR. The alert path reads
@@ -2351,8 +2536,9 @@ def _run_coverage_check() -> "subprocess.CompletedProcess | None":
         # that stopped running has to be findable in the log: this monitor exists precisely because
         # three PASSes sat unbuyable while nothing said so, and a monitor that silently stops is
         # that same defect one level up.
-        logger.error("Shelf-coverage check did not run (%s) — stranded PASSes are UNMONITORED "
-                     "this tick", exc)
+        logger.error(
+            "Shelf-coverage check did not run (%s) — stranded PASSes are UNMONITORED this tick", exc
+        )
         return None
 
 
@@ -2387,26 +2573,35 @@ def _emit_stranded_pass_alert(cfg, tick: dict) -> None:
         return
     if proc.returncode == 0:
         try:
-            resolve_alert(cfg, key="stranded_passes",
-                          reason=f"every PASS is on the shelf at {tick.get('ts')}")
+            resolve_alert(
+                cfg, key="stranded_passes", reason=f"every PASS is on the shelf at {tick.get('ts')}"
+            )
         except Exception:  # noqa: BLE001
             logger.exception("Failed to resolve stranded_passes")
         return
 
     lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("[")]
-    count = next((ln.split(":", 1)[1].strip() for ln in proc.stdout.splitlines()
-                  if ln.startswith("stranded passes")), str(len(lines)))
+    count = next(
+        (
+            ln.split(":", 1)[1].strip()
+            for ln in proc.stdout.splitlines()
+            if ln.startswith("stranded passes")
+        ),
+        str(len(lines)),
+    )
     try:
         emit_alert(
             cfg,
             severity="critical",
             key="stranded_passes",
             title=f"{count} PASS(es) stranded off the shelf",
-            message=("The engine produced packs no one can buy. "
-                     + " | ".join(lines[:3])
-                     + (f" (+{len(lines) - 3} more)" if len(lines) > 3 else "")
-                     + " — fix: .venv/bin/python tools/verify_pass_shelf_coverage.py"),
-            throttle_s=21600,   # 6h: it is a standing condition, not an event
+            message=(
+                "The engine produced packs no one can buy. "
+                + " | ".join(lines[:3])
+                + (f" (+{len(lines) - 3} more)" if len(lines) > 3 else "")
+                + " — fix: .venv/bin/python tools/verify_pass_shelf_coverage.py"
+            ),
+            throttle_s=21600,  # 6h: it is a standing condition, not an event
             stranded=len(lines),
         )
     except Exception:  # noqa: BLE001
@@ -2438,16 +2633,19 @@ def _emit_tick_digest(cfg, tick: dict) -> None:
         # swallow-ok: the SECOND half of a deliberate split (ImportError above), and it already
         # logs at ERROR with a traceback — the fix ladder's step 3, done. The auditor counts two
         # returns in two handlers and cannot see that one of them is the logged branch.
-        logger.exception("status module failed to IMPORT (this is a bug, not a missing estate); "
-                         "tick digest skipped")
+        logger.exception(
+            "status module failed to IMPORT (this is a bug, not a missing estate); "
+            "tick digest skipped"
+        )
         return
     try:
         snap = status_snapshot(cfg)
         text = format_status_snapshot(snap)
     except Exception:  # noqa: BLE001 — status_snapshot documents "never raises"; if it did, that
         # is our bug and it needs a traceback, not a one-line warning that reads like a missing file.
-        logger.exception("status_snapshot() raised despite its never-raises contract; "
-                         "tick digest skipped")
+        logger.exception(
+            "status_snapshot() raised despite its never-raises contract; tick digest skipped"
+        )
         return
     send = _load_hermes_sender()
     if send is None:
@@ -2455,12 +2653,17 @@ def _emit_tick_digest(cfg, tick: dict) -> None:
         # simply has no Hermes" — and on the Fly container that was true and harmless-looking
         # while every digest was being dropped (issue #355). There is an in-repo sender now, so
         # None here means a real defect.
-        logger.warning("Tick digest sink unavailable (no sender could be loaded); "
-                       "digest stayed local")
+        logger.warning(
+            "Tick digest sink unavailable (no sender could be loaded); digest stayed local"
+        )
         return
     try:
-        sent = send(text, debounce_key="prospector:tick_digest", debounce_s=7200.0,
-                    dry_run="PYTEST_CURRENT_TEST" in os.environ)
+        sent = send(
+            text,
+            debounce_key="prospector:tick_digest",
+            debounce_s=7200.0,
+            dry_run="PYTEST_CURRENT_TEST" in os.environ,
+        )
         logger.info("Tick digest sent=%s (len=%d)", sent, len(text))
     except Exception as exc:  # noqa: BLE001 — documented never-raises, but trust nothing here
         logger.warning("Tick digest push failed: %s", exc)
@@ -2564,7 +2767,7 @@ def code_fingerprint(config_path=None) -> str | None:
         if config_path:
             resolved = Path(config_path).resolve()
             if resolved.is_file():
-                paths.append(resolved)   # appended last: order stays deterministic
+                paths.append(resolved)  # appended last: order stays deterministic
         for path in paths:
             digest.update(str(path).encode("utf-8"))
             digest.update(b"\0")
@@ -2590,8 +2793,9 @@ def _redeploy(exec_fn=os.execv) -> None:
     The argv is rebuilt in the `-m` form the plist uses, so the relaunch is the same command line.
     """
     cmd = [sys.executable, "-m", _DAEMON_MODULE, *sys.argv[1:]]
-    logger.warning("Code changed on disk — re-executing at the tick boundary to deploy it: %s",
-                   " ".join(cmd))
+    logger.warning(
+        "Code changed on disk — re-executing at the tick boundary to deploy it: %s", " ".join(cmd)
+    )
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.flush()
@@ -2600,9 +2804,17 @@ def _redeploy(exec_fn=os.execv) -> None:
     exec_fn(sys.executable, cmd)
 
 
-def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn=None,
-               max_cycles: int | None = None, sleep_fn=time.sleep, config_path=None,
-               exec_fn=os.execv) -> int:
+def run_daemon(
+    cfg,
+    *,
+    interval: int,
+    candidates: int | None = None,
+    generate_fn=None,
+    max_cycles: int | None = None,
+    sleep_fn=time.sleep,
+    config_path=None,
+    exec_fn=os.execv,
+) -> int:
     """Loop forever (or `max_cycles` times in tests): tick, then sleep `interval` seconds.
 
     The guard is re-evaluated every cycle, so PAUSE and the daily cap take effect without a
@@ -2618,8 +2830,12 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
     # the console without touching a plist or restarting the job.
     argv_interval = interval
     interval = _interval_s(cfg, argv_interval)
-    logger.info("Daemon starting: interval=%ds (argv %ds), store=%s",
-                interval, argv_interval, _store_dir(cfg))
+    logger.info(
+        "Daemon starting: interval=%ds (argv %ds), store=%s",
+        interval,
+        argv_interval,
+        _store_dir(cfg),
+    )
     global _RUNNING_CODE_FP
     startup_fp = code_fingerprint(config_path)
     _RUNNING_CODE_FP = startup_fp
@@ -2667,13 +2883,20 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
             # too: nothing failed here.
             consecutive_unproductive = 0
             sleep_target = _drain_only_interval_s(cfg, interval)
-            logger.info("Drain-only tick — next in %ds (not the %ds generation cadence)",
-                        sleep_target, interval)
+            logger.info(
+                "Drain-only tick — next in %ds (not the %ds generation cadence)",
+                sleep_target,
+                interval,
+            )
         elif tick is not None and _tick_unproductive(tick):
             consecutive_unproductive += 1
             sleep_target = _retry_sleep_s(consecutive_unproductive, interval)
-            logger.info("Unproductive tick #%d in a row — retrying in %ds instead of %ds",
-                        consecutive_unproductive, sleep_target, interval)
+            logger.info(
+                "Unproductive tick #%d in a row — retrying in %ds instead of %ds",
+                consecutive_unproductive,
+                sleep_target,
+                interval,
+            )
         else:
             # Reset on ANY productive tick, including a guard-blocked one: the spend cap
             # firing is the system working, not a failure, and must not inherit an outage's
@@ -2698,8 +2921,14 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
         slept = 0
 
         def _beat() -> None:
-            _write_heartbeat(cfg, phase="sleeping", interval_s=sleep_target, cycles=cycles,
-                             beat_every_s=_SLEEP_HEARTBEAT_REFRESH_S, slept_s=slept)
+            _write_heartbeat(
+                cfg,
+                phase="sleeping",
+                interval_s=sleep_target,
+                cycles=cycles,
+                beat_every_s=_SLEEP_HEARTBEAT_REFRESH_S,
+                slept_s=slept,
+            )
 
         _beat()
         since_beat = 0
@@ -2740,7 +2969,11 @@ def _tail_errors(cfg, n: int = 4) -> list[str]:
     if not path.exists():
         return []
     try:
-        lines = [line.rstrip() for line in path.read_text(encoding="utf-8", errors="replace").splitlines() if line.strip()]
+        lines = [
+            line.rstrip()
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
+            if line.strip()
+        ]
     except OSError as exc:
         # The failure goes into the readout, not into a silent []. `[]` is this function's word for
         # "the daemon logged no errors", which is the single most reassuring thing --status can
@@ -2758,8 +2991,16 @@ def _aggregate_ticks(cfg) -> dict:
     Aggregating tells the founder whether the factory is actually producing, not just breathing.
     """
     path = _ticks_path(cfg)
-    agg = {"ticks": 0, "dry_runs": 0, "candidates": 0, "passes": 0, "errors": 0, "skipped": 0,
-           "last_pass_ts": None, "last_error": None}
+    agg = {
+        "ticks": 0,
+        "dry_runs": 0,
+        "candidates": 0,
+        "passes": 0,
+        "errors": 0,
+        "skipped": 0,
+        "last_pass_ts": None,
+        "last_error": None,
+    }
     if not path.exists():
         return agg
     # R3 tolerant reader: skips a torn trailing line (this runs while the daemon is appending)
@@ -2805,39 +3046,59 @@ def _status_lines(cfg) -> list[str]:
         beat = json.loads(hb_path.read_text(encoding="utf-8"))
         age_min = (now - datetime.fromisoformat(beat["ts"])).total_seconds() / 60
         phase = beat.get("phase", "?")
-        stale = (phase in ("generating", "draining") and age_min > _TICK_HARD_DEADLINE_S / 60 + 10) or \
-                (phase == "sleeping" and age_min > beat.get("interval_s", 7200) / 60 + 35)
+        stale = (
+            phase in ("generating", "draining") and age_min > _TICK_HARD_DEADLINE_S / 60 + 10
+        ) or (phase == "sleeping" and age_min > beat.get("interval_s", 7200) / 60 + 35)
         flag = "  ⚠ STALE / likely dead" if stale else ""
         extra = ""
         if phase == "sleeping":
             wake_in = beat.get("interval_s", 7200) / 60 - age_min
             extra = f", next wake ~{wake_in:.0f} min" if wake_in > 0 else ", wake overdue"
-        out.append(f"  heartbeat   : {phase}  ({age_min:.1f} min ago, pid {beat.get('pid')}{extra}){flag}")
+        out.append(
+            f"  heartbeat   : {phase}  ({age_min:.1f} min ago, pid {beat.get('pid')}{extra}){flag}"
+        )
     else:
         out.append("  heartbeat   : NONE — daemon has never run a tick (not installed/started?)")
 
     d = guard_from_config(cfg).evaluate()
-    pause = "PAUSED (store/scheduler/PAUSE present)" if not d.can_run and "pause" in d.reason.lower() else d.reason
+    pause = (
+        "PAUSED (store/scheduler/PAUSE present)"
+        if not d.can_run and "pause" in d.reason.lower()
+        else d.reason
+    )
     out.append(f"  guard       : {'OK' if d.can_run else 'BLOCKED'} — {pause}")
-    out.append(f"  spend today : ${d.today_spend_usd:.2f} of ${d.daily_cap_usd:.2f} cap "
-               f"(metered/billed, local day {d.day})")
+    out.append(
+        f"  spend today : ${d.today_spend_usd:.2f} of ${d.daily_cap_usd:.2f} cap "
+        f"(metered/billed, local day {d.day})"
+    )
     if d.today_ledger_holes:
         # Printed only when it is not zero, because a line that is always there is a line nobody
         # reads. The figure above is a lower bound whenever this appears.
-        out.append(f"  LEDGER HOLE : {d.today_ledger_holes} unreadable line(s) today — the spend "
-                   f"above is a LOWER BOUND and the cap has less room than it shows")
-    sub_cap = (f"of ${d.daily_subscription_cap_usd:.2f} cap"
-               if d.daily_subscription_cap_usd > 0 else "UNCAPPED")
-    out.append(f"  cli usage   : ${d.today_subscription_usd:.2f} {sub_cap} "
-               f"(Claude Code subscription-equivalent, not billed)")
+        out.append(
+            f"  LEDGER HOLE : {d.today_ledger_holes} unreadable line(s) today — the spend "
+            f"above is a LOWER BOUND and the cap has less room than it shows"
+        )
+    sub_cap = (
+        f"of ${d.daily_subscription_cap_usd:.2f} cap"
+        if d.daily_subscription_cap_usd > 0
+        else "UNCAPPED"
+    )
+    out.append(
+        f"  cli usage   : ${d.today_subscription_usd:.2f} {sub_cap} "
+        f"(Claude Code subscription-equivalent, not billed)"
+    )
 
     agg = _aggregate_ticks(cfg)
     if agg["ticks"]:
         rate = (agg["passes"] / agg["candidates"] * 100) if agg["candidates"] else 0.0
-        out.append(f"  production  : {agg['candidates']} candidates → {agg['passes']} PASS ({rate:.0f}%) "
-                   f"over {agg['ticks']} ticks")
+        out.append(
+            f"  production  : {agg['candidates']} candidates → {agg['passes']} PASS ({rate:.0f}%) "
+            f"over {agg['ticks']} ticks"
+        )
         out.append(f"  last PASS   : {agg['last_pass_ts'] or 'none yet'}")
-        out.append(f"  ticks       : {agg['errors']} errored, {agg['skipped']} skipped (guard/PAUSE)")
+        out.append(
+            f"  ticks       : {agg['errors']} errored, {agg['skipped']} skipped (guard/PAUSE)"
+        )
         if agg["last_error"]:
             out.append(f"  last error  : {agg['last_error'][:80]}")
     else:
@@ -2865,7 +3126,9 @@ def _liveness(cfg) -> tuple[bool, str]:
         return False, "no heartbeat file — daemon has never run (not installed/started?)"
     try:
         beat = json.loads(hb.read_text(encoding="utf-8"))
-        age_min = (datetime.now(timezone.utc) - datetime.fromisoformat(beat["ts"])).total_seconds() / 60
+        age_min = (
+            datetime.now(timezone.utc) - datetime.fromisoformat(beat["ts"])
+        ).total_seconds() / 60
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         return False, f"unreadable heartbeat ({exc})"
     phase = beat.get("phase", "?")
@@ -2890,17 +3153,21 @@ def _liveness(cfg) -> tuple[bool, str]:
     # in practice, and a negative age is reported rather than hidden.
     mono = beat.get("mono")
     age_mono_min = (time.monotonic() - mono) / 60 if isinstance(mono, (int, float)) else None
-    ages = (f"{age_min:.0f} min old"
-            if age_mono_min is None
-            else f"{age_min:.0f} min old by wall clock / {age_mono_min:.0f} min monotonic")
+    ages = (
+        f"{age_min:.0f} min old"
+        if age_mono_min is None
+        else f"{age_min:.0f} min old by wall clock / {age_mono_min:.0f} min monotonic"
+    )
     # Derived from the tick hard deadline (+10 min grace) so the in-process deadline always
     # self-exits a hung tick FIRST; the watchdog kill is the backstop for when even the
     # in-process timer wedges. A fixed number here silently strands the coupling when the
     # deadline changes (proven: the old hardcoded 55 assumed the old 45-min deadline).
     stall_min = _TICK_HARD_DEADLINE_S / 60 + 10
     if phase == "generating" and age_min > stall_min:
-        return False, (f"stuck in 'generating', heartbeat {ages} "
-                       f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)")
+        return False, (
+            f"stuck in 'generating', heartbeat {ages} "
+            f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)"
+        )
     # `draining` shares `generating`'s deadline-derived budget, and deliberately NOT the 45-min
     # one used for evaluating/idle below: a drain-only pass is long BY DESIGN — 15 rows at the
     # measured ~5.5 min/candidate is ~82 min — so a 45-min budget would SIGKILL a perfectly
@@ -2909,13 +3176,16 @@ def _liveness(cfg) -> tuple[bool, str]:
     # "alive" return, so a wedged drain was reported healthy forever; the drain-only branch is
     # the daemon's whole workload while the backlog brake is engaged.
     if phase == "draining" and age_min > stall_min:
-        return False, (f"stuck in 'draining', heartbeat {ages} "
-                       f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)")
+        return False, (
+            f"stuck in 'draining', heartbeat {ages} "
+            f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)"
+        )
     if phase == "sleeping":
         budget = beat.get("interval_s", 7200) / 60 + 35  # interval + grace
         if age_min > budget:
-            return False, (f"'sleeping' heartbeat {ages} (> interval+grace {budget:.0f}); "
-                           f"loop likely dead")
+            return False, (
+                f"'sleeping' heartbeat {ages} (> interval+grace {budget:.0f}); loop likely dead"
+            )
     # `starting` — the pre-first-tick window, and the ONLY phase whose work has no in-process
     # deadline Timer behind it (the Timers live inside `run_tick`). Its budget is the startup
     # probe's own bound plus grace, read from the heartbeat so a config or constant change cannot
@@ -2928,9 +3198,11 @@ def _liveness(cfg) -> tuple[bool, str]:
     if phase == "starting":
         budget = beat.get("probe_timeout_s", _STARTUP_PROBE_TIMEOUT_S) / 60 + 5
         if age_min > budget:
-            return False, (f"stuck in 'starting', heartbeat {ages} (> probe bound + grace "
-                           f"{budget:.0f} min) — startup wedged before the first tick, so no "
-                           f"in-process deadline covers it")
+            return False, (
+                f"stuck in 'starting', heartbeat {ages} (> probe bound + grace "
+                f"{budget:.0f} min) — startup wedged before the first tick, so no "
+                f"in-process deadline covers it"
+            )
     if phase in ("evaluating", "idle") and age_min > 45:
         return False, f"stuck in '{phase}', heartbeat {ages}"
     return True, f"alive (phase={phase}, {age_min:.1f} min ago)"
@@ -2957,9 +3229,11 @@ def _kill_stale_daemon(cfg) -> None:
     # the OS may have recycled its pid onto an unrelated process. Confirm the pid still
     # runs prospector before SIGKILLing it.
     import subprocess
+
     try:
-        cmdline = subprocess.run(["ps", "-p", str(pid), "-o", "command="],
-                                 capture_output=True, text=True, timeout=5).stdout
+        cmdline = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True, timeout=5
+        ).stdout
     except (subprocess.SubprocessError, OSError) as exc:
         # Narrowed from `except Exception` (TimeoutExpired is a SubprocessError): refusing to kill
         # is the right answer to a broken `ps`, but it is the WRONG answer to a bug in this code,
@@ -2967,12 +3241,18 @@ def _kill_stale_daemon(cfg) -> None:
         logger.error("Watchdog: could not inspect pid %d (%s); refusing to kill blind.", pid, exc)
         return
     if "prospector" not in cmdline:
-        logger.info("Watchdog: pid %d is not a prospector process (%r) — already exited; "
-                    "launchd will relaunch.", pid, cmdline.strip()[:80])
+        logger.info(
+            "Watchdog: pid %d is not a prospector process (%r) — already exited; "
+            "launchd will relaunch.",
+            pid,
+            cmdline.strip()[:80],
+        )
         return
     try:
         os.kill(pid, signal.SIGKILL)
-        logger.critical("Watchdog: SIGKILLed hung daemon pid %d — launchd KeepAlive will relaunch.", pid)
+        logger.critical(
+            "Watchdog: SIGKILLed hung daemon pid %d — launchd KeepAlive will relaunch.", pid
+        )
         print(f"⚠ watchdog killed hung daemon pid {pid}; launchd will relaunch it")
     except ProcessLookupError:
         logger.info("Watchdog: daemon pid %d already gone; launchd will relaunch.", pid)
@@ -3007,15 +3287,24 @@ def _ensure_supervisor_loaded(cfg) -> dict:
     if rec.get("changed"):
         from prospector.scheduler.alerts import CRITICAL, emit_alert
 
-        logger.critical("Watchdog: %s was NOT loaded in launchd — bootstrapped it. %s",
-                        PRODUCER, rec.get("message"))
+        logger.critical(
+            "Watchdog: %s was NOT loaded in launchd — bootstrapped it. %s",
+            PRODUCER,
+            rec.get("message"),
+        )
         print(f"⚠ {PRODUCER} was not loaded; watchdog bootstrapped it")
-        emit_alert(cfg, severity=CRITICAL, key="supervisor",
-                   title="Daemon launchd job was missing",
-                   message=(f"{PRODUCER} was not loaded, so KeepAlive could not relaunch the "
-                            f"daemon and every 'launchd will restart it' line in the log was "
-                            f"false. The watchdog re-bootstrapped it: {rec.get('message')}"),
-                   throttle_s=3600)
+        emit_alert(
+            cfg,
+            severity=CRITICAL,
+            key="supervisor",
+            title="Daemon launchd job was missing",
+            message=(
+                f"{PRODUCER} was not loaded, so KeepAlive could not relaunch the "
+                f"daemon and every 'launchd will restart it' line in the log was "
+                f"false. The watchdog re-bootstrapped it: {rec.get('message')}"
+            ),
+            throttle_s=3600,
+        )
     elif rec.get("ok") is False:
         logger.error("Watchdog: launchd cannot relaunch %s — %s", PRODUCER, rec.get("message"))
 
@@ -3052,15 +3341,27 @@ def _check_consumer(cfg) -> None:
 
     state, reason = live.get("state"), live.get("reason") or ""
     if state == "dead":
-        emit_alert(cfg, severity=CRITICAL, key="consumer_down",
-                   title="Drain consumer is DEAD", message=reason, throttle_s=3600)
+        emit_alert(
+            cfg,
+            severity=CRITICAL,
+            key="consumer_down",
+            title="Drain consumer is DEAD",
+            message=reason,
+            throttle_s=3600,
+        )
         print(f"⚠ consumer DEAD: {reason}")
         return
     if state == "late":
         # WARNING, not CRITICAL: the pid is alive, so the likeliest cause is a long pass rather
         # than a death, and the two are only distinguishable by waiting.
-        emit_alert(cfg, severity=WARNING, key="consumer_down",
-                   title="Drain consumer is not beating", message=reason, throttle_s=3600)
+        emit_alert(
+            cfg,
+            severity=WARNING,
+            key="consumer_down",
+            title="Drain consumer is not beating",
+            message=reason,
+            throttle_s=3600,
+        )
         print(f"⚠ consumer LATE: {reason}")
         return
     # running / blocked / stopped / unknown are all non-alarms — and the resolve must cover
@@ -3096,8 +3397,14 @@ def _run_watchdog(cfg) -> int:
         # the file green for up to two hours after the daemon actually died.
         resolve_alert(cfg, key="liveness", reason=f"watchdog check passed: {reason}")
         return 0
-    emit_alert(cfg, severity=CRITICAL, key="liveness",
-               title="Generation daemon is DOWN", message=reason, throttle_s=3600)
+    emit_alert(
+        cfg,
+        severity=CRITICAL,
+        key="liveness",
+        title="Generation daemon is DOWN",
+        message=reason,
+        throttle_s=3600,
+    )
     print(f"⚠ daemon DOWN: {reason}")
     _kill_stale_daemon(cfg)
     # AFTER the kill, not before: killing converts "hung" into "exited", and this is the check
@@ -3165,17 +3472,42 @@ def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description="Prospector always-on generation daemon")
     p.add_argument("--config", default="config.yaml", help="Path to config.yaml")
     mode = p.add_mutually_exclusive_group()
-    mode.add_argument("--once", action="store_true", help="Run a single bounded batch, then exit (default)")
+    mode.add_argument(
+        "--once", action="store_true", help="Run a single bounded batch, then exit (default)"
+    )
     mode.add_argument("--daemon", action="store_true", help="Run continuously on a fixed cadence")
-    p.add_argument("--interval", type=int, default=_DEFAULT_INTERVAL_SECONDS,
-                   help=f"Daemon cadence in seconds (default {_DEFAULT_INTERVAL_SECONDS})")
-    p.add_argument("--candidates", type=int, default=None, help="Override batch size (default: config schedule.batch_size)")
+    p.add_argument(
+        "--interval",
+        type=int,
+        default=_DEFAULT_INTERVAL_SECONDS,
+        help=f"Daemon cadence in seconds (default {_DEFAULT_INTERVAL_SECONDS})",
+    )
+    p.add_argument(
+        "--candidates",
+        type=int,
+        default=None,
+        help="Override batch size (default: config schedule.batch_size)",
+    )
     p.add_argument("--dry-run", action="store_true", help="Evaluate guards only; never generate")
-    p.add_argument("--status", action="store_true", help="Print daemon health (heartbeat, guard, production, stderr) and exit")
-    p.add_argument("--watch", type=int, nargs="?", const=30, default=None, metavar="SECONDS",
-                   help="Live-refresh the status readout every SECONDS (default 30); Ctrl-C to stop")
-    p.add_argument("--watchdog", action="store_true",
-                   help="One-shot liveness check; ALERTS if the daemon is down. For a cron/launchd timer.")
+    p.add_argument(
+        "--status",
+        action="store_true",
+        help="Print daemon health (heartbeat, guard, production, stderr) and exit",
+    )
+    p.add_argument(
+        "--watch",
+        type=int,
+        nargs="?",
+        const=30,
+        default=None,
+        metavar="SECONDS",
+        help="Live-refresh the status readout every SECONDS (default 30); Ctrl-C to stop",
+    )
+    p.add_argument(
+        "--watchdog",
+        action="store_true",
+        help="One-shot liveness check; ALERTS if the daemon is down. For a cron/launchd timer.",
+    )
     args = p.parse_args(argv)
 
     injected = _load_env_file()
@@ -3204,8 +3536,7 @@ def main(argv: list[str] | None = None) -> None:
         # GroundingInfrastructureError halt in run_tick — exit + KeepAlive relaunch lands
         # here, so the crash loop costs one probe, not one batch.
         _startup_grounding_check(cfg)
-        run_daemon(cfg, interval=args.interval, candidates=args.candidates,
-                   config_path=args.config)
+        run_daemon(cfg, interval=args.interval, candidates=args.candidates, config_path=args.config)
         return
 
     tick = run_tick(cfg, dry_run=args.dry_run, candidates=args.candidates)
