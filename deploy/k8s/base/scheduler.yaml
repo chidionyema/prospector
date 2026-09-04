@@ -117,6 +117,17 @@ spec:
               value: /var/run/secrets/prospector
             - name: PROSPECTOR_STORE_DIR
               value: /data/store
+            # Where the estate research engine keeps its ledger. Nothing secret is here: the
+            # password is RESEARCH_PG_PASSWORD in prospector-engine-env, which arrives as a
+            # file (admission refuses a secret in an env var) and reaches the environment
+            # through prospector/file_secrets.py. The role reads and cannot write. With any of
+            # these unset the tick generates blue-sky, exactly as it did before.
+            - name: RESEARCH_PG_HOST
+              value: estate-rw.estate-db.svc.cluster.local
+            - name: RESEARCH_PG_USER
+              value: research_reader
+            - name: RESEARCH_PG_DB
+              value: research
             - name: PYTHONDONTWRITEBYTECODE
               value: "1"
             - name: TMPDIR
