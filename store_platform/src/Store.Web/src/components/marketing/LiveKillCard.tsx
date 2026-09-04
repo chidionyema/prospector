@@ -5,6 +5,7 @@ import { tightDecimal } from '@/components/ui/Money';
 import { cx } from '@/components/ui/cx';
 import killTotals from '@/data/kill-log-totals.json';
 import killNames from '@/data/kill-log-names.json';
+import { GATE_LABELS } from '@/lib/gateLabels';
 
 /**
  * US-3 - The hero's demonstration of the moat.
@@ -64,7 +65,7 @@ const KILL_LINES = KILLS.map((k) => ({
   // payer solvency". SITE_SPEC 5.1 rule 5 names the kill-log verdict labels as the canonical
   // phrasing everywhere the checks are named, and de-underscoring an identifier is not a
   // phrasing -- it is the identifier with the underscores taken out.
-  reason: k.gateLabel,
+  reason: GATE_LABELS[k.gate] ?? k.gateLabel,
 }));
 /*
  * The "Last 3 passes" block was REMOVED on 2026-08-05.

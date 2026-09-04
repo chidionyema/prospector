@@ -300,7 +300,7 @@ export default function OrderSuccess() {
                 Copy link
               </button>
               <a
-                href={`https://x.com/intent/tweet?text=${encodeURIComponent(`Vetted business pack from Mumchimp: ${pack?.title ?? ''}`)}&url=${encodeURIComponent(shareUrl)}`}
+                href={`https://x.com/intent/tweet?text=${encodeURIComponent(`Researched business pack from Mumchimp: ${pack?.title ?? ''}`)}&url=${encodeURIComponent(shareUrl)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"

@@ -85,7 +85,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Is the pain real?',
     refutation: 'Pain',
     prose: 'whether the pain is real',
-    verdict: 'The pain was not real',
+    verdict: 'The pain is not real enough to pay for',
   },
   {
     id: 'value_durability',
@@ -94,7 +94,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Does the value last?',
     refutation: 'Value',
     prose: 'whether the value lasts',
-    verdict: 'The value would not last',
+    verdict: 'The value to the customer would not last',
   },
   {
     id: 'incumbency',
@@ -103,7 +103,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Is there room in the market?',
     refutation: 'Room',
     prose: 'whether there is room in the market',
-    verdict: 'The space is already taken',
+    verdict: 'Too much existing competition',
   },
   {
     id: 'payer_solvency',
@@ -112,7 +112,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Can the buyer pay?',
     refutation: 'Payer',
     prose: 'whether the buyer can pay',
-    verdict: 'The payer cannot actually pay',
+    verdict: 'The target buyer lacks the budget',
   },
   {
     id: 'distribution',
@@ -121,7 +121,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Can you reach the buyer?',
     refutation: 'Reach',
     prose: 'whether you can reach the buyer',
-    verdict: 'There is no route to reach buyers',
+    verdict: 'There is no route to the buyer',
   },
   {
     id: 'legality',

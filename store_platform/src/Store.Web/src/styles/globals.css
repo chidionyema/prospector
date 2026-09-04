@@ -225,6 +225,13 @@
   .featured h3 {
     overflow-wrap: break-word;
     hyphens: none;
+    font-size: clamp(2rem, 4.8vw, 3.25rem);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    max-width: 22ch;
+    -webkit-line-clamp: unset;
+    display: block;
   }
   .row .d,
   .htile p,
@@ -232,6 +239,10 @@
     overflow-wrap: normal;
     word-break: normal;
     hyphens: none;
+    font-family: var(--font-sans);
+    font-weight: 400;
+    line-height: 1.55;
+    text-align: left;
   }
   .row .d,
   .htile p,
@@ -292,6 +303,9 @@
   .htile {
     overflow: hidden;
     padding: 12px;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
   }
   .htile .cover {
     display: block;
@@ -633,12 +647,24 @@
     gap: 8px;
   }
   .row {
-    padding-top: 14px;
-    padding-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background: transparent;
+    border: 0;
+    border-right: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    border-radius: 0;
+    padding: 18px 16px 20px;
+    text-align: left;
   }
   .row h3 {
-    margin-top: 0;
-    margin-bottom: 4px;
+    font-size: clamp(1.35rem, 2.1vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    -webkit-line-clamp: 4;
+    margin: 6px 0 8px;
   }
   .row .d {
     margin-bottom: 6px;
@@ -708,6 +734,117 @@
     }
   }
 
+
+  /* Broadsheet (founder 2026-09-03T1150Z + 2026-09-03T1235Z). mumchimp.css stays
+     byte-identical; these rules sit later in the same components layer. */
+  :root {
+    --kicker: #6B1D1D;
+  }
+  h1,
+  h2.sec,
+  .featured h3,
+  .row h3,
+  .htile h3,
+  .klrow h3,
+  .klrow h4,
+  .catrow h4 {
+    font-family: var(--font-serif, Georgia, 'Times New Roman', serif);
+    text-align: left;
+  }
+  h1 {
+    font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    max-width: 18ch;
+  }
+  .featured {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding: 28px 0 32px;
+    margin: 8px 0 28px;
+  }
+
+  .featured .eyebrow,
+  .row .eyebrow,
+  .htile .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--kicker);
+    text-align: left;
+  }
+  .rows {
+    display: grid;
+    grid-template-columns: 1fr;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    border-top: 1px solid var(--ink);
+    border-left: 1px solid var(--ink);
+  }
+  @media (min-width: 700px) {
+    .rows { grid-template-columns: 1fr 1fr; }
+  }
+  @media (min-width: 1080px) {
+    .rows { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  .row .side {
+    grid-column: auto;
+    grid-row: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 12px;
+  }
+  .row .proof,
+  .htile .proof,
+  .htile .foot {
+    font-variant: small-caps;
+    letter-spacing: 0.04em;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .three {
+    gap: 0;
+  }
+  @media (min-width: 861px) {
+    .three {
+      column-gap: 0;
+    }
+    .htile {
+      border: 0;
+      border-top: 1px solid var(--ink);
+      border-left: 1px solid var(--ink);
+      border-right: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+      padding: 16px;
+    }
+    .htile h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.15;
+      -webkit-line-clamp: 4;
+    }
+    .htile .cover {
+      border-radius: 0;
+    }
+  }
+  .split-3 {
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) {
+    .split-3 { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  .err, .err h1, .err p { text-align: center; }
+
   /* `.f-col h2` WAS HERE and is deleted (2026-08-18). It restated `.f-col h6` because our footer
      used an `<h2>` to keep heading order legal. The bundle ships `.f-col .colh`
      (mumchimp.css:393) and its own footer writes `<p class="colh">`, so the copy is not needed
@@ -763,6 +900,7 @@ html {
   /* Repeated rather than var(--font-sans) for the same substitution reason: it must resolve
      against -pref here, not against whatever --font-sans already computed to. */
   --font-mono: var(--font-mono-pref), var(--font-fallback-mono);
+  --font-serif: var(--font-serif-pref, Georgia, 'Times New Roman', serif);
 
   /* Redeclaring the variables is not enough on its own. Body copy has no font-family rule of its
      own — it inherits, and the nearest ancestor that sets one is this element. It used to set it

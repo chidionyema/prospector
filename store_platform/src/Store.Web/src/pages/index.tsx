@@ -1002,8 +1002,8 @@ function CatalogBrowser({
       {/* Named, because an unlabelled control panel sitting mid-shelf reads as debris. It says
           what it is FOR, which is the thing the old placement never had to say because it was
           simply in the way. */}
-      <h3 className="sub">Narrow it down</h3>
-      <p className="lede">Four filters. Use one, or all of them, they combine.</p>
+      <h3 className="sub">Filter the Archive</h3>
+      <p className="lede">Combine filters to find the right blueprint for your skills and budget.</p>
 
       {/* THE THREE CONTROLS ARE ONE FILTER (founder review, 2026-08-15).
           A search field, a sector rail and a three-question router stack vertically in this block
@@ -1131,8 +1131,8 @@ function CatalogBrowser({
           FOUR stacked controls competing; one row of four is a different object, and the drawing
           gives it this line. No dash in it (founder's standing rule on copy): the mockup's em dash
           is a full stop here. */}
-      <h3 className="sub">Narrow it down</h3>
-      <p className="lede mb-4">Four filters. Use one, or all of them. They combine.</p>
+      <h3 className="sub">Filter the Archive</h3>
+      <p className="lede mb-4">Combine filters to find the right blueprint for your skills and budget.</p>
       <FilterBar
         packs={packs}
         state={state}
@@ -2084,9 +2084,6 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               {packs.length}
             </b>
             <p>
-              {/* The drawing says "Passed all six checks". The number of checks varies by
-                  idea, so `fixedCheckCount.test.ts` refuses a closed count in shipped copy.
-                  The drawing's second sentence stands as written. */}
               Passed every check they faced. Every claim sourced, every number traceable.
             </p>
             <Link
@@ -2098,11 +2095,6 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             </Link>
           </div>
           <div>
-            {/* "Researched, not listed" until 2026-08-30, over the KILLED count. Two things
-                were wrong with it. It read as inventory waiting to be listed, when every one of
-                these ideas was rejected on cited evidence; and it did not even hold arithmetically
-                -- researched-but-unlisted is 1,444 - 77 = 1,367, not 1,364. /how-it-works calls
-                the same figure "Killed on cited evidence", so this says that. */}
             <p className="lbl">Rejected, with the source</p>
             <b className="n num">
               {RESEARCH_STATS.killed.toLocaleString('en-GB')}
@@ -2352,7 +2344,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             "sceptic who counts our numbers" exactly back where they started.
           */}
           <h2 className="sec">
-            Six common checks. Sourced evidence. Only what passes goes on sale.
+            Only what survives the research goes on sale.
           </h2>
           {/* "everything that survived" was an ALL claim about a population, and it was false in
               the same way the survivor count was: 80 ideas cleared the gates, 50 are on the shelf.
@@ -2389,7 +2381,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               href="/how-it-works"
               className="inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
             >
-              See how the filter works
+              See how the research works
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>

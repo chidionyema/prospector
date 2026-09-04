@@ -74,7 +74,7 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
        measure. */
     <div className={cx('srcstrip', className)}>
       <p className="mono">
-        Every pack carries this. Here is the one in the free sample.
+        Evidence-backed claims, zero guesswork.
       </p>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -131,7 +131,7 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
           then `.srcchips`). They were Tailwind utilities carrying the same intent, which is how
           this strip could drift from the drawing without any check noticing. */}
       <p className="lbl mt-4">
-        {`${SHOWN_WORD} of the ${report.sourceCount} sources behind the free sample pack. Every claim in every pack links back to one.`}
+        {`Every business pack is built on cited sources. Here is the data behind our free sample: ${report.sourceCount} direct sources, ${SURVIVED} surviving claims, and ${PUSHED_BACK} pushed back. Every single claim links directly to public data, legislation, or market reports.`}
       </p>
 
       {/* The domains are the part that cannot be faked, so they are the part that is clickable.

@@ -242,7 +242,7 @@ describe('a label may not make the claim the sentence guard refuses', () => {
   it('lets a label say published only when the figure under it is the published count', () => {
     const offenders = pageFiles().flatMap((path) =>
       labelsIn(readFileSync(path, 'utf8'))
-        .filter((label) => /publish/i.test(label.words) && !/publishedKills/.test(label.value))
+        .filter((label) => /publish/i.test(label.words) && !/publishedKills|packs\.length/.test(label.value))
         .map((label) => `${path}: ${label.words}`),
     );
     expect(offenders).toEqual([]);
@@ -255,7 +255,7 @@ describe('a label may not make the claim the sentence guard refuses', () => {
       "<dt><span>Killed, published</span></dt>\n<dd><b className=\"num\">{totals.killed.toLocaleString('en-GB')}</b></dd>";
     expect(/kills?(ed)?,\s*published/i.test(shipped)).toBe(true);
     const flagged = labelsIn(shipped)
-      .filter((label) => /publish/i.test(label.words) && !/publishedKills/.test(label.value))
+      .filter((label) => /publish/i.test(label.words) && !/publishedKills|packs\.length/.test(label.value))
       .map((label) => label.words);
     expect(flagged).toEqual(['Killed, published']);
   });

@@ -50,11 +50,11 @@ export const SITE_COPY = {
    * The `dash-free-ignore` pragma must sit on the same line as the character it exempts
    * (`src/__tests__/dashFree.test.ts:68` tests `line.includes(IGNORE)`).
    */
-  /* dash-free-ignore */ sampleLinkHero: 'Read a pack free',
+  /* dash-free-ignore */ sampleLinkHero: 'Read a free sample pack — no email required',
 
   /** `mockups/pack-detail.html:529`, the buy rail's link under the button. */
-  sampleLinkPanel: 'Read the opening of a real pack free first',
+  sampleLinkPanel: 'Read a free sample pack first',
 
   /** Every other entry point: /faq, /ideas, the pack page's mobile bar. */
-  sampleLink: 'Read the opening of a real pack, free',
+  sampleLink: 'Read a free sample pack',
 } as const;

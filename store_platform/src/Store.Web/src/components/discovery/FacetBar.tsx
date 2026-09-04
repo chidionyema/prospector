@@ -605,7 +605,7 @@ export function FilterSheet({
       /* The sheet and the inline block carry the SAME name. They are one control with two ways in,
          and giving them two names would make them read as two different filters -- which is the
          confusion this change exists to remove, not one to add. */
-      title="Narrow it down"
+      title="Filter the Archive"
       footer={
         <button
           type="button"
@@ -740,7 +740,7 @@ export function FilterFab({
         className="pointer-events-auto inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-sm border border-border-strong bg-surface px-4 text-meta font-medium text-text transition-colors hover:border-text hover:bg-surface2"
       >
         <Icon name="search" size={14} />
-        Narrow it down
+        Filter the Archive
         {activeCount > 0 && (
           <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-sm bg-primary px-1.5 font-mono text-caption text-on-primary">
             {activeCount}
