@@ -36,13 +36,10 @@ export const MARKETING_NAV = [
   // instead of being reachable only from a sitemap and its siblings.
   // Label shortened from "Browse by category": at 14px the four-word item was wider than the
   // other three combined, so the nav read as one long phrase rather than four destinations.
-  { href: '/ideas', label: 'Categories' },
+  { href: '/', label: 'Packs' },
   { href: '/how-it-works', label: 'How it works' },
-  // Promoted out of the footer (2026-08-06). This shop's entire claim is that most ideas are
-  // rejected; the log of what got rejected and why is the evidence for that claim, and it was
-  // reachable only from a footer column. It is the strongest trust asset on the site.
-  { href: '/kill-log', label: 'Kill log' },
-  { href: '/faq', label: 'FAQ' },
+  { href: '/rejected', label: 'Rejected' },
+  { href: '/sample', label: 'Sample' },
 ] as const;
 
 /**
@@ -66,6 +63,7 @@ export const MARKETING_NAV = [
  */
 function isActivePath(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
+  if (href === '/rejected') return pathname === '/rejected' || pathname === '/kill-log' || pathname.startsWith('/rejected/') || pathname.startsWith('/kill-log/');
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -282,7 +280,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
               accessible name is also the better one: "Search" alone tells a screen-reader user
               nothing about what is being searched. Invisible to the drawing -- `parity.mjs` drops
               aria-label, and the button renders an icon, not this text. */}
-          <button type="button" className="icon-btn" aria-label="Search the catalogue" onClick={openSearch}>
+          <button type="button" className="icon-btn" aria-label="Search the packs" onClick={openSearch}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <circle cx="9" cy="9" r="6.25" stroke="currentColor" strokeWidth="1.7" />
               <path d="m13.8 13.8 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -379,12 +377,12 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
                   <b>Mum</b>chimp
                 </span>
               </Link>
-              <p>Business ideas that survived the filter. Fully sourced, ready to build.</p>
+              <p>Sourced business opportunities, ready to build.</p>
               {/* `tightDecimal` on both figures: they are the two biggest numbers on the page and
                   the decimal comma sets loose at this weight. */}
               <div className="f-stats">
                 <div>
-                  <span>Killed</span>
+                  <span>Rejected</span>
                   <b className="num whitespace-nowrap">{tightDecimal(RESEARCH_STATS.killed.toLocaleString('en-GB'))}</b>
                 </div>
                 <div>
@@ -395,7 +393,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             </div>
             <div className="f-col">
               <p className="colh">Store</p>
-              <Link href="/">Catalogue</Link>
+              <Link href="/">Packs</Link>
               {/* FR-10. This is the ONLY link to `/packs`, and it is load-bearing: the footer
                   renders on every page including the legal ones, so this one anchor is what puts
                   all 77 packs two clicks from the whole site. Measured 2026-08-21, before it
@@ -403,7 +401,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
               <Link href="/packs">Every pack</Link>
               <Link href="/ideas">Categories</Link>
               <Link href="/how-it-works">How it works</Link>
-              <Link href="/kill-log" prefetch={false}>Kill log</Link>
+              <Link href="/rejected" prefetch={false}>Rejected</Link>
               <Link href="/about">Who makes this</Link>
               <Link href="/faq">FAQ</Link>
             </div>
@@ -420,8 +418,8 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
                 <Link className="btn sm" href="/">
                   Browse
                 </Link>
-                <Link className="tlink" href="/kill-log" prefetch={false} style={{ alignSelf: 'center' }}>
-                  See what we killed
+                <Link className="tlink" href="/rejected" prefetch={false} style={{ alignSelf: 'center' }}>
+                  See what didn&apos;t pass
                 </Link>
               </div>
             </div>

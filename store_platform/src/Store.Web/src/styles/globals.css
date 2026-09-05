@@ -149,6 +149,16 @@
      truncated stubs in one 22px strip, 20px inset from the shelf. The
      component has used `.barline` since 2026-08-30; this block now matches
      that markup. mumchimp.css is untouched. */
+  /* 624 sat flush on the left of the band (founder 2026-09-03). mumchimp
+     .band is padding 30px 0; a little side pad keeps the figure off the corner. */
+  .band {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .band .fig {
+    margin-left: 4px;
+  }
+
   .band .bars {
     display: flex;
     flex-direction: column;
@@ -215,13 +225,24 @@
   .featured h3 {
     overflow-wrap: break-word;
     hyphens: none;
+    font-size: clamp(2rem, 4.8vw, 3.25rem);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    max-width: 22ch;
+    -webkit-line-clamp: unset;
+    display: block;
   }
   .row .d,
   .htile p,
   .featured .d {
-    overflow-wrap: break-word;
+    overflow-wrap: normal;
     word-break: normal;
     hyphens: none;
+    font-family: var(--font-sans);
+    font-weight: 400;
+    line-height: 1.55;
+    text-align: left;
   }
   .row .d,
   .htile p,
@@ -234,11 +255,28 @@
      box. Keep the footer at the bottom of the tile; do not grow the paragraph to get there. */
   .htile p {
     flex: none;
+    line-height: 1.4;
+    margin: 0;
+  }
+  .htile h3 {
+    margin: 0 0 6px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  .htile .kicker {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 4px;
+  }
+  .htile .kicker .eyebrow {
+    margin: 0;
   }
   .htile .foot {
     margin-top: auto;
+    padding-top: 10px;
   }
-
   /* THE SECTOR PICTURES. Not a deviation from the bundle -- the bundle has no rule for these,
      because when it was drawn the site had no imagery at all. That is the condition the founder
      set on 2026-08-14 when he had the near-black media blocks taken out: "Remove the black media
@@ -264,14 +302,19 @@
      file's own ratio back. `object-fit:cover` crops rather than squashes at both. */
   .htile {
     overflow: hidden;
+    padding: 12px;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
   }
   .htile .cover {
     display: block;
     flex: none;
-    width: calc(100% + var(--pad) * 2);
     max-width: none;
-    margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 14px;
-    aspect-ratio: 16 / 9;
+    /* 10px to the kicker — Guardian/Mail story cards sit type on the plate, not in a well. */
+    width: calc(100% + 24px);
+    margin: -12px -12px 10px;
+    aspect-ratio: 3 / 2;
     object-fit: cover;
     object-position: center;
     background: var(--brand-tint);
@@ -291,6 +334,68 @@
   @media (max-width: 900px) {
     .packcover {
       aspect-ratio: 16 / 9;
+    }
+  }
+
+  /* Phone stacked tiles become a newspaper list, not a tower of 16:9 posters.
+     Mail / Guardian / BBC: plate left, headline right, standfirst full measure,
+     price on the meta line. At 390 a 3:2 full-bleed plate is 232px and the title
+     sits under it; that is one card per screen. */
+  @media (max-width: 860px) {
+    .three {
+      gap: 0;
+    }
+    .htile {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      column-gap: 12px;
+      row-gap: 2px;
+      padding: 14px 4px;
+      border-radius: 0;
+      border-left: 0;
+      border-right: 0;
+      border-top: 0;
+      background: transparent;
+    }
+    .htile + .htile {
+      border-top: 1px solid var(--line);
+    }
+    .htile .cover {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      width: 112px;
+      height: auto;
+      aspect-ratio: 3 / 2;
+      margin: 0;
+      border-radius: 2px;
+      align-self: start;
+    }
+    .htile .kicker {
+      grid-column: 2;
+      grid-row: 1;
+      margin: 0;
+    }
+    .htile h3 {
+      grid-column: 2;
+      grid-row: 2;
+      font-size: 17.5px;
+      line-height: 1.22;
+      margin: 0;
+      -webkit-line-clamp: 3;
+    }
+    .htile:not(:has(.kicker)) h3 {
+      grid-row: 1 / span 2;
+    }
+    .htile p {
+      grid-column: 1 / -1;
+      margin-top: 8px;
+      -webkit-line-clamp: 2;
+    }
+    .htile .foot {
+      grid-column: 1 / -1;
+      margin-top: 8px;
+      padding-top: 0;
+      border-top: 0;
     }
   }
 
@@ -501,30 +606,65 @@
      Below 640px the picture stays a thumbnail beside the text. A full-width 16:9 band
      was about 197px tall per row and left the title nowhere useful to sit. The row is already
      one link, so the "View" caption is dropped on a phone to give the title the column. */
+  /* Newspaper list cut (Mail, Guardian, BBC): landscape plate, kicker, headline,
+     standfirst. Square 112px thumbs read as an app list. A 3:2 plate at 152px is
+     tall enough to have weight (the 16:9 postage stamp was 58px). Headline locks
+     to the top of the plate. On a phone the dek goes full measure under both,
+     which is how those papers keep the title next to the picture without
+     squeezing the standfirst into a 72px alley. */
   .row:has(> .rowcover) {
-    grid-template-columns: 112px minmax(0, 1fr) auto;
+    grid-template-columns: 152px minmax(0, 1fr) auto;
+    grid-template-rows: auto auto 1fr auto;
     column-gap: 16px;
+    row-gap: 2px;
+    align-items: start;
   }
-  .row:has(> .rowcover) > .top,
-  .row:has(> .rowcover) > h3,
-  .row:has(> .rowcover) > .d,
+  .row:has(> .rowcover) > .top {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+  }
+  .row:has(> .rowcover) > h3 {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+    line-height: 1.22;
+    letter-spacing: -0.018em;
+  }
+  .row:has(> .rowcover) > .d {
+    grid-column: 2;
+    grid-row: 3;
+    margin: 4px 0 0;
+  }
   .row:has(> .rowcover) > .proof {
     grid-column: 2;
+    grid-row: 4;
   }
   .row:has(> .rowcover) > .side {
     grid-column: 3;
+    grid-row: 1 / span 4;
+    justify-content: flex-start;
+    gap: 8px;
   }
-  /* Denser shelf. The bundle's `.row` is padding:18px and the title/description margins
-     (6px / 5px / 10px) were drawn for a short two-line clamp. Descriptions now run to their
-     full stop (this file's own unclamp), so those margins made each listing a tall card.
-     Shop density is the same drawing, tighter padding. Lives here, not in mumchimp.css. */
   .row {
-    padding-top: 12px;
-    padding-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background: transparent;
+    border: 0;
+    border-right: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    border-radius: 0;
+    padding: 18px 16px 20px;
+    text-align: left;
   }
   .row h3 {
-    margin-top: 2px;
-    margin-bottom: 4px;
+    font-size: clamp(1.35rem, 2.1vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    -webkit-line-clamp: 4;
+    margin: 6px 0 8px;
   }
   .row .d {
     margin-bottom: 6px;
@@ -535,46 +675,175 @@
     grid-column: 1;
     grid-row: 1 / span 4;
     align-self: start;
-    width: 112px;
-    height: 112px;
-    min-height: 112px;
+    width: 152px;
+    height: auto;
+    min-height: 0;
     max-width: none;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 3 / 2;
     object-fit: cover;
     object-position: center;
     background: var(--brand-tint);
-    border-radius: 8px;
-    margin-top: 2px;
+    border-radius: 2px;
+    margin-top: 0;
   }
   @media (max-width: 640px) {
     .row:has(> .rowcover) {
-      grid-template-columns: 72px minmax(0, 1fr) auto;
+      grid-template-columns: 112px minmax(0, 1fr);
+      grid-template-rows: auto auto auto auto;
       column-gap: 12px;
     }
-    .row:has(> .rowcover) > .top,
-    .row:has(> .rowcover) > h3,
-    .row:has(> .rowcover) > .d,
-    .row:has(> .rowcover) > .proof {
+    .row:has(> .rowcover) > .top {
       grid-column: 2;
+      grid-row: 1;
+    }
+    .row:has(> .rowcover) > h3 {
+      grid-column: 2;
+      grid-row: 2;
+      -webkit-line-clamp: 3;
+    }
+    .row:not(:has(> .top)) > h3 {
+      grid-row: 1 / span 2;
+    }
+    .row:has(> .rowcover) > .d {
+      grid-column: 1 / -1;
+      grid-row: 3;
+      margin-top: 8px;
+    }
+    .row:has(> .rowcover) > .proof {
+      grid-column: 1;
+      grid-row: 4;
     }
     .row:has(> .rowcover) > .side {
-      grid-column: 3;
-      grid-row: 1 / span 4;
-      justify-content: flex-start;
+      grid-column: 2;
+      grid-row: 4;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
       gap: 0;
     }
     .rowcover {
       grid-column: 1;
-      grid-row: 1 / span 4;
-      width: 72px;
-      height: 72px;
-      min-height: 72px;
+      grid-row: 1 / span 2;
+      width: 112px;
+      height: auto;
+      min-height: 0;
       margin: 0;
     }
     .row .view {
       display: none;
     }
   }
+
+
+  /* Broadsheet (founder 2026-09-03T1150Z + 2026-09-03T1235Z). mumchimp.css stays
+     byte-identical; these rules sit later in the same components layer. */
+  :root {
+    --kicker: #6B1D1D;
+  }
+  h1,
+  h2.sec,
+  .featured h3,
+  .row h3,
+  .htile h3,
+  .klrow h3,
+  .klrow h4,
+  .catrow h4 {
+    font-family: var(--font-serif, Georgia, 'Times New Roman', serif);
+    text-align: left;
+  }
+  h1 {
+    font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    max-width: 18ch;
+  }
+  .featured {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding: 28px 0 32px;
+    margin: 8px 0 28px;
+  }
+
+  .featured .eyebrow,
+  .row .eyebrow,
+  .htile .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--kicker);
+    text-align: left;
+  }
+  .rows {
+    display: grid;
+    grid-template-columns: 1fr;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    border-top: 1px solid var(--ink);
+    border-left: 1px solid var(--ink);
+  }
+  @media (min-width: 700px) {
+    .rows { grid-template-columns: 1fr 1fr; }
+  }
+  @media (min-width: 1080px) {
+    .rows { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  .row .side {
+    grid-column: auto;
+    grid-row: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 12px;
+  }
+  .row .proof,
+  .htile .proof,
+  .htile .foot {
+    font-variant: small-caps;
+    letter-spacing: 0.04em;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .three {
+    gap: 0;
+  }
+  @media (min-width: 861px) {
+    .three {
+      column-gap: 0;
+    }
+    .htile {
+      border: 0;
+      border-top: 1px solid var(--ink);
+      border-left: 1px solid var(--ink);
+      border-right: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+      padding: 16px;
+    }
+    .htile h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.15;
+      -webkit-line-clamp: 4;
+    }
+    .htile .cover {
+      border-radius: 0;
+    }
+  }
+  .split-3 {
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) {
+    .split-3 { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  .err, .err h1, .err p { text-align: center; }
 
   /* `.f-col h2` WAS HERE and is deleted (2026-08-18). It restated `.f-col h6` because our footer
      used an `<h2>` to keep heading order legal. The bundle ships `.f-col .colh`
@@ -631,6 +900,7 @@ html {
   /* Repeated rather than var(--font-sans) for the same substitution reason: it must resolve
      against -pref here, not against whatever --font-sans already computed to. */
   --font-mono: var(--font-mono-pref), var(--font-fallback-mono);
+  --font-serif: var(--font-serif-pref, Georgia, 'Times New Roman', serif);
 
   /* Redeclaring the variables is not enough on its own. Body copy has no font-family rule of its
      own — it inherits, and the nearest ancestor that sets one is this element. It used to set it

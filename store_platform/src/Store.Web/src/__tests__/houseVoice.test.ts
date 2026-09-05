@@ -6,6 +6,18 @@ import { describe, expect, it } from 'vitest';
 /**
  * THE HOUSE VOICE, APPLIED TO THE STOREFRONT.
  *
+ * THE RESEARCH-DESK REGISTER (founder 2026-09-03). Reader-facing chrome is an intelligence
+ * brief, not a startup landing page. The homepage is the worked example: kicker
+ * "RESEARCHED. PRICED. READY TO BUILD.", headline "Business ideas with the research
+ * already done.", survival rate "Only the top 6% survive the checks." (founder 2026-09-03 19:46 email), filters "Filter the Archive"
+ * never "Narrow it down", kill reasons in the GATE_LABELS map ("Did not score high
+ * enough to be viable") never the old engine phrasing ("Scored below the bar overall").
+ * Apply that same language on /how-it-works, /kill-log, /about, /faq, /ideas, pack
+ * chrome, emails and OG. Do not rewrite the 77 generated pack one-liners to get there.
+ * `retired-startup-copy` below is the fence: if the old jargon comes back, this file
+ * fails. Contractions and the other rules in this file still bind; the founder lines
+ * were adapted to them on the homepage, not pasted over them.
+ *
  * `prompts/style/voice.md` at the repo root is the document that says what our prose sounds
  * like. It was written for the engine's pack prose and it is enforced there, by
  * `tests/invariants/test_house_voice.py`. It was never applied to the shop.
@@ -150,6 +162,11 @@ const RULES: Rule[] = [
     re: /\?\s+[A-Z]/,
     why: 'a question inside our own prose is the trick where the writer asks what the reader was going to. Say the answer. (An FAQ heading is a whole string and does not match.)',
   },
+  {
+    name: 'retired-startup-copy',
+    re: /Narrow it down|Scored below the bar overall|Incumbents already own|defensibility claim was not evidence-backed|It failed the second round of checks|The value would not last|The payer cannot actually pay|Six common checks\. Sourced evidence|filter built to kill|kill-first filter/i,
+    why: 'founder 2026-09-03: the homepage is the research-desk example. Old startup jargon and the old kill-reason phrasing cannot return on reader-facing copy. Say "Filter the Archive", "6 in 100", and the GATE_LABELS sentences.',
+  },
 ];
 
 /** voice.md: "ONE IDEA PER SENTENCE. Aim under 25 words, never over 28." */
@@ -277,6 +294,7 @@ describe('house voice (prompts/style/voice.md) applies to the storefront too', (
       'semicolon-in-a-claim': 'The research is shared; the ground is not.',
       'four-or-more-item-list': 'The buyer, the price, the margins and the plan.',
       'rhetorical-question': 'So who actually pays? The council does.',
+      'retired-startup-copy': 'Narrow it down to the packs that fit.',
     };
     for (const rule of RULES) {
       const sample = samples[rule.name];

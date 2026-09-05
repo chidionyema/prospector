@@ -281,11 +281,38 @@ spec:
           selector:
             matchLabels:
               idp.estate/edge-attach: "true"
+    # Cyrus's webhook door (idp platform/cyrus, crew#834). The HTTPRoute already exists in idp's
+    # `cyrus` namespace and names this listener by sectionName, and that namespace carries
+    # idp.estate/edge-attach, so the selector below admits it -- the rule under this block is
+    # satisfied before the listener lands, not after.
+    #
+    # THE ONE LISTENER NOT ON prospector-edge-tls, deliberately. cert-manager groups listeners by
+    # the Secret in their certificateRefs and orders ONE certificate per group, so a single name
+    # HTTP-01 cannot reach fails the whole group's order: that is the outage recorded below, where
+    # two unreachable names froze the certificate for all thirteen live names and otto.<zone>
+    # served Traefik's placeholder for hours. cyrus.<zone> is a brand new name with no DNS record
+    # until external-dns publishes this route, which is exactly the shape that caused it. Its own
+    # Secret means its own certificate, so a failed order can cost cyrus and nothing else.
+    - name: https-cyrus
+      protocol: HTTPS
+      port: 8443
+      hostname: cyrus.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-cyrus-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
     # No listener lands before its HTTPRoute exists in idp. The alertmanager.<zone> and
     # prometheus.<zone> listeners (crew#684, a72c9d3, 2026-08-30) waited here for routes that never
     # merged (idp branch feat/crew684-alertmanager-and-prometheus-have-a-door), so external-dns had
-    # no route to publish and neither name resolved. Every listener above shares prospector-edge-tls,
-    # and cert-manager orders one certificate for all of them: two names that HTTP-01 can never
+    # no route to publish and neither name resolved. Every listener above shares prospector-edge-tls except
+    # https-cyrus, and cert-manager orders one certificate per Secret: two names that HTTP-01 can never
     # reach failed the whole order, and the certificate stayed at its 2026-08-27 set of names, so
     # otto.<zone> served the Traefik placeholder certificate and Telegram delivered nothing (Otto
     # outage, 2026-08-31T23:18Z onward). The two listeners return in the same wave as their routes.

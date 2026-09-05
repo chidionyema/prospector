@@ -96,7 +96,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   const body = `# Mumchimp
 
 > Mumchimp sells researched business opportunity packs${priceClause}. Every pack is one business
-> idea that passed an automated kill-first filter: ${checksSentence()}. It then survived an
+> idea that survived our research checks: ${checksSentence()}. It then survived an
 > adversarial review. Each claim in a pack cites a retrievable source.
 
 A pack is ${PACK_DOCUMENTS.length} documents (5,000+ words): an executive summary, a build spec, a
@@ -122,13 +122,13 @@ advice. ${PACK_DISCLAIMER} What IS promised is that the analysis is evidence-bac
 ${PACK_SCOPE}
 
 Ideas that FAIL the checks are published too, with the sourced reason they were killed, that is
-the kill log, and it is the evidence the checks are real rather than a marketing claim.
+the rejected ideas page, and it is the evidence the checks are real rather than a marketing claim.
 
 ## Guide
 
 - [How it works](${origin}/how-it-works): the checks, the adversarial review, and what lands in the zip.
 - [Sample pack](${origin}/sample): a real pack's contents, readable without buying.
-- [Kill log](${origin}/kill-log): ideas killed by the checks, each with its sourced reason.
+- [Rejected](${origin}/rejected): ideas that did not pass the checks, each with its sourced reason.
 - [FAQ](${origin}/faq): what you are buying, delivery, refunds, and licensing.
 
 ## Packs

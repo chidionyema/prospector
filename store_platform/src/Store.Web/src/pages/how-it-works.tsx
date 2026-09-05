@@ -122,7 +122,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
   const { variant } = useCopyVariant();
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'How it works' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'How it works' }]}
       breadcrumbsWidth="6xl"
     >
       <Seo
@@ -147,7 +147,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         lead={variant.howItWorksLead}
         aside={
           <HeroList
-            label="What each agent tries to prove"
+            label="What each check tries to prove"
             ordered
             items={COMMON_CHECKS.map((c) => c.refutation)}
           />
@@ -183,14 +183,14 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
           <div className="max-w-3xl">
             <p className="text-body font-semibold leading-relaxed text-text">
               {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas in.{' '}
-              {RESEARCH_STATS.killed.toLocaleString('en-GB')} killed.
+              {RESEARCH_STATS.killed.toLocaleString('en-GB')} rejected.
             </p>
           {/* This line promised that EVERY kill ships published with the evidence behind it, which
               was false about a number this page reads from the same JSON as the page that states it
               correctly: 400 of the 1,364, per /kill-log. The replacement claims no quantity at all,
               and `numbersReconcile.test.ts` scans every page for the absolute form. */}
             <p className="mt-2 lede">
-              {RESEARCH_STATS.rejectRateLabel} died on cited evidence. {killsSummary()}.
+              {RESEARCH_STATS.rejectRateLabel} rejected on cited evidence. {killsSummary()}.
             </p>
           </div>
           <FunnelDiagram className="w-full md:w-[340px]" />
@@ -237,7 +237,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
        * funnel is the shape of the process, the cascade is the count at every step of it.
        */}
       <Section bg="surface" outerClassName="!border-b-0">
-        <h2 className="sec">Where the ideas went</h2>
+        <h2 className="sec">Why most ideas fail our checks.</h2>
         <p className="mt-3 lede">
           Every check that killed something, in the order of how much it killed, with the number
           taken off the total each time.
@@ -261,9 +261,9 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
       <Section
         bg="white"
         width="6xl"
-        title="One idea, all the way through"
+        title="One idea, taken through the research"
         rule
-        intro="Every pack in the catalogue carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
+        intro="Every pack for sale carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
       >
         <CheckSequence />
       </Section>
@@ -301,7 +301,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             between the badges, and the example in a nested card inside each step. That is a
             different object from the drawing, which puts all six checks in ONE bordered card as
             hairline-separated rows -- a mono numeral at 32px, the check, the example under it, and
-            "See kills" on the right of the row. The timeline read as six stacked cards, so the
+            "See rejections" on the right of the row. The timeline read as six stacked cards, so the
             page said "six separate things" where the drawing says "one list, read it down".
 
             Every utility that set what `.checkrow` sets is gone rather than layered over it:
@@ -336,18 +336,18 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
                   <p className="srcs">
                     {died > 0 && (
                       <>
-                        <b className="text-kill">{died}</b> ideas died here
+                        <b className="text-kill">{died}</b> ideas stopped here
                         {example ? ' \u00b7 ' : ''}
                       </>
                     )}
-                    {example && <>killed by &ldquo;{example.gateLabel}&rdquo;</>}
+                    {example && <>stopped by &ldquo;{example.gateLabel}&rdquo;</>}
                   </p>
                 </div>
                 {/* `.tlink.go`: the drawing's row action. `.go` carries no desktop rule of its own
                     -- it exists so the mobile breakpoint can move the action out of the third
                     column and under the body (`.checkrow .v,.checkrow .go{grid-column:2}`). */}
-                <Link href="/kill-log" prefetch={false} className="tlink go">
-                  See kills
+                <Link href="/rejected" prefetch={false} className="tlink go">
+                  See rejections
                 </Link>
               </div>
             );
@@ -362,7 +362,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
       <Section
         bg="white"
         width="6xl"
-        title="Then a second wave of agents attacks the survivor."
+        title="Then a second wave of research attacks the survivor."
         rule
       >
         <div className="max-w-3xl space-y-4">
@@ -440,7 +440,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
       <Section
         bg="white"
         width="6xl"
-        title="The kill log"
+        title="Rejected ideas"
         rule
       >
         <div className="max-w-3xl space-y-6">
@@ -454,10 +454,10 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             the sources behind that argument where there were any.
           </p>
           <Link
-            href="/kill-log" prefetch={false}
+            href="/rejected" prefetch={false}
             className={buttonClasses({ size: 'lg' })}
           >
-            Read the kill log{' '}
+            Read the rejected ideas{' '}
             <Icon name="arrowRight" size={15} />
           </Link>
         </div>
@@ -483,10 +483,10 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
 
       <CtaBand
         width="6xl"
-        title="See what made it through."
+        title="See what survived the checks."
         lead=""
         primary={{ href: '/', label: 'Browse the packs' }}
-        secondary={{ href: '/sample', label: 'Read the free sample first' }}
+        secondary={{ href: '/sample', label: 'Read a free sample pack' }}
       />
     </MarketingLayout>
   );

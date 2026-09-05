@@ -16,7 +16,14 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz", "https-superset"}
+PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz", "https-superset", "https-cyrus"}
+
+# A listener whose hostname is brand new has no DNS record until external-dns publishes its route,
+# and cert-manager orders ONE certificate per Secret: on 2026-08-31 two such names failed the order
+# for all thirteen listeners sharing prospector-edge-tls and otto.<zone> served Traefik's
+# placeholder. A new name therefore gets its own Secret, so a failed order costs only that name.
+# The entry leaves this map when the certificate has issued and the name resolves.
+ISOLATED_CERTS = {"https-cyrus": "prospector-edge-cyrus-tls"}
 
 
 def _listeners() -> dict[str, dict]:
@@ -31,7 +38,7 @@ def test_every_estate_zone_listener_accepts_platform_routes() -> None:
     assert set(zone) == PLATFORM_LISTENERS, set(zone) ^ PLATFORM_LISTENERS
     for name, l in zone.items():
         assert l["port"] == 8443 and l["protocol"] == "HTTPS", name
-        assert l["tls"]["certificateRefs"][0]["name"] == "prospector-edge-tls", name
+        assert l["tls"]["certificateRefs"][0]["name"] == ISOLATED_CERTS.get(name, "prospector-edge-tls"), name
         ns = l["allowedRoutes"]["namespaces"]
         assert ns["from"] == "Selector", name
         assert ns["selector"]["matchLabels"] == {"idp.estate/edge-attach": "true"}, name
@@ -88,3 +95,21 @@ def test_incident_crew736_otto_listener_names_the_webhook_hostname() -> None:
     """crew#736: otto.<zone> attaches from the idp `hermes-agent` namespace; Telegram's webhook
     calls this hostname, so a listener missing here leaves the idp HTTPRoute with no parent."""
     assert _listeners()["https-otto"]["hostname"] == "otto.${ESTATE_ZONE}"
+def test_an_isolated_certificate_is_named_by_exactly_one_listener() -> None:
+    """What makes ISOLATED_CERTS isolation rather than a second shared certificate: cert-manager
+    groups listeners by the Secret in their certificateRefs, so a Secret named by two listeners is
+    one order for two names again, and a name HTTP-01 cannot reach takes the other one down with
+    it -- the 2026-08-31 shape, in miniature. One Secret, one listener, one name, one order."""
+    listeners = _listeners()
+    for name, secret in ISOLATED_CERTS.items():
+        assert name in listeners, name
+        users = [n for n, l in listeners.items() if (l.get("tls") or {}).get("certificateRefs", [{}])[0].get("name") == secret]
+        assert users == [name], (secret, users)
+
+
+def test_incident_crew834_cyrus_listener_names_the_webhook_hostname() -> None:
+    """crew#834: cyrus.<zone> attaches from the idp `cyrus` namespace, whose HTTPRoute
+    (idp platform/cyrus/httproute.yaml) names this listener by sectionName and whose namespace
+    carries idp.estate/edge-attach. Linear and GitHub POST their deliveries here; without the
+    listener the route attached to nothing and no webhook could arrive."""
+    assert _listeners()["https-cyrus"]["hostname"] == "cyrus.${ESTATE_ZONE}"
