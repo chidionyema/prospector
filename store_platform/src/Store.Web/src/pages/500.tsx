@@ -33,7 +33,7 @@ export default function ServerError() {
         <h1 className="mx-auto mb-3.5 max-w-[20ch]">
           This page failed to load.
         </h1>
-        <p className="mx-auto mb-[26px] max-w-[62ch] lede">
+        <p className="mx-auto mb-[26px] lede">
           The fault is on our server, so nothing you did caused it. Payments and downloads are
           handled by Stripe and are not affected: if you were buying a pack, you have not been
           charged twice.

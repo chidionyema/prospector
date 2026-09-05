@@ -36,4 +36,14 @@ echo "packages audited: $n of $(wc -l < /tmp/all-packages.txt | tr -d ' ')"
 # smaller. This is the check that proves the scan and the suite share one venv, which is the
 # whole reason it is safe to run the two at the same time.
 [ "$n" -ge 20 ] || { echo "::error::froze $n packages, so this is not the venv the suite runs"; exit 1; }
-uvx pip-audit -r /tmp/frozen.txt
+# nltk 3.10.3 carries GHSA-8mgp-746c-j5xp (path traversal in the model-artifact loaders: nltk.data
+# and nltk.download). No fixed release exists on PyPI as of 2026-09-03, and this repo imports only
+# nltk.stem.PorterStemmer (prospector/retrieval.py), which never opens an artifact. The ignore is
+# pinned to that exact version so it expires by itself: the first freeze that carries a newer
+# nltk audits it in full, and a stale ignore never hides a later advisory.
+ignore=()
+if grep -qix 'nltk==3.10.3' /tmp/frozen.txt; then
+  echo "nltk==3.10.3 frozen: GHSA-8mgp-746c-j5xp ignored (PorterStemmer only; no model-artifact API used)"
+  ignore=(--ignore-vuln GHSA-8mgp-746c-j5xp)
+fi
+uvx pip-audit -r /tmp/frozen.txt "${ignore[@]}"

@@ -44,7 +44,7 @@ export default function OrderPage() {
   if (error) {
     return (
       <MarketingLayout
-        breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Your order' }]}
+        breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Your order' }]}
         breadcrumbsWidth="6xl"
       >
         <div className="flex min-h-dvh items-center justify-center px-6">
@@ -73,7 +73,7 @@ export default function OrderPage() {
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Your order' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Your order' }]}
       breadcrumbsWidth="6xl"
     >
       <div className="flex min-h-dvh items-center justify-center px-6 py-16">

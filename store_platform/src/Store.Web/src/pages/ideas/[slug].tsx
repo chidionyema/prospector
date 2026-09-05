@@ -4,7 +4,7 @@ import { textLinkClass } from '@/components/ui';
 import type { GetServerSideProps } from 'next';
 
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
+import { PageHero, Section, CtaBand, HeroList } from '@/components/marketing/blocks';
 import { PackGrid } from '@/components/discovery/PackGrid';
 import { Seo } from '@/components/Seo';
 import { fetchCatalog, type Pack } from '@/lib/api/client';
@@ -97,7 +97,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
     return (
       <MarketingLayout
         breadcrumbs={[
-          { href: '/', label: 'Catalogue' },
+          { href: '/', label: 'Packs' },
           { href: '/ideas', label: 'Categories' },
           { href: '#', label: landing.h1 },
         ]}
@@ -108,15 +108,15 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
         width="7xl"
           eyebrow="Temporarily unavailable"
           title={landing.h1}
-          lead="The catalogue is briefly unreachable, so this page cannot list its packs right now. Try again in a minute."
+          lead="The packs are briefly unreachable, so this page cannot list them right now. Try again in a minute."
         />
         <Section bg="white" width="7xl">
           <p className="lede">
-            <Link href="/" className={textLinkClass('font-medium')}>
+            <Link href="/" className={textLinkClass()}>
               Browse every pack
             </Link>{' '}
             or{' '}
-            <Link href="/ideas" className={textLinkClass('font-medium')}>
+            <Link href="/ideas" className={textLinkClass()}>
               see the other categories
             </Link>
             .
@@ -129,7 +129,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
   return (
     <MarketingLayout
       breadcrumbs={[
-        { href: '/', label: 'Catalogue' },
+        { href: '/', label: 'Packs' },
         { href: '/ideas', label: 'Categories' },
         { href: '#', label: landingH1(landing.slug, variant) },
       ]}
@@ -145,7 +145,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
           ),
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/ideas' },
+            { name: 'Opportunities', path: '/ideas' },
             { name: landing.h1, path: `/ideas/${landing.slug}` },
           ]),
         )}
@@ -156,6 +156,14 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
         eyebrow={`${packs.length} researched ${packs.length === 1 ? 'pack' : 'packs'}`}
         title={landingH1(landing.slug, variant)}
         lead={landing.slug === 'automated-business-ideas' ? VARIANTS[variant].automatedIdeasIntro : landing.intro}
+        aside={
+          siblings.length > 0 ? (
+            <HeroList
+              label="Other ways in"
+              items={siblings.slice(0, 6).map((s) => s.h1)}
+            />
+          ) : undefined
+        }
       />
 
       <Section bg="white" width="7xl">
@@ -169,11 +177,11 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
         <p className="mt-10 lede">
           Every pack on this page faced the same checks: {checksSentence()}. Each then survived an
           adversarial review.{' '}
-          <Link href="/how-it-works" className={textLinkClass('font-medium')}>
+          <Link href="/how-it-works" className={textLinkClass()}>
             How the checks work
           </Link>
           , and the{' '}
-          <Link href="/kill-log" prefetch={false} className={textLinkClass('font-medium')}>
+          <Link href="/kill-log" prefetch={false} className={textLinkClass()}>
             kill log
           </Link>{' '}
           lists what it killed.
@@ -203,7 +211,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
 
       <CtaBand
         width="7xl"
-        title="See the whole catalogue."
+        title="See all the packs."
         lead=""
         primary={{ href: '/', label: 'Browse every pack' }}
       />

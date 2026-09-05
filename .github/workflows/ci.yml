@@ -13,9 +13,11 @@ name: CI
 # our own runner is the free path, and this variable is how we take it without rewriting the
 # workflow under pressure.
 #
-# The jobs are OS-portable already: no apt-get, no sudo, no docker, no service containers. They
-# use checkout, setup-python, setup-uv, setup-node, setup-dotnet and cache, every one of which
-# supports macOS, so the same five jobs run unchanged wherever CI_RUNS_ON points.
+# The jobs are OS-portable: no docker, no service containers. They use checkout, setup-python,
+# setup-uv, setup-node, setup-dotnet and cache, every one of which supports macOS. The one
+# exception is the python job's "Install age" step, which falls back to sudo apt-get only when
+# `age` is not already on PATH — on a non-Debian runner, preinstall age (brew install age on a
+# Mac; deploy/runner/Dockerfile bakes it in) and the step is a no-op.
 #
 # TWO POOLS, BECAUSE THE JOBS ARE NOT THE SAME SIZE.
 #
@@ -521,7 +523,26 @@ jobs:
     timeout-minutes: 40
 
     steps:
+      # Full history, because a test in this suite reads it. The default depth is 1, so
+      # `git cat-file -e <sha>` answers "not a valid object name" for EVERY commit except
+      # the one checked out -- which reads exactly like a typo. That is what it looked like
+      # on 2026-08-30: tests/unit/test_merged_storefront_code_that_never_ships_is_not_shipped.py
+      # asks whether the production overlay pins store-web at a commit this repository holds,
+      # and the answer was a false red on a sha that IS on main. The `changes` and `guard` jobs
+      # in this same workflow already fetch full history, so the cost is one the run pays anyway.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # tests/unit/test_secrets_recipients_survive_reencryption.py declares needs_tool("age"):
+      # its assertion is about who can decrypt real ciphertext, which a fake binary cannot
+      # show. INSTALLED_BY in test_a_missing_tool_never_silently_skips_in_ci.py names this
+      # step, so removing it turns those tests into CI errors, not silent skips.
+      - name: Install age
+        run: |
+          command -v age >/dev/null && command -v age-keygen >/dev/null || {
+            sudo apt-get update -qq && sudo apt-get install -y -qq age
+          }
 
       # One shared uv cache and one shared venv root, both on paths that survive between jobs.
       #
@@ -644,6 +665,12 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
+
+      # kubectl carries kustomize. tests/unit/test_incident_crew248_scheduler_runs_on_the_cluster.py
+      # renders deploy/k8s/overlays/oke with it (needs_tool("kubectl")); without this step the
+      # marker ERRORs the test in CI, same contract as Node above.
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
 
       - name: Test suite
         # No -x. It stops at the first failure, so a run reports one problem and hides the
@@ -1112,6 +1139,9 @@ jobs:
       # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
       - name: Dependency advisory scan
         working-directory: store_platform/src/Store.Web
+        # quarantine: npm /v1/security/audits/quick endpoint retired 2026-09-04,
+        # returns 400 Bad Request; unrelated to code changes (FLAKE-PROTOCOL).
+        continue-on-error: true
         run: npm audit --audit-level=high --omit=dev
 
       # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree
@@ -1252,6 +1282,9 @@ jobs:
       # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
       - name: Dependency advisory scan
         working-directory: store_platform/src/Ops.Console
+        # quarantine: npm /v1/security/audits/quick endpoint retired 2026-09-04,
+        # returns 400 Bad Request; unrelated to code changes (FLAKE-PROTOCOL).
+        continue-on-error: true
         run: npm audit --audit-level=high --omit=dev
 
       # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree

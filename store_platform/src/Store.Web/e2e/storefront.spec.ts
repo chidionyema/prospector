@@ -136,3 +136,171 @@ test.describe('basket drawer', () => {
     }
   });
 });
+
+/**
+ * NO HEADING MAY RENDER AS BODY TEXT.
+ *
+ * Tailwind's preflight sets every heading to `font-size:inherit;font-weight:inherit`, and the
+ * shipped bundle styles headings per container -- `.htile h3`, `.band h3`, `.checkrow h5`,
+ * `.klrow h4`. Between the two there is a silent hole: a heading at a level no rule names keeps
+ * the body's 400 and 16px, looks like a paragraph, and fails nothing. Measured on the built home
+ * page 2026-08-30, six headings were in it, including the three tiles at the top of the first
+ * shelf a visitor sees. Nobody could point at what was wrong; it just read cheap.
+ *
+ * `globals.css` now carries a weight floor for h1-h6 in `@layer base`, which is the fix. This is
+ * the guard, and it grades the rendered page rather than the stylesheet because the defect lives
+ * in the gap between them. The threshold is the floor's own 560 minus a margin: anything at 500
+ * or below is the reset's value, which is the exact signature of a heading no rule reached.
+ */
+test.describe('typography', () => {
+  /*
+   * Twelve routes since 2026-08-30, not five. The defect this block exists for is a heading in a
+   * container no rule names, and a container is exactly the thing that differs between pages, so
+   * covering a third of the site was covering a third of the risk. Every static marketing route
+   * the sitemap carries is here; the pack page is dynamic and is graded by the pack specs above.
+   */
+  const ROUTES = [
+    '/',
+    '/packs',
+    '/ideas',
+    '/kill-log',
+    '/about',
+    '/pricing',
+    '/how-it-works',
+    '/faq',
+    '/terms',
+    '/privacy',
+    '/refund',
+    '/sample',
+  ];
+
+  /*
+   * The headings the drawing itself sets AT body size or below, so the size assertion has to let
+   * them through. Each is a label rather than a title, and each is drawn that way on purpose:
+   * `mumchimp.css:377` gives `.othersrc h3` a 12px uppercase mono label under a check, and
+   * `mumchimp.css:384-385` give `.docitem h3` and `.file h3` 15.5px -- the bundle's own later
+   * revision of the rows it first drew at 15px. The two size utilities are here for a different
+   * reason: `text-meta` (14px) and `text-caption` (12px) are explicit steps on the scale, so a
+   * heading wearing one has been sized deliberately and cannot be the thing this test hunts,
+   * which is a heading NO size rule reached.
+   */
+  const DRAWN_SMALL = '.othersrc h3, .docitem h3, .file h3, .text-meta, .text-caption';
+
+  for (const route of ROUTES) {
+    test(`every visible heading on ${route} is set as a heading`, async ({ page }) => {
+      await page.goto(route);
+      const unstyled = await page.$$eval('h1,h2,h3,h4,h5,h6', (els) =>
+        els
+          .filter((el) => (el as HTMLElement).offsetParent !== null)
+          .map((el) => {
+            const s = getComputedStyle(el);
+            return {
+              tag: el.tagName,
+              weight: parseInt(s.fontWeight, 10),
+              size: s.fontSize,
+              text: (el.textContent || '').trim().slice(0, 60),
+            };
+          })
+          .filter((h) => h.weight <= 500),
+      );
+      expect(
+        unstyled,
+        'a heading rendering at the body weight is a heading no stylesheet rule reached',
+      ).toEqual([]);
+    });
+
+    /*
+     * WEIGHT WAS ONLY HALF THE SIGNATURE. Tailwind's preflight sets headings to
+     * `font-size:inherit` as well as `font-weight:inherit`, and `globals.css` carries a weight
+     * floor for headings no rule reaches but deliberately no size floor -- a size floor would
+     * have to invent a step the drawing never drew. So a heading in an unnamed container still
+     * renders at body size while passing the weight assertion above, and the page looks slightly
+     * wrong in a way nobody can point at. Four such headings were found by hand on the home page
+     * on 2026-08-30 and fixed one at a time; nothing pinned them. Widening this from five
+     * routes to twelve immediately found eight more, on four routes, from one cause:
+     * `text-h3`, whose token was deleted when the scale was cut to six steps.
+     * `everyTextUtilityResolves.test.ts` is the guard for that cause and runs in CI; this
+     * one is the guard for the symptom, and catches it whatever the next cause turns out
+     * to be.
+     */
+    test(`every visible heading on ${route} is set above the body size`, async ({ page }) => {
+      await page.goto(route);
+      const flat = await page.$$eval(
+        'h1,h2,h3,h4,h5,h6',
+        (els, drawnSmall) => {
+          const body = parseFloat(getComputedStyle(document.body).fontSize);
+          return els
+            .filter((el) => (el as HTMLElement).offsetParent !== null)
+            .filter((el) => !el.matches(drawnSmall))
+            .map((el) => ({
+              tag: el.tagName,
+              size: getComputedStyle(el).fontSize,
+              text: (el.textContent || '').trim().slice(0, 60),
+            }))
+            .filter((h) => parseFloat(h.size) <= body);
+        },
+        DRAWN_SMALL,
+      );
+      expect(
+        flat,
+        'a heading rendering at the body size is a heading no size rule reached',
+      ).toEqual([]);
+    });
+  }
+});
+
+/*
+ * THE DRAWING WINS WHERE IT HAS AN OPINION.
+ *
+ * `noUtilityOverpaint.test.ts` reads the source and can only see what one className string holds.
+ * Twice on 2026-08-30 that was not enough. `textLinkClass()` emits the bundle's `tlink` and the
+ * call site passed `font-medium` separately, so every inline link on the site rendered at weight
+ * 500 against the 550 `mumchimp.css:27` draws -- measured with getComputedStyle on the built page
+ * at :3177, on /ideas, /about and /faq. And `.sigcard .key`, drawn once at 12px mono, rendered at
+ * 14px on /how-it-works because that one call site also wore `text-meta`.
+ *
+ * These two assertions are the rendered-DOM angle on the same rule: whatever the source looks
+ * like, and wherever a future override arrives from, the page has to show the drawn value.
+ */
+test.describe('the bundle is not overpainted', () => {
+  for (const route of ['/ideas', '/about', '/faq']) {
+    test(`inline links on ${route} carry the drawn weight`, async ({ page }) => {
+      await page.goto(route);
+      const weights = await page.$$eval('.tlink', (els) => [
+        ...new Set(els.map((el) => getComputedStyle(el).fontWeight)),
+      ]);
+      expect(weights.length, `no .tlink on ${route} to measure`).toBeGreaterThan(0);
+      expect(weights, 'mumchimp.css:27 draws .tlink at font-weight 550').toEqual(['550']);
+    });
+  }
+
+  test('every FAQ question and answer is drawn at the bundle size', async ({ page }) => {
+    /*
+     * The drawing writes the FAQ as `<details><summary>` and this page uses a button, so the
+     * bundle's own `.faq summary` / `.faq p` rules can only reach it through the markup and the
+     * port in `globals.css`. When they did not, the question wore `.sub` and rendered at the size
+     * of a section heading -- 23px against 16.5px, on every question on the page -- and the answer
+     * rendered at 16px against 15px. Neither is visible to a source-level guard.
+     */
+    await page.goto('/faq');
+    const q = await page.$$eval('.faq h2', (els) =>
+      els.map((el) => `${getComputedStyle(el).fontSize}/${getComputedStyle(el).fontWeight}`),
+    );
+    expect(q.length, 'no FAQ question to measure').toBeGreaterThan(4);
+    expect([...new Set(q)], 'mumchimp.css:142 draws .faq summary at 16.5px weight 620').toEqual([
+      '16.5px/620',
+    ]);
+    const a = await page.$$eval('.faq p', (els) => els.map((el) => getComputedStyle(el).fontSize));
+    expect(a.length, 'no FAQ answer to measure').toBe(q.length);
+    expect([...new Set(a)], 'mumchimp.css:146 draws .faq p at 15px').toEqual(['15px']);
+  });
+
+  test('the signature card key strip is drawn at the bundle size', async ({ page }) => {
+    await page.goto('/how-it-works');
+    const sizes = await page.$$eval('.sigcard .key', (els) => [
+      ...new Set(els.map((el) => getComputedStyle(el).fontSize)),
+    ]);
+    expect(sizes.length, 'no .sigcard .key to measure').toBeGreaterThan(0);
+    expect(sizes, 'mumchimp.css:174 draws .sigcard .key at 12px').toEqual(['12px']);
+  });
+});

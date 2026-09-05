@@ -293,7 +293,7 @@ def test_a_computed_service_key_is_covered_by_the_prefix_not_by_luck():
     except Exception:  # noqa: BLE001 -- import needs flyctl-adjacent deps on some hosts
         import pytest
         pytest.skip("service_health not importable here")
-    from rollback_now import SERVICES
+    SERVICES = service_health.SERVICES
     assert SERVICES, "empty service table -- this test would pass while grading nothing"
     for name in SERVICES:
         assert _classified(service_health.alert_key(name)), name

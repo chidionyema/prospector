@@ -65,7 +65,7 @@ export function CheckSequence({ className }: { className?: string }) {
       <div className="rounded-md bg-surface2 p-5 sm:p-6">
         <p className="mono">The idea that went in</p>
         <h3 className="mt-2 leading-tight sub">{report.title}</h3>
-        <p className="mt-2 max-w-[62ch] lede">{report.oneLiner}</p>
+        <p className="mt-2 lede">{report.oneLiner}</p>
         {/* ONE PROOF-LINE FORMAT SITEWIDE (MASTER-BRIEF section 10). This line, the catalogue
             row, the summary strip below and the /sample hero all said the same thing in four
             different wordings, because each was written where it stood. The wording is now one
@@ -147,7 +147,7 @@ export function CheckSequence({ className }: { className?: string }) {
         </p>
         <Link
           href="/sample"
-          className={textLinkClass('text-meta font-medium')}
+          className={textLinkClass('text-meta')}
         >
           Read the whole evidence record
         </Link>

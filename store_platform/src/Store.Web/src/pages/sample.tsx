@@ -71,8 +71,8 @@ const PUSHED_BACK = report.total - report.supported;
 /*
   THE DRAWING'S SOURCE LIST (`mockups/sample.html`, `.srclist`): the pack's own "everything we
   read, once" section, a numbered list at the foot of the sheet. Derived from the excerpt rather
-  than typed, so it can only ever name pages this page actually quotes. The hero says "six of them
-  quoted below"; this is that six, listed where the drawing lists them.
+  than typed, so it can only ever name pages this page actually quotes. The hero counts this same
+  array, so the two cannot disagree; it used to say "six" and this list held four.
 */
 const QUOTED_SOURCES = EXCERPT.flatMap((s) => s.blocks).filter(
   (b): b is SourceBlock => b.type === 'source',
@@ -241,7 +241,7 @@ export default function SamplePage() {
      rule. The test is what caught it. */
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Sample' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Sample' }]}
       breadcrumbsWidth="6xl"
     >
       {/* Its own description, not the site default, and no longer the word "unredacted". The
@@ -250,7 +250,7 @@ export default function SamplePage() {
           oversells is worse than a generic one: it converts a click into a disappointment. */}
       <Seo
         title="Read the opening of a real pack, free"
-        description="The first three sections of a published Mumchimp pack, in full and unedited: the situation, what you would be selling, and the competitors already there, quoted from their own pages with every link. It stops where the working sections begin."
+        description="The first three sections of a published Mumchimp pack, in full and unedited: the situation, what you would be selling, and the competitors already there. Every claim is quoted from its own page, with the link. It stops where the working sections begin."
       />
 
       {/* Hero. Left-aligned, and on the SAME `7xl` band and rail grid as the document below, so
@@ -317,7 +317,12 @@ export default function SamplePage() {
                   section the rail also lists. */}
               <a href={`#${EXCERPT[2]?.id ?? 'boundary'}`} className={textLinkClass('inline-flex items-center gap-2')}>
                 <Glyph name="source" className="text-success" />
-                {`${sourcesLabel(report.sourceCount)} cited, six of them quoted below`}
+                {/* Derived, never typed (2026-08-30). The literal here read "six" while the
+                    sheet 100 lines below counted the same list and rendered "4 of 29 read": one
+                    load, one page, two numbers for one fact. This is the page the founder's
+                    2026-08-15 ruling says exists to prove the site does not overclaim, so it is
+                    the one page a wrong count costs the most. Both now count the same array. */}
+                {`${sourcesLabel(report.sourceCount)} cited, ${QUOTED_SOURCES.length} of them quoted below`}
               </a>
               {freshnessLabel(report.verifiedAt) && (
                 <span className="inline-flex items-center gap-2">
@@ -341,7 +346,12 @@ export default function SamplePage() {
                 framing the page adds -- the sections below are the document's own words. */}
             {UNSETTLED.length > 0 && (
               <section id="unsettled" className="mb-10 scroll-mt-24 rounded-md border border-warning bg-warning-bg p-8 md:p-9">
-                <h2 className="text-h3 font-semibold text-warning-strong">
+                {/* `sub` -- `mumchimp.css:15` `h3.sub{clamp(19px,3.4vw,23px);-.02em;655}`, ported
+                    to this element at `globals.css`. One step under the `sec` every other
+                    heading on this page wears, because the box is an aside to the report and
+                    must not read louder than the report's own title. It carried the dead
+                    `text-h3` until 2026-08-30 and rendered at 16px, the body size. */}
+                <h2 className="sub text-warning-strong">
                   {UNSETTLED.length === 1
                     ? 'One question the evidence would not settle'
                     : `${UNSETTLED.length} questions the evidence would not settle`}
@@ -378,7 +388,7 @@ export default function SamplePage() {
             <div className="rounded-card border border-border bg-surface p-8 md:p-9">
               <span className="text-caption font-medium text-muted">The pack</span>
               <h2 className="sec">{report.title}</h2>
-              <p className="mt-4 max-w-[68ch] lede">
+              <p className="mt-4 lede">
                 {report.oneLiner}
               </p>
             </div>
@@ -462,7 +472,7 @@ export default function SamplePage() {
               <h2 className="mt-3 max-w-[28ch] sec">
                 You have read the reporting. The rest is the working half.
               </h2>
-              <p className="mt-4 max-w-[68ch] lede">
+              <p className="mt-4 lede">
                 Three sections of {report.sectionsTotal}. What you have just read is what we found
                 out; the {WITHHELD.length} below are what you would do about it: what it costs,
                 what would sink it, what to build first, and how to know inside a month whether you
@@ -481,7 +491,7 @@ export default function SamplePage() {
                   fortnight plan -- because the document was written to be read whole. Leaving
                   those references intact and explaining them is more honest than editing the
                   excerpt to hide that it is one. */}
-              <p className="mt-7 max-w-[68ch] border-t border-warning/30 pt-5 lede">
+              <p className="mt-7 border-t border-warning/30 pt-5 lede">
                 The excerpt refers to two of these by name. That is the pack talking to its own
                 reader, not a tease, and we did not rewrite it to pretend the sample is the whole
                 document.

@@ -17,8 +17,9 @@
 #
 # WHY UBUNTU AND NOT macOS
 #
-# `.github/workflows/ci.yml:16-18` records that the jobs are OS-portable: no apt-get, no sudo,
-# no docker, no service containers. Every toolchain arrives through an action that fetches its
+# The ci.yml header records that the jobs are OS-portable: no docker, no service containers,
+# and the one apt-get (the python job's "Install age" fallback) is skipped wherever `age` is
+# already on PATH — as it is in this image. Every toolchain arrives through an action that fetches its
 # own copy — setup-node, setup-dotnet, setup-uv — and the python job deliberately uses
 # `uv venv` rather than the system interpreter (ci.yml:190-208), precisely so it does not care
 # what the box has installed. So this image installs no language runtimes. It installs what
@@ -54,9 +55,13 @@ FROM ubuntu:24.04
 #   sudo                   - some third-party actions call it; without it they fail late
 #   locales, tzdata        - test output that compares formatted dates otherwise differs
 #                            between this runner and the Macs
+#   age                    - tests/unit/test_secrets_recipients_survive_reencryption.py runs
+#                            real age (needs_tool errors in CI when it is missing); with it in
+#                            the image, the python job's "Install age" apt-get fallback never
+#                            runs here.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl git jq tar unzip zstd sudo locales tzdata python3 \
-      openssh-client \
+      openssh-client age \
       libicu74 liblttng-ust1 libssl3 gnupg xz-utils \
     && locale-gen en_GB.UTF-8 \
     && rm -rf /var/lib/apt/lists/*

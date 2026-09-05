@@ -25,6 +25,7 @@ THE CLOSE, in the order the laws ask for it:
   test    this file, so a new module cannot reintroduce the skipif spelling, and so deleting the
           setup step from ci.yml fails here rather than quietly stopping 67 tests.
 """
+
 from __future__ import annotations
 
 import ast
@@ -46,9 +47,15 @@ CI = ROOT / ".github" / "workflows" / "ci.yml"
 # row fails below, because the alternative is a test that silently stops running in CI.
 INSTALLED_BY: dict[str, str] = {
     "node": "actions/setup-node",
+    # kubectl carries kustomize; the crew#248 scheduler test renders the oke overlay with it.
+    "kubectl": "azure/setup-kubectl",
     # git is on every runner image, but the row is not a formality: the checkout step is
     # what makes the repo a git repo at all, and a test that reads the index needs both.
     "git": "actions/checkout",
+    # The apt package `age` ships both binaries. The recipients tests decrypt real
+    # ciphertext, which a fake age cannot prove.
+    "age": "Install age",
+    "age-keygen": "Install age",
 }
 
 # This file's own assertions quote both the banned spelling and the marker, and `conftest.py`
@@ -145,14 +152,18 @@ def test_every_tool_a_test_needs_is_installed_by_the_job_that_runs_it():
     steps = yaml.safe_dump(_python_job()["steps"])
     for tool in sorted(named):
         assert INSTALLED_BY[tool] in steps, (
-            f"tests declare `needs_tool(\"{tool}\")` but ci.yml's python job no longer runs "
+            f'tests declare `needs_tool("{tool}")` but ci.yml\'s python job no longer runs '
             f"{INSTALLED_BY[tool]}. Without it those tests error on every CI run. Put the step "
             "back, or stop needing the tool."
         )
 
 
 def _path_without(tool: str) -> str:
-    keep = [d for d in os.environ.get("PATH", "").split(os.pathsep) if d and not (Path(d) / tool).exists()]
+    keep = [
+        d
+        for d in os.environ.get("PATH", "").split(os.pathsep)
+        if d and not (Path(d) / tool).exists()
+    ]
     return os.pathsep.join(keep)
 
 
@@ -163,7 +174,11 @@ def _run_without_node(module: str, env_extra: dict[str, str]) -> subprocess.Comp
     env.update(env_extra)
     return subprocess.run(
         [sys.executable, "-m", "pytest", module, "-q", "-n", "0", "-p", "no:cacheprovider"],
-        cwd=ROOT, env=env, capture_output=True, text=True, timeout=300,
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=300,
     )
 
 
@@ -231,11 +246,13 @@ _ON_EVERY_RUNNER_IMAGE = {"git", "bash", "sh", "true"}
 #: it is safe. This is a debt list, not a waiver: every row has to say why the CI runner is not
 #: about to fail on it. Adding a row without a real reason is how `rg` would come back.
 _FAKED_ON_PATH_BY_THE_TEST = {
-    ("tests/unit/test_secrets_set_reads_stdin.py", "age"):
-        "the fixture puts a FAKE `age` and `age-keygen` on PATH, so the file needs no binary "
-        "installed and runs identically on a laptop and a runner. The fake also records the "
-        "argv it was called with, which is the only way to prove the secret value never "
-        "reaches a command line -- real encryption could not prove that.",
+    (
+        "tests/unit/test_secrets_set_reads_stdin.py",
+        "age",
+    ): "the fixture puts a FAKE `age` and `age-keygen` on PATH, so the file needs no binary "
+    "installed and runs identically on a laptop and a runner. The fake also records the "
+    "argv it was called with, which is the only way to prove the secret value never "
+    "reaches a command line -- real encryption could not prove that.",
 }
 
 
@@ -255,9 +272,12 @@ def _external_binaries(path: Path) -> set[str]:
         if not (isinstance(node, ast.Call) and node.args):
             continue
         fn = node.func
-        if not (isinstance(fn, ast.Attribute)
-                and fn.attr in {"run", "Popen", "check_output", "check_call", "call"}
-                and isinstance(fn.value, ast.Name) and fn.value.id in {"subprocess", "sp"}):
+        if not (
+            isinstance(fn, ast.Attribute)
+            and fn.attr in {"run", "Popen", "check_output", "check_call", "call"}
+            and isinstance(fn.value, ast.Name)
+            and fn.value.id in {"subprocess", "sp"}
+        ):
             continue
         argv = node.args[0]
         if isinstance(argv, ast.List) and argv.elts and isinstance(argv.elts[0], ast.Constant):
@@ -292,4 +312,5 @@ def test_no_test_runs_a_binary_it_never_declared(path):
             f"founder's laptop that passes; on the runner it is FileNotFoundError. Either mark "
             f"the test `@pytest.mark.needs_tool({tool!r})` and add a row to INSTALLED_BY saying "
             f"what installs it, or stop shelling out -- `rg` was replaced by "
-            f"tests/unit/repo_files.py plus a re.compile, which is faster anyway.")
+            f"tests/unit/repo_files.py plus a re.compile, which is faster anyway."
+        )

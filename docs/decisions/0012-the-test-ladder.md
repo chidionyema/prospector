@@ -99,7 +99,7 @@ forall ledger:    sum of leased budget       => never exceeds daily_cap_usd
 a deterministic retrieval source today. The golden set exists at `tests/test_golden_set.py` and is
 already an eval suite with mechanical grading — a `MockOperator` plus fixtures, discriminating
 PASS from KILL. Rung 7 exists: `.github/workflows/deploy-web.yml:196` calls
-`scripts/rollback_now.py store-web` when the site does not serve. `proptest` is already a
+`scripts/rollback_now.py (deleted 2026-08-26, crew#203) store-web` when the site does not serve. `proptest` is already a
 workspace dependency and is already used once, at
 `engine-rs/crates/prospector-core/src/decision.rs:180`, on exactly the shape the policy asks for —
 it encodes an invariant a Python comment had been asking the next author to preserve by hand.

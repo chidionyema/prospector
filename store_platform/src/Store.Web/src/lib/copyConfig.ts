@@ -112,13 +112,11 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // paragraph directly below; it was stated three times within 120px. Each variant now tests one
     // distinct promise (research done / economics verified / every number sourced) rather than
     // three overlapping paragraphs, which is also the only shape an A/B result can be read from.
-    // NOT WIRED TO THE HERO ANY MORE, and kept deliberately. The h1 in `pages/index.tsx` prints
-    // the founder's line directly (2026-08-18) instead of reading this slot, so nothing on the
-    // site renders `globalHookLead` today. The field stays because the A/B variants below are the
-    // record of three tested headline promises; deleting the control would leave b and c with
-    // nothing to be a variant OF. Variant a tracks the live h1 verbatim so the control is never
-    // stale copy -- if the A/B is ever rewired, a is what the page already shows.
-    globalHookLead: 'Business ideas with the research and starter packs ready.',
+    // Homepage h1, variant a. The live line since 2026-08-18. Variant b is the stronger
+    // "Skip 6 months of research. Launch a business or side hustle.", the live h1 from 05e47bc9 (2026-07-29).
+    // New visitors are split 50/50 in `pickVisitorVariant`; crawlers stay on a.
+    // Founder, 2026-09-03: the July line is the strong headline. It is the default.
+    globalHookLead: 'Skip 6 months of research. Launch a business or side hustle.',
     // CUT from 175 characters to ~80 (2026-08-06). At 390px the long version wrapped to four
     // lines and cost 200px of the first screen on its own, which was the single largest reason a
     // phone's opening screen contained no product at all. What it listed -- buyer, price, unit
@@ -133,14 +131,14 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // this is, written as a reason to buy. No new line, because the 175-to-80 cut above was
     // measured against the fold and a third paragraph would spend that back.
     globalHookDescription:
-      'The buyer, the price, the margins and the plan, put through an AI built to kill the idea first.',
+      'The buyer, the price and the plan, checked against sourced evidence before it goes on sale.',
 
-    howItWorksEyebrow: 'The checks',
-    howItWorksTitle: 'Every idea faces checks built to kill it.',
+    howItWorksEyebrow: 'The research',
+    howItWorksTitle: 'Every idea is stress-tested before it can go on sale.',
     howItWorksLead:
-      'Before anything reaches the store, it faces the checks: AI agents that each hunt for the reason it fails. Here is exactly how an idea earns its place.',
+      'We run market gaps through our AI research engine to stress-test the buyer, the price, and the plan. Only the top 6% survive the checks.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every pack is a sourced business opportunity, vetted against checks built to kill it and sourced to retrievable evidence before it can be listed.',
+      'How Mumchimp works: every pack is a sourced business idea, stress-tested against cited evidence before it goes on sale.',
 
     // NOT "Six checks, in order." The bare cardinal is the same closed-set promise corrected in
     // variant b below, and it survived because `fixedCheckCount.test.ts` only banned a numeral
@@ -161,34 +159,34 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // that six is all there is.
     sixChecksTitle: 'The checks, in order. One hard fail and it stops.',
     sixChecksDescription:
-      'Some ideas face more checks; each pack page names its own. Every kill is logged with its reason, so the filter is auditable, not a black box.',
+      'Some ideas face more checks, and each pack page names its own. Every rejection is logged with the reason that fired it, so you can audit the filter yourself.',
 
     automatedIdeasIntro:
-      'Code does the heavy lifting. These ideas scale on software, not your time. The core delivery (gathering data, generating docs, running checks) is automated rather than billed by the hour. We will tell you exactly where you still need a human in the loop.',
+      'Code does the heavy lifting. These ideas scale on software instead of your hours. The core delivery (gathering data, generating documents, running checks) is automated. We will tell you exactly where you still need a person.',
 
     categoryH1: CATEGORY_H1_A,
     categoryMetaTitle: CATEGORY_H1_A, // mirror for now
   },
 
   b: {
-    globalHookLead: 'Business ideas with the economics already verified.',
+    globalHookLead: 'Business opportunities with the research already done.',
     globalHookDescription:
-      'The buyer, the price, the numbers and the plan, checked by an AI paid to find the flaw.',
+      'The buyer, the numbers and the plan, checked by an AI paid to find the flaw.',
 
-    howItWorksEyebrow: 'The checks',
-    howItWorksTitle: 'Every idea is tested to destruction.',
+    howItWorksEyebrow: 'The research',
+    howItWorksTitle: 'Every idea is checked against cited evidence first.',
     howItWorksLead:
-      'Before an idea reaches the store, it faces the checks, run by AI agents designed to figure out why it would fail. They hunt for hidden legal red tape, a lack of real demand, and bad profit margins. If it survives, it gets published. If it fails, we document exactly why.',
+      'Before a pack reaches the catalogue, the research engine hunts for hidden red tape, a buyer who cannot pay, and a price that will not hold. What passes is published. What fails is logged with the check that killed it.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every idea is tested to destruction by the checks, run by AI agents, before it can be listed.',
+      'How Mumchimp works: every idea is stress-tested against cited evidence before it can be listed.',
 
     // NOT "The checks every pack faced". It sat above a list of exactly six steps, which made
     // the heading assert that the six ARE the set -- the same falsehood corrected in about.tsx
     // and faqContent.ts on 2026-08-06, surviving here because the guard that caught those reads
     // only about.tsx. 23 of the 63 live packs report a denominator other than 6.
-    sixChecksTitle: 'The checks an idea has to survive',
+    sixChecksTitle: 'The checks an idea has to pass',
     sixChecksDescription:
-      'Every pack faced the same checks: a real problem, proven value, room to compete, buyers who can pay, a clear way to reach them, and no legal red tape. Which checks ran depends on the idea, and the pack page shows exactly which ones it cleared.',
+      'Every pack faced the same bar: a real problem, proven value and room to compete. Then buyers who can pay, a clear way to reach them and no legal red tape. The checks that ran depend on the idea, and the pack page shows the ones it cleared.',
 
     automatedIdeasIntro:
       'Businesses where systems do the heavy lifting. Delivery relies on tools, templates, and automated checks so you do not run out of hours as you grow. We are honest about the limits: automatable does not mean autonomous. We list the exact steps that still require your input.',
@@ -198,9 +196,9 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   },
 
   c: {
-    globalHookLead: 'Business ideas with a source behind every number.',
+    globalHookLead: 'Business opportunities with a source behind every number.',
     globalHookDescription:
-      'The buyer, the price, the margins and the plan. An AI checked every number against a page you can open.',
+      'The buyer, the price and the plan. An AI checked every number against a page you can open.',
 
     // VARIANT C DE-JARGONED (2026-08-13). C is the proof-hungry reader, and its copy had been
     // reading that as Latinate abstraction: "regulatory friction", "margin compression",
@@ -213,13 +211,13 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksEyebrow: 'The methodology',
     howItWorksTitle: 'We try to prove every idea wrong first.',
     howItWorksLead:
-      'Before an idea is listed, AI agents go looking for the thing that kills it: rules that make it illegal, buyers who cannot pay, competitors already doing it, or margins too thin to live on. What survives is published with its sources. What does not is published in the kill log, with the evidence that killed it.',
+      'The research engine looks for a legal block, a buyer who cannot pay, or a market already taken. What passes is published with its sources. What fails is published on /rejected, with the evidence.',
     howItWorksSeoDescription:
-      'How Mumchimp works: AI agents hunt for the reason each idea fails, and the ideas that fail are published too, with the evidence.',
+      'How Mumchimp works: each idea is stress-tested against cited evidence, and the ideas that fail are published too, with the evidence.',
 
     sixChecksTitle: 'The same bar, every time',
     sixChecksDescription:
-      'Every pack clears the same bar: a real problem, value that lasts, room to compete, buyers with money to spend, a way to reach them, and nothing illegal about it. Which checks ran depends on the idea, and each pack page lists the ones it cleared.',
+      'Every pack clears the same bar: a real problem, value that lasts and room to compete. Then buyers with money to spend, a way to reach them and nothing illegal about it. The checks that ran depend on the idea, and each pack page lists the ones it cleared.',
 
     automatedIdeasIntro:
       'Businesses where software does the work. Reading data, producing documents, running checks: that is the part that scales, and it is why the income stops tracking the hours you put in. Each pack is explicit about the steps that still need you.',

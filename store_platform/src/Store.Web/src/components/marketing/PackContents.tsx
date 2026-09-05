@@ -89,17 +89,17 @@ export const PACK_DOCUMENTS: {
       'Pricing and the numbers behind it. Anything we could not verify is marked missing, never made up.',
   },
   {
-    title: 'What would sink this',
+    title: 'The case against',
     section: 'What_Would_Sink_This.md',
     desc:
-      'The case against, at full strength, so you meet the objection here rather than from a customer.',
+      'The case against, at full strength. Meet the objection here, before a customer makes it.',
   },
   // --- the body: how it is done ---
   {
     title: 'What you build',
     section: '01_Blueprint_BuildSpec.md',
     desc:
-      'What to build, in what order, and what to build it with. Includes what to leave out at first and what would kill this.',
+      'What to build, in what order, and what to build it with. Includes what to leave out at first and what would stop this.',
   },
   {
     title: 'How the first customers find you',

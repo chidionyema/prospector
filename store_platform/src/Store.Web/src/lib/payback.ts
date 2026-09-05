@@ -110,3 +110,29 @@ export function paybackEquation(price: string, snapshot?: FinancialSnapshot): Pa
     paybackMonths: snapshot.paybackMonths?.trim() || null,
   };
 }
+
+
+/** Months from the engine string ("8.1 months", "3 months"). Null if unreadable. */
+export function parsePaybackMonths(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const m = /(\d+(?:\.\d+)?)\s*month/i.exec(raw);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * One label, from the model. Months win when the engine stated them.
+ * Cards suppress ≤ 1× and > 18 months (brief §4.2, 2026-09-02).
+ */
+export function paybackLabel(eq: Payback | null, surface: "card" | "page" = "page"): string | null {
+  if (!eq) return null;
+  const months = parsePaybackMonths(eq.paybackMonths);
+  if (months != null) {
+    if (surface === "card" && months > 18) return null;
+    const rounded = Math.round(months);
+    return `Pays back in ${rounded} month${rounded === 1 ? "" : "s"}.`;
+  }
+  if (surface === "card" && eq.multiple <= 1) return null;
+  return `${eq.multiple}× first-year return.`;
+}

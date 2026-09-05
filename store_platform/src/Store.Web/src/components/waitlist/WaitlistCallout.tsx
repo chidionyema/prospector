@@ -24,8 +24,8 @@ export function WaitlistCallout() {
       {/* No subscriber count and no cadence. We have neither to honestly claim, and the consent
           text this form sends says "No newsletter", copy implying a regular send would contradict
           the very sentence being hashed as evidence one line below it. */}
-      <p className="mt-2 max-w-[62ch] lede">
-        The catalogue grows only when an idea clears every check it faces, so it grows slowly and
+      <p className="mt-2 lede">
+        The packs grow only when an idea clears every check it faces, so they grow slowly and
         unpredictably. Leave an address and we&apos;ll tell you when the next one does. That is the
         whole offer, no drip sequence, no pitch.
       </p>

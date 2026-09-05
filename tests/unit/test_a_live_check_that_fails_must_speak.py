@@ -58,19 +58,45 @@ WORKFLOWS = Path(__file__).resolve().parents[2] / ".github" / "workflows"
 # when another one appears; a live check with no alert is the defect this test names.
 LIVE_CHECK_WORKFLOWS = ["e2e-live-smoke.yml"]
 
-# The one label that carries the state. Both the raise step and the stand-down step must use
-# it, or the alarm opens issues that nothing ever closes.
-STATE_LABEL = "live-red"
+# The labels that carry state, one per CONDITION rather than one per workflow. Both the raise
+# step and the stand-down step of a channel must use its label, or the alarm opens issues that
+# nothing ever closes.
+#
+# There were two by 2026-08-30, and the second is why this file grades channels rather than
+# workflows. `live-red` means the shop is failing its checks right now. `release-lag` means the
+# shop WORKS and is running code we replaced -- #785, #788, #789 and #790 merged, built, and
+# never reached https://mumchimp.com, and every check stayed green because none of them was
+# asked whether the site is the code. Filing both under one label would make an open issue mean
+# two things, and a state you have to interpret is a state nobody checks.
+STATE_LABELS = ("live-red", "release-lag")
+
+# (workflow, label) -- every channel is graded on its own, so losing one alarm cannot be hidden
+# by the other one still being wired.
+CHANNELS = [(w, lbl) for w in LIVE_CHECK_WORKFLOWS for lbl in STATE_LABELS]
 
 # A condition that can fire when a graded job failed. Either the step sits in a job that runs
 # the checks (`failure()`), or it sits in a job that WAITS on them and reads their results.
 # The lookbehind matters: `!contains(needs.*.result, 'failure')` is the stand-down condition
 # and must never be mistaken for the alarm.
-FIRES_ON_FAILURE = re.compile(r"(?<![!\w])(?:failure\(\)|contains\([^)]*needs[^)]*'failure'\))")
+# A named-job form was added on 2026-08-30: with two channels in one job, `needs.*` is wrong
+# for both of them -- a release lag would open "the storefront smoke is red", and a green smoke
+# would close a lag issue it never graded. So a channel may also name the jobs it speaks for,
+# by dot access or, for a hyphenated job id, by bracket.
+_NEEDS_RESULT = r"needs(?:\.[\w-]+|\[[^\]]+\])\.result"
+FIRES_ON_FAILURE = re.compile(
+    r"(?<![!\w])(?:failure\(\)|contains\([^)]*needs[^)]*'failure'\)|"
+    + _NEEDS_RESULT + r"\s*==\s*'failure')"
+)
 
 # A condition that fires only when nothing failed. `success()` in a checking job, or the
 # negated needs form in a job that waits on them.
-FIRES_ON_PASS = re.compile(r"(?<![!\w])success\(\)|!\s*contains\([^)]*needs[^)]*'failure'\)")
+FIRES_ON_PASS = re.compile(
+    r"(?<![!\w])success\(\)|!\s*contains\([^)]*needs[^)]*'failure'\)|"
+    # `needs.smoke.result != 'failure'` establishes that a graded job did not fail; the `!=` is
+    # what makes it a stand-down and is why FIRES_ON_FAILURE (which requires `==`) stays quiet
+    # on it. `== 'success'` is the same statement said the other way round.
+    + _NEEDS_RESULT + r"\s*(?:!=\s*'failure'|==\s*'success')"
+)
 
 
 def _load(name: str) -> dict:
@@ -116,14 +142,21 @@ def _effective_permissions(doc: dict, job: dict) -> dict | None:
 OPENS_THE_ISSUE = re.compile(r"issues\.create\s*\(")
 
 
-def _raisers(doc: dict) -> list[tuple[str, dict, dict]]:
+def _in_channel(step: dict, label: str | None) -> bool:
+    """Does this step speak for that channel? A step names the label it files under."""
+    return label is None or f"'{label}'" in _script(step)
+
+
+def _raisers(doc: dict, label: str | None = None) -> list[tuple[str, dict, dict]]:
     """Steps that OPEN the alarm, found by what they do rather than by their condition."""
-    return [t for t in _steps(doc) if OPENS_THE_ISSUE.search(_script(t[2]))]
+    return [t for t in _steps(doc)
+            if OPENS_THE_ISSUE.search(_script(t[2])) and _in_channel(t[2], label)]
 
 
-def _closers(doc: dict) -> list[tuple[str, dict, dict]]:
+def _closers(doc: dict, label: str | None = None) -> list[tuple[str, dict, dict]]:
     """Steps that STAND THE ALARM DOWN."""
-    return [t for t in _steps(doc) if "state: 'closed'" in _script(t[2])]
+    return [t for t in _steps(doc)
+            if "state: 'closed'" in _script(t[2]) and _in_channel(t[2], label)]
 
 
 @pytest.mark.parametrize("name", LIVE_CHECK_WORKFLOWS)
@@ -140,7 +173,7 @@ def test_it_can_write_the_issue_it_needs_to_write(name: str) -> None:
     """
     doc = _load(name)
     alarm = _raisers(doc) + _closers(doc)
-    assert alarm, f"{name} has no step that opens or closes the `{STATE_LABEL}` issue"
+    assert alarm, f"{name} has no step that opens or closes a {list(STATE_LABELS)} issue"
 
     for job_name, job, _step in alarm:
         perms = _effective_permissions(doc, job)
@@ -153,14 +186,14 @@ def test_it_can_write_the_issue_it_needs_to_write(name: str) -> None:
         )
 
 
-@pytest.mark.parametrize("name", LIVE_CHECK_WORKFLOWS)
-def test_a_failure_raises_the_alarm(name: str) -> None:
+@pytest.mark.parametrize("name,label", CHANNELS)
+def test_a_failure_raises_the_alarm(name: str, label: str) -> None:
     """A step opens the issue, and its condition can actually fire when a check failed."""
     doc = _load(name)
-    raisers = _raisers(doc)
+    raisers = _raisers(doc, label)
     assert raisers, (
-        f"{name} has no step that opens an issue. A red run that tells nobody is the 30-hour "
-        f"outage of 2026-08-19."
+        f"{name} has no step that opens a `{label}` issue. A red run that tells nobody is the "
+        f"30-hour outage of 2026-08-19."
     )
 
     for job_name, _job, step in raisers:
@@ -173,24 +206,25 @@ def test_a_failure_raises_the_alarm(name: str) -> None:
 
     script = "\n".join(_script(s) for _n, _j, s in raisers)
     assert "issues.createComment" in script, (
-        f"{name} failure step never comments, so a daily cron against a broken site would "
-        f"open one issue per day instead of appending to the open one"
+        f"{name} `{label}` failure step never comments, so a daily cron against a broken site "
+        f"would open one issue per day instead of appending to the open one"
     )
-    assert STATE_LABEL in script, (
-        f"{name} failure step does not use the `{STATE_LABEL}` label, so the stand-down step "
-        f"will never find the issue it opened"
+    other = [x for x in STATE_LABELS if x != label]
+    assert not any(f"'{x}'" in script for x in other), (
+        f"{name} `{label}` failure step also names {other}, so one issue would carry two "
+        f"different meanings and neither could be read at a glance"
     )
 
 
-@pytest.mark.parametrize("name", LIVE_CHECK_WORKFLOWS)
-def test_a_pass_stands_the_alarm_down(name: str) -> None:
+@pytest.mark.parametrize("name,label", CHANNELS)
+def test_a_pass_stands_the_alarm_down(name: str, label: str) -> None:
     """The alert clears itself. Self-healing first — an alert a human must close is stale by
     the second day, and a stale alert is indistinguishable from a real one."""
     doc = _load(name)
-    closers = _closers(doc)
+    closers = _closers(doc, label)
     assert closers, (
-        f"{name} has no step that closes the issue, so a `{STATE_LABEL}` issue would stay open "
-        f"after the site recovered and the label would stop meaning anything"
+        f"{name} has no step that closes the `{label}` issue, so it would stay open after the "
+        f"condition cleared and the label would stop meaning anything"
     )
 
     for job_name, _job, step in closers:
@@ -201,13 +235,15 @@ def test_a_pass_stands_the_alarm_down(name: str) -> None:
             f"checking job, or `!contains(needs.*.result, 'failure')` in one that waits."
         )
         assert not FIRES_ON_FAILURE.search(cond), (
-            f"{name} job `{job_name}` would close the `{STATE_LABEL}` issue on a run where a "
-            f"check FAILED, reporting the site green with no evidence. if: {cond}"
+            f"{name} job `{job_name}` would close the `{label}` issue on a run where a check "
+            f"FAILED, reporting the condition cleared with no evidence. if: {cond}"
         )
 
     script = "\n".join(_script(s) for _n, _j, s in closers)
-    assert STATE_LABEL in script, (
-        f"{name} success step looks for a different label than the failure step opens"
+    other = [x for x in STATE_LABELS if x != label]
+    assert not any(f"'{x}'" in script for x in other), (
+        f"{name} `{label}` stand-down also closes {other}, so evidence about one condition "
+        f"would clear an issue about another"
     )
 
 

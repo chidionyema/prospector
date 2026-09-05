@@ -22,7 +22,7 @@ name: Live storefront smoke
 
 on:
   workflow_run:
-    workflows: ["Deploy Store.Web"]
+    workflows: ["container images"]  # deploy-web.yml went with Fly (crew#203); the image publish is the hand-off now
     types: [completed]
   schedule:
     # 07:00 UTC daily — before the UK working day, so a broken shelf is known before buyers arrive.
@@ -265,6 +265,66 @@ jobs:
           git commit -m "chore(web): refresh Playwright visual baselines on Linux"
           git push origin HEAD:${{ github.ref_name }}
 
+  # ──────────────────────────────────────────────────────────────────
+  # RELEASE LAG. The three jobs above grade whether the live site WORKS. This grades whether
+  # the live site IS the code we merged, which is a different question and the one nobody was
+  # asking on 2026-08-30.
+  #
+  # What happened: #785, #788, #789 and #790 all merged, `container images` built and pushed
+  # every one of them to ghcr, and https://mumchimp.com kept serving the markup #790 deleted.
+  # Nothing was broken and every check was green. The storefront simply never moved, because
+  # the only thing that moves it is the `newTag` line in deploy/k8s/overlays/oke/kustomization
+  # .yaml, and no automation rewrites it — that is idp#925, still open. The founder found it
+  # by looking at his own shop.
+  #
+  # Green CI over unreleased code is the `silent-green` class in the friction ledger: the
+  # checks were not lying, they were answering a question nobody had asked.
+  #
+  # SCHEDULE ONLY, and that is the design, not a shortcut. Merging a web change and releasing
+  # it minutes later is ordinary work, so a per-push version of this would sit red for hours
+  # of every normal day, and a guard that refuses correct work is an outage (LAW 38). Once a
+  # day, before the UK morning: "is anything merged, built, and still not on the shop?"
+  # ──────────────────────────────────────────────────────────────────
+  release-lag:
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    # It reads the repository and calls no API. A job-level block REPLACES the top-level one,
+    # so naming `contents: read` here also drops the `issues: write` this job must never hold.
+    permissions:
+      contents: read
+
+    steps:
+      # fetch-depth 0: the pin is a commit sha that may be far behind main, and `git log
+      # <pin>..origin/main` means nothing in a shallow clone.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: The shop runs what main says it should
+        working-directory: .
+        run: |
+          set -euo pipefail
+          overlay=deploy/k8s/overlays/oke/kustomization.yaml
+          python3 -c 'import yaml' 2>/dev/null || pip install --quiet pyyaml
+          pin="$(python3 -c "import yaml;c=yaml.safe_load(open('$overlay'));print({i['name']:i['newTag'] for i in c['images']}['ghcr.io/chidionyema/prospector-store-web'])")"
+          echo "store-web is pinned at $pin"
+
+          # Two different faults, and the message has to say which. A pin naming a commit this
+          # repository does not hold is a typo that leaves the cluster pulling a tag ghcr never
+          # built; a pin that is merely behind is unreleased work.
+          git cat-file -e "${pin}^{commit}" 2>/dev/null || {
+            echo "::error::$overlay pins store-web at $pin, which is not a commit in this repository"
+            exit 1
+          }
+
+          behind="$(git log --oneline "$pin..origin/main" -- store_platform/src/Store.Web/)"
+          if [ -n "$behind" ]; then
+            echo "$behind"
+            echo "::error::merged storefront commits are built in ghcr and are NOT on https://mumchimp.com. Set newTag for prospector-store-web in $overlay to $(git rev-parse origin/main)."
+            exit 1
+          fi
+          echo "nothing merged is waiting to be released"
+
   # ----------------------------------------------------------------------------------------
   # THE ALARM IS ITS OWN JOB, and that is the fix for a defect that ran silently for weeks.
   #
@@ -281,13 +341,14 @@ jobs:
   # tests/unit/test_a_workflow_permission_block_covers_its_api_calls.py refuses that class now.
   # ----------------------------------------------------------------------------------------
   alarm:
-    needs: [smoke, a11y, lighthouse]
+    needs: [smoke, a11y, lighthouse, release-lag]
     # `always()` so it speaks when a check FAILED, which is the entire point. The second half
     # keeps it quiet when the deploy guard dropped all three: "no smoke ran" is not evidence the
     # site is green, and must not close an open issue.
     if: ${{ always() && !(needs.smoke.result == 'skipped'
                           && needs.a11y.result == 'skipped'
-                          && needs.lighthouse.result == 'skipped') }}
+                          && needs.lighthouse.result == 'skipped'
+                          && needs['release-lag'].result == 'skipped') }}
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     # It writes one issue and nothing else. No checkout, so no contents scope.
     permissions:
@@ -320,7 +381,12 @@ jobs:
       - name: Raise the alarm (live smoke is red)
         # `failure()` would read THIS job's status, and this job runs no checks of its own.
         # The verdict lives in the three jobs it needs.
-        if: ${{ contains(needs.*.result, 'failure') }}
+        # The three jobs BY NAME, not `needs.*`. `release-lag` is also a need of this job and it
+        # answers a different question, so a wildcard here would file "the storefront smoke is
+        # red" over unreleased code that works perfectly.
+        if: ${{ needs.smoke.result == 'failure'
+                || needs.a11y.result == 'failure'
+                || needs.lighthouse.result == 'failure' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -366,11 +432,91 @@ jobs:
             })
             core.notice(`live smoke red — opened #${made.number}`)
 
+      # ------------------------------------------------------------------------------------
+      # THE SECOND CHANNEL, and it is deliberately not the first one. `live-red` means the shop
+      # is failing its checks right now; this one means the shop WORKS and is running code we
+      # replaced. Filing both under one label would make an open issue mean two things, and a
+      # state you have to interpret is a state nobody checks — the sentence the `live-red`
+      # comment above was written around.
+      #
+      # Two steps rather than one for the same reason the pair above is two steps: the raise and
+      # the stand-down have to carry conditions a reader (and
+      # tests/unit/test_a_live_check_that_fails_must_speak.py) can grade separately. On every
+      # non-schedule run `release-lag` is skipped, both conditions are false, and a deploy never
+      # touches this issue.
+      # ------------------------------------------------------------------------------------
+      - name: Raise the release-lag alarm (the shop is running code we replaced)
+        if: ${{ needs['release-lag'].result == 'failure' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`
+            const {data: open} = await github.rest.issues.listForRepo(
+              {owner, repo, state: 'open', labels: 'release-lag', per_page: 1})
+
+            const line =
+              `Still unreleased at ${new Date().toISOString()}. The failing step names the commits.\n\n` +
+              `Run: ${runUrl}`
+
+            if (open.length > 0) {
+              await github.rest.issues.createComment(
+                {owner, repo, issue_number: open[0].number, body: line})
+              core.notice(`release lag — commented on #${open[0].number}`)
+              return
+            }
+
+            const body = [
+              '**Storefront code is merged and built, and https://mumchimp.com is not running it.**',
+              'Nothing is broken; the shop is simply older than `main`. Opened by',
+              '`.github/workflows/e2e-live-smoke.yml`, and it CLOSES ITSELF the morning the shop',
+              'catches up.',
+              '',
+              line,
+              '',
+              'To release by hand: set `newTag` for `ghcr.io/chidionyema/prospector-store-web` in',
+              '`deploy/k8s/overlays/oke/kustomization.yaml` to the sha the failing step names, and',
+              'merge. Flux applies the overlay; that line is the deploy.',
+              '',
+              'The permanent fix is idp#925, which rewrites the line on a merge so this issue',
+              'stops being how anyone finds out.',
+            ].join('\n')
+
+            const {data: made} = await github.rest.issues.create({
+              owner, repo, labels: ['release-lag'],
+              title: 'The shop is running code we replaced',
+              body,
+            })
+            core.notice(`release lag — opened #${made.number}`)
+
+      - name: Stand the release-lag alarm down (the shop is level with main)
+        if: ${{ needs['release-lag'].result == 'success' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`
+            const {data: open} = await github.rest.issues.listForRepo(
+              {owner, repo, state: 'open', labels: 'release-lag', per_page: 100})
+            for (const issue of open) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number,
+                body: `The shop is level with main again at ${new Date().toISOString()}. Closing.\n\nRun: ${runUrl}`,
+              })
+              await github.rest.issues.update(
+                {owner, repo, issue_number: issue.number, state: 'closed', state_reason: 'completed'})
+              core.notice(`release lag cleared — closed #${issue.number}`)
+            }
+
       - name: Stand the alarm down (live smoke is green again)
         # Only a clean sweep stands the alarm down. A cancelled run proves nothing, and
         # closing the issue on it would report the site green on no evidence.
-        if: ${{ !contains(needs.*.result, 'failure')
-                && !contains(needs.*.result, 'cancelled') }}
+        # Same three, by name. A `release-lag` failure must not hold this issue open, and a
+        # `release-lag` skip (every non-schedule run) must not stop it closing — that would make
+        # self-healing wait for 07:00 UTC and the issue would stop meaning "red RIGHT NOW".
+        if: ${{ needs.smoke.result != 'failure' && needs.smoke.result != 'cancelled'
+                && needs.a11y.result != 'failure' && needs.a11y.result != 'cancelled'
+                && needs.lighthouse.result != 'failure' && needs.lighthouse.result != 'cancelled' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |

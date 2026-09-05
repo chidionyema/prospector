@@ -31,8 +31,8 @@ import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
  * (`curl -s https://mumchimp.com/terms` carries the footer's Store column). So `/packs` is one
  * click from every entry route and every pack is two.
  *
- * It is deliberately the least designed surface on the site. A second shelf that competed with the
- * home page's would need its own art direction and its own review; an index does not.
+ * This is a shop index, not a second marketing page. Same row, same type, same picture as the
+ * home shelf; no cap, no filters. The job is to look like a list of goods a buyer can scan.
  */
 
 /** Exported so `src/__tests__/everyPackIsListed.test.tsx` can hand the real props straight from
@@ -97,7 +97,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
 
 export default function AllPacks({ groups, total, currency, market, unavailable }: Props) {
   const breadcrumbs = [
-    { href: '/', label: 'Catalogue' },
+    { href: '/', label: 'Packs' },
     { href: '#', label: 'Every pack' },
   ];
 
@@ -113,7 +113,7 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
           width="7xl"
           eyebrow="Temporarily unavailable"
           title="Every pack"
-          lead="The catalogue is briefly unreachable, so this page cannot list the packs right now. Try again in a minute."
+          lead="The packs are briefly unreachable, so this page cannot list them right now. Try again in a minute."
         />
         <Section bg="white" width="7xl">
           {/* `/#catalog`, not `/`. `/` is the top of a long marketing page; the shelf itself is
@@ -122,7 +122,7 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
               WHOLE page, so a link to the top of the marketing site leaves a visitor with
               nowhere to go, and `e2e/first-run.spec.ts` FR3 says so. */}
           <p className="lede">
-            <Link href="/#catalog" className={textLinkClass('font-medium')}>
+            <Link href="/#catalog" className={textLinkClass()}>
               Back to the catalogue
             </Link>
             .
@@ -153,12 +153,12 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
         width="7xl"
         eyebrow={`${total} ${total === 1 ? 'pack' : 'packs'}`}
         title="Every pack"
-        lead="The complete index. The catalogue page shows the newest first and holds the rest back; this page holds nothing back."
+        lead="Every researched pack we sell. Alphabetical, this market first."
       />
 
       <Section bg="white" width="7xl">
         {groups.map((group, i) => (
-          <div key={group.key} className={i === 0 ? undefined : 'mt-12'}>
+          <div key={group.key} className={i === 0 ? undefined : 'mt-8'}>
             {/* The visitor's own market has no heading: it is the first thing on the page and
                 labelling it "United Kingdom" tells a UK reader something they did not ask. Every
                 OTHER market gets one, because a US pack in a UK reader's list needs to say so. */}
@@ -179,11 +179,11 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
         <p className="mt-10 lede">
           Sorted by title, so a pack you have heard of is findable. To browse by sector or buyer,
           use the{' '}
-          <Link href="/ideas" className={textLinkClass('font-medium')}>
+          <Link href="/ideas" className={textLinkClass()}>
             categories
           </Link>
           . What did not survive the checks is in the{' '}
-          <Link href="/kill-log" prefetch={false} className={textLinkClass('font-medium')}>
+          <Link href="/kill-log" prefetch={false} className={textLinkClass()}>
             kill log
           </Link>
           .

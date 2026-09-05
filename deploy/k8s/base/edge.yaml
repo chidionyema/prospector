@@ -156,6 +156,166 @@ spec:
           selector:
             matchLabels:
               idp.estate/edge-attach: "true"
+    # The estate's model router (idp platform/llm, crew#284). The HTTPRoute lives in the idp
+    # namespace `llm`; this listener is what it attaches to and what puts llm.<zone> on the cert.
+    - name: https-llm
+      protocol: HTTPS
+      port: 8443
+      hostname: llm.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
+    # The estate's trace store (idp platform/observability, Langfuse; crew#325 showcase). The
+    # HTTPRoute lives in the idp namespace `observability`, behind the one login like the catalogue.
+    - name: https-langfuse
+      protocol: HTTPS
+      port: 8443
+      hostname: langfuse.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
+    # The founder's boardroom dashboard (idp platform/observability, Superset; crew#R74 CP1).
+    # Until this listener existed the superset HTTPRoute in idp's `observability` namespace had
+    # nothing to attach to: no DNS record, no certificate SAN, no page. Same shape as langfuse:
+    # behind the one login, one shared Secret, cert-manager adds the SAN from this hostname.
+    - name: https-superset
+      protocol: HTTPS
+      port: 8443
+      hostname: superset.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
+    # The estate's telemetry backend (idp platform/observability, SigNoz; crew#495 CP8). Until this
+    # listener existed SigNoz had no hostname at all: nobody could open it, and the SigNoz Terraform
+    # provider had no endpoint to declare alert rules against. Same shape as langfuse: the HTTPRoute
+    # lives in idp's `observability` namespace, behind the one login.
+    - name: https-signoz
+      protocol: HTTPS
+      port: 8443
+      hostname: signoz.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
+    # crew#458: the idp mcp row (agentgateway + github-mcp) attaches here by sectionName.
+    - name: https-mcp
+      protocol: HTTPS
+      port: 8443
+      hostname: mcp.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
+    # The estate's job monitor (idp platform/healthchecks, crew#177): the screen behind the one
+    # login and /ping/ for the jobs' curl, both HTTPRoutes in the idp namespace `healthchecks`.
+    # The Architect's Telegram webhook door (idp platform/hermes-agent, crew#736). Telegram POSTs
+    # updates to otto.<zone>/telegram; the HTTPRoute lives in idp's `hermes-agent` namespace and the
+    # adapter refuses to start without the secret token that authenticates every POST
+    # (hermes-agent GHSA-3vpc-7q5r-276h), so this door is never fail-open. Same one-Secret
+    # certificate as every listener: cert-manager adds the SAN.
+    - name: https-otto
+      protocol: HTTPS
+      port: 8443
+      hostname: otto.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
+    - name: https-hc
+      protocol: HTTPS
+      port: 8443
+      hostname: hc.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
+    # Cyrus's webhook door (idp platform/cyrus, crew#834). The HTTPRoute already exists in idp's
+    # `cyrus` namespace and names this listener by sectionName, and that namespace carries
+    # idp.estate/edge-attach, so the selector below admits it -- the rule under this block is
+    # satisfied before the listener lands, not after.
+    #
+    # THE ONE LISTENER NOT ON prospector-edge-tls, deliberately. cert-manager groups listeners by
+    # the Secret in their certificateRefs and orders ONE certificate per group, so a single name
+    # HTTP-01 cannot reach fails the whole group's order: that is the outage recorded below, where
+    # two unreachable names froze the certificate for all thirteen live names and otto.<zone>
+    # served Traefik's placeholder for hours. cyrus.<zone> is a brand new name with no DNS record
+    # until external-dns publishes this route, which is exactly the shape that caused it. Its own
+    # Secret means its own certificate, so a failed order can cost cyrus and nothing else.
+    - name: https-cyrus
+      protocol: HTTPS
+      port: 8443
+      hostname: cyrus.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-cyrus-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
+    # No listener lands before its HTTPRoute exists in idp. The alertmanager.<zone> and
+    # prometheus.<zone> listeners (crew#684, a72c9d3, 2026-08-30) waited here for routes that never
+    # merged (idp branch feat/crew684-alertmanager-and-prometheus-have-a-door), so external-dns had
+    # no route to publish and neither name resolved. Every listener above shares prospector-edge-tls except
+    # https-cyrus, and cert-manager orders one certificate per Secret: two names that HTTP-01 can never
+    # reach failed the whole order, and the certificate stayed at its 2026-08-27 set of names, so
+    # otto.<zone> served the Traefik placeholder certificate and Telegram delivered nothing (Otto
+    # outage, 2026-08-31T23:18Z onward). The two listeners return in the same wave as their routes.
 ---
 # Everything on port 80 becomes a 301 to the same URL on 443. This is the `force_https` Fly used to
 # supply and the last thing Fly was still doing that the compose stack could not do for itself.
@@ -168,6 +328,7 @@ metadata:
   name: prospector-edge-https-redirect
   namespace: prospector
   labels:
+    backstage.io/kubernetes-id: company-prospector
     app.kubernetes.io/name: prospector-edge
     app.kubernetes.io/part-of: prospector
 spec:
@@ -192,6 +353,7 @@ metadata:
   name: prospector-store-web
   namespace: prospector
   labels:
+    backstage.io/kubernetes-id: company-prospector
     app.kubernetes.io/name: prospector-store-web
     app.kubernetes.io/part-of: prospector
 spec:
@@ -232,6 +394,7 @@ metadata:
   name: prospector-store-api
   namespace: prospector
   labels:
+    backstage.io/kubernetes-id: company-prospector
     app.kubernetes.io/name: prospector-store-api
     app.kubernetes.io/part-of: prospector
 spec:

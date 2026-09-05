@@ -150,7 +150,7 @@ overrules them.
 
 **What stays.** `prospector-store-api` is a deployed Fly app. Its source is
 `store_platform/src/Store.Api` — 110 C# files, 11,794 lines — plus `store_platform/src/Store.Catalog`
-at 13,757 lines. It is deployed by `.github/workflows/deploy-api.yml`. It owns everything a
+at 13,757 lines. It is deployed by `deploy-api.yml (deleted 2026-08-26, crew#203)`. It owns everything a
 customer or a card touches:
 
 | Surface | Endpoints |

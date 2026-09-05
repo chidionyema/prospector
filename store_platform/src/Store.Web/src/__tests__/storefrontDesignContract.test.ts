@@ -67,9 +67,9 @@ describe('Design contract — global tokens (globals.css)', () => {
     // files reach them through Tailwind utilities -- so the VALUES moved and the brief's names
     // ship as aliases beside them. What this test guards is unchanged: five separately-nameable
     // greys, declared once, in one file.
-    assertContains('page bg', css, /--bg:\s*#FAFAF7/i);
+    assertContains('page bg', css, /--bg:\s*#F9F8F6/i);
     assertContains('surface', css, /--surface:\s*#FFFFFF/i);
-    assertContains('text', css, /--text:\s*#17191C/i);
+    assertContains('text', css, /--text:\s*#1A1A1A/i);
     assertContains('muted', css, /--muted:\s*#565B62/i);
     assertContains('border', css, /--border:\s*#E7E7E1/i);
   });
@@ -782,7 +782,8 @@ describe('Design contract — wordmark (Logo.tsx)', () => {
    * `font-bold`, "chimp" sets `font-normal`, ink and no-dot are untouched. The premise that made
    * v3's weight rule necessary -- that the loaded font would SYNTHESISE a heavier weight the
    * browser fakes by smearing the glyph -- is no longer true: the sans face is self-hosted
-   * Switzer, declared `font-weight: 100 900` as a real variable axis (`tokens.css`), not the
+   * Inter Variable, declared `font-weight: 100 900` as a real variable axis (`tokens.css:65`),
+   * not the
    * static Geist 400/500/600 v3 was written against. 700 renders as a true intermediate weight
    * on this face, so the objection the old test enforced does not apply to this font.
    */

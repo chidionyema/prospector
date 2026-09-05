@@ -68,7 +68,7 @@ export function IdenticalContentsMatrix({
     <figure className={cx('matrix overflow-x-auto', className)}>
       <table
         className="w-full border-collapse text-left"
-        aria-label={`Every pack contains the same ${documents} documents, at every price. The price reflects the market the idea sits in, not the size of the pack.`}
+        aria-label={`Every pack contains the same ${documents} documents, at every price. The price reflects the market the idea sits in. The size of the pack is the same either way.`}
       >
         <thead>
           <tr className="border-b border-border">

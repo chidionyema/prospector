@@ -47,7 +47,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
           and tripped axe's `heading-order`. The rule: the tag follows the ROLE, and the type scale
           follows the tag -- never the other way round. */}
       <h2 className="sec">What this costs when you commission it</h2>
-      <p className="mt-3 max-w-[60ch] lede">
+      <p className="mt-3 lede">
         A pack is desk research: published sources, read until a claim either holds or dies. Firms
         sell that by the project, and publish what they charge for it.
       </p>
@@ -110,7 +110,7 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
       <h2 className="sec">
         Why {range ? `${formatGbp(range.mode)} once` : 'one payment'}, not another subscription
       </h2>
-      <p className="mt-3 max-w-[60ch] lede">
+      <p className="mt-3 lede">
         Idea feeds and trend tools sell you the search. We sell you the answer to one.
       </p>
 

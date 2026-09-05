@@ -62,10 +62,10 @@ describe('L2 - The about page', () => {
   it('links to the kill log', () => {
     if (!pageExists) return;
     const page = readSource('../pages/about.tsx');
-    const linksToKillLog = /href=["']\/kill-log["']/.test(page);
+    const linksToKillLog = /href=["']\/(rejected|kill-log)["']/.test(page);
     expect(
       linksToKillLog,
-      'pages/about.tsx must link to /kill-log (the audit trail)',
+      'pages/about.tsx must link to /rejected (the audit trail; /kill-log 301s there)',
     ).toBe(true);
   });
 
