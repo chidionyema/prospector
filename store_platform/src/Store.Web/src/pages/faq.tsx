@@ -125,7 +125,7 @@ export default function Faq() {
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'FAQ' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'FAQ' }]}
       breadcrumbsWidth="6xl"
     >
       <Seo

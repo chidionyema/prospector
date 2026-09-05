@@ -3,7 +3,6 @@ import React from 'react';
 
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORY_LABEL } from '@/components/ui/PackCardHeader';
-import { PriceText } from '@/components/ui/Money';
 import { cx } from '@/components/ui/cx';
 import { marketLabel, type Pack } from '@/lib/api/client';
 import { categoryFor } from '@/lib/category';
@@ -13,7 +12,8 @@ import { repairTruncation } from '@/lib/copy';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
 import { CardProof } from '@/components/ui/ProofLine';
 import { packMarket } from '@/lib/market';
-import { paybackMultiple, type PackLeadStat } from '@/lib/packStat';
+import { paybackEquation, paybackLabel } from '@/lib/payback';
+import { type PackLeadStat } from '@/lib/packStat';
 import { packImage } from '@/lib/sectorImage';
 import { trackCardClick } from '@/lib/analytics';
 import { useCardImpressions } from '@/lib/useCardImpressions';
@@ -197,9 +197,8 @@ export function PackRow({
           the 44px `.stat` device on the featured card, not for a 12.5px row. The longest of them
           also carried `truncate` (nowrap), which is what pushed the line past the right edge of
           the card at 390px. `CardProof` renders the drawing's own two forms and nothing else. */}
-      <CardProof sources={pack.sourceCount} payback={paybackMultiple(pack)} />
+      <CardProof sources={pack.sourceCount} payback={paybackLabel(paybackEquation(pack.price, pack.financialSnapshot), 'card')} price={price} />
       <span className="side">
-        <PriceText className="price num">{price}</PriceText>
         <span className="view">View &rarr;</span>
       </span>
     </Link>
@@ -395,10 +394,12 @@ export function PackTileGrid({
                 asserted the gate on the shared `PackCardHeader` path only, so a new render site
                 could bypass it silently; `eyebrowIsGated.test.ts` now reads the source and fails
                 on any ungated one. */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-              {cat.tagged && <span className="eyebrow">{cat.label}</span>}
-              {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
-            </div>
+            {(cat.tagged || viewedIds?.has(pack.id)) && (
+              <div className="kicker">
+                {cat.tagged && <span className="eyebrow">{cat.label}</span>}
+                {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
+              </div>
+            )}
             {/* h3, NOT h4, and the reason is type rather than semantics. The shipped bundle
                 styles `.htile h3` (mumchimp.css:306: 18px / 645 / -.016em / 1.25) and has no rule
                 for any other level inside a tile, so the h4 this shipped with matched nothing:
@@ -413,10 +414,7 @@ export function PackTileGrid({
             <h3>{listHeading(heading)}</h3>
             <p>{cardLine(repairTruncation(pack.oneLine) || sub, Infinity)}</p>
             <span className="foot">
-              {/* The same one proof line as the row (fix prompt D4), rendered as a `span`:
-                  `.foot` is a `<span>` here, and a `<p>` inside it is invalid nesting. */}
-              <CardProof as="span" sources={pack.sourceCount} payback={paybackMultiple(pack)} />
-              <PriceText className="price num">{formatPriceForMarket(pack.price, cur)}</PriceText>
+              <CardProof as="span" sources={pack.sourceCount} payback={paybackLabel(paybackEquation(pack.price, pack.financialSnapshot), 'card')} price={formatPriceForMarket(pack.price, cur)} />
             </span>
           </Link>
         );

@@ -17,18 +17,24 @@ describe('shop card wrap and thumbnail', () => {
     expect(stripped).not.toMatch(/-webkit-line-clamp:\s*none/);
   });
 
-  it('gives the text column a shrinkable track next to the thumbnail', () => {
-    expect(stripped).toMatch(/grid-template-columns:\s*112px minmax\(0,\s*1fr\) auto/);
+  it('gives the text column a shrinkable track next to a landscape plate', () => {
+    expect(stripped).toMatch(/grid-template-columns:\s*152px minmax\(0,\s*1fr\) auto/);
   });
 
-  it('uses a square row thumbnail instead of a 16:9 postage stamp', () => {
-    expect(stripped).toMatch(/\.rowcover\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1/);
+  it('uses a 3:2 row plate, not a square app thumb or a 16:9 postage stamp', () => {
+    expect(stripped).toMatch(/\.rowcover\s*\{[^}]*aspect-ratio:\s*3\s*\/\s*2/);
     expect(stripped).not.toMatch(/\.rowcover\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9/);
+    expect(stripped).not.toMatch(/\.rowcover\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1/);
   });
 
-  it('keeps the phone thumbnail beside the text, not a full-width band', () => {
+  it('keeps the phone thumbnail beside the title, with the dek full measure under both', () => {
     expect(stripped).not.toMatch(/\.rowcover\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/);
-    expect(stripped).toMatch(/grid-template-columns:\s*72px minmax\(0,\s*1fr\) auto/);
+    expect(stripped).toMatch(/grid-template-columns:\s*112px minmax\(0,\s*1fr\)/);
+    expect(stripped).toMatch(/\.row:has\(> \.rowcover\) > \.d\s*\{[^}]*grid-column:\s*1 \/ -1/);
+  });
+
+  it('gives stacked tiles a 3:2 story plate', () => {
+    expect(stripped).toMatch(/\.htile \.cover\s*\{[^}]*aspect-ratio:\s*3 \/ 2/);
   });
 
   it('lets the tile cover bleed past Tailwind\'s img max-width', () => {

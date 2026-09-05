@@ -23,6 +23,7 @@ import { PACK_DOCUMENTS, PackContentsSection } from '@/components/marketing/Pack
 // claim that component's own eyebrow ("A real page from a real pack") was already making. The file
 // is left in the tree, unused, rather than deleted in the same commit that replaces it.
 import { PackSpecimen } from '@/components/marketing/PackSpecimen';
+import { packsOnShelf } from '@/lib/summaryLint';
 // `LiveKillCard` is no longer imported here: its render site below the shelf was removed on
 // 2026-08-14 (see the record where it stood). The component is untouched and still used elsewhere.
 import { HeroEvidenceStrip } from '@/components/marketing/HeroEvidenceStrip';
@@ -85,6 +86,14 @@ import {
 import { DEFAULT_MARKET, groupByMarket, packMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN } from '@/lib/facets';
 import { useCopyVariant } from '@/lib/useCopyVariant';
+import { VARIANTS } from '@/lib/copyConfig';
+import {
+  VARIANT_COOKIE,
+  appendSetCookie,
+  pickVisitorVariant,
+  variantSetCookie,
+  type VariantKey,
+} from '@/lib/getCopyVariant';
 import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
 import { resolveFlags, type Flags } from '@/lib/flags';
 import { FilterBar } from '@/components/discovery/FilterBar';
@@ -124,6 +133,8 @@ interface HomeProps {
    *  now", which is a true statement about the business; an empty one we failed to fetch must
    *  not, and used to (see `lib/catalogCache.ts`). */
   catalogUnavailable: boolean;
+  /** Homepage headline variant, resolved on the server so the h1 does not flash. a is the July line the founder called strong; b is the later line. First visit is half and half. */
+  copyVariant?: VariantKey;
 }
 
 /*
@@ -991,8 +1002,8 @@ function CatalogBrowser({
       {/* Named, because an unlabelled control panel sitting mid-shelf reads as debris. It says
           what it is FOR, which is the thing the old placement never had to say because it was
           simply in the way. */}
-      <h3 className="sub">Narrow it down</h3>
-      <p className="lede">Four filters. Use one, or all of them, they combine.</p>
+      <h3 className="sub">Filter the Archive</h3>
+      <p className="lede">Combine filters to find the right blueprint for your skills and budget.</p>
 
       {/* THE THREE CONTROLS ARE ONE FILTER (founder review, 2026-08-15).
           A search field, a sector rail and a three-question router stack vertically in this block
@@ -1052,7 +1063,7 @@ function CatalogBrowser({
               narrowing anything. */}
           <span className="font-mono text-caption text-subtle sm:whitespace-nowrap">
             {visible.length === packs.length
-              ? `${packs.length} packs in the catalogue`
+              ? `${packs.length} packs for sale`
               : `${visible.length} of ${packs.length} packs match`}
             {lastVerified && ` · updated ${lastVerified.replace(/^Verified /, '')}`}
           </span>
@@ -1120,8 +1131,8 @@ function CatalogBrowser({
           FOUR stacked controls competing; one row of four is a different object, and the drawing
           gives it this line. No dash in it (founder's standing rule on copy): the mockup's em dash
           is a full stop here. */}
-      <h3 className="sub">Narrow it down</h3>
-      <p className="lede mb-4">Four filters. Use one, or all of them. They combine.</p>
+      <h3 className="sub">Filter the Archive</h3>
+      <p className="lede mb-4">Combine filters to find the right blueprint for your skills and budget.</p>
       <FilterBar
         packs={packs}
         state={state}
@@ -1135,7 +1146,7 @@ function CatalogBrowser({
       />
       <p className="mt-2 font-mono text-caption text-subtle">
         {visible.length === packs.length
-          ? `${packs.length} packs in the catalogue`
+          ? `${packs.length} packs for sale`
           : `${visible.length} of ${packs.length} packs match`}
         {lastVerified && ` \u00b7 updated ${lastVerified.replace(/^Verified /, '')}`}
       </p>
@@ -1158,7 +1169,7 @@ function CatalogBrowser({
         </div>
         <p className="text-body font-semibold text-text">
           {catalogUnavailable
-            ? "We can't reach the catalogue right now."
+            ? "We can't reach the packs right now."
             : 'No packs are live right now.'}
         </p>
         <p className="mx-auto mt-1 lede">
@@ -1271,8 +1282,8 @@ function CatalogBrowser({
                       group of products" and "sentence about one product". This is the smallest
                       step that separates them and it stays sentence case, so the house policy in
                       `__tests__/weightAndCasePolicy.test.ts` is untouched. */}
-                  <h3 className="mb-3 hidden sm:block sub">
-                    Newest survivors
+                  <h3 className="mb-3 hidden sm:block sub pl-4">
+                    Newest packs
                   </h3>
                   {/* Rows. The `lg:hidden` on the hero's featured pack went with the card grid:
                       as a row this entry is one line in a list rather than a second poster of the
@@ -1316,8 +1327,8 @@ function CatalogBrowser({
                    which was true of the uniform grid and is not true of this one -- and a heading
                    that misdescribes the list under it is the same class of error as an unsourced
                    number. */
-                <h3 className="mb-3 hidden sm:block sub">
-                  More survivors, biggest opportunities first
+                <h3 className="mb-3 hidden sm:block sub pl-4">
+                  More packs, biggest opportunities first
                 </h3>
               )}
               {/* ── THE SHELF ────────────────────────────────────────────────────────────
@@ -1356,7 +1367,7 @@ function CatalogBrowser({
                 const rows = tailPacks.filter((p) => p !== spotlight);
 
                 return (
-                  <>
+                  <div className="px-4">
                     {spotlight && (
                       <div className="flex animate-rise">
                         <PackSpotlight
@@ -1378,7 +1389,7 @@ function CatalogBrowser({
                         belowSpotlight={Boolean(spotlight)}
                       />
                     )}
-                  </>
+                  </div>
                 );
               })()}
               {/* THE BUTTON NAMES THE POPULATION IT WILL REVEAL (2026-08-14, founder review).
@@ -1468,70 +1479,9 @@ function CatalogBrowser({
                   already capped itself, and that is most of the 3,900px this page runs over the
                   drawing. The rest arrive with the same "show all" the shelf uses, so nothing is
                   hidden, it is just not all printed before anyone asked. */}
-              {(showAll ? grouped.others : grouped.others.slice(0, 2)).map((group) => (
-                /* A REAL RULE, NOT A GAP (2026-08-14, founder review at 390px). The boundary
-                   between the reader's own shelf and this appendix was `mt-16` and a
-                   `text-meta` heading -- on a phone, after forty rows, that is whitespace
-                   followed by a line barely heavier than the body text. Every row below it
-                   correctly prints "US rules", and the founder read them as UK rows that had
-                   been mistagged: a correct flag on the wrong side of an invisible border
-                   looks exactly like a data bug. The divider carries the same weight as the
-                   distinction it is making now. */
-                <div key={group.market}>
-                  {/* US PACKS DIVIDER (email §1). The divider is about what the buyer would be
-                      BUILDING, not what the page has written, and the subtitle states the
-                      consequence plainly: the research is American, and the package cannot be
-                      transplanted.
+              {/* Per-market appendices deleted (brief 2026-09-02 §5): market is a filter, not a section. */}
 
-                      "market", not "rules" (founder, 2026-08-15). The subtitle directly under it
-                      already says what travels with the country -- "the buyers, numbers and legal
-                      steps" -- and only the last of those three is a rule, so the heading was
-                      naming the smallest part of its own argument. Same change on the row chip
-                      (`PackRow.tsx:144`), so the shelf says one thing. */}
-                  {/* THE DRAWING'S MARKET HEADER (`mockups/index.html` section 13): a flex row
-                      holding an `h2.sec` and a mono pack-count chip, then the lede under it.
-                      It was an `h3.sub` with Tailwind utilities, which cannot look like the
-                      drawing: mumchimp.css is imported into the `components` layer and every
-                      property a utility also sets wins over it. */}
-                  <div className="mkt-h">
-                    <h2 className="sec">Built for the {group.label} market</h2>
-                    <span className="mkt-tag num">
-                      {group.packs.length} {group.packs.length === 1 ? 'pack' : 'packs'}
-                    </span>
-                  </div>
-                  <p className="lede mb-[18px]">
-                    The buyers, the numbers and the legal steps all follow {group.label} rules.
-                    Read them anywhere; build them there.
-                  </p>
-                  {/* Rows, not cards. This group is explicitly secondary -- the copy directly
-                      above says the numbers and legal steps will not transfer -- so giving it the
-                      same card treatment as the on-market shelf contradicted the sentence
-                      introducing it. Rows keep every pack fully present and linkable while
-                      reading as an appendix, which is what it is. Each row still prints its
-                      "<market> rules" flag, since `viewerMarket` is deliberately not passed. */}
-                  {/* CAPPED, like the shelf above it (2026-08-18). Every off-market group printed
-                      in full, so the landing page ran to 14,239px against the drawing's 8,653 --
-                      five market appendices, forty rows, below a shelf that had already capped
-                      itself at nine. `mockups/index.html` section 13 shows two market groups of a
-                      few rows each. Same `showAll` toggle as the main shelf, so one press opens
-                      the whole catalogue and there is still exactly one control for it. */}
-                  <PackRowList
-                    className="mt-6"
-                    packs={showAll ? group.packs : group.packs.slice(0, 3)}
-                    currency={currency}
-                    viewedIds={viewedSet}
-                  />
-                  {!showAll && group.packs.length > 3 && (
-                    <div className="more-row">
-                      <button type="button" className="more" onClick={() => setShowAll(true)}>
-                        Show the other {group.packs.length - 3} {group.label} packs
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* The three-question router USED TO RENDER HERE, after the whole shelf, and the
+                            {/* The three-question router USED TO RENDER HERE, after the whole shelf, and the
                   note that put it here argued the only reader it helps is one who scanned every
                   card and picked nothing. That is right about who it helps and silent about what
                   it cost everyone else: measured on prod it sat at y=4054, 5.1 screens down, past
@@ -1647,10 +1597,11 @@ function CatalogBrowser({
  * show the product.
  */
 
-export default function Home({ packs, stats, flags, initialState, market, currency, personalised, viewedIds, catalogUnavailable }: HomeProps) {
+export default function Home({ packs, stats, flags, initialState, market, currency, personalised, viewedIds, catalogUnavailable, copyVariant = 'a' }: HomeProps) {
   // The live "N live now" figure is rendered by <Heartbeat>, which takes `stats` directly, so the
   // duplicate `stats?.listed ?? packs.length` that used to sit here was computed and dropped.
-  const { variant } = useCopyVariant();
+  useCopyVariant();
+  const variant = VARIANTS[copyVariant];
   /* Every price claim on this page is computed from the packs this render already holds. The
      shelf stopped being one price when the segment ladder shipped (`feat(pricing)` #105/#107);
      see lib/priceRange.ts for the measurement that made each of the four claims below false. */
@@ -1660,7 +1611,8 @@ export default function Home({ packs, stats, flags, initialState, market, curren
      hero and the shelf cannot disagree about what is newest. It is NOT a second copy of the card:
      the featured slot is `hidden lg:block`, and on mobile the reader simply meets it as the first
      card in the grid. */
-  const featured = packs[0];
+  const shelfPacks = packsOnShelf(packs);
+  const featured = shelfPacks[0];
 
   /* MASTER-BRIEF section 9. Three page-level beacons, wired here because each is about the page
      rather than about any one component inside it. */
@@ -1713,7 +1665,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
 
   /* THE KILL TOTAL IS STATED ONCE ON THIS PAGE, in the proof strip below the hero. It was in
      `HeroEvidenceStrip` as well until 2026-08-13, which put "1,364" and an identically-worded
-     "Read the kill log" link at y=735 and again at y~1180 of the same 1440x900 screen. The strip
+     "Read the rejected ideas" link at y=735 and again at y~1180 of the same 1440x900 screen. The strip
      is the copy that stayed because it is the only one a phone ever reaches: `HeroEvidenceStrip`
      is `hidden md:block` and `KillGrid` is desktop only.
 
@@ -1731,7 +1683,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
         // string here would make the browser tab and the page heading identical, which is also
         // how the two Mumchimp tabs (this page, `/ideas`) looked alike next to each other. This
         // line keeps the tab identifiable by its first few words even before the H1 loads.
-        title={`Sourced business ideas, priced and ready to build${
+        title={`Sourced business opportunities, priced and ready to build${
           range ? `, ${range.uniform ? range.label + ' each' : 'from ' + formatGbp(range.min)}` : ''
         }`}
         /* The catalogue as structured data. The shelf below is filtered and sorted in the browser,
@@ -1842,7 +1794,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
                 a count -- which is the declared scope of `monoIsTheDataVoice.test.ts`. */}
             <p className="kicker num">
               {range ? (range.uniform ? `${range.label} each` : `From ${formatGbp(range.min)}`) : 'One payment'}
-              {` · ${packs.length} packs in the catalogue`}
+              {` · ${packs.length} packs for sale`}
             </p>
             {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
                 "0", so it means a different number of pixels in every font: the old max-w-[24ch]
@@ -1915,7 +1867,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
                   the written fix prompt is later and names the live string as the defect, so
                   the mockup wins. `max-w-[14ch]` is `mockups/index.html:70`'s own `h1`
                   max-width, not the 12ch the prompt cites; the drawing is the specification. */}
-              {SITE_COPY.heroH1}
+              {variant.globalHookLead}
             </h1>
             {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then
                 a CTA, then a ~120px void where the explanation should be. */}
@@ -2132,26 +2084,18 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               {packs.length}
             </b>
             <p>
-              {/* The drawing says "Passed all six checks". The number of checks varies by
-                  idea, so `fixedCheckCount.test.ts` refuses a closed count in shipped copy.
-                  The drawing's second sentence stands as written. */}
               Passed every check they faced. Every claim sourced, every number traceable.
             </p>
             <Link
               href="#catalog"
               className="tlink"
             >
-              Browse the catalogue
+              Browse the packs
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>
           <div>
-            {/* "Researched, not listed" until 2026-08-30, over the KILLED count. Two things
-                were wrong with it. It read as inventory waiting to be listed, when every one of
-                these ideas was rejected on cited evidence; and it did not even hold arithmetically
-                -- researched-but-unlisted is 1,444 - 77 = 1,367, not 1,364. /how-it-works calls
-                the same figure "Killed on cited evidence", so this says that. */}
-            <p className="lbl">Killed on cited evidence</p>
+            <p className="lbl">Rejected, with the source</p>
             <b className="n num">
               {RESEARCH_STATS.killed.toLocaleString('en-GB')}
             </b>
@@ -2159,10 +2103,10 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               {`We have researched ${RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas. ${killsSummary()}, and the evidence behind it.`}
             </p>
             <Link
-              href="/kill-log" prefetch={false}
+              href="/rejected" prefetch={false}
               className="tlink"
             >
-              Read the kill log
+              Read the rejected ideas
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>
@@ -2211,7 +2155,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               (`font-size:clamp(24px,4.6vw,32px)`). It was `text-h2`, the 19-23px step, which is
               the drawing's `h3.sub` -- so every section heading on this page sat one step below
               the drawing and the page read flat. */}
-          <h2 className="sec">What survived</h2>
+          <h2 className="sec">What&apos;s for sale</h2>
           {/* The pricing sentence that used to sit here is GONE, and its removal is the fix for a
               measured defect rather than a trim for length. It was `hidden sm:block`, so from
               640px up the page stated one fact twice, ~14px apart, under the same heading, with
@@ -2225,7 +2169,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               say each thing once, sitewide. Twice on ONE screen is the loudest version of it. */}
         </div>
 
-        <CatalogBrowser packs={packs} flags={flags} initialState={initialState} market={market} currency={currency} personalised={personalised} viewedIds={viewedIds} featuredId={featured?.id} catalogUnavailable={catalogUnavailable} />
+        <CatalogBrowser packs={shelfPacks} flags={flags} initialState={initialState} market={market} currency={currency} personalised={personalised} viewedIds={viewedIds} featuredId={featured?.id} catalogUnavailable={catalogUnavailable} />
       </Section>
       </div>
 
@@ -2254,7 +2198,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           panel's chip was one of them, and it is the copy with the least context around it -- a bare
           count in a chip. The one that survives is the proof strip under the hero, which states the
           research total and the kill total in one sentence, says in the line under it that the kills
-          are published with their reasons, and carries the only "Read the kill log" link on the
+          are published with their reasons, and carries the only "Read the rejected ideas" link on the
           page. Everything this panel showed is on /kill-log, one click from that link, in full
           rather than three at a time.
 
@@ -2355,7 +2299,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
       {/* THE PAGE NOW CLOSES ONCE. Measured on the rendered page at 1440x900 before this merge,
           the last 1,300px were three consecutive full-width bands:
 
-            y=6980  this band            "Every idea walks into a room built to destroy it."
+            y=6980  this band            "Six common checks. Sourced evidence. Only what passes goes on sale."
                                           -> /how-it-works, -> /kill-log ("See the 1,364 it rejected")
             y=7400  TrustGuaranteesRow   three terms + "1,364 ideas were killed to list these 50"
             y=7620  CtaBand              "Find your next business from GBP 29.99."
@@ -2400,14 +2344,14 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             "sceptic who counts our numbers" exactly back where they started.
           */}
           <h2 className="sec">
-            Every idea walks into a room built to destroy it.
+            Only what survives the research goes on sale.
           </h2>
           {/* "everything that survived" was an ALL claim about a population, and it was false in
               the same way the survivor count was: 80 ideas cleared the gates, 50 are on the shelf.
               A reader cannot check it either way, so it bought nothing and risked the one thing
               this page is selling. What is left claims only what the shelf can show. */}
           <p className="mt-4 lede">
-            A claim without a source dies before it ever goes on sale. Every pack here came out
+            A claim without a source does not go on sale. Every pack here came out
             the other side.
           </p>
           {/* The kill figure left this row with the second band: the terms column beside it now
@@ -2437,7 +2381,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               href="/how-it-works"
               className="inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
             >
-              See how the filter works
+              See how the research works
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>
@@ -2491,6 +2435,17 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
      a filter path with a restart instead of a redeploy. `?ff=filterbar` overrides for one
      request. See `lib/flags.ts`. */
   const flags = resolveFlags(process.env, context.query);
+
+  const ua = context.req.headers['user-agent'];
+  const picked = pickVisitorVariant(
+    context.query.variant,
+    context.req.cookies[VARIANT_COOKIE],
+    typeof ua === 'string' ? ua : undefined,
+  );
+  const copyVariant = picked.key;
+  if (picked.persist) {
+    appendSetCookie(context.res, variantSetCookie(copyVariant));
+  }
 
   // Same precedence order documented on `resolveMarket`: an explicit `?market=` (the switcher)
   // beats a stored cookie, which beats the edge-supplied country header, which beats "uk".
@@ -2572,6 +2527,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
         personalised: personalisedFor(fresh.packs),
         viewedIds: recentlyViewedIds,
         catalogUnavailable: false,
+        copyVariant,
       },
     };
   }
@@ -2592,6 +2548,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
         personalised: personalisedFor(packs),
         viewedIds: recentlyViewedIds,
         catalogUnavailable: false,
+        copyVariant,
       },
     };
   } catch (error) {
@@ -2615,6 +2572,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
           personalised: personalisedFor(cached.packs),
           viewedIds: recentlyViewedIds,
           catalogUnavailable: false,
+          copyVariant,
         },
       };
     }
@@ -2630,6 +2588,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
         personalised: [],
         viewedIds: recentlyViewedIds,
         catalogUnavailable: true,
+        copyVariant,
       },
     };
   }

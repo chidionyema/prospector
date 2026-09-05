@@ -184,10 +184,11 @@ export function decodeDiscoveryState(input: string | QueryLike | undefined | nul
     query = input;
   }
 
-  const advantageRaw = firstValue(query, 'adv') ?? '';
+  const SKILL_ALIAS: Record<string, string> = { build: 'code', sell: 'sales', run: 'ops', grow: 'audience', audience: 'audience', nocode: 'ops' };
+  const advantageRaw = firstValue(query, 'adv') ?? firstValue(query, 'skill') ?? '';
   const advantage = advantageRaw
     .split(',')
-    .map((v) => v.trim())
+    .map((v) => SKILL_ALIAS[v.trim()] ?? v.trim())
     .filter((v): v is Advantage => (ADVANTAGE as readonly string[]).includes(v));
 
   /* Same rule as the closed vocabularies below, applied to a number: a ceiling that is not a
@@ -196,7 +197,8 @@ export function decodeDiscoveryState(input: string | QueryLike | undefined | nul
      failure a stale link should have. Clamping would invent a filter nobody asked for. It is not
      checked against the shelf's own ceilings: the shelf changes, and a link sent last week whose
      ceiling is no longer an offered option must still filter to what it said it filtered to. */
-  const maxPenceRaw = Number(firstValue(query, 'maxp'));
+  const pricePounds = Number(firstValue(query, 'price'));
+  const maxPenceRaw = Number(firstValue(query, 'maxp') ?? (Number.isFinite(pricePounds) && pricePounds > 0 ? String(Math.round(pricePounds * 100)) : ''));
   const maxPence =
     Number.isSafeInteger(maxPenceRaw) && maxPenceRaw > 0 ? maxPenceRaw : null;
 
@@ -209,7 +211,8 @@ export function decodeDiscoveryState(input: string | QueryLike | undefined | nul
   };
 
   for (const [kind, param] of SINGLE_PARAMS) {
-    const value = firstValue(query, param);
+    const alias = kind === 'sector' ? firstValue(query, 'cat') : null;
+    const value = firstValue(query, param) ?? alias;
     if (value && VOCAB_BY_KIND[kind].includes(value)) {
       // Each vocabulary is the union type for its own kind, so the narrowing is sound; TS
       // cannot see that through the keyed lookup.

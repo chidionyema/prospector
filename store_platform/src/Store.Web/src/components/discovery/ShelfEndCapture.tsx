@@ -47,9 +47,9 @@ export function ShelfEndCapture({ className }: { className?: string }) {
           stored signup and its `WAITLIST_CONSENT_VERSION` is pinned to
           `WaitlistService.CurrentConsentVersion` in the API, so changing the words needs a
           version bump deployed on both sides, not an edit here. */}
-      <h2 className="sec">The next survivor can come to you.</h2>
+      <h2 className="sec">The next pack can come to you.</h2>
       <p>
-        Most ideas die in the filter. When one survives, you get one email. That’s the whole list.
+        Most ideas don&apos;t pass. When one does, you get one email. That’s the whole list.
       </p>
       {/* No `submitLabel` override, 2026-08-14: the homepage carried two email forms whose buttons
           named the same action two different ways. One action, one verb, set in `WaitlistForm` and

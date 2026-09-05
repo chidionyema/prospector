@@ -40,7 +40,7 @@ describe('the pack page renders one buy box and one closing bar', () => {
     expect(CODE).toContain('fixed inset-x-0 bottom-0');
   });
 
-  it('closes on the ask, not on the share row', () => {
+  it('ends on the share row; the closing buy box is gone (brief 2026-09-02 §7: one buy box only)', () => {
     // §7 order ends "... related packs -> closing bar". A reader who has read the checks, the
     // documents and the sources reached a share row and nothing else.
     // The closing block took the drawing's shape on 2026-08-18 (`mockups/pack-detail.html:427`):
@@ -48,7 +48,8 @@ describe('the pack page renders one buy box and one closing bar', () => {
     // match went with it. What the test is actually about -- the page ends on the ask, not on the
     // share row -- is unchanged, so it now matches the heading that carries the ask.
     expect(at('<ShareRow')).toBeGreaterThan(-1);
-    expect(at('once. Yours forever.')).toBeGreaterThan(at('<ShareRow'));
+    // Brief 2026-09-02 §7 deleted the closing buy box: the sticky bar is the second ask.
+    expect(CODE).not.toContain('once. Yours forever.');
   });
 
   it('does not make the closing bar a third purchase panel', () => {
@@ -95,6 +96,6 @@ describe('the signature sits above the gates', () => {
 
   it('puts it above the six checks, because it is the question they answer', () => {
     expect(at('<SixInHundred')).toBeGreaterThan(-1);
-    expect(at('<SixInHundred')).toBeLessThan(at('How we tried to kill it'));
+    expect(at('<SixInHundred')).toBeLessThan(at('<h2 className="sec">The checks</h2>'));
   });
 });
