@@ -20,6 +20,76 @@ import sys
 from urllib.parse import urlparse
 
 OUT = "store_platform/src/Store.Web/src/data/sample-report.json"
+COPY_OVERRIDES = os.path.join(os.path.dirname(__file__), "sample_report_copy_overrides.json")
+
+# Voice Gate phase 0 (spec specs/voice-gate-2026-09-06.md §7): the export refuses to write
+# engine-speak to the storefront. Scrub = excise the dirty sentences (delete, never invent);
+# where excision guts a paragraph, a HAND-WRITTEN override from COPY_OVERRIDES stands in,
+# with a receipt for each. The gate then grades every prose field and any hit exits 1 —
+# dirty output is never written. Enum fields (gate/verdict) are never graded.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prospector.voice_gate.deny import excise, grade_fields  # noqa: E402
+
+
+def _prose_fields(report: dict) -> dict:
+    """Every verbatim-rendered prose field, named for receipts."""
+    fields = {
+        "title": report.get("title") or "",
+        "oneLiner": report.get("oneLiner") or "",
+        "whoPays": report.get("whoPays") or "",
+        "whyNow": report.get("whyNow") or "",
+        "premortem.strongestAlternative": report["premortem"].get("strongestAlternative") or "",
+        "premortem.whyDurable": report["premortem"].get("whyDurable") or "",
+        "adversarial.killCase": report["adversarial"].get("killCase") or "",
+    }
+    for i, ch in enumerate(report.get("checks", [])):
+        fields[f"checks[{i}].rationale ({ch.get('key', '?')})"] = ch.get("rationale") or ""
+    return fields
+
+
+def _scrub(report: dict) -> list[str]:
+    """Excise engine-speak from the long prose fields; hand-written override when gutted."""
+    receipts: list[str] = []
+    overrides = {}
+    if os.path.exists(COPY_OVERRIDES):
+        with open(COPY_OVERRIDES, encoding="utf-8") as handle:
+            overrides = json.load(handle)
+
+    def scrub_one(owner: str, text: str) -> str:
+        if not text:
+            return text
+        clean, dropped = excise(text)
+        if dropped:
+            receipts.append(f"excised {len(dropped)} engine-speak sentence(s) from {owner}")
+        if not clean and owner in overrides:
+            receipts.append(f"hand-written copy stands in for gutted {owner}")
+            return overrides[owner]
+        return clean
+
+    for ch in report.get("checks", []):
+        ch["rationale"] = scrub_one(ch.get("key", "check"), ch.get("rationale", ""))
+    report["premortem"]["strongestAlternative"] = scrub_one(
+        "premortem.strongestAlternative", report["premortem"].get("strongestAlternative", ""))
+    report["premortem"]["whyDurable"] = scrub_one(
+        "premortem.whyDurable", report["premortem"].get("whyDurable", ""))
+    report["adversarial"]["killCase"] = scrub_one(
+        "adversarial.killCase", report["adversarial"].get("killCase", ""))
+    return receipts
+
+
+def voice_gate(report: dict) -> int:
+    """Scrub, then grade; refuse to let dirty copy cross. Returns the exit code to use."""
+    for line in _scrub(report):
+        print(f"voice-gate: {line}")
+    findings = grade_fields(_prose_fields(report))
+    if findings:
+        for field, hits in findings.items():
+            for hit in hits:
+                print(f"VOICE GATE FAIL {field}: {hit.rule_id} {hit.message}", file=sys.stderr)
+        return 1
+    print(f"voice-gate: PASS ({len(_prose_fields(report))} prose fields graded clean)")
+    return 0
+
 
 # Human, refutational framing for each gate (matches the storefront's voice).
 CHECK_LABELS = {
@@ -252,6 +322,10 @@ def main() -> int:
     pid = sys.argv[1]
     d = json.load(open(f"store/dossiers/{pid}.pass.json", encoding="utf-8"))
     report = report_fields(pid, d)
+
+    verdict = voice_gate(report)
+    if verdict:
+        return verdict
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:

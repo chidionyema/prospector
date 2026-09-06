@@ -270,6 +270,23 @@ def main() -> int:
     args = parser.parse_args()
 
     payload = build(args.limit)
+
+    # Voice Gate phase 0 (spec specs/voice-gate-2026-09-06.md §7): the verbatim-rendered fields
+    # (title, oneLiner) cross only if clean. `reason` is graded at the SERVE seam — the API
+    # serves it post-plainEnglish, and that served string is what lint:copy grades (phase 3).
+    # Enum fields (gate, gateLabel) are structured data and never graded.
+    from prospector.voice_gate.deny import grade_fields
+    findings = grade_fields({
+        f"entries[{i}].{k}": e.get(k) or ""
+        for i, e in enumerate(payload["entries"])
+        for k in ("title", "oneLiner")
+    })
+    if findings:
+        for field, hits in findings.items():
+            for hit in hits:
+                print(f"VOICE GATE FAIL {field}: {hit.rule_id} {hit.message}", file=sys.stderr)
+        return 1
+    print(f"voice-gate: PASS ({2 * len(payload['entries'])} verbatim fields graded clean)")
     # `gateLabel` travels with `gate`, and that is the whole fix for a leak measured on prod
     # 2026-08-08: the home page rendered "killed by value durability" and the ambient column
     # rendered "payer solvency", because this slim file carried the engine's gate id and dropped
