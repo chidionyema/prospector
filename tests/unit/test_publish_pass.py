@@ -39,16 +39,16 @@ class TestPassageIds:
     def test_noun_phrase_is_repaired_not_gutted(self):
         out = publish_pass(f"Passages {ID1} and {ID2} directly show UK carers are squeezed.")
         assert ID1 not in out and ID2 not in out
-        assert out == "The passages directly show UK carers are squeezed."
+        assert out == "The sources directly show UK carers are squeezed."
 
     def test_oxford_comma_list_keeps_its_spacing(self):
         """The separator has to leave WITH the ids: `The passagesand show` was a real bug."""
         out = publish_pass(f"Passages {ID1}, {ID2}, and {ID3} show NAVA is established.")
-        assert out == "The passages show NAVA is established."
+        assert out == "The sources show NAVA is established."
 
     def test_singular_noun_mid_sentence_keeps_its_case(self):
         out = publish_pass(f"The evidence in passage {ID1} shows a free incumbent.")
-        assert out == "The evidence in passage shows a free incumbent."
+        assert out == "The evidence in source shows a free incumbent."
 
     def test_bracketed_reference_group_goes_whole(self):
         out = publish_pass(f"Client communication is already covered [{ID1}, {ID2}].")
@@ -65,7 +65,7 @@ class TestPassageIds:
     def test_id_as_clause_subject_becomes_a_noun(self):
         """Deleting the subject would leave a verb with nothing in front of it."""
         out = publish_pass(f"Councils run brokerage; {ID1} confirms local FIS operations.")
-        assert out == "Councils run brokerage; the passage confirms local FIS operations."
+        assert out == "Councils run brokerage; the source confirms local FIS operations."
 
     def test_preposition_leaves_with_the_id(self):
         out = publish_pass(f"The guidance at {ID1} is freely public.")
@@ -146,7 +146,7 @@ class TestConfidenceFigures:
         ("payer_solvency is unverifiable at confidence 0.0, there is zero evidence.",
          "payer_solvency is unverifiable, there is zero evidence."),
         ("The check returned unverifiable at 0.0 confidence, not one passage shows a channel.",
-         "The check returned unverifiable, not one passage shows a channel."),
+         "The check returned unverifiable, not one source shows a channel."),
         ("There is no route (distribution conf 0.0). Legality is ungrounded.",
          "There is no route (distribution). Legality is ungrounded."),
         ("Every gate returned unverifiable (pain_reality 0.43, legality 0.0). Nothing cleared.",
@@ -297,7 +297,7 @@ class TestDocumentForm:
         assert "- first item" in out
         assert "  - nested item" in out
         assert ID1 not in out
-        assert "The passages show the pain is real." in out
+        assert "The sources show the pain is real." in out
 
     def test_fenced_code_is_untouched(self):
         doc = f"# Spec\n\n```\nhash = {ID1}\n```\n\nProse citing {ID1} goes clean.\n"
@@ -318,7 +318,7 @@ class TestDocumentForm:
 class TestCleanReason:
     def test_engine_prefix_is_stripped(self):
         out = clean_reason("Gate 'incumbency' fired — The passages show things.")
-        assert out == "The passages show things."
+        assert out == "The sources show things."
 
     def test_it_failed_on_prefix_is_stripped(self):
         out = clean_reason(
@@ -334,7 +334,7 @@ class TestCleanReason:
         )
         assert "—" not in out
         assert ID1 not in out
-        assert out == "The passages show free rivals."
+        assert out == "The sources show free rivals."
 
     def test_fragment_only_reason_returns_empty_so_the_entry_is_dropped(self):
         assert clean_reason("so they do not offset the sol") == ""

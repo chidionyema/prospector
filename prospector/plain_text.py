@@ -255,8 +255,8 @@ _HAS_CONFIDENCE_FIGURE = re.compile(
     r"\bconf(?:idence)?\b\.?\s*[:=]?\s*\(?\s*\d(?:\.\d+)?\b", re.I)
 # The one-sentence scale note the QA report must carry if it keeps its figures.
 CONFIDENCE_SCALE_NOTE = (
-    "Confidence below is on a 0 to 1 scale: 0 means no retrieved passage spoke to the "
-    "check either way, and 1 means the retrieved passages settled it outright."
+    "Confidence below is on a 0 to 1 scale: 0 means no retrieved source spoke to the "
+    "check either way, and 1 means the retrieved sources settled it outright."
 )
 
 # WHY THIS EXISTS: the verdict brain writes about real buyer groups, and two published kill
@@ -440,6 +440,27 @@ def _repair_truncation(text: str, *, require_sentence: bool) -> str:
     return stripped[: ends[-1].end()].rstrip()
 
 
+_PASSAGE_NOUN_RE = re.compile(r"\b([Pp])assages\b|\b([Pp])assage\b")
+
+
+def _sources_for_passages(text: str) -> str:
+    """`The passages state` -> `The sources state` — the 2026-09-06 register bar (policy EE2).
+
+    The id repairs above keep the NOUN on purpose ("the word stays, the id goes", 2026-08).
+    The bar has since moved: `passage` is retrieval jargon; the buyer's word is `source`.
+    Noun-only swap, meaning-preserving, idempotent ("source" does not match the pattern).
+    Runs AFTER `_strip_ids`, so `Passages <id> and <id> show` is already `The passages show`.
+    """
+
+    def repl(m: re.Match) -> str:
+        plural = m.group(1) is not None
+        upper = (m.group(1) or m.group(2)).isupper()
+        word = "sources" if plural else "source"
+        return word.capitalize() if upper else word
+
+    return _PASSAGE_NOUN_RE.sub(repl, text)
+
+
 def publish_pass(
     text: str | None,
     *,
@@ -475,6 +496,7 @@ def publish_pass(
     s = _OPEN_ID_TAIL.sub("", s) if _HEX_ID.search(s) or "…" in s else s
     s = _clean_bracketed(s)
     s = _strip_ids(s)
+    s = _sources_for_passages(s)
     for pattern, replacement in REGISTER_DENYLIST:
         s = pattern.sub(replacement, s)
     s = _tidy(s)
