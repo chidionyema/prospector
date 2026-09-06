@@ -79,3 +79,22 @@ Policy rules and lexicon; the corpus-diff oracle; Tier-2 exemplars and prompt; p
 ## 8. Critical path
 
 PR #819 merge (FND) → 1.1+1.2+1.3 (hours) ∥ B1+B2 start today (CON) → phase 2 integration (1 day) → phase 3 (same day) → phase 4 (B3+B4 ∥ ARCH) → E-SLM plan. Every step has its green named above; nothing waits on time, only on proof.
+
+## 9. The compression (founder 2026-09-06: "build this much faster") — Tier 2 deferred on evidence
+
+**The phase-0 receipt changes the plan.** Every leak class seen in production was lexical, not semantic: 47/47 kill-log reasons were cleaned by ONE deterministic noun swap (`passages`→`sources`); zero needed a model. The semantic classifier was specced against a hypothetical; the measured leak class is engine-cadence vocabulary, which DFA owns. Therefore:
+
+- **Tier 2 SLM is deferred until the deterministic gate shows a measured escape.** The §3 API already carries `tier_reached`/`confidence`; adding the classifier later is additive. When (if) a leak escapes the DFA net, the escape receipt is the admission ticket for B1/B2 — build the SLM against a proven gap, never a guessed one.
+- **The SLM effort is not killed, it is re-aimed at the lane with a measured $ return: E-SLM** (verdict-shaped engine tasks, $/pack delta against LiteLLM receipts). Its admission condition is unchanged.
+- **Deleted from the critical path:** B1 double-labelling, B2 ARM64 benchmark, phase-2 integration. The golden sample still ships — as the deterministic gate's regression corpus (labels = expected findings; no double-labelling needed for a deterministic gate).
+
+**Optimised schedule (naive: 5 phases serial ≈ 15 days + portal ≈ 4 weeks; bottleneck was the phase1→2→3 chain):**
+
+| Day | ARCH (only domain work) | Parallel (contractor/crew, briefs in §6) | FND |
+|---|---|---|---|
+| 1 | corpus diff + fuzz (hours) | B3 image, B4 portal plumbing, B5 GLiNER+Extism skeleton; idp fire briefs F1–F4 (estate-state, science-facts, oke-check, agent-workforce triage) | merge #819 → deploy (site clean tonight) |
+| 2 | four greens → flip flag; lint:copy; Vale deleted (phase 3) | GLiNER/Extism review cycles; portal fires verified green | 15-min sitting: the five |
+| 3 | audit API + standards row + catalog entity | image on both archs, receipts | — |
+| 4–10 | E-SLM shadow receipt; portal Lane 3 door-probe (the 2026-09-06 curl probe productised) | portal lanes 4–6 land via B4 | UAT: the five |
+
+Gate fully shipped: **day 2**. Product image with receipts: **day 3**. Portal fires out: **day 2**. Optimised: ~15 serial days → 3, by deleting the unproven classifier from the critical path and running every domain-free package in parallel from today.
