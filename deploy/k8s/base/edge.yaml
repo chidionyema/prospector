@@ -308,14 +308,39 @@ spec:
           selector:
             matchLabels:
               idp.estate/edge-attach: "true"
+    # The buyer sandbox's door (idp platform/sandbox, crew#805 tier 3). Its HTTPRoute is STANDING
+    # in idp's launch lane (platform/sandbox/launch/httproute.yaml), so sandbox.<zone> keeps DNS
+    # between sandboxes: external-dns publishes only from routes that exist, and a name that
+    # vanishes whenever no demo is held would fail its certificate at the first quiet renewal
+    # window. Its own Secret for the same reason https-cyrus carries one: a brand-new name whose
+    # order must never be able to cost the shared certificate. Between sandboxes the backend
+    # Service does not exist and this door answers 503; the shop appears within about two
+    # minutes of a launch.
+    - name: https-sandbox
+      protocol: HTTPS
+      port: 8443
+      hostname: sandbox.${ESTATE_ZONE}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prospector-edge-sandbox-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              idp.estate/edge-attach: "true"
     # No listener lands before its HTTPRoute exists in idp. The alertmanager.<zone> and
     # prometheus.<zone> listeners (crew#684, a72c9d3, 2026-08-30) waited here for routes that never
     # merged (idp branch feat/crew684-alertmanager-and-prometheus-have-a-door), so external-dns had
-    # no route to publish and neither name resolved. Every listener above shares prospector-edge-tls except
-    # https-cyrus, and cert-manager orders one certificate per Secret: two names that HTTP-01 can never
-    # reach failed the whole order, and the certificate stayed at its 2026-08-27 set of names, so
-    # otto.<zone> served the Traefik placeholder certificate and Telegram delivered nothing (Otto
-    # outage, 2026-08-31T23:18Z onward). The two listeners return in the same wave as their routes.
+    # no route to publish and neither name resolved. cert-manager orders one certificate per
+    # Secret, so the listeners that share prospector-edge-tls stand or fall together: two names
+    # that HTTP-01 can never reach failed the whole order, and the certificate stayed at its
+    # 2026-08-27 set of names, so otto.<zone> served the Traefik placeholder certificate and
+    # Telegram delivered nothing (Otto outage, 2026-08-31T23:18Z onward). https-cyrus and
+    # https-sandbox carry their own Secrets for exactly that reason. The two listeners return in
+    # the same wave as their routes.
 ---
 # Everything on port 80 becomes a 301 to the same URL on 443. This is the `force_https` Fly used to
 # supply and the last thing Fly was still doing that the compose stack could not do for itself.
