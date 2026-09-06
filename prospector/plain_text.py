@@ -440,6 +440,32 @@ def _repair_truncation(text: str, *, require_sentence: bool) -> str:
     return stripped[: ends[-1].end()].rstrip()
 
 
+# Hedge-speak -> the direct form (EE5's narrowed set, 2026-09-06). Deterministic, idempotent:
+# the replacement contains nothing the pattern matches.
+_HEDGE_REPAIRS = [
+    (re.compile(r"\bcannot be determined from (?:this|the) evidence\b", re.I), "the evidence does not settle it"),
+    (re.compile(r"\bis not shown to be\b", re.I), "is not"),
+]
+
+
+_PREMORTEM_NOUN_RE = re.compile(r"\bcommodity[- ]premortem(s?)\b|\bpremortem(s?)\b", re.I)
+
+
+def _worst_case_for_premortem(text: str) -> str:
+    """`the premortem's claim` -> `the worst-case review's claim` — same 2026-09-06 bar (EE3).
+
+    The kill reasons cite the artefact by its engine name; the buyer never learned that word.
+    Meaning-preserving, idempotent. Runs after `_sources_for_passages`.
+    """
+
+    def repl(m: re.Match) -> str:
+        plural = (m.group(1) or m.group(2) or "")
+        word = "worst-case review" + ("s" if plural else "")
+        return word.capitalize() if m.group(0)[0].isupper() else word
+
+    return _PREMORTEM_NOUN_RE.sub(repl, text)
+
+
 _PASSAGE_NOUN_RE = re.compile(r"\b([Pp])assages\b|\b([Pp])assage\b")
 
 
@@ -497,6 +523,9 @@ def publish_pass(
     s = _clean_bracketed(s)
     s = _strip_ids(s)
     s = _sources_for_passages(s)
+    s = _worst_case_for_premortem(s)
+    for hedge, direct in _HEDGE_REPAIRS:
+        s = hedge.sub(direct, s)
     for pattern, replacement in REGISTER_DENYLIST:
         s = pattern.sub(replacement, s)
     s = _tidy(s)

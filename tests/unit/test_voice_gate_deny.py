@@ -26,8 +26,12 @@ def test_ee4_numbered_citation_line():
 
 
 def test_ee5_hedged_research_speak():
-    assert findings_for("No evidence establishes affordability for this group.")
+    # Narrowed 2026-09-06: the hedge FORMS are banned; a direct absence statement is the
+    # kill log's own voice ("No evidence shows parents will pay" is the finding, not a hedge).
+    assert findings_for("affordability cannot be determined from the evidence.")
+    assert findings_for("the space is not shown to be open.")
     assert findings_for("The niche therefore appears open in these passages.")
+    assert not findings_for("No evidence shows parents will pay.")
 
 
 def test_enum_fields_are_never_graded():

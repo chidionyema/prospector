@@ -50,7 +50,14 @@ def _load_rules(lane: str = "evidence-export") -> list[_Rule]:
     for parent in lanes[lane].get("inherit", []) or []:
         patterns.extend(lanes[parent].get("deny_patterns", []) or [])
     patterns.extend(lanes[lane].get("deny_patterns", []) or [])
-    return [_Rule(p["id"], p["message"], re.compile(p["pattern"], re.I | re.M)) for p in patterns]
+    return [
+        _Rule(
+            p["id"],
+            p["message"],
+            re.compile(p["pattern"], (re.I if "i" in p.get("flags", "i") else 0) | re.M),
+        )
+        for p in patterns
+    ]
 
 
 _RULES = _load_rules()
