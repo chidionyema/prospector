@@ -1,0 +1,8 @@
+{
+  "mode": "fuzz",
+  "cases": 2000,
+  "mismatches": [],
+  "mismatch_count": 0,
+  "ok": true,
+  "gate": "http://127.0.0.1:8420"
+}

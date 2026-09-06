@@ -40,36 +40,65 @@ class Finding:
 class _Rule:
     id: str
     message: str
+    is_phrase: bool
     re: re.Pattern
+
+
+#: Stop word for a phrase body: the register_lint lookbehind/lookahead boundary is
+#: word-or-hyphen on both sides. regex-automata has no lookaround, so the Rust engine
+#: emits `(?:^|[^\w-]){body}(?:[^\w-]|$)` and reports the inner capture. deny.py must
+#: mirror that exactly — same guards, same inner-span report — or the corpus diff rings.
+#: Apostrophes: register_lint `_normalise` maps the three curly forms to straight before
+#: matching; re-expressed position-preservingly, a straight `'` in the phrase also accepts
+#: them, so a span keeps pointing at the source bytes.
+_CURLY_APOS = "\u2018\u2019\u201b"  # ‘ ’ ‛
+
+
+def _compile_phrase(phrase: str) -> re.Pattern:
+    """Compile a register_lint lexicon phrase to the DFA-safe guarded form."""
+    tokens = phrase.strip().split()
+    body = []
+    for tok in tokens:
+        escaped = re.escape(tok)
+        if "'" in escaped:
+            escaped = escaped.replace("'", f"['{_CURLY_APOS}']")
+        body.append(escaped)
+    inner = r"\s+".join(body)
+    # group 1 holds the guards-free phrase; case-insensitive, no multiline (register_lint
+    # compiles phrases with re.I only).
+    return re.compile(rf"(?:^|[^\w-])({inner})(?:[^\w-]|$)", re.I)
+
+
+def _compile(entry: dict) -> _Rule:
+    if "phrase" in entry:
+        return _Rule(entry["id"], entry["message"], True, _compile_phrase(entry["phrase"]))
+    pat = entry["pattern"]
+    # patterns: case-insensitive by default (flag "i"), always multiline (legacy behaviour
+    # every EE rule already runs under); phrase rules are case-insensitive only.
+    mode = re.M | (re.I if "i" in entry.get("flags", "i") else 0)
+    return _Rule(entry["id"], entry["message"], False, re.compile(pat, mode))
 
 
 def _load_rules(lane: str = "evidence-export") -> list[_Rule]:
     doc = yaml.safe_load(POLICY.read_text(encoding="utf-8"))
     lanes = doc["lanes"]
-    patterns: list[dict] = []
+    entries: list[dict] = []
     for parent in lanes[lane].get("inherit", []) or []:
-        patterns.extend(lanes[parent].get("deny_patterns", []) or [])
-    patterns.extend(lanes[lane].get("deny_patterns", []) or [])
-    return [
-        _Rule(
-            p["id"],
-            p["message"],
-            re.compile(p["pattern"], (re.I if "i" in p.get("flags", "i") else 0) | re.M),
-        )
-        for p in patterns
-    ]
+        entries.extend(lanes[parent].get("deny_patterns", []) or [])
+    entries.extend(lanes[lane].get("deny_patterns", []) or [])
+    return [_compile(p) for p in entries]
 
 
 _RULES = _load_rules()
 
 
 def findings_for(text: str) -> list[Finding]:
-    """Every deny-pattern hit in one string, in rule order then span order."""
-    out = [
-        Finding(rule.id, rule.message, m.start(), m.end())
-        for rule in _RULES
-        for m in rule.re.finditer(text)
-    ]
+    """Every deny-pattern or deny-phrase hit in one string, rule order then span order."""
+    out: list[Finding] = []
+    for rule in _RULES:
+        for m in rule.re.finditer(text):
+            s, e = m.span(1) if rule.is_phrase else (m.start(), m.end())
+            out.append(Finding(rule.id, rule.message, s, e))
     return out
 
 

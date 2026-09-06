@@ -1,0 +1,8 @@
+{
+  "mode": "golden",
+  "rows": 17,
+  "disagreements": [],
+  "agreement": 1.0,
+  "ok": true,
+  "gate": "http://127.0.0.1:8420"
+}
