@@ -51,8 +51,8 @@ Prove the Rust gate reproduces the Python oracle before it earns anything (spec 
 
 ## 4. Phase 4 — the product (ARCH design + CON build, 3–5 days)
 
-1. **GLiNER fact-lock (Tier 3):** `ort` (ONNX Runtime Rust) + `gliner-small-v2` (~150 MB); extract `{entities, dates, money, urls}` pre-rewrite; rewrite (Mode A local infill / Mode B BYOK frontier); post-check: extracted sets must match source, else `preserved_ok=false` ⇒ QUARANTINE (never a mutated fact).
-2. **Extism WASM plugins:** `POST /v1/plugins` mounts a client `.wasm` rule pack (deterministic Tier-1 additions); sandboxed; policy file references plugin rule ids. The resale differentiator — clients extend without disclosing IP.
+1. **GLiNER fact-lock (Tier 3, built by B5, ARCH reviews):** `ort` (ONNX Runtime Rust) + `gliner-small-v2` (~150 MB); extract `{entities, dates, money, urls}` pre-rewrite; rewrite (Mode A local infill / Mode B BYOK frontier); post-check: extracted sets must match source, else `preserved_ok=false` ⇒ QUARANTINE (never a mutated fact).
+2. **Extism WASM plugins (built by B5, ARCH reviews):** `POST /v1/plugins` mounts a client `.wasm` rule pack (deterministic Tier-1 additions); sandboxed; policy file references plugin rule ids. The resale differentiator — clients extend without disclosing IP.
 3. **Image:** multi-arch (`linux/arm64`, `linux/amd64`) distroless build (brief B3); `docker run` → `/v1/health` green; RSS ≤ 2 GB hard, ~650 MB target **measured on the OCI shape** (B2 env).
 4. **Audit API:** `GET /v1/receipts?since=` — every grade/rewrite/quarantine with policy version hash; the enterprise receipt.
 5. **Catalog + standards row:** idp Backstage entity for the service; "Content governance" row in `crew/docs/STANDARDS.md`; OTLP metrics already specced (§9 of the main spec).
@@ -66,7 +66,9 @@ Verdict-shaped engine tasks (`classify.py`, `prescreen*.py`, `admissibility.py`,
 
 **B1 — Golden-sample labelling (CON).** You get: two source pools (paths), the labelling sheet, the two definitions ("leak" = engine/research register — verdict labels, "passages", diligence framing, citation lines, hedge scaffolding; "clean" = customer copy). You produce: 100 double-labelled rows in the given JSONL shape, disagreements flagged. No estate access needed; the pools are two files.
 
-**B2 — ARM64 SLM benchmark (CON).** Spin up the stated OCI shape (or nearest ARM64), download the two named GGUFs, run the supplied prompt set (50 strings, provided) through llama.cpp server and the candle reference binary with `n_predict=1`, logprobs on; report the latency percentiles/RSS/load-time JSON per model × engine, plus raw logs. Pure ops; no estate code.
+**B2 — SLM benchmark, split in two (CON).** B2a (engine decision, any ARM64 — a Mac or Linux ARM box is fine, NO OCI needed): download the two named GGUFs, run the supplied 50-string prompt set through llama.cpp server and the candle reference binary, `n_predict=1`, logprobs on; report P50/P99/RSS/load-time per model × engine. Lands day 1. B2b (product envelope proof): same protocol on the OCI Ampere A1 shape; the enterprise receipt. Lands in parallel. Pure ops; no estate code.
+
+**B5 — GLiNER + Extism skeleton (CON).** In `idp/platform/voice-gate` (existing Rust crate): (a) `src/facts.rs` — GLiNER-small-v2 via the `ort` ONNX crate, `extract(text) -> {entities, dates, money, urls}` with unit fixtures; (b) `src/plugins.rs` — Extism host: mount a `.wasm` rule pack, invoke `grade(text) -> findings_json`, sandboxed, one example plugin + test. Behind cargo feature flags `facts`/`plugins`; no API changes; `cargo test --all-features` green. Given: the crate path and spec §4/§6 contracts.
 
 **B3 — Image packaging (CON).** Given the crate path and this spec's Dockerfile review notes (distroless, non-root, `target-cpu=neoverse-n1`, dep-cache layer, model-less image — models mounted at runtime), produce the multi-arch Dockerfile + GitHub Actions build/publish workflow to ghcr. Acceptance: `docker run` prints `/v1/health` green on both architectures.
 
