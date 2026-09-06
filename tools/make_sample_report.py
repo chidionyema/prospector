@@ -20,6 +20,51 @@ import sys
 from urllib.parse import urlparse
 
 OUT = "store_platform/src/Store.Web/src/data/sample-report.json"
+COPY_OVERRIDES = os.path.join(os.path.dirname(__file__), "sample_report_copy_overrides.json")
+
+# Voice Gate phase 0 (spec specs/voice-gate-2026-09-06.md §7): the export refuses to write
+# engine-speak to the storefront. Scrub = excise the dirty sentences (delete, never invent);
+# where excision guts a paragraph, a HAND-WRITTEN override from COPY_OVERRIDES stands in,
+# with a receipt for each. The gate then grades every prose field and any hit exits 1 —
+# dirty output is never written. Enum fields (gate/verdict) are never graded.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prospector.voice_gate.deny import excise, findings_for, walk_prose  # noqa: E402
+
+
+def _scrub(report: dict) -> list[str]:
+    """Excise engine-speak from EVERY prose leaf (walker — no hand-maintained field list);
+    a hand-written override stands in where excision guts a leaf or the leaf is too short
+    to excise; anything still dirty after that is the gate's to refuse, not ours to hide."""
+    receipts: list[str] = []
+    overrides = {}
+    if os.path.exists(COPY_OVERRIDES):
+        with open(COPY_OVERRIDES, encoding="utf-8") as handle:
+            overrides = json.load(handle)
+    for parent, key, path, text in walk_prose(report):
+        clean, dropped = excise(text) if len(text) >= 60 else (text, [])
+        if dropped:
+            receipts.append(f"excised {len(dropped)} engine-speak sentence(s) from {path}")
+        if clean != text:
+            if not clean and path in overrides:
+                receipts.append(f"hand-written copy stands in for gutted {path}")
+                clean = overrides[path]
+            parent[key] = clean
+    return receipts
+
+
+def voice_gate(report: dict) -> int:
+    """Scrub, then grade every prose leaf; refuse to let dirty copy cross."""
+    for line in _scrub(report):
+        print(f"voice-gate: {line}")
+    leaves = list(walk_prose(report))
+    dirty = [(path, hit) for _p, _k, path, text in leaves for hit in findings_for(text)]
+    if dirty:
+        for path, hit in dirty:
+            print(f"VOICE GATE FAIL {path}: {hit.rule_id} {hit.message}", file=sys.stderr)
+        return 1
+    print(f"voice-gate: PASS ({len(leaves)} prose leaves graded clean)")
+    return 0
+
 
 # Human, refutational framing for each gate (matches the storefront's voice).
 CHECK_LABELS = {
@@ -252,6 +297,10 @@ def main() -> int:
     pid = sys.argv[1]
     d = json.load(open(f"store/dossiers/{pid}.pass.json", encoding="utf-8"))
     report = report_fields(pid, d)
+
+    verdict = voice_gate(report)
+    if verdict:
+        return verdict
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:

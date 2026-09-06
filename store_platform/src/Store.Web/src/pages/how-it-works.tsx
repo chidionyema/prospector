@@ -291,7 +291,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             been told late. The 52-word single sentence it started as was three claims sharing one
             spine; three short sentences say the same thing and can each be read on its own. */}
         <p className="mb-10 lede">
-          AI agents run the checks below. Each may only rule on passages it fetched from the open
+          AI agents run the checks below. Each may only rule on sources it fetched from the open
           web, and those sources are published with the verdict, so you can hold the reasoning
           against them yourself. A person reads that record before a pack goes on sale.
         </p>

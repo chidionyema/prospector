@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run lint && npm run lint:css",
+    "verify": "npm run typecheck && npm run lint && npm run lint:css && npm run lint:copy",
     "test": "vitest run",
     "parity:components": "node scripts/component_parity.mjs",
     "parity:pixels": "node scripts/visual_regression.mjs",
@@ -22,7 +22,8 @@
     "test:visual:update": "playwright test --project=visual-mobile --project=visual-desktop --update-snapshots",
     "test:lighthouse": "lhci autorun --config=lighthouserc.cjs",
     "storybook": "storybook dev -p 6006 --no-open",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "lint:copy": "python3 ../../tools/lint_copy.py"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.90.0",
