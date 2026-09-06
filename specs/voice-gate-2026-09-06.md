@@ -190,3 +190,11 @@ OTLP to the estate collector. Metrics: `voicegate_grades_total{lane,verdict,tier
 ## 14. Explicitly out of scope (v1)
 
 Medusa/mumchimp-medusa CMS wiring; fine-tuning (hook only); E-SLM estate routing (own plan after phase 2); any change to pack generation prompts beyond generating `voice.md` from policy; multi-language.
+
+## 15. Architecture amendment (2026-09-06, founder's deep-research review)
+
+Two-track build, one policy, one corpus:
+
+- **Estate track (phases 0–3, unchanged):** existing tested Python linters consolidated behind `voice-policy.yaml`; closes the leak in days with zero regression risk on the pack money path. "Go straight to Rust" for the estate lanes is rejected: it trades days for weeks against a live revenue path for no customer-visible gain.
+- **Product track (phases 3–4):** single statically-linked Rust binary (`aarch64-unknown-linux-gnu` + `x86_64`): `axum` serving the §3 API; Tier 1 `regex-automata` + `tree-sitter` (structure-aware: prose nodes only, never URLs/code/JSON keys); Tier 2 in-process GGUF SLM — **engine decided by the phase-2 golden-sample benchmark: `llama-cpp-2` bindings (llama.cpp ARM NEON kernels) vs candle**; Tier 3 fact-lock by **GLiNER** zero-shot NER over ONNX (`ort`), replacing regex fact-pinning; **Extism WASM plugins** let enterprise clients mount proprietary Tier-1 rules without disclosing IP (the resale differentiator). Target envelope ~650 MB RAM (Rust+axum ~30, DFA/tree-sitter ~20, 0.5–1B Q4_K_M ~450, GLiNER ~150) — a target to measure on the OCI Ampere shape, not a claim; same honesty clause for "sub-10 ms".
+- **Conformance:** the §5 golden sample is the cross-implementation suite — the Rust binary ships only when it reproduces the Python gate's verdicts on all 100 strings. `voice-policy.yaml` gains a strict JSONSchema in phase 1 (machine-verifiable policy for both runtimes).
