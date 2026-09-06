@@ -176,9 +176,9 @@ OTLP to the estate collector. Metrics: `voicegate_grades_total{lane,verdict,tier
 | Phase | Verify command(s) | Live proof | Rollback |
 |---|---|---|---|
 | 0 (½d) | `grep -c -iE "passage|SUPPORTED" src/data/kill-log.json src/data/sample-report.json` → 0; both export scripts exit 1 on a planted-leak fixture | rendered `/how-it-works` HTML quoted | revert two scripts + regenerate JSONs from store |
-| 1 (3–5d) | rule-semantics inventory signed off; corpus match-set diff EMPTY; differential fuzz clean; `cargo test` green; golden sample 100/100 vs Python oracle | shadow receipt: 7 days, 0 unexplained disagreements | n/a — Python keeps all authority; Rust has none until phase 3 |
-| 2 (2–3d) | `voice_gate_benchmark` → agreement ≥95%, leak recall ≥90%, P99 printed for llama-cpp-2 AND candle; winner recorded | 24 h of shadow grades, fallback rate <10% | tier2.required=false ⇒ Tier-1+frontier |
-| 3 (2d) | per-rule parity receipts all green; `npm run verify` fails on planted fixture, green on main; Vale YAMLs deleted | canary order executed: evidence-export → storefront CI → pack (2 clean shadow weeks on pack) | `VOICE_GATE_IMPL=python` per lane, seconds |
+| 1 (hours, not days) | corpus match-set diff EMPTY; differential fuzz clean; `cargo test` green; golden sample 100/100 vs Python oracle | the four greens printed in one run | n/a — Python keeps authority until the flip |
+| 2 (1 day, consultant-parallel) | `voice_gate_benchmark` → agreement ≥95%, leak recall ≥90%, P99 printed for llama-cpp-2 AND candle; winner recorded | fallback wired; 24 h of grades, fallback rate <10% | tier2.required=false ⇒ Tier-1+frontier |
+| 3 (same day) | `npm run verify` fails on planted fixture, green on main; Vale YAMLs deleted; `VOICE_GATE_IMPL=rust` everywhere | CI run URL (LAW 22) | `VOICE_GATE_IMPL=python`, seconds |
 | 4 (3–5d) | `docker run` image <2 GB; second policy grades sample corpus; receipts | image digest + audit API output | n/a (new artefact) |
 
 ## 13. Open decisions (defaults chosen; founder may override)
@@ -202,12 +202,8 @@ Founder, verbatim: "lets port" (twice), "and think of ways to make it safe" — 
 3. **Rule-semantics inventory, day 1 of phase 1.** Python `re` ≠ Rust `regex-automata` (no lookaround, no backrefs). Every pattern in the four linters is classified DFA-expressible or hand-rolled-checker; nothing is "translated by eye". The inventory is a signed-off artefact in `idp/platform/voice-gate/docs/`.
 4. **Corpus match-set diff.** Every pattern's match set is computed over the 312,886-word engine corpus + live `kill-log.json`/`sample-report.json`, Python vs Rust. Identical sets or the pattern does not move. This kills the classic port bug class — regex-engine semantic drift — with data, not hope.
 5. **Differential fuzzing.** Property tests mutate real pack/storefront strings (dash insertion, banned-token injection, entity swaps, whitespace/case noise) and assert Python verdict == Rust verdict. Every disagreement is triaged by a human before any cutover.
-6. **Per-rule parity receipts, per-rule cutover.** A rule crosses only with its receipt: golden-sample findings identical + corpus diff empty + fuzz clean. Hybrid mode is legal and expected mid-flight: the Rust service enforces paried rules and delegates the rest to the Python oracle over the same internal API.
-7. **Shadow mode on the live path.** Before any lane cutover, the Rust gate grades real production traffic with no authority for 7 days or ≥50 graded artefacts. Disagreement budget: **0 unexplained**.
-8. **Canary lane order.** evidence-export (lowest blast, already phase-0 gated) → storefront CI → pack lane (the money path) last, after two clean shadow weeks on the pack path.
-9. **Instant rollback.** `VOICE_GATE_IMPL=python|rust|hybrid` per lane; revert in seconds. The Python package stays in tree, tested, through v1.
-
-**Cutover gate (all required):** golden sample 100/100 · corpus match-set diff empty · differential fuzz clean · shadow budget met · pack-lane pytest green against the Rust service.
+6. **Prove-then-switch (founder 2026-09-06: "we don't need any cutover once we prove it works").** No shadow weeks, no per-rule ceremony. The conformance gate IS the safety: corpus match-set diff empty (already per-pattern) + differential fuzz clean + golden sample 100/100 + pack-lane pytest green against the Rust service. When all four are green, the flag flips for every lane at once.
+7. **Instant rollback.** `VOICE_GATE_IMPL=python|rust`; revert in seconds. The Python package stays in tree, tested, through v1.
 
 ### Product-track stack (phases 1–4, all in the Rust binary)
 
