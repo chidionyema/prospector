@@ -3997,6 +3997,7 @@ TOOLS: list[dict] = [
 #: register it was silent — which is how an operator ends up unable to see what the system can do.
 NOT_AN_OPS_TOOL: dict[str, str] = {
     "tools/voice_gate_conformance.py": "the Voice Gate conformance harness (diff/fuzz/golden receipts vs the Rust gate); it runs in a terminal or CI against a locally-started gate, never from an ops page",
+    "tools/lint_copy.py": "copy lint over data leaves for the Voice Gate rules (diff/fuzz/golden receipts); a read-only lint wired into the storefront verify, never an ops action",
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
     "scripts/vendor_ratchet.py": "counts how many call-sites still name a vendor the estate "
