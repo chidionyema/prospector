@@ -48,6 +48,18 @@ describe('the kill-log cause chart overrides the sparkline rule it inherits', ()
     expect(fill![2].split(/\s+/)).toContain('max-w-none');
   });
 
+  it('gives the bar a height on a phone, where the row turns into a column', () => {
+    // The second half of the same inheritance. `.t` carries `max-sm:flex-col`, and in a column
+    // flex container the bar's main size is its flex-basis, not the `height:9px` on
+    // `.barline .bar`. Measured on the built page at 390 on 2026-08-31, before this: the bar
+    // computed `flex: 1 0 100%` and rendered 0px tall, so every row on this chart drew a label
+    // and a count with nothing between them. It had been that way on a phone since the chart
+    // shipped on 2026-08-18, and no test could see it because the source was correct.
+    const bar = /<span className="(bar[^"]*)"/.exec(source);
+    expect(bar).not.toBeNull();
+    expect(bar![1].split(/\s+/)).toContain('max-sm:flex-none');
+  });
+
   it('does not fix this by editing the shipped stylesheet', () => {
     const css = readFileSync(
       path.join(process.cwd(), '../../../docs/design/mumchimp-build-bundle/mumchimp.css'),

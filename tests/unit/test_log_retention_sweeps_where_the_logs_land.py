@@ -121,7 +121,7 @@ def test_something_on_the_engine_actually_runs_the_sweep():
     conf = SUPERVISORD.read_text()
     assert "[program:log-retention]" in conf
     block = conf.split("[program:log-retention]", 1)[1].split("[program:", 1)[0]
-    command = next(l for l in block.splitlines() if l.startswith("command="))
+    command = next(line for line in block.splitlines() if line.startswith("command="))
     assert "ops.automations.log_rotation" in command, "a second module would be a second engine"
     assert "--fix" in command, "report-only on a schedule deletes nothing"
     assert "receipt.sh" in command, "an unrecorded exit code is the Step 2 defect again"

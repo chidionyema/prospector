@@ -13,10 +13,18 @@
  *
  * Nothing here decides what may be seen. Scope, expiry, revocation and the deny-list all live in
  * `prospector.ops.share.open_share`.
+ *
+ * It does share ONE thing with the operator docs page: `@/components/DocBody`, which decides how
+ * a document is drawn. That import is deliberate and it is the fix for a real defect — this page
+ * used to draw every document as a `<pre>`, so a shared `.html` file rendered as its own source
+ * to whoever the link was handed to. DocBody imports no ops client and no Shell, so the
+ * exclusions above stay exactly as narrow as they were; `tests/doc-render.test.ts` pins that.
  */
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+
+import DocBody from '@/components/DocBody';
 
 type FileRow = { name: string; label: string; bytes: number };
 
@@ -199,9 +207,7 @@ export default function SharedPage() {
               </p>
             ) : null}
             <div className="scroll-x">
-              <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[12.5px] leading-[1.6]">
-                {data.text}
-              </pre>
+              <DocBody name={data.name} text={data.text} title={data.name} />
             </div>
           </>
         ) : null}

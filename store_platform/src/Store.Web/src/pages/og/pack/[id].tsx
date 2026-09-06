@@ -170,7 +170,7 @@ export function PackOgCard({
     >
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', fontSize: 26, color: MUTED, fontWeight: 500 }}>
-          Survived every check it faced
+          Researched. Priced. Ready to build.
         </div>
         <div
           style={{

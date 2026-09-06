@@ -37,7 +37,7 @@ function context() {
   return {
     query: {},
     req: { cookies: {}, headers: {} },
-    res: { setHeader: vi.fn() },
+    res: { setHeader: vi.fn(), getHeader: vi.fn() },
   } as never;
 }
 

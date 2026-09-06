@@ -40,7 +40,25 @@ from pathlib import Path
 # "deployed (unreadable) (fly CLI not on PATH)". Nine consecutive reconciler runs failed that
 # way and each opened a critical about a drift it had never been able to measure.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from rollback_now import find_fly  # noqa: E402
+
+
+def find_fly() -> str | None:
+    """flyctl on PATH, or where it installs. Read-only use: this probe only reads what Fly
+    still reports while the account is torn down (crew#203); nothing here deploys.
+
+    A launchd PATH omits /usr/local/bin, so a bare shutil.which finds nothing (memory
+    `launchd-path-hides-local-bin-clis.md`). Moved here from scripts/rollback_now.py on
+    2026-08-26 when that script went; this file goes with the OKE probe in crew#203 PR 3.
+    """
+    import os
+    found = shutil.which("flyctl") or shutil.which("fly")
+    if found:
+        return found
+    for candidate in ("/usr/local/bin/flyctl", "/opt/homebrew/bin/flyctl",
+                      str(Path.home() / ".fly" / "bin" / "flyctl")):
+        if os.access(candidate, os.X_OK):
+            return candidate
+    return None
 
 DEV = Path("/Users/chidionyema/Documents/code/prospector")
 LIVE = Path("/Users/chidionyema/Documents/code/prospector-live")
@@ -441,9 +459,23 @@ ALLOW_UNVERIFIED_DEPLOY = DEV / "store" / "scheduler" / "ALLOW_UNVERIFIED_DEPLOY
 #: closed the drift -- `deploy_reconcile.py` and the console's update button -- refused because
 #: main was "red". Measured 2026-08-21 on e900a9ad, with every code lane green:
 #: ('fail', 'production runs main=failure, ..., PR keeper=cancelled, ...').
+# `container images` builds and pushes the ghcr.io images. It is deliberately NOT a voter, and
+# the reason is what this gate is for rather than a convenience: the thing it grades is not the
+# thing being deployed. This gate decides whether the PYTHON checkout at
+# /Users/chidionyema/Documents/code/prospector-live may roll forward, and that daemon runs from
+# source — it pulls no image. A red image build says the Dockerfiles are wrong at that sha, which
+# is true and worth failing the PR on, but it is not evidence about the artifact this gate ships.
+# One of its three arms also fails on an unset repository variable (NEXT_PUBLIC_*), an
+# environment condition and not a code fault, which would wall every Python deploy until somebody
+# set a variable that the Python daemon never reads.
+# MOVE IT TO GRADES_THE_CODE the day the deploy target becomes the images — when this gate, or
+# whatever replaces it, rolls a cluster forward rather than a source checkout. Then the verdict
+# is about the artifact and silencing it would ship an image that never built.
 _IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel",
                       "production runs main", "pr keeper", "drill", "fleet",
-                      "weekly estate review", "approve parked runs", "merge when green")
+                      "weekly estate review", "approve parked runs", "merge when green",
+                      "container images", "stale",   # stale: closes idle PRs, grades nothing (crew#299)
+                      "operating-model-gate")   # grades the PR body, not the code (LAW 51, crew#584)
 
 
 def ci_verdict(sha: str) -> tuple[str, str]:

@@ -93,10 +93,11 @@
      _app.tsx no longer imports next/font; if it still did, its wrapper would win on specificity
      and Geist would silently keep rendering. */
   --font-sans-pref: 'Inter Variable';
+  --font-serif-pref: Georgia, 'Palatino Linotype', Palatino, 'Times New Roman', serif;
   --font-mono-pref: 'IBM Plex Mono';
 
   /* What we fall back to when the webfont has not arrived (or was never wired). ONE family now:
-     the serif is gone (v3 is sans-only), so there is no --font-fallback-serif. Mono falls back to
+     Headlines use a classic serif (founder 2026-09-03 broadsheet). Mono falls back to
      ui-monospace -- the system mono is good enough for data markers. */
   --font-fallback-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-fallback-mono: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -143,7 +144,7 @@
           below is therefore the brief's ink-3 with its hue (213) and saturation (0.073) held
           exactly and only its lightness lowered to the first step that reaches AA: #707478,
           4.50:1 on paper, 4.71:1 on white. It is the brief's colour, at a legal weight. */
-  --bg: #FAFAF7;            /* --paper. The page ground everywhere, header included. 16.84:1 under
+  --bg: #F9F8F6;            /* --paper. The page ground everywhere, header included. 16.84:1 under
                                 --text. Was #FAF9F7; it is now byte-identical to the `theme-color`
                                 in `pages/_document.tsx`, which is the point -- a browser bar that
                                 differs from the page ground by even one step reads as a seam. */
@@ -169,7 +170,7 @@
                                 --border-strong: the same value on a divider would put a 3.25:1
                                 rule through pages designed around hairlines, which is a
                                 different decision and not one this fix is entitled to make. */
-  --text: #17191C;          /* --ink. Headings, the one button, prices. 16.84:1 on --bg, 17.61:1
+  --text: #1A1A1A;          /* --ink. Headings, the one button, prices. 16.84:1 on --bg, 17.61:1
                                 on --surface. AAA either way. Was #171717 -- the brief's value
                                 carries a trace of blue, which is what keeps it from going brown
                                 against the warm paper. */
@@ -860,6 +861,7 @@
      `font-serif` utility that silently does nothing, and the next person to reach for it gets
      no feedback). Newsreader is no longer downloaded -- see _app.tsx. */
   --font-sans: var(--font-sans-pref, ui-sans-serif), var(--font-fallback-sans);
+  --font-serif: var(--font-serif-pref, Georgia, 'Times New Roman', serif);
   --font-mono: var(--font-mono-pref, ui-monospace), var(--font-fallback-mono);
 
   /* Explicit Mathematical Leading & Tracking.
@@ -912,7 +914,8 @@
      REGRESSION WATCH, recorded because the note this block replaces exists for a reason: h1 was
      deliberately dropped 2.25rem -> 2rem in v3 because the pack-detail h1 wrapped to four lines,
      Geist having a much larger x-height than the Newsreader it replaced. This restores 2.25rem
-     per spec, on Switzer, whose x-height differs again -- so the pack-detail h1 is the first
+     per spec. The face has changed twice since that note -- Switzer, and now Inter Variable
+     (tokens.css:63) -- and each has a different x-height, so the pack-detail h1 is the first
      thing to look at on the rendered page, not the last.
 
      THE TWO TOP STEPS CARRY THEIR OWN MOBILE SIZE (spec: display "mobile: 2.25", h1 "mobile:
@@ -944,8 +947,9 @@
      The four values below are transcribed from the rendered specimen the founder approved
      ("ok i like the concept" / "ok lets try plate"), not chosen here: 72px / 0.94 / -0.036em / 660.
      660 breaks the "no scale weight above 600" policy on purpose and with the same justification
-     the Logo exemption already carries -- Switzer is a VARIABLE face with a 100-900 axis, so 660
-     is a real cut rather than a synthesised bold, and the policy exists to stop synthesis. It is
+     the Logo exemption already carries -- Inter Variable is a VARIABLE face with a 100-900 axis
+     (tokens.css:65), so 660 is a real cut rather than a synthesised bold, and the policy exists
+     to stop synthesis. It is
      a one-token exemption: the ban still holds for every other step, and
      `weightAndCasePolicy.test.ts` was widened to name display specifically rather than raised. */
   /* ── REVERTED TO THE SPEC'S OWN NUMBER, 2026-08-14 ──────────────────────────────────────────

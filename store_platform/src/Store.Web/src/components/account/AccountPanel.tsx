@@ -4,7 +4,7 @@ import { Button, buttonClasses, Card, EmptyState, Input, Money, SegmentedControl
 import PackMark from '@/components/ui/PackMark';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { auth, social, AuthError, type Order, type ProfileEdit, type Session } from '@/lib/api/auth';
-import { API_BASE_URL } from '@/lib/config';
+import { API_BASE_URL, LEGAL } from '@/lib/config';
 
 /**
  * Resolve the API's root-relative download path against the API origin.
@@ -309,8 +309,8 @@ function OrdersTab() {
                     ) : (
                       <p className="text-caption text-muted">
                         <span>Download unavailable.</span> Email{' '}
-                        <a href="mailto:support@mumchimp.com" className={textLinkClass()}>
-                          support@mumchimp.com
+                        <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
+                          {LEGAL.supportEmail}
                         </a>{' '}
                         quoting order {order.id} and we will re-issue it.
                       </p>

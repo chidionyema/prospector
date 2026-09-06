@@ -93,7 +93,7 @@ export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?:
       <h3 className="sub">
         No vetted pack for “{query.trim()}”, yet.
       </h3>
-      <p className="mt-2 max-w-2xl lede">
+      <p className="mt-2 lede">
         We only list an idea once it survives the checks with a clickable source behind every claim. Most
         ideas in a hot space die on the competition test. Tell us where to point the engine and we&apos;ll
         email you if one survives.

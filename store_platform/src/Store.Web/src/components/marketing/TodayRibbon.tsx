@@ -26,13 +26,13 @@ import latestKill from '@/data/latest-kill.json';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** "2026-08-07" becomes "Killed 7 Aug". An unparseable date falls back to the bare verb. */
+/** "2026-08-07" becomes "Rejected 7 Aug". An unparseable date falls back to the bare verb. */
 export function killTagLabel(isoDate: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
-  if (!m) return 'Killed';
+  if (!m) return 'Rejected';
   const month = MONTHS[Number(m[2]) - 1];
-  if (!month) return 'Killed';
-  return `Killed ${Number(m[3])} ${month}`;
+  if (!month) return 'Rejected';
+  return `Rejected ${Number(m[3])} ${month}`;
 }
 
 export function TodayRibbon() {
@@ -41,7 +41,7 @@ export function TodayRibbon() {
   return (
     <div className="strip ribbon">
       <div className="strip-in">
-        <Link href="/kill-log" prefetch={false}>
+        <Link href="/rejected" prefetch={false}>
           <span className="tag">{killTagLabel(latestKill.date)}</span>
           <span className="txt">{title}</span>
           <span className="go">Read the verdict {String.fromCharCode(8594)}</span>

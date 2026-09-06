@@ -88,15 +88,15 @@ export function SixInHundred({ className, label }: SixInHundredProps) {
           <p className="key">
             <span>
               <i className="sw9" style={{ background: 'var(--brand)' }} />
-              <b>{survivors}</b> survived
+              <b>{survivors}</b> passed
             </span>
             <span>
               <i className="sw9" style={{ background: 'var(--dead)' }} />
-              <b>{TOTAL - survivors}</b> killed
+              <b>{TOTAL - survivors}</b> didn&apos;t pass
             </span>
             <span>
               <Link href="/kill-log" prefetch={false} className="tlink">
-                Read what killed them
+                Read why they didn&apos;t pass
               </Link>
             </span>
           </p>

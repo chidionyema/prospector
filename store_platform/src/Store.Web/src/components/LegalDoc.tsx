@@ -111,7 +111,7 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: title }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: title }]}
       breadcrumbsWidth="6xl"
     >
       <Seo title={title} />
@@ -207,10 +207,19 @@ interface LegalHeadingProps {
   id?: string;
 }
 
-/** Section heading inside a legal doc. `scroll-mt-24` clears the sticky header on a jump. */
+/**
+ * Section heading inside a legal doc. `scroll-mt-24` clears the sticky header on a jump.
+ *
+ * THE TYPE COMES FROM `globals.css` `.legal h2:not(.sec)`, NOT FROM A UTILITY HERE. This line
+ * used to read `text-h3 font-semibold`, and `--text-h3` has been deleted from the scale since
+ * `tokens.css` cut it to six steps -- so the class emitted no rule, preflight's
+ * `font-size: inherit` stood, and every clause heading on /terms, /privacy and /refund rendered
+ * at 16px, the body size. `font-semibold` goes with it: it is 600 in `layer(utilities)` and
+ * would overrule the 640 the drawing gives this slot.
+ */
 export function LegalHeading({ children, id }: LegalHeadingProps) {
   return (
-    <h2 id={id} className="scroll-mt-24 pt-4 text-h3 font-semibold text-text">
+    <h2 id={id} className="scroll-mt-24 pt-4 text-text">
       {children}
     </h2>
   );
@@ -221,7 +230,7 @@ export function LegalText({ children }: { children: React.ReactNode }) {
   // `max-w-[68ch]` and `leading-[1.68]`: the drawing's `.legal p` (`mockups/refund.html`). The
   // measure lives on the paragraph now rather than on a `max-w-2xl` wrapper, so the clause rail
   // sits beside a document whose own text sets its width.
-  return <p className="max-w-[68ch] leading-[1.68] lede">{children}</p>;
+  return <p className="lede">{children}</p>;
 }
 
 /** Bulleted list inside a legal doc. */

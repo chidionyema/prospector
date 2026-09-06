@@ -51,9 +51,13 @@ export interface HeroRatioProps {
   /** The listed catalogue. Only its LENGTH is used: the legend states what is buyable today. */
   packCount: number;
   className?: string;
+  /** Shop-proof treatment on the featured card. The rate stays; the second-card chrome and
+      the long caption go, so the number sits in the product card's own grid instead of
+      floating beside the headline. */
+  compact?: boolean;
 }
 
-export default function HeroRatio({ packCount, className }: HeroRatioProps) {
+export default function HeroRatio({ packCount, className, compact = false }: HeroRatioProps) {
   const survivors = survivorDots();
   if (survivors === null) return null;
 
@@ -65,13 +69,15 @@ export default function HeroRatio({ packCount, className }: HeroRatioProps) {
     <figure className={cx('gridwrap', className)}>
       <p className="ratiofig num">{RESEARCH_STATS.survivorBoundLabel}</p>
       <p className="ratiosub">
-        or fewer survive the checks. Every square below is a hundredth of what we researched.
+        {compact
+          ? 'or fewer pass the checks.'
+          : 'or fewer pass the checks. Every square below is a hundredth of what we researched.'}
       </p>
       {/* One image with one name. The dots are not a hundred announcements. */}
       <div
         className="ratio"
         role="img"
-        aria-label={`${RESEARCH_STATS.survivorBoundLabel.replace(/^(\d+) in 100$/, 'Six in one hundred')} ideas survive the checks`}
+        aria-label={`${RESEARCH_STATS.survivorBoundLabel.replace(/^(\d+) in 100$/, 'Six in one hundred')} ideas pass the checks`}
       >
         {Array.from({ length: TOTAL }, (_, i) => (
           <i key={i} className={live.has(i) ? 'alive' : undefined} />
@@ -85,6 +91,7 @@ export default function HeroRatio({ packCount, className }: HeroRatioProps) {
           This does not reopen the 2026-08-13 directive ("saying 80 when only 50 are listed should
           never happen"). That bars claiming MORE survivors than are listed; this prints exactly
           what is listed, which is the number that directive wanted. */}
+      {!compact && (
       <div className="gridkey">
         <span>
           <i aria-hidden className="sw alive" />
@@ -92,9 +99,11 @@ export default function HeroRatio({ packCount, className }: HeroRatioProps) {
         </span>
         <span>
           <i aria-hidden className="sw dead" />
-          <b className="num">{killedLabel}</b> killed
+          <b className="num">{killedLabel}</b> didn&apos;t pass
         </span>
       </div>
+      )}
+      {!compact && (
       <figcaption className="gridcap">
         {/* THE DRAWING'S SENTENCE, WITH ITS ONE FALSE CLAIM REMOVED. It states the claim in the
             absolute, over all kills, and that is not true of this catalogue:
@@ -104,12 +113,13 @@ export default function HeroRatio({ packCount, className }: HeroRatioProps) {
             1,364" -- two pages, one contradiction, on the site whose pitch is that its
             arithmetic checks out. Every published kill DOES carry the check it failed, so the
             claim is narrowed to the one the data supports and the drawing's words survive. */}
-        {researchedLabel} ideas researched so far. Every kill we publish carries the check it
+        {researchedLabel} ideas researched so far. Every rejection we publish carries the check that
         failed.{' '}
         <Link className="tlink" href="/kill-log" prefetch={false}>
-          Read the kill log
+          See what didn&apos;t pass
         </Link>
       </figcaption>
+      )}
     </figure>
   );
 }

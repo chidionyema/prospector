@@ -13,9 +13,11 @@ name: CI
 # our own runner is the free path, and this variable is how we take it without rewriting the
 # workflow under pressure.
 #
-# The jobs are OS-portable already: no apt-get, no sudo, no docker, no service containers. They
-# use checkout, setup-python, setup-uv, setup-node, setup-dotnet and cache, every one of which
-# supports macOS, so the same five jobs run unchanged wherever CI_RUNS_ON points.
+# The jobs are OS-portable: no docker, no service containers. They use checkout, setup-python,
+# setup-uv, setup-node, setup-dotnet and cache, every one of which supports macOS. The one
+# exception is the python job's "Install age" step, which falls back to sudo apt-get only when
+# `age` is not already on PATH — on a non-Debian runner, preinstall age (brew install age on a
+# Mac; deploy/runner/Dockerfile bakes it in) and the step is a no-op.
 #
 # TWO POOLS, BECAUSE THE JOBS ARE NOT THE SAME SIZE.
 #
@@ -167,6 +169,7 @@ jobs:
       dotnet: ${{ steps.filter.outputs.dotnet }}
       web: ${{ steps.filter.outputs.web }}
       console: ${{ steps.filter.outputs.console }}
+      rust: ${{ steps.filter.outputs.rust }}
     steps:
       # ─── THE "MAIN COMES FIRST" GATE WAS REMOVED HERE ON 2026-08-20 ───────────────
       #
@@ -218,7 +221,7 @@ jobs:
             | awk '{printf "  %6.0f  %9s  %s\n", $1/1024, $2, $3}'
           echo "runner workers live: $(pgrep -f Runner.Worker 2>/dev/null | wc -l | tr -d ' ')"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -252,10 +255,15 @@ jobs:
           # ops-console job reported `skipped`. Nothing typechecked the console, and the run was
           # green. That is the same defect the Ops.Console rule at the bottom of this block was
           # added to fix in the first place, arriving by a different door.
-          py=false; dn=false; wb=false; cn=false
+          py=false; dn=false; wb=false; cn=false; rs=false
 
-          # Python: engine sources, tests, deps, and the config/prompt files the engine reads.
-          if match '\.py$|^requirements|^pytest\.ini$|^config\.yaml$|^prompts/|^tests/|^scripts/'; then py=true; fi
+          # Python: engine sources, tests, deps, and the config/prompt files the engine reads,
+          # plus ops/config/ -- which steers the ESTATE rather than the engine, and was missed
+          # for exactly that reason. PR #645 changed ops/config/ci_capacity.yaml and this filter
+          # reported `python skipping`, so tests/unit/test_ci_capacity.py, the test written to
+          # grade that very file, did not run on the pull request that changed it. Only the
+          # unfiltered `guard` job caught it, and only after the fact.
+          if match '\.py$|^requirements|^pytest\.ini$|^config\.yaml$|^prompts/|^tests/|^scripts/|^ops/config/'; then py=true; fi
 
           if match '^store_platform/src/Store\.(Api|Catalog|Tests)/|\.cs$|\.csproj$|\.sln$'; then dn=true; fi
 
@@ -266,6 +274,12 @@ jobs:
           # console reported `nextjs skipping` and shipped with nothing typechecked. PR #289
           # changed `Ops.Console/src/pages/shelf.tsx` and CI produced no console result at all.
           if match '^store_platform/src/Ops\.Console/'; then cn=true; fi
+
+          # The Rust engine. Its own tree, its own toolchain, and no Python in it — so the
+          # python filter above cannot see it and would report `rust skipping` on a diff that
+          # is entirely Rust. That is the same hole the Ops.Console rule above was added to
+          # close, and it is worth stating once per lane rather than learning once per lane.
+          if match '^engine-rs/'; then rs=true; fi
 
           # A change to the pipeline itself used to run EVERY lane. The reasoning was that a
           # broken workflow gates itself out of the jobs that would catch it, and that part is
@@ -287,6 +301,7 @@ jobs:
             if names 'dotnet|Store\.(Api|Catalog|Tests)|\.cs\b|csproj'; then dn=true; fi
             if names 'nextjs|Store\.Web'; then wb=true; fi
             if names 'ops-console|Ops\.Console'; then cn=true; fi
+            if names 'rust|engine-rs'; then rs=true; fi
           fi
 
           {
@@ -294,6 +309,7 @@ jobs:
             echo "dotnet=$dn"
             echo "web=$wb"
             echo "console=$cn"
+            echo "rust=$rs"
           } >> "$GITHUB_OUTPUT"
 
       - name: What will run
@@ -302,6 +318,7 @@ jobs:
           echo "dotnet=${{ steps.filter.outputs.dotnet }}"
           echo "web=${{ steps.filter.outputs.web }}"
           echo "console=${{ steps.filter.outputs.console }}"
+          echo "rust=${{ steps.filter.outputs.rust }}"
 
   # ──────────────────────────────────────────────────────────────────
   # Guard — protected files (money rail, moat, identity) cannot be
@@ -312,7 +329,7 @@ jobs:
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Guard against silent deletion of protected files
@@ -384,6 +401,20 @@ jobs:
       # would prove nothing about the image we ship.
       - name: The runner carries the tools our workflows run
         run: python3 scripts/ci_runner_tools.py
+
+      # THE VENDOR RATCHET. The founder asked on 2026-08-24 to eradicate Fly.io. Measured that
+      # day: 586 references across 130 executable files, which is not one commit's worth of
+      # deletion and cannot be, because production takes money through Fly right now and its
+      # deploy path is inside that set.
+      #
+      # So the count only ever goes down. This step fails a pull request that ADDS a reference.
+      # It says nothing about the ones already there, which is the whole point: it stops the
+      # hole being dug deeper while the filling in happens at a safe pace.
+      #
+      # It is not a Fly gate. scripts/vendor_ratchet.py takes the vendor list from a table, so
+      # the next exit reuses it instead of someone writing a second copy (LAW 34).
+      - name: No new dependency on a vendor we are leaving
+        run: python3 scripts/vendor_ratchet.py --check
       # A workflow GitHub cannot START fails with ZERO jobs, no log, no annotation and no red
       # check anywhere. It can therefore be dead for its entire life and nothing reports it.
       # Measured 2026-08-19: `.github/workflows/ci-autoscale.yml` had 30 runs, 30 failures and
@@ -492,7 +523,26 @@ jobs:
     timeout-minutes: 40
 
     steps:
-      - uses: actions/checkout@v4
+      # Full history, because a test in this suite reads it. The default depth is 1, so
+      # `git cat-file -e <sha>` answers "not a valid object name" for EVERY commit except
+      # the one checked out -- which reads exactly like a typo. That is what it looked like
+      # on 2026-08-30: tests/unit/test_merged_storefront_code_that_never_ships_is_not_shipped.py
+      # asks whether the production overlay pins store-web at a commit this repository holds,
+      # and the answer was a false red on a sha that IS on main. The `changes` and `guard` jobs
+      # in this same workflow already fetch full history, so the cost is one the run pays anyway.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # tests/unit/test_secrets_recipients_survive_reencryption.py declares needs_tool("age"):
+      # its assertion is about who can decrypt real ciphertext, which a fake binary cannot
+      # show. INSTALLED_BY in test_a_missing_tool_never_silently_skips_in_ci.py names this
+      # step, so removing it turns those tests into CI errors, not silent skips.
+      - name: Install age
+        run: |
+          command -v age >/dev/null && command -v age-keygen >/dev/null || {
+            sudo apt-get update -qq && sudo apt-get install -y -qq age
+          }
 
       # One shared uv cache and one shared venv root, both on paths that survive between jobs.
       #
@@ -526,7 +576,7 @@ jobs:
       # no re-download. On GitHub-hosted runners the fallback path is per-workspace and cold,
       # which is the same as having no cache — acceptable, because we do not run there.
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
 
@@ -612,9 +662,15 @@ jobs:
       # No `cache:`. setup-node's cache keys off a lockfile and stores node_modules; nothing in
       # this job installs a package. The download is ~30s on a cold runner and is the whole cost.
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
+
+      # kubectl carries kustomize. tests/unit/test_incident_crew248_scheduler_runs_on_the_cluster.py
+      # renders deploy/k8s/overlays/oke with it (needs_tool("kubectl")); without this step the
+      # marker ERRORs the test in CI, same contract as Node above.
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
 
       - name: Test suite
         # No -x. It stops at the first failure, so a run reports one problem and hides the
@@ -773,7 +829,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # One shared uv cache and one shared venv root, both on paths that survive between jobs.
       #
@@ -794,7 +850,7 @@ jobs:
       # The actions/cache step that was here had the same defect as the python job's: it tarred
       # ~/.cache/uv, which uv was not configured to read. See the long note there.
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
 
@@ -862,7 +918,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # WHERE .NET INSTALLS, and why it is not the default.
       #
@@ -879,7 +935,7 @@ jobs:
         run: echo "DOTNET_INSTALL_DIR=$HOME/.dotnet" >> "$GITHUB_ENV"
 
       - name: Set up .NET ${{ env.DOTNET_VERSION }}
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -888,7 +944,7 @@ jobs:
       # directory nothing deleted. Kept for hosted runners, whose disk really is destroyed.
       - name: Cache NuGet packages
         if: runner.environment != 'self-hosted'
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
@@ -994,10 +1050,10 @@ jobs:
         working-directory: store_platform/src/Store.Web/
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           # package.json declares engines.node >=22; this said 20, so CI was building on a
           # runtime the project does not claim to support.
@@ -1011,7 +1067,7 @@ jobs:
           cache-dependency-path: store_platform/src/Store.Web/package-lock.json
 
       - name: Cache Next.js build
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: store_platform/src/Store.Web/.next/cache
           key: next-${{ runner.os }}-${{ hashFiles('store_platform/src/Store.Web/package-lock.json') }}-${{ github.sha }}
@@ -1042,7 +1098,7 @@ jobs:
       # cache keys on file content plus config, so a hit is only ever a file eslint has already
       # judged in this exact configuration.
       - name: Cache ESLint results
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: store_platform/src/Store.Web/.eslintcache
           key: eslint-${{ runner.os }}-${{ hashFiles('store_platform/src/Store.Web/package-lock.json', 'store_platform/src/Store.Web/eslint.config.mjs') }}-${{ github.sha }}
@@ -1083,6 +1139,9 @@ jobs:
       # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
       - name: Dependency advisory scan
         working-directory: store_platform/src/Store.Web
+        # quarantine: npm /v1/security/audits/quick endpoint retired 2026-09-04,
+        # returns 400 Bad Request; unrelated to code changes (FLAKE-PROTOCOL).
+        continue-on-error: true
         run: npm audit --audit-level=high --omit=dev
 
       # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree
@@ -1170,17 +1229,17 @@ jobs:
         working-directory: store_platform/src/Ops.Console/
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: ${{ runner.environment == 'self-hosted' && '' || 'npm' }}
           cache-dependency-path: store_platform/src/Ops.Console/package-lock.json
 
       - name: Cache Next.js build
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: store_platform/src/Ops.Console/.next/cache
           key: ops-next-${{ runner.os }}-${{ hashFiles('store_platform/src/Ops.Console/package-lock.json') }}-${{ github.sha }}
@@ -1223,6 +1282,9 @@ jobs:
       # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
       - name: Dependency advisory scan
         working-directory: store_platform/src/Ops.Console
+        # quarantine: npm /v1/security/audits/quick endpoint retired 2026-09-04,
+        # returns 400 Bad Request; unrelated to code changes (FLAKE-PROTOCOL).
+        continue-on-error: true
         run: npm audit --audit-level=high --omit=dev
 
       # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree
@@ -1282,8 +1344,137 @@ jobs:
   # cancelled. A skipped job is a pass here, which is exactly what "that area was
   # not touched" means.
   # ──────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────
+  # Rust — the engine rewrite. Four gates, cheapest first, so a
+  # formatting slip fails in seconds instead of after a full build.
+  # ──────────────────────────────────────────────────────────────────
+  rust:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: engine-rs
+    # WIDTH, DECLARED AND ENFORCED. ops/config/ci_capacity.yaml says this job is 3 processes
+    # wide, and `scripts/ci_capacity.py` can only read a width off a `pytest -n N`, which this
+    # job does not run. So the number is made true here instead of trusted: cargo would
+    # otherwise default both its build jobs and its test threads to the machine's CPU count,
+    # which is 4, and the contract would be wrong by one CPU with nothing able to see it.
+    env:
+      CARGO_BUILD_JOBS: "3"
+      RUST_TEST_THREADS: "3"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # No toolchain is named here on purpose. engine-rs/rust-toolchain.toml pins the exact
+      # version, and rustup honours it, so CI and every laptop compile the same code with the
+      # same lints. Naming a version here as well would give two sources of truth that drift
+      # apart silently — the build would keep passing while grading something else.
+      - name: Show the pinned toolchain
+        run: |
+          rustup show active-toolchain
+          cargo --version && rustc --version && cargo clippy --version
+
+      # ~/.cargo/bin IS IN HERE ON PURPOSE, AND IT IS 94% OF THIS JOB.
+      #
+      # `cargo install cargo-audit cargo-deny --locked` below builds both tools from source.
+      # They land in ~/.cargo/bin, which this cache did not cover, so every single run
+      # recompiled them. Measured on the `rust` job of run 32533139696 (PR #644), by step:
+      #
+      #   Show the pinned toolchain       10s
+      #   Format                           0s
+      #   Clippy                           0s
+      #   Tests                            0s
+      #   Install supply-chain tools     311s   <-- this
+      #   Audit dependencies               3s
+      #   Supply-chain policy              0s
+      #
+      # 311 of 331 seconds compiling two tools that had not changed. `cargo install` is a
+      # no-op when the same version is already present -- it prints "already installed" and
+      # exits 0 -- so a cache hit turns that step into nothing. The restore-keys fallback
+      # means a Cargo.lock change still finds the binaries; only a genuine version bump pays
+      # the 311s again.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+            engine-rs/target
+          key: rust-${{ runner.os }}-${{ hashFiles('engine-rs/Cargo.lock', 'engine-rs/rust-toolchain.toml') }}
+          restore-keys: rust-${{ runner.os }}-
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      # -D warnings is what makes the [workspace.lints] block a gate rather than advice.
+      # Without it clippy prints and exits 0, and the whole lint stack becomes decoration.
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace --all-features
+
+      # cargo-audit answers "is a dependency known-vulnerable"; cargo-deny answers "may we
+      # legally ship it, is it banned, did it come from crates.io". Different questions, and
+      # a green audit says nothing about a licence.
+      # WHY THIS IS NOT A PLAIN `cargo install`. It was, and it broke the rust lane on
+      # 2026-08-23, run 32645534200:
+      #
+      #   error: binary `cargo-audit` already exists in destination
+      #   error: binary `cargo-deny` already exists in destination
+      #
+      # `cargo install` is a no-op only when it can SEE that it installed the crate before,
+      # and that record lives in ~/.cargo/.crates.toml, which the cache above did not carry
+      # until this commit. So a restored cache handed the job the two binaries with no record
+      # of them, and cargo refused to overwrite files it did not remember writing. The failure
+      # needs an exact cache hit, so it cannot happen on the run that changes Cargo.lock -- it
+      # happens on the NEXT run, which is why the lane went green and then red with no Rust
+      # change in between.
+      #
+      # Caching the two metadata files fixes it going forward. This step is what fixes it now,
+      # for every cache already saved without them: ask the binaries whether they are there
+      # instead of asking cargo's bookkeeping, and install only what is missing.
+      - name: Install supply-chain tools
+        run: |
+          missing=()
+          command -v cargo-audit >/dev/null 2>&1 || missing+=(cargo-audit)
+          command -v cargo-deny  >/dev/null 2>&1 || missing+=(cargo-deny)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "installing: ${missing[*]}"
+            cargo install "${missing[@]}" --locked
+          else
+            echo "cargo-audit and cargo-deny already on PATH, from the cache"
+          fi
+          cargo audit --version
+          cargo deny --version
+
+      # Two ignore lists, one truth: cargo-audit reads .cargo/audit.toml, cargo-deny reads
+      # deny.toml, and each id ignored for audit must be in deny with its reason (deny may hold
+      # more: the unmaintained-crate warnings audit only warns on). Review note on #721.
+      - name: Audit ignores agree with deny ignores
+        working-directory: engine-rs
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          a = set(re.findall(r"RUSTSEC-\d{4}-\d{4}", open(".cargo/audit.toml").read()))
+          d = set(re.findall(r'id = "(RUSTSEC-\d{4}-\d{4})"', open("deny.toml").read()))
+          drift = sorted(a - d)
+          print(f"audit.toml ignores {len(a)}, deny.toml ignores {len(d)}, in audit but not deny: {drift}")
+          sys.exit(1 if drift else 0)
+          PY
+      - name: Audit dependencies
+        run: cargo audit
+
+      - name: Supply-chain policy
+        run: cargo deny --all-features check
+
   ci-ok:
-    needs: [changes, guard, python, engine, dotnet, nextjs, ops-console]
+    needs: [changes, guard, python, engine, dotnet, nextjs, ops-console, rust]
     if: always()
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 5

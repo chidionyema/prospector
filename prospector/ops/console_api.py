@@ -162,6 +162,7 @@ def _read_status(cfg, args: dict) -> dict:
     from .routing import routing_view
 
     out: dict[str, Any] = {"heartbeats": _heartbeats(cfg), "alerts": _alerts(cfg)}
+    out["stuck"] = _stuck(cfg, args)
     out["supervisor"] = _supervisor_view()
     out["pause"] = pause_view(cfg)
     # A SHORT tail here on purpose. This view is polled every 30s by the Now page; the
@@ -417,6 +418,65 @@ def _alerts(cfg) -> dict:
     }
 
 
+def _stuck(cfg, args: dict) -> dict:
+    """Candidates that started and never finished, on the front page instead of three clicks in.
+
+    The engine cannot write its own `candidate_done` when it is killed (`run.py:1063`), so work
+    that died leaves no error anywhere — only a missing row. That made a dead batch invisible
+    until someone opened the run. `runs.unfinished` names each one, and only the ones that need
+    a human are counted: work still being vetted is not a fault.
+    """
+    from .runs import unfinished
+
+    try:
+        view = unfinished(days=int(args.get("days") or 3))
+    except Exception as exc:  # noqa: BLE001 — a broken audit read is information, not a 500
+        return {"error": f"{exc}", "error_kind": type(exc).__name__, "needs_attention": None,
+                "needs_attention_null_reason": "the audit log could not be read, so whether work "
+                                               "is stuck is unmeasured — treat this as unknown, "
+                                               "not as clear"}
+    worst = [e for e in view["items"] if e["state"] != "in_flight"]
+    return {
+        "needs_attention": view["needs_attention"],
+        "in_flight": view["counts"]["in_flight"],
+        "counts": view["counts"],
+        "window_days": view["window_days"],
+        "stall_after_min": int(view["stall_after_s"] // 60),
+        # Capped for the front page. `needs_attention` above is the FULL count, so a long tail
+        # is never silently reported as a short one.
+        "items": worst[:8],
+        "shown": min(len(worst), 8),
+        "note": view["note"],
+        # WHAT THE ENGINE WILL FIX BY ITSELF, separated from what it cannot. `unfinished` above
+        # is read from the audit log and is a HISTORY: it still names work that died four days
+        # ago even after the candidate has been recovered. The in-flight ledger is the LIVE
+        # answer — a record is deleted the moment a verdict exists — so this is the count that
+        # actually falls to zero, and the one that says whether a human has to do anything.
+        "awaiting_recovery": _awaiting_recovery(cfg),
+    }
+
+
+def _awaiting_recovery(cfg) -> dict:
+    """Abandoned work the next `vet --resume` will re-vet on its own.
+
+    Every drain pass starts with `run._recover_orphans`, so this number needs no operator action
+    and falls without one. It is reported anyway: work that is queued for repair and work that is
+    lost look identical from the audit log, and the founder has to be able to tell them apart.
+    """
+    from .. import inflight
+    from .runs import _store
+
+    try:
+        view = inflight.survey(_store(cfg).root)
+    except Exception as exc:  # noqa: BLE001
+        return {"count": None, "count_null_reason": f"the in-flight ledger could not be read: "
+                                                    f"{exc}"}
+    return {"count": view["counts"]["orphaned"], "in_progress": view["counts"]["live"],
+            "unreadable": view["counts"]["unreadable"], "dir": view["dir"],
+            "note": "these are re-vetted automatically at the start of every drain pass; "
+                    "nothing to do"}
+
+
 def _spend_headline(cfg) -> dict:
     """The four numbers the `/` screen needs, lifted from `spend_view` without re-deriving any.
 
@@ -620,7 +680,7 @@ def _read_shares(cfg, args: dict) -> dict:
     out["max_days"] = _share.MAX_DAYS
     out["default_days"] = _share.DEFAULT_DAYS
     if args.get("files"):
-        out["files"] = _share.shareable_files(root)
+        out["files"] = _share.linkable_files(root)
     return out
 
 
@@ -643,7 +703,7 @@ def _read_repo_files(cfg, args: dict) -> dict:
     from . import share as _share
 
     root = _repo_root()
-    return _share.folder_view(root, _share.shareable_files(root))
+    return _share.folder_view(root, _share.linkable_files(root))
 
 
 def _read_share_open(cfg, args: dict) -> dict:
@@ -1755,82 +1815,27 @@ def _read_deploys(cfg, args: dict) -> dict:
     return slow_read.serve_merged("deploys")
 
 
-#: The tool that ships one service. Named once, so the button lookup below and the registry
-#: row cannot drift apart.
-_DEPLOY_NOW = "scripts/deploy_now.py"
+#: How every deployable ships on OKE, in one sentence, so /deploys never shows a service with
+#: no route and no explanation. The Deploy and Roll back buttons that stood here from
+#: 2026-08-19 to 2026-08-26 dispatched Fly deploys and went with Fly (crew#203).
+_OKE_DEPLOY_HOW = ("a merge to main is the deploy: container-images.yml tags the image and "
+                   "Flux rolls it out from deploy/k8s/overlays/oke")
+_OKE_ROLLBACK_HOW = ("revert the commit on main and Flux rolls it out; `kubectl -n prospector "
+                     "rollout undo deployment/<name>` buys the minutes until that merges")
 
 
 def _deploy_route(name: str) -> dict:
-    """How the operator ships one deployable FROM THIS PAGE, or why there is no button.
+    """How the operator ships one deployable, or why there is no button.
 
-    The founder's instruction, 2026-08-19: "all our services must be deployable from the ops
-    dashboard". This page could say the storefront was behind main and offer nothing to do about
-    it, which meant shipping needed someone with a shell.
-
-    `deploy_tool_id` is the id of the TOOLS row that ships it, looked up by the command rather
-    than hardcoded, so renaming the row cannot leave a button pointing at nothing. When there is
-    no button, `deploy_how` says what does ship it — never silence.
+    The keys are the ones store_platform/src/Ops.Console/src/pages/deploys.tsx reads. A null
+    `deploy_tool_id` renders `deploy_how` in place of a button, never silence.
     """
-    for tool in TOOLS:
-        if tool["path"] == _DEPLOY_NOW and tool["command"].split()[-1] == name:
-            return {"deploy_tool_id": tool["id"], "deploy_how": tool["purpose"],
-                    "deploy_danger": tool["danger"]}
-
-    try:
-        scripts_dir = str(_REPO_ROOT / "scripts")
-        if scripts_dir not in sys.path:  # called once per deployable, per page read
-            sys.path.insert(0, scripts_dir)
-        import deploy_now  # type: ignore
-    except ImportError as exc:
-        # Narrow on purpose, and it says so rather than returning silence: this happens on a
-        # checkout older than the commit that added the script, which is exactly when the
-        # operator is looking at this page to roll that checkout forward.
-        return {"deploy_tool_id": None,
-                "deploy_how": f"this checkout has no deploy routes yet ({exc}); roll it forward "
-                              f"with scripts/live_checkout.py --update",
-                "deploy_danger": None}
-    route = deploy_now.routes().get(name, {})
-    if route.get("kind") == "manual":
-        return {"deploy_tool_id": None, "deploy_how": route["why"], "deploy_danger": None}
-    if route.get("kind") == "button":
-        return {"deploy_tool_id": None, "deploy_how": route["where"], "deploy_danger": None}
-    return {"deploy_tool_id": None,
-            "deploy_how": "no route: this can only be shipped from a terminal",
-            "deploy_danger": None}
-
-
-#: The tool that puts one service back on its previous image. Named once, for the same reason as
-#: _DEPLOY_NOW: the button lookup and the registry row cannot drift apart.
-_ROLLBACK_NOW = "scripts/rollback_now.py"
+    return {"deploy_tool_id": None, "deploy_how": _OKE_DEPLOY_HOW, "deploy_danger": None}
 
 
 def _rollback_route(name: str) -> dict:
-    """How the operator puts one deployable BACK from this page, or why there is no button.
-
-    Deploy and rollback are looked up the same way and rendered side by side on purpose. An
-    operator who can ship from a page and cannot unship from it will reach for a terminal at the
-    exact moment that costs the most.
-    """
-    for tool in TOOLS:
-        if tool["path"] == _ROLLBACK_NOW and tool["command"].split()[-1] == name:
-            return {"rollback_tool_id": tool["id"], "rollback_how": tool["purpose"],
-                    "rollback_danger": tool["danger"]}
-
-    try:
-        scripts_dir = str(_REPO_ROOT / "scripts")
-        if scripts_dir not in sys.path:  # called once per deployable, per page read
-            sys.path.insert(0, scripts_dir)
-        import rollback_now  # type: ignore
-    except ImportError as exc:
-        return {"rollback_tool_id": None,
-                "rollback_how": f"this checkout has no rollback routes yet ({exc}); roll it "
-                                f"forward with scripts/live_checkout.py --update",
-                "rollback_danger": None}
-    route = rollback_now.routes().get(name, {})
-    if route.get("kind") == "none":
-        return {"rollback_tool_id": None, "rollback_how": route["why"], "rollback_danger": None}
-    return {"rollback_tool_id": None,
-            "rollback_how": "no rollback route: this service cannot be put back from here",
+    """How the operator puts one deployable back, rendered beside `_deploy_route`."""
+    return {"rollback_tool_id": None, "rollback_how": _OKE_ROLLBACK_HOW,
             "rollback_danger": None}
 
 
@@ -3739,8 +3744,6 @@ TOOLS: list[dict] = [
     _t("scripts/estate_map.py", "The whole estate, probed live: Fly apps, customer URLs, laptop "
        "jobs, volumes, secret names", False, "/engine", run=True,
        cmd=".venv/bin/python scripts/estate_map.py"),
-    _t("scripts/fly_estate_probe.py", "Which Fly apps does no committed file describe?", False,
-       "/engine", run=True, cmd=".venv/bin/python scripts/fly_estate_probe.py"),
     _t("prospector/listing_ledger.py", "Why is each pack on or off the shelf?", False,
        "/catalogue", run=True, cmd=".venv/bin/python -m prospector.listing_ledger"),
     _t("tools/spend_today.py", "Today's spend against the cap", False, "/spend"),
@@ -3942,64 +3945,10 @@ TOOLS: list[dict] = [
     _t("scripts/deploy_status.py", "Start stopped CI runners when deploys are queued behind them",
        True, "/deploys", cmd=".venv/bin/python scripts/deploy_status.py --fix", risk="external",
        danger="starts Fly machines on prospector-ci; only acts when runs are actually queued"),
-    # --- registered 2026-08-19, on the founder's instruction that "all our services must be
-    # deployable from the ops dashboard". Before these, /deploys could say the storefront was
-    # behind main and offer nothing to do about it: shipping meant someone with a shell typing
-    # `gh workflow run`. Every route is in scripts/deploy_now.py and
-    # tests/unit/test_every_service_can_be_deployed_from_the_console.py fails when a deployable
-    # has no route and no button.
-    #
-    # `external` on all of them: a dispatch starts a GitHub run that deploys to Fly, and no
-    # local store snapshot can roll that back. The undo is a redeploy of the previous commit.
-    _t("scripts/deploy_now.py", "How does each service ship, and what can this page deploy?",
-       False, "/deploys", cmd=".venv/bin/python scripts/deploy_now.py --list"),
-    _t("scripts/deploy_now.py", "Deploy the engine now (and the admin console inside it)", True,
-       "/deploys", cmd=".venv/bin/python scripts/deploy_now.py engine", risk="external",
-       danger="deploys whatever is on main right now, including work merged since you looked at "
-              "this page. prospector-engine is one machine with strategy=immediate, so the "
-              "scheduler, consumer, watchdog and console all restart"),
-    _t("scripts/deploy_now.py", "Deploy the store API now", True, "/deploys",
-       cmd=".venv/bin/python scripts/deploy_now.py store-api", risk="external",
-       danger="deploys whatever is on main right now. Checkout and fulfilment restart"),
-    _t("scripts/deploy_now.py", "Deploy the storefront now", True, "/deploys",
-       cmd=".venv/bin/python scripts/deploy_now.py store-web", risk="external",
-       danger="deploys whatever is on main right now to mumchimp.com, the page buyers see"),
-    # searxng has no workflow, so this one builds from THIS checkout. deploy_now refuses when the
-    # shipping paths are dirty, which is what stops another session's uncommitted edit shipping.
-    _t("scripts/deploy_now.py", "Deploy the search endpoint (searxng) now", True, "/deploys",
-       cmd=".venv/bin/python scripts/deploy_now.py searxng", risk="external",
-       danger="no CI workflow exists for searxng, so this builds from the console host's "
-              "checkout; it refuses if the shipping paths are modified"),
-    # Rollback, 2026-08-20. Founder: "this is deploying to prod, needs to be absolutely rock solid
-    # and bulletproof, rollback also, verified with automated tests and a drill function in ops".
-    # A Deploy button with no Rollback button lets the operator break production from a web page
-    # and then need a shell to fix it, which is worse than having neither.
-    #
-    # These deploy an image that ALREADY EXISTS on Fly (the previous release's ImageRef), so they
-    # run in seconds, build nothing, and cannot pick up whatever is in the console host's working
-    # tree. `external` for the same reason as the deploy rows: no local store snapshot undoes them.
-    _t("scripts/rollback_now.py",
-       "Drill the rollback path: resolve every previous image and health-check every service",
-       False, "/deploys", cmd=".venv/bin/python scripts/rollback_now.py --drill"),
-    _t("scripts/rollback_now.py", "Roll the engine back to its previous image", True, "/deploys",
-       cmd=".venv/bin/python scripts/rollback_now.py engine", risk="external",
-       danger="puts prospector-engine back on the image it ran before the last deploy. The "
-              "scheduler, consumer, watchdog and console all restart. It does NOT change main: "
-              "the next merge touching the engine ships the current code again, so revert the "
-              "commit too"),
-    _t("scripts/rollback_now.py", "Roll the store API back to its previous image", True, "/deploys",
-       cmd=".venv/bin/python scripts/rollback_now.py store-api", risk="external",
-       danger="puts prospector-store-api back on its previous image. Checkout and fulfilment "
-              "restart, and a buyer mid-checkout retries. It does NOT change main - revert the "
-              "commit too"),
-    _t("scripts/rollback_now.py", "Roll the storefront back to its previous image", True,
-       "/deploys", cmd=".venv/bin/python scripts/rollback_now.py store-web", risk="external",
-       danger="puts mumchimp.com back on its previous image. Buyers see the older page within "
-              "seconds. It does NOT change main - revert the commit too"),
-    _t("scripts/rollback_now.py", "Roll the search endpoint (searxng) back to its previous image",
-       True, "/deploys", cmd=".venv/bin/python scripts/rollback_now.py searxng", risk="external",
-       danger="puts prospector-searxng back on its previous image. Measured 2026-08-20 it has "
-              "only ever had ONE release, so this refuses until it has been deployed twice"),
+    # The Deploy and Roll back rows that stood here from 2026-08-19 to 2026-08-26 dispatched
+    # Fly deploys (scripts/deploy_now.py, scripts/rollback_now.py). They went with Fly
+    # (crew#203). On OKE a merge to main is the deploy: container-images.yml tags the image and
+    # Flux rolls it out from deploy/k8s/overlays/oke. The undo is a revert on main.
     # The scheduled half of the drill. Registered 2026-08-20 because a Deploy button and a Roll
     # back button are two controls with no feedback: measured that day, nothing on this estate
     # made an HTTP request to mumchimp.com except the drill, and the drill only ran when someone
@@ -4047,16 +3996,14 @@ TOOLS: list[dict] = [
 #: and no test could tell. The registry was hand-written, so adding a tool and forgetting to
 #: register it was silent — which is how an operator ends up unable to see what the system can do.
 NOT_AN_OPS_TOOL: dict[str, str] = {
-    "scripts/deploy_reconcile.py": "the hourly robot that dispatches a deploy when the "
-                                   "image production runs is not the commit main points "
-                                   "at. It needs `gh` and a git checkout to decide "
-                                   "anything, and the engine container has neither, so "
-                                   "from here it could only ever answer UNKNOWN. GitHub "
-                                   "Actions runs it, on the hour. The operator's version "
-                                   "of the same question is the `scripts/live_checkout.py` "
-                                   "button, which reads /app/GIT_SHA directly",
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
+    "scripts/vendor_ratchet.py": "counts how many call-sites still name a vendor the estate "
+                                 "is leaving, and refuses a commit that adds one. It reads "
+                                 "`git ls-files`, so it needs a checkout; the engine container "
+                                 "has none and could only ever answer zero, which is the most "
+                                 "dangerous wrong answer this particular tool has. CI runs it "
+                                 "on every push",
     "scripts/green_guard_cause.py": "asks whether main was ALREADY red before a given commit "
                                    "landed, so the green guard does not revert an innocent "
                                    "one. The main-green-guard workflow runs it with the "
@@ -4071,6 +4018,20 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/install_push_shim.sh": "the pre-push shim setup_worktree.sh installs; a developer's machine, not ops (crew#326)",
+    "scripts/retrieval_parity.py": "grades the Rust retrieval port against the Python "
+                                  "it replaces by fetching live pages in both. It needs "
+                                  "the open web and a release-built Rust binary, and it "
+                                  "is deliberately not a CI lane: a check that fails when "
+                                  "gov.uk is slow teaches everyone to ignore it. A "
+                                  "migration-time developer tool, like the parity check "
+                                  "above it",
+    "scripts/dual_write_parity.py": "grades the Postgres shadow against the SQLite store "
+                                    "during the engine rewrite. It needs a psql binary, a "
+                                    "readable SQLite file and a route to Postgres, and the "
+                                    "engine container has none of the three. A migration-time "
+                                    "developer tool: it answers a question that stops existing "
+                                    "the day the rewrite lands",
     "scripts/install_control_center_agent.sh": "writes the Control Center launchd plist into the operator's own "
                                                "~/Library/LaunchAgents and reloads the agent. It installs the "
                                                "console itself, on that one Mac, and the console runs on Fly — "
@@ -4133,6 +4094,12 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                     "into the repo checkout, to be committed. The engine runs "
                                     "from a detached mirror of main, so a button here would "
                                     "write a file nothing ever reads and no one can commit",
+    "tools/gen_pack_images.py": "draws one picture per pack on MiniMax and writes the jpegs plus "
+                                "a generated manifest into the repo checkout, to be committed. "
+                                "The engine runs from a detached mirror of main, so a button here "
+                                "would write files nothing ever reads and no one can commit. It "
+                                "also spends money per click, which is not a thing an ops page "
+                                "should offer",
     # libraries and experiments, not commands
     "tools/_backfill_driver.py": "a library for backfill_missing_listings.sh, not a CLI",
     "tools/l8_ab.sh": "the COST_PROGRAM §L8 A/B experiment harness",

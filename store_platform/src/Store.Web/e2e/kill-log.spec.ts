@@ -80,8 +80,8 @@ async function openFirstSourcedRecord(page: import('@playwright/test').Page) {
 }
 
 test('the kill log renders rejections with the reason that killed each one', async ({ page }) => {
-  await page.goto('/kill-log');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/killed/i);
+  await page.goto('/rejected');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(/didn.t pass|rejected/i);
 
   // Asserted as "more than a handful" rather than an exact count: the log regenerates from the
   // dossiers, so the number climbs every time the engine runs. A page that rendered its shell
@@ -107,7 +107,7 @@ test('no kill reason shows an unresolved source hash', async ({ page }) => {
   // best and looks like a fabricated citation at worst, which is precisely the impression this
   // page exists to defeat. make_kill_log.py resolves each hash to the URL the dossier recorded
   // and drops the ones it cannot resolve; this fails if that ever silently stops happening.
-  await page.goto('/kill-log');
+  await page.goto('/rejected');
   expect(await page.locator('main').innerText()).not.toMatch(CITATION_HASH);
 
   // The reasons and the citations live in the detail row, so the collapsed page cannot see the
@@ -118,7 +118,7 @@ test('no kill reason shows an unresolved source hash', async ({ page }) => {
 });
 
 test('every cited source is a real outbound link, safely attributed', async ({ page }) => {
-  await page.goto('/kill-log');
+  await page.goto('/rejected');
   const detail = await openFirstSourcedRecord(page);
 
   const links = detail.locator('a[target="_blank"]');

@@ -1,0 +1,21 @@
+# The corpus the Rust retrieval port is graded against. One URL per line, # starts a comment.
+#
+# Chosen for the SHAPES the extractor has to survive, not for variety of subject. Each line
+# says which shape it is, because a corpus nobody can explain gets pruned by the next person
+# who finds it slow.
+#
+# a long article inside <main>, longer than MAX_BYTES, so the body-truncation cut lands
+# mid-markup -- this is the case that caught the take(400_000) vs iter_content(8192) divergence
+https://en.wikipedia.org/wiki/Rust_(programming_language)
+# gov.uk guidance: no <main>, no <article>, no role=main, no #content, so the ladder has to
+# fall through to the whole document
+https://www.gov.uk/data-protection
+# a docs page whose body is inside <article> rather than <main>
+https://doc.rust-lang.org/book/ch01-01-installation.html
+# a short page: under MIN_PAGE_TEXT after extraction is NO passage, not a short one, and both
+# ports must agree on the refusal
+https://example.com/
+# a status at or above 400 -- both ports return no page, neither raises
+https://httpbin.org/status/404
+# a declared content-type that is not markup
+https://httpbin.org/json

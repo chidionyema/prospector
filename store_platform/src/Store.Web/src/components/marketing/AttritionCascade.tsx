@@ -145,7 +145,13 @@ export function AttritionCascade({ distribution, className }: AttritionCascadePr
           had to infer it. The swatches state what THIS chart actually draws: the dark bar is what
           is still alive at a gate, the empty track beside it is what the gate killed, and the teal
           bar at the bottom is the shelf. */}
-      <p className="key mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-meta text-muted">
+      {/* The bundle draws this strip once, as `.sigcard .key` (mumchimp.css:174): 12px mono at
+          --ink-3, flex, wrapping, 16px gap, 14px above a hairline rule. This line used to restate
+          all of that in utilities -- `mt-4 flex flex-wrap gap-x-5 gap-y-2 text-meta` -- and
+          utilities beat `layer(components)`, so the same key strip measured 14px here against
+          12px on the two pages that let the drawing apply. `items-center` stays: the bundle sets
+          no align-items. */}
+      <p className="key items-center text-muted">
         <span className="flex items-center gap-2">
           <i className="sw9 bg-text" aria-hidden /> still alive at this gate
         </span>

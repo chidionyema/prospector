@@ -18,7 +18,7 @@ import { SEARCH_ENGINE_VERIFICATIONS } from "@/lib/seo/verification";
 // ASCII (apostrophes are fine); the assertion below is what stops that invariant rotting silently.
 const ORG_DESCRIPTION =
   "Mumchimp sells sourced business opportunity packs. Each is a vetted idea with a " +
-  "build spec, a plan for your first customers, operations and the numbers, and a sourced QA report.";
+  "build spec, a plan for your first customers and the numbers behind both. Every claim carries a source.";
 
 const siteGraph = graph(organizationNode(ORG_DESCRIPTION), webSiteNode());
 const serialized = siteGraph ? JSON.stringify(siteGraph) : null;
@@ -55,7 +55,7 @@ export default function Document() {
             context and cannot resolve var().
             This declaration is the one browsers use: _document's <Head> renders before the page's,
             and the first theme-color wins -- so editing only components/Seo.tsx changes nothing. */}
-        <meta name="theme-color" content="#FAFAF7" />
+        <meta name="theme-color" content="#F9F8F6" />
         {/* The other half of the same requirement (MASTER-BRIEF §9: "declares `color-scheme: light
             only` in <meta> AND CSS"). globals.css carries the CSS half. Both, because they are
             read at different moments: the meta tag is in the document head before any stylesheet

@@ -1,0 +1,8 @@
+# Pinned, not "stable". Two reasons, both measured elsewhere and neither theoretical:
+# a floating channel changes lint behaviour under you mid-project, so a clean tree starts
+# failing CI on a day nobody touched it; and the Fly build container has to compile the
+# same code this laptop does. Bump this file deliberately, in its own commit, with CI green
+# on the new number before it merges.
+[toolchain]
+channel = "1.98.0"
+components = ["rustfmt", "clippy", "rust-analyzer"]

@@ -96,7 +96,7 @@ DRAIN_TIMEOUT_SECONDS = 30
 
 # Extensions that must be covered by SOME lane. A file with one of these that matches no
 # lane blocks the commit rather than sailing through unproven.
-SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csproj", ".css"}
+SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csproj", ".css", ".rs"}
 
 # Extensions the storefront's own proof (tsc + vitest) can speak to. `.json` is here for
 # package.json / tsconfig.json, which change what typecheck and vitest actually run.
@@ -128,6 +128,25 @@ CONSOLE_REL = "store_platform/src/Ops.Console/"
 # existed every one of its files read as unproven and the directory could not be committed.
 LOOKENGINE_REL = "docs/storefront/look-engine/"
 
+# The Rust engine. Its own tree, its own toolchain, no Python in it. Before this lane existed
+# a commit of nothing but .rs files reported "no source changes staged — nothing to prove" and
+# was allowed, because `.rs` was in neither SOURCE_EXTS nor any lane — so it was not even
+# recorded as unclassified. That is the same shape as the `.yaml` hole above: a gate that says
+# green while grading nothing. Measured 2026-08-21 before the fix:
+#   lanes_for(["engine-rs/crates/prospector-core/src/decision.rs"]) -> ([], [])
+RUST_REL = "engine-rs/"
+RUST_DIR = ROOT / "engine-rs"
+
+# rustup installs to ~/.cargo/bin, which a git hook's environment does not have on PATH.
+CARGO = Path.home() / ".cargo" / "bin" / "cargo"
+
+# Not source, but a change to any of them changes what every Rust build and lint does, so they
+# belong in the lane's catchment as much as a .rs file. rust-toolchain.toml is the sharpest:
+# it pins the compiler version, so editing it can turn a green tree red with no code change.
+RUST_CONFIG_FILES = frozenset({
+    "Cargo.toml", "Cargo.lock", "clippy.toml", "rustfmt.toml", "deny.toml", "rust-toolchain.toml",
+})
+
 # ── the engine lane's catchment ───────────────────────────────────────────────
 # The daemon is steered by two kinds of file, and until 2026-08-14 one of them was proven by
 # NOTHING. `.yaml` is not in SOURCE_EXTS and matched no lane, so commit 9089ebc — which raised
@@ -144,6 +163,19 @@ LOOKENGINE_REL = "docs/storefront/look-engine/"
 # daemon's own package.
 ENGINE_CONFIGS = ("config.yaml",)
 ENGINE_DIRS = ("prospector/scheduler/",)
+
+# ── the estate config catchment ──────────────────────────────────────────────
+# The same shape as ENGINE_CONFIGS above, found the same way, one week later. On 2026-08-21
+# commit c0ecb178 changed ops/config/ci_capacity.yaml -- the file that declares which runner
+# pool every CI job lands on -- and this gate printed "no source changes staged, nothing to
+# prove". `.yaml` is in no lane, so nothing ran. Hours earlier that same file had turned every
+# open pull request red: it still said `label: fly` after the four CI_*_RUNS_ON variables moved
+# to ubuntu-latest, and `guard` failed in 11s on #643 and #644.
+#
+# The catchment is the whole directory and the lane is python. Eight of the nine files in
+# ops/config/ are named by a file in tests/unit/; the ninth, prose_repair_effect.yaml, has no
+# test of its own, which is a reason to run the suite over it rather than a reason to exempt it.
+OPS_CONFIG_REL = "ops/config/"
 
 
 def _is_engine_path(path: str) -> bool:
@@ -225,6 +257,35 @@ def _parse_engine(stdout: str) -> tuple[int, int, list[str]]:
     return passed, failed, failed_checks
 
 
+def _parse_cargo(stdout: str) -> tuple[int, int, list[str]]:
+    """Read cargo's own summary lines.
+
+    `cargo test` prints one `test result:` line PER TARGET (lib, each integration test, the
+    doctests), so the counts are summed rather than taken from the last line — reading only
+    the last one reports the doctest target's 0 passed and calls a whole workspace proven.
+
+    fmt and clippy print no counts at all. That is fine and deliberate: the step loop breaks
+    on a non-zero exit, so their own status blocks the commit before this parser is reached,
+    and a `-D warnings` clippy failure is an exit code, not a number to parse.
+    """
+    passed = failed = 0
+    failures: list[str] = []
+    for line in stdout.splitlines():
+        t = line.strip()
+        if t.startswith("test result:"):
+            # The first field is "ok. 5 passed", not "5 passed" — cargo puts the verdict
+            # word in front of the count. Read the token ADJACENT to the keyword rather
+            # than the first token of the field.
+            for count, word in re.findall(r"(\d+)\s+(passed|failed)", t):
+                if word == "passed":
+                    passed += int(count)
+                else:
+                    failed += int(count)
+        elif t.startswith("test ") and t.endswith("... FAILED"):
+            failures.append(t[:120])
+    return passed, failed, failures[:50]
+
+
 def _parse_lookengine(stdout: str) -> tuple[int, int, list[str]]:
     """Count the look-engine tools' own verdict lines ('A43 PASS — ...', 'FAIL ...').
 
@@ -276,6 +337,35 @@ LANES: dict[str, Lane] = {
             ("pytest", [sys.executable, "-m", "pytest", "-q", "--tb=no", "-rf"]),
         ),
         parser=_parse_pytest,
+    ),
+    # The Rust engine. Three steps, cheapest first, so a formatting slip comes back in a
+    # second instead of after a full compile.
+    #
+    # cargo-audit and cargo-deny are deliberately NOT here, and they are in ci.yml's `rust`
+    # job instead. Both need the network — audit clones the RustSec advisory database, deny
+    # reads the crates.io index — and a commit hook that fails when the wifi drops is a gate
+    # that teaches people to pass --no-verify. The questions they answer ("is a dependency
+    # known-vulnerable", "may we legally ship it") also cannot be changed by an edit to a .rs
+    # file; they change when Cargo.lock changes or when the world changes, and CI sees both.
+    #
+    # CARGO is an absolute path because the hook does not inherit an interactive shell, so
+    # ~/.cargo/bin is not on PATH and `cargo` would be "command not found" — which the step
+    # loop would report as a failed proof rather than as a missing toolchain.
+    "rust": Lane(
+        key="rust",
+        label="rust — fmt + clippy -D warnings + cargo test",
+        target="prospector:rust-engine",
+        steps=(
+            ("fmt", [str(CARGO), "fmt", "--all", "--", "--check"]),
+            ("clippy", [str(CARGO), "clippy", "--workspace", "--all-targets",
+                        "--all-features", "--", "-D", "warnings"]),
+            ("test", [str(CARGO), "test", "--workspace", "--all-features"]),
+        ),
+        parser=_parse_cargo,
+        cwd=RUST_DIR,
+        # Fail closed. Without CARGO in preflight a machine with no Rust toolchain would skip
+        # the lane, and skipping is how an unproven commit reads as green.
+        preflight=(RUST_DIR / "Cargo.toml", CARGO),
     ),
     # The storefront proof CI itself does NOT fully run: ci.yml's `nextjs` job runs
     # typecheck + build but never `npm test`, so these 523 vitest tests have no other
@@ -374,7 +464,7 @@ LANES: dict[str, Lane] = {
 # `lookengine` (~3s) is cheaper still and would lead on that rule alone, but
 # test_popdd_gate_lanes.py:289 pins the engine at position 0 on purpose, and 15 seconds is
 # not worth loosening a guard another session wrote.
-LANE_ORDER = ("engine", "lookengine", "console", "web", "dotnet", "python")
+LANE_ORDER = ("engine", "lookengine", "rust", "console", "web", "dotnet", "python")
 
 
 def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
@@ -395,6 +485,10 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
         # can still complete one. Neither substitutes for the other.
         if _is_engine_path(path):
             lanes.add("engine")
+        # Outside the elif chain, like the engine check above: a .yaml here matches no
+        # extension rule below and would otherwise fall off the end of the loop unrecorded.
+        if path.startswith(OPS_CONFIG_REL):
+            lanes.add("python")
         if path.startswith(CONSOLE_REL) and ext in WEB_EXTS:
             lanes.add("console")
         elif path.startswith(WEB_REL) and ext in WEB_EXTS:
@@ -403,6 +497,10 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
             lanes.add("ops")
         elif path.startswith(LOOKENGINE_REL) and ext in SOURCE_EXTS:
             lanes.add("lookengine")
+        elif path.startswith(RUST_REL) and (
+            ext == ".rs" or Path(path).name in RUST_CONFIG_FILES
+        ):
+            lanes.add("rust")
         elif ext == ".py":
             lanes.add("python")
         elif ext in (".cs", ".csproj"):
@@ -435,12 +533,25 @@ def scope_ruff(lane: Lane, paths: list[str]) -> Lane:
 
     When the caller does not know the paths — `--lanes`, or a bare invocation — the lane is
     returned untouched and ruff runs repo-wide. Failing safe means grading MORE, never less.
+    An empty `paths` is exactly that case and only that case: `--staged` reaches here with at
+    least one path whenever it selected a lane at all.
+
+    A diff that HAS paths and none of them Python is the other case, and until 2026-08-23 it
+    fell through to the same repo-wide run. That is not failing safe, it is the original defect
+    with a narrower trigger: a commit of one .yaml and one .sh was blocked by an unsorted import
+    block in tools/experiments/q4b_live_catalogue_exposure.py, a file the committer had never
+    opened, and the person who has to fix it is again never the person the gate stopped. There
+    is no Python in the diff, so ruff has nothing to say about it and the step is dropped. The
+    lane still runs, because a .yaml under ops/config drives Python and pytest is what proves
+    that.
     """
     if lane.key != "python":
         return lane
     py = sorted({p for p in paths if p.endswith(".py")})
     if not py:
-        return lane
+        if not paths:
+            return lane
+        return replace(lane, steps=tuple((n, a) for n, a in lane.steps if n != "ruff"))
     steps = tuple(
         (name, [*argv, "--force-exclude", *py] if name == "ruff" else argv)
         for name, argv in lane.steps
@@ -563,6 +674,20 @@ def single_flight():
 MACHINE_LOCK = Path.home() / ".estate" / "locks" / "popdd-gate-machine.lock"
 
 
+def _machine_lock_path() -> Path:
+    """Where the machine lock lives. POPDD_MACHINE_LOCK overrides it.
+
+    The override is not a convenience knob. This module's own tests prove the waiting
+    behaviour by SPAWNING gate runs, and those tests are themselves run by the gate — so
+    against a single fixed path the inner runs queue behind the outer gate that is running
+    them, and time out. Measured 2026-08-23: 4 passed standalone in 17.55s, then 2 of the
+    same 4 failed inside the gate for exactly that reason. A test that cannot run under the
+    thing it tests is not a test, so the path is a parameter.
+    """
+    override = os.environ.get("POPDD_MACHINE_LOCK")
+    return Path(override) if override else MACHINE_LOCK
+
+
 @contextlib.contextmanager
 def machine_capacity():
     """Let only ONE gate run use this machine's cores at a time. Wait, do not refuse.
@@ -600,8 +725,9 @@ def machine_capacity():
         return
 
     try:
-        MACHINE_LOCK.parent.mkdir(parents=True, exist_ok=True)
-        fd = os.open(str(MACHINE_LOCK), os.O_CREAT | os.O_RDWR, 0o644)
+        lock_path = _machine_lock_path()
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o644)
     except OSError as e:
         # A lock we cannot even create must not block a commit.
         print(f"   POPDD gate: no machine lock ({e}); running without it.")

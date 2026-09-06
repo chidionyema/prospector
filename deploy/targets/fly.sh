@@ -180,6 +180,20 @@ t_pack() {
   # that ignores the status must not find last week's archive sitting at the target path and
   # read it as this run's output. Absent is the honest result of a failed export.
   rm -f "$1"
+  # PROSPECTOR_PACK_FORCE=1 is for the weekly drill, and only for the drill.
+  #
+  # store_migrate.py's pack refuses to run while the scheduler or the consumer is up, which is
+  # right for a cutover: at cutover, phase 4 has already stopped the engine, so a live writer
+  # there means something is wrong and stopping is the correct answer. It is wrong for a drill.
+  # The drill rehearses leaving without taking production down, so the engine is up by design and
+  # the refusal fires every time. Three drills, three failures, all `exit 2` from that check,
+  # never once a real defect in the exit path.
+  #
+  # Forcing it is safe here because the manifest hashes the bytes as they enter the tar rather
+  # than stat-ing the tree beforehand (scripts/store_migrate.py, cmd_pack). The payload proves
+  # itself even when the store is being appended to underneath it. Measured 2026-08-23 against a
+  # copy of the store with a writer appending to prospector.jsonl every 20ms: pack PASS 34 files,
+  # verify PASS 34/34 hashed, db_integrity=ok.
   local force=""
   [ "${PROSPECTOR_PACK_FORCE:-0}" = "1" ] && force=" --force"
   t_exec "python /app/scripts/store_migrate.py pack /data/handover.tar.gz --store /data/store$force"
@@ -196,8 +210,11 @@ t_pack() {
   echo "fly: packed on the VM — $want bytes, sha256 $sum"
 
   # 16 MB parts. Small enough that a truncation is bounded and cheap to refetch, large enough
-  # that a 112 MB store is 8 transfers rather than hundreds of round trips.
-  t_exec "rm -f /data/handover.part.* && split -b 16777216 -d -a 3 /data/handover.tar.gz /data/handover.part." >/dev/null
+  # that a 112 MB store is 8 transfers rather than hundreds of round trips. The size is a
+  # variable only so tests/unit/test_fly_pack_refuses_a_truncated_export.py can drive the
+  # split with a small archive; nothing in production sets it.
+  local partbytes="${PROSPECTOR_PACK_PART_BYTES:-16777216}"
+  t_exec "rm -f /data/handover.part.* && split -b $partbytes -d -a 3 /data/handover.tar.gz /data/handover.part." >/dev/null
   parts="$(t_exec "ls -1 /data/handover.part.* | sed 's#.*/##'" 2>/dev/null | grep -o 'handover\.part\.[0-9]\{3\}' | sort -u)"
   [ -n "$parts" ] || { echo "fly: the VM produced no parts to transfer" >&2; t_pack_cleanup; return 1; }
   echo "fly: $(echo "$parts" | wc -l | tr -d ' ') parts to fetch"

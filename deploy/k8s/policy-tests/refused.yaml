@@ -1,0 +1,861 @@
+# Eleven manifests, each one copy of admitted.yaml with exactly one thing wrong.
+#
+# One violation per manifest is the point. A fixture that breaks five rules at once proves
+# only that SOMETHING refused it, and would still pass on the day four of the five policies
+# silently stopped loading. Each resource below names the single policy that must catch it,
+# and kyverno-test.yaml asserts that pairing rule by rule.
+#
+# Two of these break two rules and it is recorded rather than hidden: `optional-secret`
+# trips the estate's own rule AND upstream's, because a secret cannot be optional without
+# first being an environment variable. That makes the estate's rule unreachable while
+# upstream's is enforced. It is kept anyway - it costs nothing, it names the incident in its
+# own message, and it is the one that still stands if upstream ever relaxes.
+---
+# latest-tag: an image tag that moves, so the manifest stops describing what runs
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: latest-tag
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: an image tag that moves, so the manifest stops describing
+      what runs
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+---
+# no-resources: no requests or limits, so the scheduler cannot place it and one pod can starve the node
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: no-resources
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: no requests or limits, so the scheduler cannot place
+      it and one pod can starve the node
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+---
+# no-probes: nothing that says whether it can do work, only that the process exists
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: no-probes
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: nothing that says whether it can do work, only that
+      the process exists
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+---
+# keeps-caps: drops some capabilities instead of ALL
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keeps-caps
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: drops some capabilities instead of ALL
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - NET_RAW
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+---
+# writable-rootfs: a writable root filesystem, so a compromise persists across a restart
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: writable-rootfs
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: a writable root filesystem, so a compromise persists
+      across a restart
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+---
+# privileged: privileged, which is the whole host
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: privileged
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: privileged, which is the whole host
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: true
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+---
+# runs-as-root: runs as root
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runs-as-root
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: runs as root
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+---
+# two-writers: two replicas of a single-writer workload, which is two spend ledgers
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: two-writers
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: two replicas of a single-writer workload, which is
+      two spend ledgers
+spec:
+  replicas: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+---
+# rolling-writer: a rolling update of a single-writer workload, which is two writers mid-rollout
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rolling-writer
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: a rolling update of a single-writer workload, which
+      is two writers mid-rollout
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+---
+# secret-in-env: a secret as an environment variable, readable from /proc and inherited by children
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secret-in-env
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: a secret as an environment variable, readable from
+      /proc and inherited by children
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        envFrom:
+        - secretRef:
+            name: engine-secrets
+
+---
+# optional-secret: a secret the pod will start without, which is the 2026-08-24 incident exactly
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: optional-secret
+  namespace: prospector
+  labels:
+    prospector.estate/single-writer: 'true'
+  annotations:
+    prospector.estate/violation: a secret the pod will start without, which is the
+      2026-08-24 incident exactly
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: secrets
+        secret:
+          secretName: engine-secrets
+          optional: false
+      - name: tmp
+        emptyDir: {}
+      containers:
+      - name: engine
+        image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+        env:
+        - name: PROSPECTOR_SECRETS_DIR
+          value: /var/run/secrets/prospector
+        volumeMounts:
+        - name: secrets
+          mountPath: /var/run/secrets/prospector
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        envFrom:
+        - secretRef:
+            name: engine-secrets
+            optional: true
+---
+# The solver pod above with the cert-manager label removed. Proves the exclusion is the label
+# and not the shape: an unlabelled probe-less pod is still refused.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unlabelled-solver-no-probes
+  namespace: prospector
+  annotations:
+    prospector.estate/violation: no probes and no cert-manager label, so nothing excuses it
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: acmesolver
+      image: quay.io/jetstack/cert-manager-acmesolver:v1.19.1
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

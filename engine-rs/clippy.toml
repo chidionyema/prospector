@@ -1,0 +1,13 @@
+# The engine is a daemon that holds leases. A panic in a worker does not just lose a task —
+# it drops a lease mid-vet, and the row is then stuck until the TTL expires. So unwrap,
+# expect, panic and raw indexing are denied in the crates (see [workspace.lints]).
+#
+# In TESTS they are how you write an assertion, and denying them there buys nothing and
+# costs every test an `if let ... else { unreachable!() }`. These four options draw that
+# line for us, which is why the deny in Cargo.toml is safe to keep strict.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+
+msrv = "1.98.0"

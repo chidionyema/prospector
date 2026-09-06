@@ -130,5 +130,5 @@ export const RESEARCH_STATS = {
  * away. Callers supply the punctuation: this returns a CLAUSE, not a sentence.
  */
 export function killsSummary(): string {
-  return 'We publish the kills too, with the reason each one died';
+  return 'We publish the ones that didn\'t pass too, with the reason each one failed';
 }

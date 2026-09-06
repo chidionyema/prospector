@@ -759,7 +759,7 @@ I1, I2 and I3 together are the CI runner rule. Losing any one of the three is su
 
 ```bash
 fly secrets list -a prospector-store-api            # names only, never values
-gh secret list && gh variable list                  # repository side
+gh secret list && gh variable list --json name      # repository side, NAMES only
 gh api repos/:owner/:repo/actions/runners --jq '.runners[] | "\(.name) \(.status)"'
 rg -on "secrets\.[A-Z_]+" .github/workflows/*.yml | sort -u   # I1: must not include ci.yml
 rg -n "pull_request_target" .github/workflows/                # I3: must be empty

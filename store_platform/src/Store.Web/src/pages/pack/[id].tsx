@@ -12,6 +12,7 @@ import { buttonClasses, Glyph, Icon, ErrorState, Breadcrumbs, SourcedLine, Citat
 import { parseCitations } from '@/lib/citations';
 import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
+import { packImage } from '@/lib/sectorImage';
 import { COMMON_CHECKS, checkForGate } from '@/lib/checks';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_DOCUMENTS, PACK_CONTENTS, PACK_EXTRAS } from '@/components/marketing/PackContents';
@@ -130,7 +131,7 @@ interface PackPageProps {
  * be a hand-typed array here, which is how `payer_solvency` came to be called three different
  * things on three pages. See lib/checks.ts.
  */
-const CHECKS = COMMON_CHECKS.map((check) => check.refutation);
+const CHECKS = COMMON_CHECKS.map((check) => check.question);
 
 // The deliverable list lives in one shared place (PackContents) so this page and the homepage can
 // never drift into promising different things for the same £49.
@@ -331,19 +332,19 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
   // those it would claim a clean sweep the dossier does not support. Partial results say so.
   const panelChecks = parseCheckCounts(pack.qaVerdictSummary);
   const checksLine = !panelChecks
-    ? 'Survived every check'
+    ? 'Passed every research check'
     : panelChecks.cleared === panelChecks.total
-      ? `Survived all ${panelChecks.total} checks`
+      ? `Passed all ${panelChecks.total} research checks`
       : `${panelChecks.cleared} of ${panelChecks.total} checks cleared`;
 
   // The same line as JSX, because the drawing bolds the figure inside it
   // (`mockups/pack-detail.html:532`: `Survived all <b>6</b> checks`). Same three cases as
   // `checksLine` above, same refusal to claim a sweep the summary does not state.
   const checksListItem = !panelChecks ? (
-    <>Survived every check</>
+    <>Passed every research check</>
   ) : panelChecks.cleared === panelChecks.total ? (
     <>
-      Survived all <b>{panelChecks.total}</b> checks
+      Passed all <b>{panelChecks.total}</b> research checks
     </>
   ) : (
     <>
@@ -683,7 +684,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
   return (
     <MarketingLayout>
       <Seo
-        title={`${pack.title} · A business idea that survived our filter`}
+        title={`${pack.title} · A researched business idea`}
         description={pack.oneLine || undefined}
         ogType="product"
         ogImagePath={packOgImagePath(pack.id)}
@@ -694,7 +695,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           // "Mumchimp › Business ideas › <pack>" instead of a 16-hex-character id.
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/ideas' },
+            { name: 'Opportunities', path: '/ideas' },
             { name: pack.title, path: `/pack/${pack.id}` },
           ]),
         )}
@@ -718,7 +719,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                £ and sells packs about Section 46 notices and DVSA inspections. A stranger does
                not consciously register the spelling -- they register that the site was assembled
                by more than one hand, on the page where they are about to enter a card number. */
-            { href: '/', label: 'Catalogue' },
+            { href: '/', label: 'Packs' },
             { href: '/ideas', label: 'Browse by category' },
             // Was `{ href: '#', label: pack.title }`. The title was rendered three times inside
             // the fold (breadcrumb, cover caption, h1) on a page where titles run past 100
@@ -746,7 +747,6 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             answers the question the gates raise -- "how hard is this actually?" -- before the
             gates are read rather than after. It renders nothing if the derived label ever stops
             being a rate we can parse. */}
-        <SixInHundred className="mt-[26px]" />
         {/* `.two` is the drawing's own grid: 1.55fr of prose to 1fr of rail at a 36px gap,
             collapsing to one column at 900px (`mumchimp.css`). It was a flex row at `lg`, which
             put the collapse at 1024 while the drawing puts it at 900, so the rail and the mobile
@@ -810,6 +810,27 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 `PackCover` itself is untouched and still exported; this page was its only caller,
                 so nothing else moves. */}
 
+            {/* THE IMAGERY THE MASTHEAD WAS WAITING FOR. The founder's 2026-08-14 ruling above is
+                "Remove the black media block until there is real imagery for it", and the block
+                went because a shop with no photography should not draw a frame for photography it
+                does not have. There is imagery now: one drawing per sector, generated on MiniMax
+                in this stylesheet's own tokens, reused by every pack in the sector
+                (`lib/sectorImage.ts`). So the condition the ruling set is met and the slot comes
+                back -- as the picture itself, not as a frame around a generated mark.
+
+                It states nothing, exactly as the strip stated nothing: the sector is already in
+                words in the breadcrumb's last crumb directly above. Hence `alt=""` and
+                `aria-hidden`, and hence no label drawn on it. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
+                intrinsic size and no variants to serve. */}
+            <img
+              className="packcover"
+              src={packImage(pack)}
+              alt=""
+              aria-hidden
+              width={1280}
+              height={720}
+            />
             {/* No `md:text-display` (48px). Titles here average ~90 characters, so at 48px the
                 h1 alone consumed ~400px and was still unfinished at the fold. One step, 32px.
                 24px on a phone, for the same reason one step further down: 32px on a 390px screen
@@ -854,7 +875,9 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 missing or comes through cut, which is the case the docblock above was written for.
                 Nothing is lost when it stands down: its audience framing is the `whoPays` row
                 below, and the full description is in the sections under that. */}
-            {lead && <p className="mt-4 max-w-[60ch] lede">{lead}</p>}
+            {lead && <p className="mt-4 lede">{lead}</p>}
+
+            <SixInHundred />
 
             {/* THE OPPORTUNITY, ABOVE THE FOLD (2026-08-16, founder: "the title and description
                 say what it is and what it does, not the opportunity presented, market size,
@@ -920,7 +943,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 is enforced here by hand. It also opened on a negation, which read as zero
                 content. Say what the buyer GETS, in the affirmative, naming only things that
                 literally appear in the sections below. */}
-            <p className="mt-4 max-w-[60ch] lede">
+            <p className="mt-4 lede">
               You get the checking already done: the evidence behind the idea, the sources it came
               from, and the objections it survived, all open below so you can judge them yourself.
             </p>
@@ -1033,7 +1056,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   or fewer get through
                 </span>
               </p>
-              <p className="max-w-[52ch] lede">
+              <p className="lede">
                 <span>This is one of them.</span>{' '}
                 {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas went through the filter
                 and {RESEARCH_STATS.rejectRateLabel} of them died on cited evidence.{' '}
@@ -1121,13 +1144,16 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 and it sat third, so the page's strongest argument was the one thing a reader had
                 to click for. */}
             <div className="mt-12">
-              <h2 className="sec">How we tried to kill it</h2>
+              <h2 className="sec">The checks</h2>
               <div className="mt-4">
                 <p className="lede">
-                  Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. {outcomeSentence} Finding nothing is not the same as finding a green light; see how each check works on{' '}
+                  Each check asks one question. {outcomeSentence}{' '}
+                  {/* checksBlock.test.ts reads this sentence whole: keep it on one line. */}
+                  A pass is not the same as finding a green light: it means no cited evidence went against the idea on that check.
+                  {' '}See how each check works on{' '}
                   <Link
                     href="/how-it-works"
-                    className={textLinkClass('font-medium')}
+                    className={textLinkClass()}
                   >
                     /how-it-works
                   </Link>
@@ -1226,66 +1252,13 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 opportunity block at the top of the page on 2026-08-16 and is not repeated here:
                 this page already has a rule against stating the same fact in two places, and it
                 is the rule that caught the check count disagreeing with itself. */}
-            {(pack.market || pack.timeToFirstRevenue) && (
-              <div className="mt-12">
-                <h2 className="sec">Could you run this?</h2>
-                <p className="mt-2 max-w-[60ch] lede">
-                  Behind the research is a business somebody has to actually operate. Here is the
-                  market it runs in, and how soon the first money arrives.
-                </p>
-                {/* The engine's own tags, in the buyer's words. Absent facets render nothing:
-                    "Effort to build" used to print the legacy `effortTag` string, which was never
-                    defined to mean how much of delivery is machine-doable (spec 2.3). */}
-                <FacetChips pack={pack} className="tags" />
-                {/*
-                 * ONE SPEC SHEET, NOT THREE CARDS.
-                 *
-                 * These were three bordered boxes in a `sm:grid-cols-3` where two carried
-                 * `sm:col-span-3`, so on any desktop width the grid was a lie: Market and Who pays
-                 * each sat alone in a 976px box holding a label and one line, and the third took a
-                 * third of a row on its own. Measured at 1440 on 2026-08-14, the block spent ~390px
-                 * of height and three borders to state three fields.
-                 *
-                 * They are three fields OF ONE THING -- the business behind the research -- so they
-                 * are a description list with the labels in their own column, which is the idiom
-                 * this page already uses for the economics table below. A reader scanning for
-                 * "who pays" now finds it down a rule of aligned labels instead of by reading three
-                 * card headers of different widths.
-                 */}
-                <dl className="mt-6 divide-y divide-border overflow-hidden rounded-md border border-border bg-surface">
-                  {pack.market && (
-                    <div className="grid gap-1 p-5 sm:grid-cols-[9.5rem_1fr] sm:gap-6">
-                      <dt className="text-caption font-medium text-subtle sm:pt-0.5">Market</dt>
-                      <dd className="min-w-0">
-                        <span className="text-meta font-semibold text-text">
-                          {marketLabel(pack.market)}
-                        </span>
-                        {/* State it plainly: the research is about this jurisdiction, and the
-                            pack is still sold in GBP. Leaving that implicit invites a refund. */}
-                        <span className="mt-1.5 block max-w-[62ch] text-caption leading-relaxed text-muted">
-                          The opportunity, its evidence and its economics are researched for this
-                          market. The pack itself is priced and sold in GBP.
-                        </span>
-                      </dd>
-                    </div>
-                  )}
-                  {pack.timeToFirstRevenue && (
-                    <div className="grid gap-1 p-5 sm:grid-cols-[9.5rem_1fr] sm:gap-6">
-                      <dt className="text-caption font-medium text-subtle sm:pt-0.5">Time to first revenue</dt>
-                      <dd className="min-w-0 text-meta font-semibold text-text">
-                        {pack.timeToFirstRevenue}
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-              </div>
-            )}
+            {/* Could-you-run-this deleted (brief §7): tags move to the header. */}
 
-            {/* A look inside, real sourced lines lifted straight from the pack */}
+                        {/* A look inside, real sourced lines lifted straight from the pack */}
             {pack.sampleExtract && pack.sampleExtract.length > 0 && (
               <div className="mt-12">
                 <h2 className="sec">A look inside</h2>
-                <p className="mt-2 max-w-[60ch] lede">
+                <p className="mt-2 lede">
                   Real, sourced lines taken straight from the pack. Every source below is a live
                   link: open one and check the claim before you buy.
                 </p>
@@ -1361,7 +1334,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <p className="max-w-[60ch] lede">
+                  <p className="lede">
                     {/* WAS "Six things we measure", hardcoded, above a `dl` whose length is
                         `axes.length` -- a count the page reads off the snapshot and does not
                         control. Same defect class as the 6-vs-8 above, one scroll further down. */}
@@ -1411,43 +1384,9 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             )}
 
             {/* The per-pack table of contents. The generic four-asset breakdown is higher up the page. */}
-            <div className="mt-12">
-              <h2 className="sec">The table of contents</h2>
-              <p className="mt-2 max-w-[60ch] lede">
-                Exactly what this pack covers, plus a blurred look at the document you receive.
-              </p>
+            {/* Legacy 4-doc / second TOC deleted (brief §7). 14 documents live in PackContentsSection. */}
 
-              {/* Blurred deliverable preview. Grey rectangles said "a document exists"; this
-                  page's whole claim is that a SPECIFIC, sourced document exists, and a skeleton
-                  is the one element on the page that could be identical for a pack with nothing
-                  behind it. So the preview is now the pack's own text, the same headings and
-                  sourced lines rendered elsewhere on this page, set as a document and blurred.
-                  Blur is a legible-shape effect: what shows through is real structure, real
-                  paragraph lengths, real tables. Nothing is invented to fill it; when there is
-                  no real content to show, `PreviewDocument` renders the neutral skeleton. */}
-              <PreviewDocument pack={pack} />
-
-              {/* Per-pack contents only. The generic four-asset list now lives once, above, so it
-                  cannot contradict this section. */}
-              {/* `.docs` is the drawing's two-column list of hairline rows. It was a stack of
-                  full bordered cards, one per line of a table of contents, which spent a box on
-                  each entry and pushed the section past two screens. */}
-              {pack.whatYouGet && pack.whatYouGet.length > 0 && (
-                <div className="docs">
-                  {pack.whatYouGet.map((item, i) => (
-                    <div key={i} className="docitem">
-                      <span className="i num">{String(i + 1).padStart(2, '0')}</span>
-                      <div className="min-w-0">
-                        <h3>{item}</h3>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-
-            {/* THE EVIDENCE (email §4). The previous copy ended on "No hand waving, no vibes."
+                        {/* THE EVIDENCE (email §4). The previous copy ended on "No hand waving, no vibes."
                 which tried too hard for a voice that wins by understatement. The new copy is the
                 same content in the same shape -- a count and a list of openable sources -- without
                 the boast.
@@ -1466,7 +1405,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   `openSources.length > 0` test below, so a pack with nothing openable printed
                   "Open any of these 0 now." followed by nothing at all. The block below already
                   gives the instruction once, against a list that exists. */}
-              <p className="max-w-[60ch] lede">
+              <p className="lede">
                 {typeof pack.sourceCount === 'number' && pack.sourceCount > 0
                   ? `${pack.sourceCount} sources, each cited against the claim it supports.`
                   : 'Every claim in this pack is cited against the source it rests on.'}
@@ -1537,36 +1476,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             {/* THE DRAWING'S CLOSING BLOCK (`mockups/pack-detail.html:427`): a rule, a priced
                 heading, one honest sentence, the two buttons side by side, and the small print.
                 The price comes from the pack, never the drawing's hardcoded 49.99. */}
-            {canCheckout && (
-              <div className="closing">
-                <h2 className="sec">
-                  <PriceText>{priceLabel}</PriceText>, once. Yours forever.
-                </h2>
-                <p>
-                  Secure checkout via Stripe. A pack is evidence-backed research, not a promise of
-                  business success.
-                </p>
-                <div className="ctarow">
-                  <PackBuyButton
-                    pack={pack}
-                    variant="detail"
-                    buy={handleBuy}
-                    checkingOut={checkingOut}
-                    canCheckout={canCheckout}
-                    currency={currency}
-                  />
-                  <Link href="/sample" className={buttonClasses({ variant: 'secondary', size: 'lg' })}>
-                    {SITE_COPY.sampleLink}
-                  </Link>
-                </div>
-                <p className="mono mt-[18px]">
-                  14 day money back · every claim sourced · one-time payment · see our{' '}
-                  <Link href="/refund" className={textLinkClass()}>
-                    refund policy
-                  </Link>
-                </p>
-              </div>
-            )}
+            {/* Closing buy box deleted (brief 2026-09-02 §7): one buy box only. */}
           </div>
 
           {/* Right: Checkout (desktop sticky).

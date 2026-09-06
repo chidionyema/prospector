@@ -23,19 +23,29 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def is_denied_reference(rel: str) -> str:
-    """The pre-2026-08-21 implementation, unchanged. The thing the fast one must agree with."""
+    """The pre-2026-08-21 matcher, unchanged. The thing the fast one must agree with.
+
+    `_carved` is called at the return, exactly where the shipped `is_denied` calls it. This test
+    grades the COMPILATION -- precompiled regexes against a plain `fnmatch` loop -- and the
+    generated-document carve sits above both. Hand-reproducing it here would put a second copy of
+    a security decision in a test file, which is the one place it must not live. The carve is
+    graded directly in `test_generated_docs_are_shareable.py`.
+    """
+    from prospector.ops.share import _carved
+
     low = (rel or "").lower().lstrip("/")
     if not low or "\x00" in rel:
         return "not a path"
     base = low.rsplit("/", 1)[-1]
     for pat in DENY_GLOBS:
         low_pat = pat.lower()
-        if fnmatch.fnmatch(low, low_pat):
-            return pat
-        if "/" not in low_pat and fnmatch.fnmatch(base, low_pat):
-            return pat
-        if low_pat.endswith("/*") and low.startswith(low_pat[:-1]):
-            return pat
+        hit = (
+            fnmatch.fnmatch(low, low_pat)
+            or ("/" not in low_pat and fnmatch.fnmatch(base, low_pat))
+            or (low_pat.endswith("/*") and low.startswith(low_pat[:-1]))
+        )
+        if hit:
+            return "" if _carved(low, pat) else pat
     return ""
 
 

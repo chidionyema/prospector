@@ -1,0 +1,17 @@
+# Pod Security Admission is built into Kubernetes since 1.25. It needs no controller, no CRD and no
+# install, and it is the cheapest rung that can express "no privileged pods here". The estate had
+# been about to express the same thing in hand-written Kyverno rules.
+#
+# Kyverno's pod-security policies stay as well, and the overlap is deliberate rather than sloppy:
+# PSA refuses at the namespace edge with no moving parts, and Kyverno reports WHICH field of WHICH
+# container broke the rule. LAW 15 wants evidence from two angles; this is a fence and a witness.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prospector
+  labels:
+    app.kubernetes.io/part-of: prospector
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

@@ -25,6 +25,12 @@ import yaml
 
 CI = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
 
+#: Every lane the `changes` job decides. Five since 2026-08-21, when `rust` was added for
+#: engine-rs/. This set is deliberately written out rather than read from ci.yml: the whole
+#: point of the two tests below is that the filter and the jobs agree on the SAME list, and a
+#: list derived from the file being graded would agree with itself no matter what it said.
+LANES = {"python", "dotnet", "web", "console", "rust"}
+
 
 def _filter_script() -> str:
     """The decision half of the filter step: everything from the `match` helper onwards."""
@@ -88,6 +94,15 @@ def test_the_filter_is_still_a_shell_block_this_test_can_run():
     ("dotnet", "store_platform/src/Store.Api/Program.cs"),
     ("web", "store_platform/src/Store.Web/app/page.tsx"),
     ("console", "store_platform/src/Ops.Console/src/pages/queue.tsx"),
+    # Not engine config and not under .github/, so neither existing rule saw it. PR #645
+    # changed this exact file and the filter reported `python skipping`, which meant
+    # tests/unit/test_ci_capacity.py did not run on the pull request that changed the file
+    # it was written to grade. Only the unfiltered `guard` job caught it.
+    ("python", "ops/config/ci_capacity.yaml"),
+    ("rust", "engine-rs/crates/prospector-core/src/decision.rs"),
+    # Not a .rs file. The rust lane grades the whole tree, and a Cargo.toml or a
+    # deny.toml changes what the build DOES without changing a line of Rust.
+    ("rust", "engine-rs/deny.toml"),
 ])
 def test_a_change_to_one_area_runs_that_areas_lane(lane: str, path: str):
     assert _run([path])[lane] == "true", f"{path} did not turn on the {lane} lane"
@@ -98,6 +113,7 @@ def test_a_change_to_one_area_runs_that_areas_lane(lane: str, path: str):
     ("dotnet", "store_platform/src/Store.Api/Program.cs"),
     ("web", "store_platform/src/Store.Web/app/page.tsx"),
     ("console", "store_platform/src/Ops.Console/src/pages/queue.tsx"),
+    ("rust", "engine-rs/crates/prospector-core/src/decision.rs"),
 ])
 def test_a_workflow_edit_alongside_code_still_grades_the_code(lane: str, path: str):
     """THE REGRESSION. A diff containing a workflow file must not stop the file list being read.
@@ -129,6 +145,7 @@ def test_a_workflow_only_change_does_not_run_every_heavy_lane():
     ("dotnet", "-        dotnet-version: 8.0.x"),
     ("web", "+  nextjs:"),
     ("console", "+  ops-console:"),
+    ("rust", "+  rust:"),
 ])
 def test_a_workflow_edit_that_names_a_lane_runs_it_with_no_files_of_its_own(lane, mention):
     got = _run([".github/workflows/ci.yml"], workflow_diff=mention)
@@ -137,7 +154,8 @@ def test_a_workflow_edit_that_names_a_lane_runs_it_with_no_files_of_its_own(lane
 
 def test_a_docs_only_change_runs_nothing_heavy():
     got = _run(["docs/DEPLOY_PIPELINE.md"])
-    assert got == {"python": "false", "dotnet": "false", "web": "false", "console": "false"}, got
+    assert got == {"python": "false", "dotnet": "false", "web": "false", "console": "false",
+                   "rust": "false"}, got
 
 
 def test_every_lane_output_is_always_written():
@@ -145,7 +163,7 @@ def test_every_lane_output_is_always_written():
     empty string, which is not 'true', so the lane silently skips. Write all four, always."""
     for files in (["README.md"], ["prospector/run.py"], [".github/workflows/ci.yml"]):
         got = _run(files, workflow_diff="+x")
-        assert set(got) == {"python", "dotnet", "web", "console"}, (files, got)
+        assert set(got) == LANES, (files, got)
 
 
 def test_the_jobs_gate_on_the_outputs_this_filter_writes():
@@ -153,6 +171,6 @@ def test_the_jobs_gate_on_the_outputs_this_filter_writes():
     nothing sets."""
     doc = yaml.safe_load(CI.read_text())
     declared = set(doc["jobs"]["changes"]["outputs"])
-    assert declared == {"python", "dotnet", "web", "console"}, declared
+    assert declared == LANES, declared
     referenced = set(re.findall(r"needs\.changes\.outputs\.(\w+)", CI.read_text()))
     assert referenced <= declared, f"{sorted(referenced - declared)} is gated on nothing"

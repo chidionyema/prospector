@@ -1,0 +1,6 @@
+# Formatting is not a matter of taste here; it is a matter of `cargo fmt --check` being a
+# gate that never argues. Only stable options — a nightly-only option makes `cargo fmt`
+# silently ignore the whole file on stable, which reads as "the formatter did nothing".
+edition = "2021"
+max_width = 100
+use_field_init_shorthand = true

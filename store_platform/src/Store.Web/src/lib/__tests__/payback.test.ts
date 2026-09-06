@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CREDIBLE_MULTIPLE_CEILING, parseAmount, paybackEquation } from '@/lib/payback';
+import { CREDIBLE_MULTIPLE_CEILING, parseAmount, paybackEquation, paybackLabel } from '@/lib/payback';
 
 describe('parseAmount', () => {
   it('reads a plain currency figure', () => {
@@ -79,5 +79,23 @@ describe('paybackEquation', () => {
   it('renders nothing when the price itself is unreadable', () => {
     expect(paybackEquation('', { month1Revenue: '£2,400' })).toBeNull();
     expect(paybackEquation('free', { month1Revenue: '£2,400' })).toBeNull();
+  });
+});
+
+
+describe('paybackLabel', () => {
+  it('uses months from the model, not the multiple', () => {
+    const eq = paybackEquation('£49.00', { month1Revenue: '£588', paybackMonths: '8.1 months' });
+    expect(paybackLabel(eq, 'card')).toBe('Pays back in 8 months.');
+    expect(paybackLabel(eq, 'page')).toBe('Pays back in 8 months.');
+  });
+
+  it('hides a card when months are over 18 or the multiple is 1×', () => {
+    const long = paybackEquation('£49.00', { month1Revenue: '£588', paybackMonths: '24 months' });
+    expect(paybackLabel(long, 'card')).toBeNull();
+    const one = paybackEquation('£49.00', { month1Revenue: '£49' });
+    expect(one?.multiple).toBe(1);
+    expect(paybackLabel(one, 'card')).toBeNull();
+    expect(paybackLabel(one, 'page')).toBe('1× first-year return.');
   });
 });

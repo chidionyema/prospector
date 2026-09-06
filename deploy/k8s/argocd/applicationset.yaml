@@ -1,0 +1,67 @@
+# One object owning both clusters. Argo CD is CNCF GRADUATED (measured 2026-08-24 from
+# cncf/landscape landscape.yml, 1,133,298 bytes; CLOMonitor 89.47 for Argo; Apache-2.0;
+# 23,978 stars). Flux is the other graduated answer and would do this job too; the estate picked
+# Argo because Argo Rollouts, which supplies the automatic rollback in step 5 below, is the same
+# project and needs no second controller.
+#
+# WHY AN ApplicationSet AND NOT TWO Application OBJECTS. Two objects drift. Somebody edits staging's
+# sync policy to unblock a Friday and nobody edits production's, and from then on staging is not
+# rehearsing production any more. One generator, one template, one place to change.
+#
+# NOTHING HERE HAS RUN. There is no staging cluster and no production cluster yet -- both are rented
+# boxes, and rented boxes are money leaving the account, which is the founder's call under LAW 5.
+# This file is the declaration those clusters will be handed on their first day, not a report that
+# they exist. Register rows F-48, F-49 and F-50 in docs/MIGRATION_AND_DR_PROGRAM.md are all still
+# open circles.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: prospector
+  namespace: argocd
+spec:
+  # goTemplate keeps the substitution readable and fails loudly on a missing key, rather than
+  # rendering an empty string into a cluster URL.
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  generators:
+    - list:
+        elements:
+          - env: staging
+            server: https://kubernetes.default.svc
+          - env: production
+            server: PRODUCTION_CLUSTER_API_URL_GOES_HERE
+
+  template:
+    metadata:
+      name: 'prospector-{{.env}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/chidionyema/prospector.git
+        targetRevision: main
+        path: 'deploy/k8s/overlays/{{.env}}'
+      destination:
+        server: '{{.server}}'
+        namespace: prospector
+      syncPolicy:
+        automated:
+          # THIS IS THE SELF-HEALING THE FOUNDER ASKED FOR, for configuration.
+          # "resilience, self healing", 2026-08-24. Pod restarts were never the whole answer: a
+          # kubelet already restarts a crashed container. What nothing in this estate had was a
+          # cure for a human editing a live cluster by hand. selfHeal reverts it, within minutes,
+          # with nobody awake.
+          selfHeal: true
+          # prune removes what git no longer declares. Without it, deleting a manifest leaves the
+          # object running forever and the cluster slowly stops matching the repository.
+          prune: true
+        syncOptions:
+          - CreateNamespace=false   # the namespace carries PSA labels; base/namespace.yaml owns it
+          - ServerSideApply=true    # the policy CRDs are large; client-side apply hits the
+                                    # last-applied-configuration annotation size limit
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 5m

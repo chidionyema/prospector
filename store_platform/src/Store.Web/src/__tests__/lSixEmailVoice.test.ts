@@ -66,10 +66,10 @@ describe('L6 - Voice in the email', () => {
   it('rendered receipt includes the kill log link', () => {
     if (!templateExists) return;
     const source = readSource('../lib/email/receipt.ts');
-    const hasKillLog = /kill-?log/i.test(source);
+    const hasKillLog = /\/rejected|kill-?log/i.test(source);
     expect(
       hasKillLog,
-      'lib/email/receipt.ts must link to the kill log',
+      'lib/email/receipt.ts must link to the rejected ledger (/rejected, once /kill-log)',
     ).toBe(true);
   });
 });

@@ -32,8 +32,8 @@ describe('the lead multiple has a ceiling', () => {
     const stat = packLeadStat(packWith(49.99, '£999.80', 31));
     expect(stat).toEqual({
       kind: 'price_multiple',
-      figure: '20×',
-      label: 'payback',
+      figure: '20× first-year return',
+      label: '',
     });
   });
 
@@ -61,7 +61,7 @@ describe('the lead multiple has a ceiling', () => {
     for (const multiple of [2, 6, 9, 13, 17]) {
       const stat = packLeadStat(packWith(49.99, `£${(49.99 * multiple).toFixed(2)}`, 31));
       expect(stat?.kind, `multiple ${multiple}`).toBe('price_multiple');
-      expect(stat?.figure, `multiple ${multiple}`).toBe(`${multiple}×`);
+      expect(stat?.figure, `multiple ${multiple}`).toBe(`${multiple}× first-year return`);
     }
   });
 });

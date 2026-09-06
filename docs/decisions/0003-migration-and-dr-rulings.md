@@ -405,11 +405,20 @@ Every option on this list ends at the same place: **the age private key on a new
 the only value a human ever reads, it is read once, and today it exists in exactly one copy on one
 disk. Two things follow, and neither is optional:
 
-- **The ciphertext must actually be committed.** D1's correction above shows it is not, and that
-  the estate's entire secret backup currently survives inside four automatic snapshot commits on no
-  branch. This is now **F-44** in the register. The repository is private, and the blob is
-  age-encrypted; committing it is what D1 always intended and nobody ever did. **It is a founder
-  decision because git history cannot be un-published.**
+- ~~**The ciphertext must actually be committed.**~~ **REVERSED 2026-08-23.** This bullet rested on
+  one sentence that was never checked: "the repository is private". It is not. `gh repo view
+  chidionyema/prospector` reports PUBLIC. Committing `deploy/secrets.env.age` would have published
+  the Stripe live keys, the R2 keys, the Fly token and every model provider key to the open
+  internet, where clones and caches keep them after any deletion. The blob is age-encrypted, so the
+  ciphertext is not readable today — but it would be public forever, and one X25519 key on one
+  laptop would be the only thing between a stranger and the money. That is the half that cannot be
+  undone, which is the same reason this bullet called it a founder decision.
+
+  The requirement underneath it was never "commit it". It was **a second copy that is not on this
+  laptop**, and that is now met somewhere private: the `secret-store` source in
+  `ops/config/offsite_backup.yaml` puts the encrypted store in the R2 backup bucket on every
+  offsite run. `.gitignore` now refuses the file, so the reversal is enforced by a machine and not
+  by this paragraph. F-44 is closed by the backup source, not by a commit.
 - **A second recipient, held offline.** A hardware-backed key (`age-plugin-yubikey`) keeps the
   private key off disk entirely, but if it is the sole recipient and the token dies, every value in
   git history is unrecoverable. The offline backup recipient is mandatory, not a nicety.

@@ -59,7 +59,7 @@ export default function AccountPage() {
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Your account' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Your account' }]}
       breadcrumbsWidth="6xl"
     >
       <Head>

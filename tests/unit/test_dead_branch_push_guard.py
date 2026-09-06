@@ -219,11 +219,15 @@ argv = sys.argv[1:]
 pathlib.Path({str(log)!r}).open("a").write(" ".join(argv) + "\\n")
 '''
 
-    (bin_dir / "gh").write_text(common + '''
-if argv[:2] == ["pr", "list"]:
+    (bin_dir / "gh").write_text(common + f'''
+if argv[:2] == ["pr", "list"] and "--head" not in argv:
+    # `gh pr list --state open` with no --head: the open PRs, from a file the test may write.
+    p = pathlib.Path({str(tmp_path / "open.json")!r})
+    print(p.read_text() if p.exists() else "[]")
+elif argv[:2] == ["pr", "list"]:
     head = argv[argv.index("--head") + 1]
     # A name with a numeric suffix is one the guard invented: free by construction.
-    print("[]" if head.rsplit("-", 1)[-1].isdigit() else '[{"number": 364, "state": "MERGED"}]')
+    print("[]" if head.rsplit("-", 1)[-1].isdigit() else '[{{"number": 364, "state": "MERGED"}}]')
 elif argv[:2] == ["pr", "create"]:
     print("https://github.com/o/r/pull/999")
 sys.exit(0)
@@ -260,6 +264,33 @@ def test_it_pushes_the_work_to_a_free_name_and_opens_a_draft_pr(fake_estate):
 
     calls = _calls(log)
     assert any(c.startswith(f"push --no-verify origin {SHA}:refs/heads/feat/dead-2") for c in calls), calls
+
+
+def test_incident_2026_08_26_the_same_commits_are_rescued_once_not_per_push(fake_estate, tmp_path: Path):
+    """MEASURED 2026-08-26 on prospector: 23 open PRs, of which 12 were copies. `docs/work-register`
+    had five (#688 #693 #728 #739 #744), `ship/content-contract` three, and so on: every push of a
+    dead name rescued the same sha again under the next free suffix, because the suffix search asked
+    whether the NAME was free and never whether the COMMITS were already open. Rung 4.
+
+    Both ways in one run: with an open PR already on this sha the guard names it and pushes
+    nothing; with none, it still rescues."""
+    path, log = fake_estate
+    (tmp_path / "open.json").write_text(
+        f'[{{"headRefName": "feat/dead-3", "headRefOid": "{SHA}", "url": "https://github.com/o/r/pull/744"}}]'
+    )
+    got = _run(f"refs/heads/feat/dead {SHA} refs/heads/feat/dead {ZERO}",
+               env_extra={guard.NO_AUTOFIX: "0"}, path=path)
+    assert got.returncode == 1, got.stdout
+    assert "pull/744" in got.stdout and "feat/dead-3" in got.stdout
+    assert not any(c.startswith("push ") for c in _calls(log)), _calls(log)
+    assert not any(c.startswith("pr create") for c in _calls(log)), _calls(log)
+
+    (tmp_path / "open.json").unlink()
+    log.unlink()
+    got = _run(f"refs/heads/feat/dead {SHA} refs/heads/feat/dead {ZERO}",
+               env_extra={guard.NO_AUTOFIX: "0"}, path=path)
+    assert "pull/999" in got.stdout
+    assert any(c.startswith("pr create") for c in _calls(log)), _calls(log)
 
 
 def test_the_pr_it_opens_is_a_draft(fake_estate):

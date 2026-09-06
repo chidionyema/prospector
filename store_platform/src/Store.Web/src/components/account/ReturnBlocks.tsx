@@ -67,7 +67,7 @@ function Block({
   return (
     <section className="mt-12">
       <h2 className="sec">{title}</h2>
-      <p className="mt-2 max-w-[62ch] lede">{lead}</p>
+      <p className="mt-2 lede">{lead}</p>
       {/* `rounded-card`, not `rounded-md`. A bordered box on `--surface` holding rows IS a card,
           and 12px is what every other card on the site draws. The account area was the one place
           that gave its cards the 8px CONTROL corner, which is the sort of difference nobody names
@@ -78,7 +78,7 @@ function Block({
           utility on the same element wins whatever the specificity. The horizontal padding goes
           too, because `.owned` pads each row itself. */}
       <ul className="rows mt-4">{children}</ul>
-      <Link href={moreHref} className={textLinkClass('mt-4 inline-flex items-center gap-1 text-meta font-medium')}>
+      <Link href={moreHref} className={textLinkClass('mt-4 inline-flex items-center gap-1 text-meta')}>
         {moreLabel} <Icon name="arrowRight" size={12} />
       </Link>
     </section>
@@ -120,7 +120,7 @@ export function ReturnBlocks() {
               : `${cart.lines.length} packs you picked out and have not bought yet.`
           }
           moreHref="/"
-          moreLabel="Back to the catalogue"
+          moreLabel="Back to the packs"
         >
           {cart.lines.map((line) => (
             <PackLine key={line.id} id={line.id} title={line.title} price={line.price} />
@@ -137,7 +137,7 @@ export function ReturnBlocks() {
               : `${fresh.length} packs have cleared the checks and gone on sale since you were last here.`
           }
           moreHref="/"
-          moreLabel="See the whole catalogue"
+          moreLabel="See all the packs"
         >
           {/* Ten at most. The point of the block is a reason to click, and a list long enough to
               scroll is the shelf, which is one link away and better at being the shelf. */}

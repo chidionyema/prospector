@@ -7,7 +7,7 @@
  "first_order": {
   "what_broke": "ci-fleet-keeper (hourly, cron 17 * * * *) and ci-fleet-watch (daily, cron 30 6 * * *) both target `runs-on: ubuntu-latest`. This account cannot start a GitHub-hosted job at all, so both jobs conclude `failure` having run ZERO steps. main was therefore red once an hour and once every morning, on two checks that had nothing to do with any diff.",
   "receipt": "Run 32343624520, job 96347602802: {\"conclusion\":\"failure\",\"started_at\":\"2026-08-20T07:21:24Z\",\"completed_at\":\"2026-08-20T07:21:27Z\",\"steps\":0}. `gh run view --log-failed` answers `log not found: 96371203101`. The only record anywhere is the check-run annotation, verbatim: \"The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings\". Read it with `gh api repos/OWNER/REPO/check-runs/<job_id>/annotations`.",
-  "fixed_by": "Both jobs now carry `if: vars.HOSTED_RUNNERS_AVAILABLE == 'yes'`, so they SKIP instead of failing. Turning them back on after billing is fixed is `gh variable set HOSTED_RUNNERS_AVAILABLE --body yes` and needs no code change. Pinned by tests/unit/test_ci_fleet_keeper.py::test_the_keeper_is_skipped_and_not_failed_while_hosted_runners_cannot_start and tests/unit/test_ci_fleet_probe.py::test_the_watch_is_skipped_and_not_failed_while_hosted_runners_cannot_start; both were mutation-proved against origin/main's copy of the workflow, where jobs.watch.if is None and the assertion fails."
+  "fixed_by": "Both jobs now carry `if: vars.HOSTED_RUNNERS_AVAILABLE == 'yes'`, so they SKIP instead of failing. Turning them back on after billing is fixed is `gh variable set HOSTED_RUNNERS_AVAILABLE --body yes` and needs no code change. Pinned by tests/unit/test_ci_fleet_keeper.py::test_the_keeper_is_skipped_and_not_failed_while_hosted_runners_cannot_start and tests/unit/test_ci_fleet_probe.py::test_the_watch_is_skipped_and_not_failed_while_hosted_runners_cannot_start; both were mutation-proved against origin/main's copy of the workflow, where jobs.watch.if is None and the assertion fails. SUPERSEDED 2026-08-22. The gate, both workflows and both pinning tests were deleted. The repository is public, so GitHub-hosted minutes are free and unmetered and the billing refusal no longer applies: job 96942214470 (run 32537919647, PR #627's python lane) ran to `success` in 2m48s with labels ['ubuntu-latest'] in runner group 'GitHub Actions'. All four CI_*_RUNS_ON repository variables are set to `ubuntu-latest`, so every job in the tree now lands on a hosted runner and starts."
  },
  "cause_chain": [
   "main went red on a schedule -> the failing job ran zero steps -> its log 404s, so the usual instrument returns nothing -> the reason lives only in a check-run annotation -> the reason is that account payments failed, which is a founder decision and not a code defect -> a check that is red every morning for a reason nobody in CI can act on is a check that trains the estate to ignore red."
@@ -22,10 +22,10 @@
  },
  "grade": {
   "class": "a failure mode whose only record is outside the instrument everyone uses. A job that never starts has no log, so every habit built on `gh run view --log-failed` reports nothing and the run looks unexplained rather than explained.",
-  "self_healing": "not possible \u2014 the cause is a payment, which is the founder's alone",
-  "guard": "two tests pin the `if:` gate as an exact string in both workflows, so deleting the gate without deciding to is a red suite rather than an hourly red main",
+  "self_healing": "not possible — the cause is a payment, which is the founder's alone",
+  "guard": "void. The two tests pinned an `if:` gate on two workflows, and all four were deleted on 2026-08-22 once hosted jobs started again. What replaces them is not a test: ruleset `strict` (id 20109556, active on ~DEFAULT_BRANCH, bypass_actors empty) requires guard, python, dotnet, nextjs and ci-ok to pass before anything reaches main, so a workflow that fails at start cannot merge regardless of which test noticed.",
   "memory": "the annotation endpoint as the source of truth for a zero-step job is already recorded in memory `a-killed-runner-reads-as-a-failing-test.md`; this incident is its second instance with a different cause",
-  "founder_action": "fix Actions billing, then `gh variable set HOSTED_RUNNERS_AVAILABLE --body yes`"
+  "founder_action": "none — making the repository public removed the billing refusal"
  },
- "state": "open"
+ "state": "closed"
 }

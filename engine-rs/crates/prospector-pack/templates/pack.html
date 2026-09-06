@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ pack.meta.title }}</title>
+<style>
+:root{--ink:#1b2330;--muted:#5b6675;--line:#d8dde5;--accent:#0f6e6e;--paper:#fff}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif}
+main{max-width:72ch;margin:0 auto;padding:2rem 1.25rem 4rem}
+h1{font-size:2rem;line-height:1.2;margin:.2rem 0}
+h2{font-size:1.4rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--line);padding-top:.8rem}
+h3{font-size:1.1rem;margin:1.4rem 0 .4rem}
+.stat{color:var(--muted);font-size:.9rem}
+.claim{border-left:3px solid var(--accent);padding:.4rem .8rem;margin:.8rem 0}
+.claim.unverifiable{border-color:#9a6b00}
+.claim small{display:block;color:var(--muted);font-size:.8rem}
+table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl{overflow-x:auto}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>{{ pack.meta.title }}</h1>
+{% if !pack.meta.one_liner.is_empty() %}<p>{{ pack.meta.one_liner }}</p>{% endif %}
+<p class="stat">Pack {{ pack.meta.pack_id }} · verified {{ pack.meta.verified_at }} · {{ cited }} cited claims · {{ source_count }} sources</p>
+</header>
+{% for s in pack.sections %}
+<section>
+<h2>{{ s.title }}</h2>
+{% for b in s.blocks %}{% let v = crate::render::html::view(b) %}
+{% if v.kind == "heading" %}<h3>{{ v.text }}</h3>
+{% else if v.kind == "paragraph" %}<p>{{ v.text }}</p>
+{% else if v.kind == "bullets" %}<ul>{% for i in v.items %}<li>{{ i }}</li>{% endfor %}</ul>
+{% else if v.kind == "claim" %}<div class="claim {{ v.support }}" id="{{ v.claim_id }}">{{ v.text }}<small>{{ v.claim_id }} · {{ v.support }}{% if !v.url.is_empty() %} · <a href="{{ v.url }}">{{ v.url }}</a>{% endif %}</small></div>
+{% else if v.kind == "figures" %}<div class="tbl"><table><thead><tr><th>Figure</th><th>Value</th><th>Unit</th><th>As of</th><th>Source</th></tr></thead><tbody>
+{% for r in v.rows %}<tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td><td>{{ r[2] }}</td><td>{{ r[3] }}</td><td><a href="{{ r[4] }}">{{ r[4] }}</a></td></tr>
+{% endfor %}</tbody></table></div>
+{% endif %}
+{% endfor %}
+</section>
+{% endfor %}
+</main>
+</body>
+</html>

@@ -51,8 +51,18 @@ describe('globals.css cascade layers', () => {
     expect(css).toContain('@import "./mumchimp.css" layer(components);');
   });
 
-  it('keeps the h1/h2/h3 element floor inside @layer base', () => {
-    expect(enclosingBlocks(css, 'h1, h2, h3 {')).toContain('@layer base');
+  /*
+   * SIX LEVELS SINCE 2026-08-30, NOT THREE. The floor used to read `h1, h2, h3` and this test
+   * pinned that literal. Leaving h4, h5 and h6 out was a real defect: Tailwind's preflight sets
+   * every heading to `font-size:inherit;font-weight:inherit`, and the bundle only draws headings
+   * per container (`.htile h3`, `.band h3`, `.checkrow h5`), so a heading level that neither the
+   * bundle nor this floor names renders as body text. Measured on the built home page with a
+   * computed-style probe, six headings were at 16px / weight 400, including the three tiles at
+   * the top of the first shelf a visitor sees. The rendered-DOM guard is the `typography` block
+   * in `e2e/storefront.spec.ts`; this one keeps the floor in the right layer.
+   */
+  it('keeps the element floor for every heading level inside @layer base', () => {
+    expect(enclosingBlocks(css, 'h1, h2, h3, h4, h5, h6 {')).toContain('@layer base');
   });
 
   it('keeps the scale-token overrides unlayered, so a worn token still wins', () => {

@@ -13,6 +13,7 @@ identical from the outside.
 The fix is one line per job. This file is the thing that makes it one line per job FOREVER: add a
 setup-dotnet step anywhere without it and this test fails, in the same CI run that added it.
 """
+
 from __future__ import annotations
 
 import re
@@ -46,17 +47,23 @@ def _jobs() -> list[tuple[str, str, dict]]:
 
 
 def _dotnet_jobs() -> list[tuple[str, str, dict]]:
-    return [(f, j, body) for f, j, body in _jobs()
-            if any(ACTION in str(s.get("uses", "")) for s in (body.get("steps") or [])
-                   if isinstance(s, dict))]
+    return [
+        (f, j, body)
+        for f, j, body in _jobs()
+        if any(
+            ACTION in str(s.get("uses", ""))
+            for s in (body.get("steps") or [])
+            if isinstance(s, dict)
+        )
+    ]
 
 
 def test_there_is_a_dotnet_job_to_grade():
     """Anti-vacuity. If .NET ever leaves this repo, delete this file deliberately rather than
     letting it pass by having nothing to check."""
     found = _dotnet_jobs()
-    assert len(found) >= 2, (
-        f"expected at least the ci.yml and deploy-api.yml dotnet jobs, found {found}")
+    # deploy-api.yml went with the Fly pipeline on 2026-08-26 (crew#203); ci.yml's job stays.
+    assert len(found) >= 1, f"expected at least the ci.yml dotnet job, found {found}"
 
 
 @pytest.mark.parametrize("workflow,job_id", [(f, j) for f, j, _ in _dotnet_jobs()])
@@ -64,8 +71,9 @@ def test_every_dotnet_job_installs_somewhere_it_can_write(workflow: str, job_id:
     body = next(b for f, j, b in _dotnet_jobs() if (f, j) == (workflow, job_id))
     steps = body.get("steps") or []
 
-    setup_at = next(i for i, s in enumerate(steps)
-                    if isinstance(s, dict) and ACTION in str(s.get("uses", "")))
+    setup_at = next(
+        i for i, s in enumerate(steps) if isinstance(s, dict) and ACTION in str(s.get("uses", ""))
+    )
 
     # The variable may be set three ways: exported into GITHUB_ENV by an earlier step, on the
     # job's own `env:`, or on the workflow's. Only the first two are visible from here per job;
@@ -86,11 +94,13 @@ def test_every_dotnet_job_installs_somewhere_it_can_write(workflow: str, job_id:
     assert declared, (
         f"{workflow}:{job_id} runs {ACTION} without setting {VAR} BEFORE it. On a Linux runner "
         f"that installs to /usr/share/dotnet, which our container runners cannot create. Copy the "
-        f"three lines from ci.yml's dotnet job.")
+        f"three lines from ci.yml's dotnet job."
+    )
 
     assert any(w in declared for w in WRITABLE), (
         f"{workflow}:{job_id} points {VAR} at {declared!r}. That is not one of the roots a "
-        f"self-hosted runner is guaranteed to be able to write to ({', '.join(WRITABLE)}).")
+        f"self-hosted runner is guaranteed to be able to write to ({', '.join(WRITABLE)})."
+    )
 
 
 def test_the_variable_is_set_before_the_action_not_after():
@@ -99,17 +109,25 @@ def test_the_variable_is_set_before_the_action_not_after():
     for workflow, job_id, body in _dotnet_jobs():
         steps = [s for s in (body.get("steps") or []) if isinstance(s, dict)]
         setup_at = next(i for i, s in enumerate(steps) if ACTION in str(s.get("uses", "")))
-        after = [s for s in steps[setup_at + 1:]
-                 if VAR in str(s.get("run", "")) and "GITHUB_ENV" in str(s.get("run", ""))]
-        before = [s for s in steps[:setup_at]
-                  if VAR in str(s.get("run", "")) and "GITHUB_ENV" in str(s.get("run", ""))]
+        after = [
+            s
+            for s in steps[setup_at + 1 :]
+            if VAR in str(s.get("run", "")) and "GITHUB_ENV" in str(s.get("run", ""))
+        ]
+        before = [
+            s
+            for s in steps[:setup_at]
+            if VAR in str(s.get("run", "")) and "GITHUB_ENV" in str(s.get("run", ""))
+        ]
         assert not (after and not before), (
-            f"{workflow}:{job_id} sets {VAR} AFTER {ACTION}, which has no effect on it")
+            f"{workflow}:{job_id} sets {VAR} AFTER {ACTION}, which has no effect on it"
+        )
 
 
 def test_the_failure_that_produced_this_file_is_named_in_the_workflow():
     """The comment is the only place a reader learns WHY the line is there, and a line whose
     reason is unrecorded is a line the next tidy-up deletes."""
-    text = (WORKFLOWS / "deploy-api.yml").read_text()
+    text = (WORKFLOWS / "ci.yml").read_text()
     assert re.search(r"/usr/share/dotnet", text), (
-        "deploy-api.yml no longer records why DOTNET_INSTALL_DIR is set")
+        "ci.yml no longer records why DOTNET_INSTALL_DIR is set"
+    )

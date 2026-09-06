@@ -143,6 +143,10 @@ describe('the kill clause carries no counts at all', () => {
     expect(clause.toLowerCase()).not.toContain('the other');
     expect(clause.toLowerCase()).not.toContain('the remaining');
   });
+
+  it('does not use kill or die words', () => {
+    expect(clause.toLowerCase()).not.toMatch(/\b(kill|kills|die|died|survive|survived)\b/);
+  });
 });
 
 describe('no page makes an absolute claim about kills being published', () => {
@@ -174,5 +178,96 @@ describe('no page makes an absolute claim about kills being published', () => {
       .concat(walk(join(SRC, 'components')))
       .filter((path) => REACHING.test(readFileSync(path, 'utf8')));
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('a label may not make the claim the sentence guard refuses', () => {
+  /*
+   * THE 2026-08-13 DEFECT SURVIVED IN CAPTIONS FOR SEVENTEEN DAYS.
+   *
+   * The guard above scans for the absolute SENTENCE ("every kill is published") and for a page
+   * reaching past `lib/stats.ts` for a survivor figure. It reads whole files as prose, so it
+   * never noticed that three pages carried the same false claim as a two-word LABEL sitting
+   * directly over the killed count:
+   *
+   *   about.tsx      <dt><span>Killed, published</span></dt>      over 1,364
+   *   pricing.tsx    Ideas killed, published                      over 1,364
+   *   index.tsx      <p className="lbl">Researched, not listed</p> over 1,364
+   *
+   * 400 kills are published, not 1,364, and /kill-log says exactly that one click away. The home
+   * page label was wrong twice over: it read as inventory waiting to be listed rather than as
+   * ideas rejected on evidence, and researched-but-unlisted is 1,444 - 77 = 1,367 anyway.
+   *
+   * A label is where a claim hides, because it is short enough to look like a name. So labels are
+   * scanned as claims from here on. The general rule is the second `it`: the word "published"
+   * belongs in prose on /kill-log, which states its own scope, and never in a caption.
+   */
+  const walk = (dir: string): string[] =>
+    readdirSync(dir).flatMap((name) => {
+      const path = join(dir, name);
+      if (statSync(path).isDirectory()) return name === '__tests__' ? [] : walk(path);
+      return /\.tsx?$/.test(name) ? [path] : [];
+    });
+
+  const pageFiles = () => walk(join(SRC, 'pages')).concat(walk(join(SRC, 'components')));
+
+  // JSX comments are where this file's own history is written, and every one of them quotes the
+  // wrong label it replaced. Strip them, or the guard fails on the record of its own fix.
+  const stripComments = (source: string) => source.replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ');
+
+  // A label is read with the value it labels, never on its own: "Published here" over
+  // `publishedKills` is the one place on the site that claim is true, and it is the sentence on
+  // /kill-log turned into a figure. So each label carries the source that follows it, and the
+  // rule below asks what the number underneath actually is.
+  const labelsIn = (source: string): { words: string; value: string }[] => {
+    const text = stripComments(source);
+    const found: { words: string; value: string }[] = [];
+    for (const re of [/<dt\b[^>]*>([\s\S]{0,400}?)<\/dt>/g, /className="lbl"[^>]*>([\s\S]{0,300}?)<\/p>/g]) {
+      for (const match of text.matchAll(re)) {
+        const words = match[1].replace(/<[^>]*>/g, ' ').replace(/\{[^}]*\}/g, ' ').replace(/\s+/g, ' ').trim();
+        const end = (match.index ?? 0) + match[0].length;
+        if (words) found.push({ words, value: text.slice(end, end + 240) });
+      }
+    }
+    return found;
+  };
+
+  it('finds no caption pairing a kill count with the word published', () => {
+    const offenders = pageFiles().filter((path) =>
+      /kills?(ed)?,\s*published/i.test(stripComments(readFileSync(path, 'utf8'))),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('lets a label say published only when the figure under it is the published count', () => {
+    const offenders = pageFiles().flatMap((path) =>
+      labelsIn(readFileSync(path, 'utf8'))
+        .filter((label) => /publish/i.test(label.words) && !/publishedKills|packs\.length/.test(label.value))
+        .map((label) => `${path}: ${label.words}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('flags the caption this repair removed, so the rule is proved on the bug it was written for', () => {
+    // A guard that has never fired on its own defect is a guess. This is `about.tsx:163` as it
+    // shipped from 2026-08-13 to 2026-08-30, verbatim.
+    const shipped =
+      "<dt><span>Killed, published</span></dt>\n<dd><b className=\"num\">{totals.killed.toLocaleString('en-GB')}</b></dd>";
+    expect(/kills?(ed)?,\s*published/i.test(shipped)).toBe(true);
+    const flagged = labelsIn(shipped)
+      .filter((label) => /publish/i.test(label.words) && !/publishedKills|packs\.length/.test(label.value))
+      .map((label) => label.words);
+    expect(flagged).toEqual(['Killed, published']);
+  });
+
+  it('reads the labels it is scanning, so a broken matcher cannot pass by finding nothing', () => {
+    // Without this the two rules above go green the day the JSX shape changes and `labelsIn`
+    // starts returning an empty list -- the silent-green class this estate keeps paying for.
+    const all = pageFiles().flatMap((path) => labelsIn(readFileSync(path, 'utf8')));
+    expect(all.length).toBeGreaterThan(15);
+    expect(all.some((label) => /^Killed$/i.test(label.words))).toBe(true);
+    // The one true "published" caption on the site. If this stops being found, the rule above is
+    // passing because it can no longer see labels at all.
+    expect(all.some((label) => /publish/i.test(label.words))).toBe(true);
   });
 });

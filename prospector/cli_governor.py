@@ -71,6 +71,11 @@ import threading
 import time
 
 try:
+    import pwd  # POSIX only
+except ImportError:  # pragma: no cover - Windows
+    pwd = None  # type: ignore[assignment]
+
+try:
     import fcntl  # POSIX only
 except ImportError:  # pragma: no cover — Windows
     fcntl = None  # type: ignore[assignment]
@@ -81,36 +86,89 @@ except ImportError:  # pragma: no cover — Windows
 _POLL_S = 0.25
 
 
-def _slot_root(name: str) -> str | None:
+# Brands whose ceiling is a FOUNDER DIRECTIVE rather than a tuned default. For these the
+# environment cannot move the slot directory, so no process can hand itself a private pool.
+# See `_slot_root` for the arithmetic this closes.
+PINNED_BRANDS = frozenset({"claude"})
+
+
+def _pinned_home() -> str:
+    """This user's home directory, read from the passwd database, not from $HOME.
+
+    `os.path.expanduser("~")` returns $HOME when it is set, so a process that exports
+    `HOME=/tmp/mine` gets its own `~/.prospector/cli_slots` and a private ceiling — the same
+    hole `PROSPECTOR_CLI_SLOTS` opened, through a different door. The passwd entry is fixed
+    for the uid and no environment variable changes it.
+    """
+    if pwd is not None:
+        try:
+            return pwd.getpwuid(os.getuid()).pw_dir
+        except (KeyError, OSError):
+            pass
+    return os.path.expanduser("~")
+
+
+def _slot_root(name: str, root: str | None = None) -> str | None:
     """Directory holding this governor's slot files, or None if unusable.
 
     Deliberately independent of `__file__` and of cwd: every prospector process on this
     machine must resolve the same path, whichever checkout or worktree it was started
     from. See the module docstring for the measurement that forced this.
+
+    `root`, when given, is an EXPLICIT private slot directory. It exists for tests that must
+    not compete with a live daemon for the real budget (see
+    `tests/faults/test_grounding_contention.py`). It is an argument rather than an
+    environment variable on purpose: setting it takes a code change that a reviewer sees,
+    and no running process can grant itself one by exporting a name.
     """
     if fcntl is None:
         return None
-    # PROSPECTOR_CLI_SLOTS is the escape hatch: tests that need a private ceiling point it
-    # at a tmpdir, and it is also the way to deliberately isolate a run from the machine's
-    # shared budget. Unset — the normal case — every process lands in the same home dir.
-    #
-    # It is a DIRECTORY, and it must be absolute. The name reads like a count, and on
-    # 2026-08-05 a session set `PROSPECTOR_CLI_SLOTS=1` meaning "one slot": `_slot_root`
-    # then resolved `1/cursor` against the cwd, created it inside the checkout, and returned
-    # it — silently handing that process a private pool. That is the per-checkout ceiling
-    # this module exists to kill (see the module docstring), reached through the front door.
-    # A relative value is therefore refused, not honoured: the run falls back to the shared
-    # home directory, which is the safe direction to fail.
-    override = os.environ.get("PROSPECTOR_CLI_SLOTS")
-    if override and not os.path.isabs(override):
-        logging.getLogger(__name__).warning(
-            "PROSPECTOR_CLI_SLOTS=%r is not an absolute path; it is a slot DIRECTORY, not a "
-            "slot count. Ignoring it and using the machine-wide ceiling.",
-            override,
-        )
-        override = None
-    bases = [override] if override else []
-    bases.append(os.path.join(os.path.expanduser("~"), ".prospector", "cli_slots"))
+    pinned = name in PINNED_BRANDS
+    bases: list[str] = []
+    if root:
+        bases.append(root)
+    else:
+        # PROSPECTOR_CLI_SLOTS points the slot directory somewhere else. It stays available
+        # for the unpinned brands, where a private ceiling is a preference.
+        #
+        # It is a DIRECTORY, and it must be absolute. The name reads like a count, and on
+        # 2026-08-05 a session set `PROSPECTOR_CLI_SLOTS=1` meaning "one slot": `_slot_root`
+        # then resolved `1/cursor` against the cwd, created it inside the checkout, and
+        # returned it — silently handing that process a private pool. That is the
+        # per-checkout ceiling this module exists to kill (see the module docstring),
+        # reached through the front door. A relative value is therefore refused, not
+        # honoured: the run falls back to the shared home directory, which is the safe
+        # direction to fail.
+        #
+        # For a PINNED brand it is refused outright, absolute or not. `claude_cli._clamped`
+        # bounds the WIDTH of one governor at MAX_CLAUDE_CLI = 1; it never bounded the
+        # NUMBER of governors. A process that pointed this variable at its own directory got
+        # a private pool of 1 on top of the machine-wide 1, so two claude CLI subprocesses
+        # ran and no guard fired. Measured by walking into it on 2026-08-21, the day after
+        # the founder set the ceiling at one. The ceiling is only real if the ADDRESS of the
+        # slot directory is fixed as well as its size.
+        override = os.environ.get("PROSPECTOR_CLI_SLOTS")
+        if override and pinned:
+            logging.getLogger(__name__).warning(
+                "PROSPECTOR_CLI_SLOTS=%r ignored for the %r governor. Its ceiling is a "
+                "founder directive (2026-08-20, \"1 claude cli, not 4\"), so the slot "
+                "directory is fixed as well as the slot count. Pass root= to "
+                "make_governor if you are a test that needs a private pool. "
+                "See prospector/cli_governor.py PINNED_BRANDS.",
+                override, name,
+            )
+            override = None
+        elif override and not os.path.isabs(override):
+            logging.getLogger(__name__).warning(
+                "PROSPECTOR_CLI_SLOTS=%r is not an absolute path; it is a slot DIRECTORY, "
+                "not a slot count. Ignoring it and using the machine-wide ceiling.",
+                override,
+            )
+            override = None
+        if override:
+            bases.append(override)
+    home = _pinned_home() if pinned else os.path.expanduser("~")
+    bases.append(os.path.join(home, ".prospector", "cli_slots"))
     # Last resort only. $TMPDIR is per-user on macOS but is also periodically swept, and a
     # swept slot directory silently widens the ceiling rather than failing loudly.
     bases.append(os.path.join(tempfile.gettempdir(), "prospector_cli_slots"))
@@ -130,10 +188,10 @@ class CrossProcessSemaphore:
     Drop-in for `threading.Semaphore`: `acquire(timeout=...) -> bool` and `release()`.
     """
 
-    def __init__(self, n: int, name: str) -> None:
+    def __init__(self, n: int, name: str, root: str | None = None) -> None:
         self._name = name
         self._n = max(1, int(n))
-        self._root = _slot_root(name)
+        self._root = _slot_root(name, root)
         self._local = threading.local()
         # Fallback path: behaves exactly as the old in-process governor did.
         self._fallback = threading.Semaphore(self._n) if self._root is None else None
@@ -227,6 +285,10 @@ class CrossProcessSemaphore:
                 pass
 
 
-def make_governor(n: int, name: str) -> CrossProcessSemaphore:
-    """Build a governor named `name` (one namespace per CLI brand) with `n` slots."""
-    return CrossProcessSemaphore(n, name)
+def make_governor(n: int, name: str, root: str | None = None) -> CrossProcessSemaphore:
+    """Build a governor named `name` (one namespace per CLI brand) with `n` slots.
+
+    `root` is an explicit private slot directory for tests that must not compete with a
+    live daemon. Production code never passes it; see `_slot_root`.
+    """
+    return CrossProcessSemaphore(n, name, root)

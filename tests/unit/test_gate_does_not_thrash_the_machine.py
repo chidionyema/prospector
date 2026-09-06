@@ -23,15 +23,18 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 
 # A child that takes the machine slot, announces it, holds, and releases.
+# One lock file for this module, shared by every subprocess a test spawns and separate from
+# the machine's real one, so these tests can run under the gate they guard.
+LOCK_PATH = Path(tempfile.mkdtemp(prefix="popdd-gate-lock-test-")) / "machine.lock"
+
 PROBE = """
 import sys, os, time
 sys.path.insert(0, {scripts!r})
@@ -44,7 +47,15 @@ with pv.machine_capacity():
 
 
 def _run(hold: float, env_extra: dict[str, str] | None = None, timeout: float = 60):
-    env = {**os.environ, "POPDD_TEST_TIMEOUT": "600", **(env_extra or {})}
+    env = {
+        **os.environ,
+        "POPDD_TEST_TIMEOUT": "600",
+        # Our own lock file, not the estate's. The gate runs this suite, so the gate holds
+        # the real lock while these assertions execute; sharing it would make every spawned
+        # run wait for the run that spawned it.
+        "POPDD_MACHINE_LOCK": str(LOCK_PATH),
+        **(env_extra or {}),
+    }
     return subprocess.Popen(
         [sys.executable, "-c", PROBE, str(hold)],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env,
@@ -100,7 +111,8 @@ class TestIncident20260823GateThrashedTheMachine:
         b = _run(0.2, {"POPDD_NO_MACHINE_LOCK": "1"})
         b_out, _ = b.communicate(timeout=90)
         elapsed = time.time() - t0
-        a.kill(); a.communicate()
+        a.kill()
+        a.communicate()
 
         assert "ENTER" in _stamps(b_out), f"off switch broke the run entirely: {b_out!r}"
         assert elapsed < 5.0, (

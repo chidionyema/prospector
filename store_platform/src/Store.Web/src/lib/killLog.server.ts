@@ -1,5 +1,6 @@
 import killLog from '@/data/kill-log.json';
 import { plainEnglish } from '@/lib/plainEnglish';
+import { GATE_LABELS } from '@/lib/gateLabels';
 
 /**
  * The kill corpus, SERVER SIDE ONLY, split into what a reader sees at once and what they open.
@@ -119,20 +120,9 @@ function slugs(): string[] {
 
 // Labels for the gates that never appear in a published row, so the chart can name every bar it
 // draws. The published rows carry their own `gateLabel` from the engine.
-const EXTRA_LABELS: Record<string, string> = {
-  min_composite: 'Scored below the bar overall',
-  moat_ungrounded: 'The defensibility claim was not evidence-backed',
-  source_or_die: 'Its own claims could not be sourced',
-  buyer_intent: 'No sign anyone is trying to buy it',
-  // Added 2026-08-17. It was missing, and with no entry here the fallback below prints the raw
-  // engine key with its underscores swapped for spaces -- "adversarial decisive". That is the
-  // fourth largest cause of death on the site (142 kills), so the machine's own identifier was
-  // being rendered to buyers on the biggest chart the page draws.
-  // SHORT ENOUGH TO BE A CHIP. "It did not survive the second round of checks" measured 374px
-  // wide in the dark filter strip on a 390px phone, which put the chip past the right edge of
-  // the viewport. Shortened rather than clipped or scrolled (A4).
-  adversarial_decisive: 'It failed the second round of checks',
-};
+// Display labels live in `lib/gateLabels.ts`. This file used to keep a second map
+// ("Scored below the bar overall") that drifted from the homepage kill band.
+const EXTRA_LABELS: Record<string, string> = GATE_LABELS;
 
 /*
  * STAGES ARE NOT CHECKS (MASTER-BRIEF §5.2, added 2026-08-17).
@@ -214,7 +204,7 @@ export function buildKillIndex(): KillIndex {
   const summaries: KillSummary[] = entries.map((entry, i) => ({
     slug: slugList[i],
     title: entry.title,
-    gateLabel: EXTRA_LABELS[entry.gate] ?? entry.gateLabel,
+    gateLabel: GATE_LABELS[entry.gate] ?? entry.gateLabel,
     date: entry.date,
     sources: entry.citations.length,
     // `plainEnglish` FIRST, then cut. The other way round, a translation that lengthens a phrase
@@ -257,7 +247,7 @@ export function buildKillIndex(): KillIndex {
   const byGate = (killLog.totals as { byGate: Record<string, number> }).byGate;
   const labelFor: Record<string, string> = { ...EXTRA_LABELS };
   entries.forEach((r) => {
-    labelFor[r.gate] = EXTRA_LABELS[r.gate] ?? r.gateLabel;
+    labelFor[r.gate] = GATE_LABELS[r.gate] ?? r.gateLabel;
   });
   const published = new Set(entries.map((r) => r.gate));
   // Grouped by label, same reason as `gateCounts`: built straight from `Object.entries(byGate)`

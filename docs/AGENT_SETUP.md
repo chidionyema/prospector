@@ -18,15 +18,17 @@ turn two. This estate learned it the expensive way on 2026-08-19 — see the las
 | Kind of fact | Where it goes | This estate |
 | --- | --- | --- |
 | Live state: what is deployed, what is running, how stale this checkout is | SessionStart hook | `ops/state_probe.sh`, installed to `~/.claude/state-probe/prospector.sh`, run by `~/.claude/scripts/memory-loop.py` and injected as VERIFIED LIVE STATE |
-| Standing rules that apply to every turn | `CLAUDE.md` | `~/.claude/CLAUDE.md` (all projects) and `./CLAUDE.md` (this repo) |
+| Standing rules that apply to every turn | `AGENTS.md` | `./AGENTS.md` at this repo root — the laws, the only governance file. `./CLAUDE.md` is the project map, not rules. |
 | Rules that only matter when certain files are open | `.claude/rules/*.md` with `paths:` frontmatter | not yet used — see Open below |
 | A repeatable procedure with steps | `.claude/skills/<name>/SKILL.md` | `~/.claude/skills/graphify/` |
 | A narrow job with restricted tools | `.claude/agents/<name>.md` | subagents are spawned inline today |
 | What happened, and what to do next | `~/.claude/projects/<slug>/checkpoints/LATEST.md` | written at every safe point, re-injected by the same hook as LEADS, not state |
 | An incident and the trap it revealed | `~/.claude/projects/<slug>/memory/` one file per fact | indexed by `MEMORY.md` |
 
-Load order for instructions: managed policy, then `~/.claude/CLAUDE.md`, then `./CLAUDE.md`, then
-`./CLAUDE.local.md`.  <!-- doc-lint-ok: optional, absent here by choice -->
+Load order for instructions: managed policy, then `~/.claude/CLAUDE.md`, then `./AGENTS.md` and
+`./CLAUDE.md`, then `./CLAUDE.local.md`.  <!-- doc-lint-ok: optional, absent here by choice -->
+A project-root `AGENTS.md` is loaded — verified 2026-08-21 by planting a token in a throwaway
+project and reading it back out of a live `claude -p` session.
 They concatenate — nothing overrides anything, so a contradiction between two
 files is a contradiction the agent has to guess its way out of. Root `CLAUDE.md` is re-read after
 `/compact`; nested files and path-scoped rules are not.

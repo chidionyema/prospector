@@ -106,27 +106,6 @@ else
   echo "[key]  copied from main checkout (it is untracked, so worktrees never get it)"
 fi
 
-# A daily receipt file signed by a key this tree no longer holds wedges the gate the same way,
-# and it is not covered by the check above: the key can be correct now and the file still hold
-# receipts written under the old one. Move it aside so a fresh chain starts under the key that
-# is actually here. It is gitignored scratch, so nothing tracked is lost.
-if [ -f "$TARGET/$KEY_REL" ] && [ -d "$TARGET/.lux/receipts" ]; then
-  if ! ( cd "$TARGET" && .venv/bin/python -c "
-import sys, pathlib
-sys.path.insert(0, '.')
-from popdd_agent import PopddAgent
-sys.exit(0 if PopddAgent.at_path(pathlib.Path('.').resolve()).verify_chain()['valid'] else 1)
-" >/dev/null 2>&1 ); then
-    today="$(date -u +%Y-%m-%d)"
-    if [ -f "$TARGET/.lux/receipts/$today.jsonl" ]; then
-      mv "$TARGET/.lux/receipts/$today.jsonl" "$TARGET/.lux/receipts/$today.jsonl.unverifiable.bak"
-      echo "[key]  today's receipt chain did not verify — moved aside; a fresh one starts now"
-    else
-      echo "[key]  WARNING: the receipt chain does not verify and it is not today's file."
-      echo "[key]           Every commit in this tree will be BLOCKED at 'Chain valid: False'."
-    fi
-  fi
-fi
 
 # `deps_missing <project-dir>` prints the declared packages that are NOT on disk, space
 # separated, and prints nothing when the install is complete.
@@ -216,6 +195,55 @@ else
   echo "[venv] WARNING: no .venv in the main checkout; every commit here will be BLOCKED"
 fi
 
+# ------------------------------------------------- 3a. the receipt chain (AFTER the venv)
+# A daily receipt file signed by a key this tree no longer holds wedges the gate the same way,
+# and it is not covered by the key check above: the key can be correct now and the file still
+# hold receipts written under the old one. Move it aside so a fresh chain starts under the key
+# that is actually here. It is gitignored scratch, so nothing tracked is lost.
+#
+# THIS BLOCK MUST STAY BELOW THE VENV STEP. It ran above it until 2026-08-21, and .venv does
+# not exist in a fresh worktree until the step above creates it — so `.venv/bin/python` was
+# always "No such file or directory", the check always failed, and EVERY fresh worktree was
+# told "the receipt chain does not verify / Every commit in this tree will be BLOCKED at
+# 'Chain valid: False'" while the chain was fine. Measured that day in ../prospector-rust:
+# the warning printed, and re-running the identical check after setup returned
+# {'valid': True, 'total': 2}. The noisy branch was the lucky one — on any day this tree
+# already had a receipt file, the other branch would silently rename a PERFECTLY GOOD chain.
+#
+# And it grades on a PRINTED TOKEN, not on the exit status, because that is the class of
+# mistake rather than the instance: exit 1 is what python returns for an invalid chain AND
+# for an ImportError, and 127 is what the shell returns for a missing interpreter. Only an
+# explicit CHAIN_INVALID may move a file. Anything else is "could not measure", which is a
+# different fact and must never destroy anything.
+if [ -f "$TARGET/$KEY_REL" ] && [ -d "$TARGET/.lux/receipts" ]; then
+  CHAIN_OUT="$( cd "$TARGET" && .venv/bin/python -c "
+import sys, pathlib
+sys.path.insert(0, '.')
+from popdd_agent import PopddAgent
+print('CHAIN_VALID' if PopddAgent.at_path(pathlib.Path('.').resolve()).verify_chain()['valid'] else 'CHAIN_INVALID')
+" 2>/dev/null || true )"
+  case "$CHAIN_OUT" in
+    *CHAIN_VALID*)
+      echo "[key]  receipt chain verifies under this tree's key"
+      ;;
+    *CHAIN_INVALID*)
+      today="$(date -u +%Y-%m-%d)"
+      if [ -f "$TARGET/.lux/receipts/$today.jsonl" ]; then
+        mv "$TARGET/.lux/receipts/$today.jsonl" "$TARGET/.lux/receipts/$today.jsonl.unverifiable.bak"
+        echo "[key]  today's receipt chain did not verify — moved aside; a fresh one starts now"
+      else
+        echo "[key]  WARNING: the receipt chain does not verify and it is not today's file."
+        echo "[key]           Every commit in this tree will be BLOCKED at 'Chain valid: False'."
+      fi
+      ;;
+    *)
+      echo "[key]  WARNING: could not run the receipt-chain check (no interpreter, or"
+      echo "[key]           popdd_agent did not import). This is NOT a verdict on the chain,"
+      echo "[key]           so nothing was moved. Check by hand before you rely on the gate."
+      ;;
+  esac
+fi
+
 # ------------------------------------------------------------------- 4. .env
 # Symlinked, never copied: it is the only place the API keys live, and a copy silently
 # outlives a rotation. Every loader in the repo reads ./.env relative to cwd.
@@ -256,22 +284,8 @@ done
 # It is a file in .git/hooks rather than `core.hooksPath=.githooks`, deliberately: hooksPath
 # replaces the directory outright, which would make the graphify post-commit and post-checkout
 # hooks inert without a word.
-hooks_dir="$(git rev-parse --path-format=absolute --git-path hooks)"
-mkdir -p "$hooks_dir"
-cat > "$hooks_dir/pre-push" <<'HOOK'
-#!/usr/bin/env bash
-set -euo pipefail
-top="$(git rev-parse --show-toplevel)"
-hook="$top/.githooks/pre-push"
-if [ ! -x "$hook" ]; then
-  echo "pre-push: $hook missing or not executable; refusing rather than skipping."
-  [ "${ALLOW_BRANCH_RECREATE:-}" = "1" ] || exit 1
-  exit 0
-fi
-exec "$hook" "$@"
-HOOK
-chmod +x "$hooks_dir/pre-push"
-echo "[hooks] pre-push installed at $hooks_dir/pre-push (per-tree, shared by every worktree)"
+# crew#326: the shim lives in scripts/install_push_shim.sh so it can be proved both ways.
+"$(dirname "$0")/install_push_shim.sh"
 
 # ---------------------------------------------------------------- 6. the warnings
 cat <<'NOTE'

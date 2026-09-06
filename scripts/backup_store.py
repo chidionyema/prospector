@@ -683,6 +683,36 @@ def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[st
     stamp = time.strftime("%Y-%m-%dT%H%M%SZ", time.gmtime())
     key = f"{REPO_PREFIX}{stamp}.bundle"
 
+    # A SHALLOW REPOSITORY CANNOT PRODUCE A USABLE BUNDLE, AND NOTHING DOWNSTREAM CAN TELL.
+    # This is checked first because it is the only failure here that cannot be repaired by
+    # trying again. `git bundle create --all` from a shallow clone walks to the grafted
+    # boundary and stops. The bundle declares no prerequisites, because as far as it knows
+    # the boundary commits are roots, so it looks self-contained and complete.
+    #
+    # Measured 2026-08-23. `prospector-live` has been shallow since 2026-08-18 16:56 (7
+    # boundary commits in .git/shallow) and the nightly mirror has run from it ever since.
+    # Every bundle it produced — 14 objects in the bucket, the newest three each exactly
+    # 71,176,969 bytes — is unrestorable. All three restore paths die the same way:
+    #     git clone --bare  ->  error: Could not read 788dca7d...
+    #                           fatal: Failed to traverse parents of commit d932e28e
+    #                           fatal: remote did not send all necessary objects
+    #     git clone --mirror -> identical
+    #     git init + git fetch '+refs/*:refs/*' -> 0 refs recovered
+    # `git fsck --connectivity-only` on the source exits 0 the whole time, because a shallow
+    # repo IS internally consistent. The damage only exists in the bundle's consumer.
+    shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+    )
+    if shallow.stdout.strip() == "true":
+        raise RuntimeError(
+            f"{REPO_ROOT} is a shallow clone, so no bundle taken from it can be restored: "
+            "the history stops at the graft boundary and every clone dies traversing past "
+            "it. Repair the source before backing it up — `git -C "
+            f"{REPO_ROOT} fetch --unshallow origin` — rather than storing another unusable "
+            "copy. Refusing to upload."
+        )
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp_bundle = Path(tmp) / "mirror.bundle"
         # `git bundle create` --all walks every ref under REPO_ROOT. The exit code is the
@@ -699,14 +729,30 @@ def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[st
 
         # Verify BEFORE uploading: uploading an unreadable bundle is the same failure as not
         # backing up at all, and it would look green because the upload itself succeeded.
-        verify = subprocess.run(
-            ["git", "bundle", "verify", str(tmp_bundle)],
-            cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+        #
+        # THE CHECK IS A CLONE, NOT `git bundle verify`. Verify reads the bundle header and
+        # asks whether this repository already holds the prerequisites it names. It never
+        # reads the pack. Measured 2026-08-23: it exits 0 on a bundle truncated to 300 bytes,
+        # and it exited 0 on all fourteen shallow bundles described above, printing "The
+        # bundle contains these 169 refs" about a file from which zero refs can be recovered.
+        # Cloning into a throwaway directory is the only check that reads every object, and
+        # it is the operation a restore actually performs.
+        probe = Path(tmp) / "probe.git"
+        clone = subprocess.run(
+            ["git", "clone", "--bare", "--quiet", str(tmp_bundle), str(probe)],
+            capture_output=True, text=True, check=False,
         )
-        if verify.returncode != 0:
+        if clone.returncode != 0:
             raise RuntimeError(
-                f"git bundle verify failed (rc={verify.returncode}): "
-                f"{verify.stderr.strip() or '<no stderr>'}"
+                f"the bundle cannot be cloned, so it is not a backup (rc={clone.returncode}): "
+                f"{clone.stderr.strip() or '<no stderr>'}"
+            )
+        refs = subprocess.run(
+            ["git", "-C", str(probe), "show-ref"], capture_output=True, text=True, check=False,
+        ).stdout.splitlines()
+        if not refs:
+            raise RuntimeError(
+                "the bundle cloned to zero refs, so it carries no history worth storing"
             )
 
         size = tmp_bundle.stat().st_size
@@ -1041,6 +1087,45 @@ def restore(s3, bucket: str, dest: Path) -> int:
     return len(remote)
 
 
+def money_state(s3, bucket: str) -> dict:
+    """What the bucket holds for the two money files: newest key, size and age in hours.
+
+    One seam, two callers, and that is the point. `scripts/engine_failover.py` asks it how far
+    back a failover would start; the ops console asks it whether the backup is still running.
+    Before this existed the console showed nothing about the store backup at all -- its only
+    output was store/offsite_backup.log, which nothing read -- so the backup could have stopped
+    for a week and the first sign would have been a failed restore.
+    """
+    now = datetime.now(timezone.utc)
+    out: dict = {"bucket": bucket, "checked_at": now.isoformat()}
+    for label, prefix in (("ledger", LEDGER_PREFIX), ("db", DB_PREFIX)):
+        newest = None
+        token = None
+        while True:
+            kwargs = {"Bucket": bucket, "Prefix": prefix, "MaxKeys": 1000}
+            if token:
+                kwargs["ContinuationToken"] = token
+            page = s3.list_objects_v2(**kwargs)
+            for obj in page.get("Contents", []):
+                if newest is None or obj["Key"] > newest["Key"]:
+                    newest = obj
+            if not page.get("IsTruncated"):
+                break
+            token = page.get("NextContinuationToken")
+        if newest is None:
+            out[label] = None
+            continue
+        out[label] = {
+            "key": newest["Key"],
+            "bytes": newest["Size"],
+            "age_h": round((now - newest["LastModified"]).total_seconds() / 3600, 2),
+        }
+    ages = [v["age_h"] for v in (out.get("ledger"), out.get("db")) if v]
+    out["oldest_age_h"] = max(ages) if ages else None
+    out["complete"] = out.get("ledger") is not None and out.get("db") is not None
+    return out
+
+
 class _CountingReader:
     """Wrap a boto3 StreamingBody and count what was actually read off the wire.
 
@@ -1181,6 +1266,9 @@ def main() -> int:
                         help="upload nothing; just prove the remote copy matches local")
     parser.add_argument("--restore", metavar="DIR",
                         help="download every backed-up dossier into DIR and verify each")
+    parser.add_argument("--money-state", action="store_true",
+                        help="print JSON describing the newest ledger and index snapshots in "
+                             "the bucket, and how old they are. Uploads nothing")
     parser.add_argument("--restore-money", metavar="DIR",
                         help="download ONLY the ledger and the index into DIR and verify both. "
                              "What a failover needs: the 1,581 dossiers are a catalogue that can "
@@ -1209,6 +1297,10 @@ def main() -> int:
     args = parser.parse_args()
 
     s3, bucket = _client()
+
+    if args.money_state:
+        print(json.dumps(money_state(s3, bucket), indent=2))
+        return 0
 
     if args.restore_money:
         # Deliberately not a subset flag on --restore. A failover restores two files onto a

@@ -184,8 +184,7 @@ export function formatPrice(price: string): string {
   return price.replace(/[.,]00\b/, '');
 }
 
-/** Human freshness for the verified date, e.g. "Verified today" / "Verified 3 days ago".
- *  Returns null for a missing or unparseable date so callers can simply omit the badge. */
+/** Verified date as a date, never an age. "Updated 17 days ago" is banned (brief 2026-09-02 §5). */
 export function freshnessLabel(iso?: string): string | null {
   if (!iso) return null;
   const then = new Date(iso);
@@ -193,9 +192,7 @@ export function freshnessLabel(iso?: string): string | null {
   const days = Math.floor((Date.now() - then.getTime()) / 86_400_000);
   if (days <= 0) return 'Verified today';
   if (days === 1) return 'Verified yesterday';
-  if (days < 30) return `Verified ${days} days ago`;
-  const months = Math.floor(days / 30);
-  return months <= 1 ? 'Verified last month' : `Verified ${months} months ago`;
+  return `Verified ${then.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}`;
 }
 
 const MARKET_LABELS: Record<string, string> = {
@@ -325,7 +322,7 @@ export async function joinWaitlist(
     return { ok: false, error: 'Too many attempts from here. Give it a minute and try again.' };
   }
   const body = (await res.json().catch(() => null)) as { error?: string } | null;
-  return { ok: false, error: body?.error ?? 'That did not go through. Try again in a moment.' };
+  return { ok: false, error: body?.error ?? 'We could not complete that. Try again in a moment.' };
 }
 
 /**

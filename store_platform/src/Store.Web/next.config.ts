@@ -201,6 +201,8 @@ const nextConfig: NextConfig = {
       // own destination and a wildcard would send `/collections` to `/ideas/`.
       { source: "/collections/:slug", destination: "/ideas/:slug", permanent: true },
       { source: "/collections", destination: "/ideas", permanent: true },
+      { source: "/kill-log", destination: "/rejected", permanent: true },
+      { source: "/kill-log/:path*", destination: "/rejected", permanent: true },
     ];
   },
 };

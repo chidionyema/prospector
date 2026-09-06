@@ -31,7 +31,13 @@ const REPORT = path.join(ROOT, 'docs/design/MOCKUP_DIFF.md');
 const PAIRS = [
   { name: 'index', mock: 'index.html', route: '/' },
   { name: 'pack-detail', mock: 'pack-detail.html', route: process.env.PACK_ROUTE || null },
-  { name: 'collections', mock: 'collections.html', route: '/collections' },
+  /* `ideas`, not `collections`. There is no `collections.html` in the bundle and `/collections`
+     answers 308, so this line compared a real page against the static server's own 404 body and
+     reported it as a 900px drawing -- "collections: +2808px, 4.12x" in every report this harness
+     has ever written. `ideas.html` IS in the bundle and `/ideas` answers 200, and it was the one
+     drawing nothing compared. Nothing below silently accepts a missing drawing any more, so this
+     class of line cannot come back unnoticed. */
+  { name: 'ideas', mock: 'ideas.html', route: '/ideas' },
   { name: 'how-it-works', mock: 'how-it-works.html', route: '/how-it-works' },
   { name: 'kill-log', mock: 'kill-log.html', route: '/kill-log' },
   { name: 'faq', mock: 'faq.html', route: '/faq' },
@@ -126,7 +132,7 @@ const READ_OUTLINE = () => {
   };
 };
 
-async function read(page, url, shotPath) {
+async function read(page, url, shotPath, isDrawing = false) {
   const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 45000 }).catch(() => null);
   /* 404 IS THE CORRECT STATUS FOR ONE OF THESE PAGES. `/404` answered 404, the harness read that
      as a failure, and the not-found page was the one page never measured against its drawing. Any
@@ -134,6 +140,16 @@ async function read(page, url, shotPath) {
      every section as missing. */
   if (!res || (res.status() >= 400 && res.status() !== 404)) {
     return { error: `HTTP ${res ? res.status() : 'no response'}` };
+  }
+  /* A DRAWING THAT IS NOT THERE IS NOT A 900px DRAWING. The mockups are served by a plain static
+     server, which answers a missing file with its own listing or error body: a short page that
+     reads back as a perfectly valid outline about 900px tall. The report then prints a confident
+     "+2808px, 4.12x" for a comparison that never happened. `python3 -m http.server` answers 404
+     for a missing file and `waitUntil` still resolves, so the status is the only thing that knows,
+     and the `/404` exemption above deliberately lets 404 through for the built side. Drawings are
+     files on disk: for them, 404 means the pair is wrong. */
+  if (isDrawing && res.status() === 404) {
+    return { error: `no drawing at ${url} -- the PAIRS entry names a file the bundle does not have` };
   }
   await page.waitForTimeout(700); // let fonts settle so the heading sizes are real
   await page.screenshot({ path: shotPath, fullPage: true });
@@ -234,7 +250,7 @@ const out = [
 
 for (const pair of PAIRS) {
   process.stdout.write(`${pair.name} ... `);
-  const mock = await read(page, `${MOCK}/${pair.mock}`, path.join(OUT, `${pair.name}-drawing.png`));
+  const mock = await read(page, `${MOCK}/${pair.mock}`, path.join(OUT, `${pair.name}-drawing.png`), true);
   out.push(`## ${pair.name}`, '');
   if (!pair.route) {
     out.push('No route captured: this page needs a live id. Set `PACK_ROUTE` and re-run.', '');

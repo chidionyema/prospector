@@ -1,0 +1,8 @@
+# cargo-audit ignores. cargo audit does not read deny.toml, so each id here mirrors a
+# deny.toml entry with the same reason; keep the two lists identical (crew #230).
+[advisories]
+ignore = [
+  "RUSTSEC-2026-0194", # quick-xml 0.38 pinned by citationberg via hayagriva (typst); parses only typst's bundled CSL styles
+  "RUSTSEC-2026-0195", # quick-xml 0.38, same pin
+  "RUSTSEC-2026-0235", # rkyv 0.7: optional dep of rust_decimal (workspace), not enabled by any feature we build (cargo tree -i rkyv prints nothing); 0.8 is a semver-major jump upstream
+]

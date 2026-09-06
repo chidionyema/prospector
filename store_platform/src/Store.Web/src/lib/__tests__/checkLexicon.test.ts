@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { COMMON_CHECKS, checkForGate, checksSentence, engineGateIds, idsFor } from '../checks';
+import { GATE_LABELS } from '../gateLabels';
 
 /**
  * One vocabulary for the checks, across every surface that names them.
@@ -189,27 +190,23 @@ describe('the check vocabulary is defined once', () => {
    * of the newest kills, so "no idea has died on legality lately" is a fact about the engine, not
    * a copy defect.
    */
-  it('each verdict is the kill log verbatim', () => {
-    const log = JSON.parse(
-      readFileSync(join(SRC, 'data', 'kill-log.json'), 'utf8'),
-    ) as { entries: { gate: string; gateLabel: string }[] };
-    const labelForGate = new Map<string, string>();
-    for (const entry of log.entries) labelForGate.set(entry.gate, entry.gateLabel);
-    // Guards the guard: an empty or reshaped log would make every assertion below vacuous.
-    expect(labelForGate.size, 'kill-log.json carried no gate labels to compare against').toBeGreaterThan(0);
-
+  it('each verdict matches the buyer-facing GATE_LABELS map', () => {
+    // The generated kill-log JSON still carries the engine's old labels. Display chrome remaps
+    // them through `lib/gateLabels.ts` (founder 2026-09-03: labels are allowed; one-liners are
+    // not). The homepage and the kill log must print the same sentence, and that sentence lives
+    // in GATE_LABELS, not in the generated file.
     const drifted: string[] = [];
     let compared = 0;
     for (const check of COMMON_CHECKS) {
       for (const id of idsFor(check)) {
-        const label = labelForGate.get(id);
+        const label = GATE_LABELS[id];
         if (!label) continue;
         compared += 1;
-        if (label !== check.verdict) drifted.push(`${id}: log "${label}" vs checks.ts "${check.verdict}"`);
+        if (label !== check.verdict) drifted.push(`${id}: GATE_LABELS "${label}" vs checks.ts "${check.verdict}"`);
       }
     }
-    expect(compared, 'no common gate appears in the kill log; the comparison read nothing').toBeGreaterThan(0);
-    expect(drifted, 'the homepage would print a verdict the kill log never uses').toEqual([]);
+    expect(compared, 'GATE_LABELS named none of the common checks').toBeGreaterThan(0);
+    expect(drifted, 'a check verdict drifted from the display map').toEqual([]);
   });
 
   it('ids and aliases are unique across the set', () => {
@@ -219,10 +216,10 @@ describe('the check vocabulary is defined once', () => {
 
   it('resolves the distribution gate under both engine spellings', () => {
     // `side_hustle` calls it route_to_market, the other lanes call it distribution. One name.
-    expect(checkForGate('distribution')?.name).toBe('A route to the buyer');
-    expect(checkForGate('route_to_market')?.name).toBe('A route to the buyer');
+    expect(checkForGate('distribution')?.name).toBe('Reach');
+    expect(checkForGate('route_to_market')?.name).toBe('Reach');
     // The catalogue field arrives with the underscores already spaced out.
-    expect(checkForGate('route to market')?.name).toBe('A route to the buyer');
+    expect(checkForGate('route to market')?.name).toBe('Reach');
     expect(checkForGate('buyer_intent'), 'lane-specific gates are not in the common set').toBeNull();
     expect(checkForGate(null)).toBeNull();
   });

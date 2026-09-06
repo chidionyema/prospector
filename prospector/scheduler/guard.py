@@ -103,6 +103,15 @@ class GuardDecision:
     # The local calendar day both figures were summed over. Present so a reader never has to
     # guess whether a figure is UTC-day or local-day (that guess cost a wrong verdict once).
     day: str = ""
+    # Ledger lines for `day` that could not be parsed. Every one of them may have been a spend
+    # row, so `today_spend_usd` is a LOWER BOUND whenever this is > 0 and the cap has that much
+    # less room than it appears to. Measured 2026-08-21 20:30 on ledger/prospector-2026-08-21
+    # .jsonl.gz in R2: 1,503,024 records, 54 unparseable, 48 of them runs of NUL bytes, 94,453
+    # NUL bytes in total. The first is at 2026-08-18 08:47:09Z and the last at 18:57:05Z, one
+    # minute after the v90 cutover SIGKILLed a process still running the un-fsynced code. Until
+    # 2026-08-18 this counter would have read 0 for the file's whole history, which is why
+    # nobody had one.
+    today_ledger_holes: int = 0
 
 
 class SchedulerGuard:
@@ -118,6 +127,8 @@ class SchedulerGuard:
         # caller wanting spend over a WINDOW does not have to parse the ledger a second time.
         # See `spend_by_day`.
         self._days: dict[str, list[float]] = {}
+        self._holes: dict[str, int] = {}
+        self._holes_this_pass = 0
 
     @property
     def scheduler_dir(self) -> Path:
@@ -184,49 +195,69 @@ class SchedulerGuard:
         except OSError:
             return ""
 
-    def _load_scan_cache(self, p: Path, head_sig: str) -> tuple[int, str, dict]:
-        """Return (offset, newest, days) to resume from, or (0, "", {}) for a full re-scan.
+    def _load_scan_cache(self, p: Path, head_sig: str) -> tuple[int, str, dict, dict]:
+        """Return (offset, newest, days, holes) to resume from, or empties for a full re-scan.
+
+        `holes` is deliberately NOT part of the version gate. It was added on 2026-08-21 to a
+        cache format already in production, and bumping `_SCAN_CACHE_VERSION` to carry it would
+        have rejected every live checkpoint and forced one full re-scan. That scan is the exact
+        thing this cache exists to prevent: 71 s at 158 MB when it was written, against
+        `prospector-run.sh`'s 110 s timeout, and the ledger is 456 MB today. So a cache written
+        before this change loads with no holes recorded and keeps its offset, and a cache
+        written after it is still read by code that predates it.
 
         Every rejection path is a full re-scan, never a partial sum: a checkpoint that cannot be
         proven to describe THIS file is worth less than the seconds it saves, because the figure
         it feeds is a spend ceiling.
         """
         if os.environ.get(_FULL_SCAN_ENV) == "1":
-            return 0, "", {}
+            return 0, "", {}, {}
         try:
             raw = json.loads(self.scan_cache_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            return 0, "", {}
+            return 0, "", {}, {}
         if not isinstance(raw, dict) or raw.get("version") != _SCAN_CACHE_VERSION:
-            return 0, "", {}
+            return 0, "", {}, {}
         if raw.get("head_sig") != head_sig or not head_sig:
-            return 0, "", {}          # rotated, rewritten, or unreadable head
+            return 0, "", {}, {}      # rotated, rewritten, or unreadable head
         try:
             offset = int(raw.get("offset", 0))
             size = p.stat().st_size
         except (TypeError, ValueError, OSError):
-            return 0, "", {}
+            return 0, "", {}, {}
         if offset < 0 or offset > size:
-            return 0, "", {}          # truncated behind us
+            return 0, "", {}, {}      # truncated behind us
         days_raw = raw.get("days")
         newest = raw.get("newest")
         if not isinstance(days_raw, dict) or not isinstance(newest, str):
-            return 0, "", {}
+            return 0, "", {}, {}
         days: dict[str, list[float]] = {}
         for k, v in days_raw.items():
             try:
                 days[str(k)] = [float(v[0]), float(v[1])]
             except (TypeError, ValueError, IndexError, KeyError):
-                return 0, "", {}
-        return offset, newest, days
+                return 0, "", {}, {}
+        holes: dict[str, int] = {}
+        for k, v in (raw.get("holes") or {}).items():
+            # A malformed holes map costs the count, never the offset. Rejecting the whole
+            # checkpoint here would trade a 456 MB re-scan for a number that is only a warning.
+            try:
+                holes[str(k)] = int(v)
+            except (TypeError, ValueError):
+                continue
+        return offset, newest, days, holes
 
-    def _save_scan_cache(self, *, offset: int, newest: str, days: dict, head_sig: str) -> None:
+    def _save_scan_cache(self, *, offset: int, newest: str, days: dict, head_sig: str,
+                         holes: dict | None = None) -> None:
         """Persist the checkpoint. Best-effort: a failure costs speed, never correctness."""
         if os.environ.get(_FULL_SCAN_ENV) == "1" or not head_sig:
             return
         kept = dict(sorted(days.items(), reverse=True)[:_SCAN_CACHE_DAYS])
         payload = {"version": _SCAN_CACHE_VERSION, "head_sig": head_sig,
                    "offset": int(offset), "newest": newest, "days": kept}
+        if holes:
+            # Same 30-day window as `days`, so the checkpoint cannot grow without bound.
+            payload["holes"] = {k: v for k, v in sorted(holes.items(), reverse=True)[:_SCAN_CACHE_DAYS]}
         path = self.scan_cache_path
         tmp = path.with_suffix(path.suffix + f".tmp{os.getpid()}")
         try:
@@ -274,8 +305,17 @@ class SchedulerGuard:
         The `event` test is what separates them, and it is deliberately exclusive: a future
         provider that emits both keys on one row must not be double-counted.
 
-        Robust to a missing/partly-written ledger: unparseable lines are skipped. Timestamps are
-        matched by their `YYYY-MM-DD` date prefix, which holds for both ISO and asctime formats.
+        Unparseable lines are skipped AND COUNTED, per day, into `holes`. That sentence used to
+        end at "are skipped" and read as robustness, which it was while the only unparseable line
+        was a half-written last append. It stopped being true on 2026-08-18 08:47:09: the engine
+        began taking SIGKILL five seconds into shutdown, so `flush()`-only writes died in the page
+        cache and the filesystem returned the recorded length as NUL bytes. 50 such runs are in
+        the R2 snapshot of the live ledger. Every one may have hidden a spend row, so a skip is
+        under-counted money, and money that is not counted is cap room that does not exist.
+        The count does not repair the sum. It stops the loss being invisible to whoever reads the
+        cap. `prospector/telemetry.py` (DurableFileHandler) is what stops new holes appearing.
+
+        Timestamps are matched by their `YYYY-MM-DD` date prefix, which holds for ISO and asctime.
 
         The third value is the newest day any ledger row claims, folded into this same pass
         because the file is ~350k lines and is already read on every tick. It is NOT read from
@@ -287,7 +327,8 @@ class SchedulerGuard:
             return 0.0, 0.0, ""
         day = self._today_str()
         head_sig = self._head_sig(p)
-        offset, newest, days = self._load_scan_cache(p, head_sig)
+        offset, newest, days, holes = self._load_scan_cache(p, head_sig)
+        holes_before = sum(holes.values())
         try:
             with p.open("rb") as f:
                 f.seek(offset)
@@ -301,6 +342,12 @@ class SchedulerGuard:
                     try:
                         d = json.loads(line)
                     except Exception:
+                        # `newest` and not `day`: attribute the hole to the newest day the ledger
+                        # has actually shown us, because a torn line carries no readable timestamp
+                        # of its own. On an empty cache that is "", so fall back to today rather
+                        # than lose the count to a key no reader will look up.
+                        key = newest or day
+                        holes[key] = holes.get(key, 0) + 1
                         continue
                     if not isinstance(d, dict):
                         continue
@@ -330,8 +377,11 @@ class SchedulerGuard:
                     bucket[idx] += amount
         except OSError:
             return 0.0, 0.0, ""
-        self._save_scan_cache(offset=offset, newest=newest, days=days, head_sig=head_sig)
+        self._save_scan_cache(offset=offset, newest=newest, days=days, head_sig=head_sig,
+                              holes=holes)
         self._days = days
+        self._holes = holes
+        self._holes_this_pass = sum(holes.values()) - holes_before
         metered, subscription = days.get(day, (0.0, 0.0))
         return round(metered, 6), round(subscription, 6), newest
 
@@ -359,6 +409,7 @@ class SchedulerGuard:
                 today_subscription_usd=subscription,
                 daily_subscription_cap_usd=sub_cap,
                 day=self._today_str(),
+                today_ledger_holes=self._holes.get(today, 0),
             )
 
         if paused:

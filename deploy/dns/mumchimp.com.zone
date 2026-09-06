@@ -7,11 +7,10 @@
 ; must not read as drift. See docs/MIGRATION_AND_DR_PROGRAM.md M9.
 
 _dmarc.mumchimp.com   TXT    "v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:support@mumchimp.com;"
-api.mumchimp.com      CNAME  prospector-store-api.fly.dev.
-mumchimp.com          A      66.241.124.37
-mumchimp.com          AAAA   2a09:8280:1::130:427c:0
+api.mumchimp.com      A      193.123.184.22
+mumchimp.com          A      193.123.184.22
 mumchimp.com          MX     5 smtp.google.com.
 mumchimp.com          NS     danica.ns.cloudflare.com.
 mumchimp.com          NS     tony.ns.cloudflare.com.
 mumchimp.com          TXT    "v=spf1 include:_spf.google.com include:spf.mailjet.com ~all"
-www.mumchimp.com      CNAME  prospector-store-web.fly.dev.
+www.mumchimp.com      A      193.123.184.22

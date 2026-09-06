@@ -3,7 +3,6 @@ import React from 'react';
 
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORY_LABEL } from '@/components/ui/PackCardHeader';
-import { PriceText } from '@/components/ui/Money';
 import { cx } from '@/components/ui/cx';
 import { marketLabel, type Pack } from '@/lib/api/client';
 import { categoryFor } from '@/lib/category';
@@ -13,7 +12,9 @@ import { repairTruncation } from '@/lib/copy';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
 import { CardProof } from '@/components/ui/ProofLine';
 import { packMarket } from '@/lib/market';
-import { paybackMultiple, type PackLeadStat } from '@/lib/packStat';
+import { paybackEquation, paybackLabel } from '@/lib/payback';
+import { type PackLeadStat } from '@/lib/packStat';
+import { packImage } from '@/lib/sectorImage';
 import { trackCardClick } from '@/lib/analytics';
 import { useCardImpressions } from '@/lib/useCardImpressions';
 
@@ -105,7 +106,10 @@ export function PackRow({
   // sits in a `line-clamp-2` box in a column measured at 179px wide on a 390px phone (this file's
   // own docblock above, "the text column runs L=80..R=259"). Measured with the real font
   // (Switzer, 14px/1.4, the site's `--text-meta`) against real prose in that exact column: only
-  // 46-57 characters fit on two lines before the clamp starts eating words. That is almost
+  // 46-57 characters fit on two lines before the clamp starts eating words. The sans face is
+  // Inter Variable since, so 46-57 is a Switzer figure and the exact count will have moved; the
+  // conclusion it supports -- that the column holds roughly a quarter of a 155-char line -- has
+  // not. That is almost
   // exactly the length of the two examples the founder quoted as broken -- "...the financier
   // covers the difference if copper" is 46 characters, the same number the measurement landed
   // on. At the 30-word default, `cardLine`'s own docblock records a 155-char median: roughly
@@ -147,6 +151,30 @@ export function PackRow({
       onClick={() => trackCardClick(pack.id, position)}
       className={cx('row', className)}
     >
+      {/* THE SECTOR PICTURE, and this is the shelf that carries most of the shop: the tile grid
+          renders three packs, the rows render the rest. Same file as the tile
+          (`lib/sectorImage.ts`), drawn once per sector and reused by every pack in it.
+
+          FIRST CHILD ON PURPOSE. `.row` is a two-column grid (mumchimp.css:94) whose children
+          pin themselves to column 1 and whose `.side` spans column 2 for all four rows. The
+          picture makes it three columns, so `globals.css` re-declares the track list and shifts
+          the text and the price stack one column right -- scoped with `:has(> .rowcover)` so a
+          row without a picture still renders exactly as the bundle draws it.
+
+          `alt=""` and `aria-hidden` because it states nothing: the sector is already in words in
+          the eyebrow immediately beside it. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
+          intrinsic size and no variants to serve. */}
+      <img
+        className="rowcover"
+        src={packImage(pack)}
+        alt=""
+        aria-hidden
+        width={800}
+        height={450}
+        loading={position != null && position <= 8 ? 'eager' : 'lazy'}
+        fetchPriority={position != null && position <= 2 ? 'high' : 'auto'}
+      />
       {(cat.tagged || offMarket) && (
         <span className="top">
           {cat.tagged && <span className="eyebrow">{cat.label.toUpperCase()}</span>}
@@ -169,9 +197,8 @@ export function PackRow({
           the 44px `.stat` device on the featured card, not for a 12.5px row. The longest of them
           also carried `truncate` (nowrap), which is what pushed the line past the right edge of
           the card at 390px. `CardProof` renders the drawing's own two forms and nothing else. */}
-      <CardProof sources={pack.sourceCount} payback={paybackMultiple(pack)} />
+      <CardProof sources={pack.sourceCount} payback={paybackLabel(paybackEquation(pack.price, pack.financialSnapshot), 'card')} price={price} />
       <span className="side">
-        <PriceText className="price num">{price}</PriceText>
         <span className="view">View &rarr;</span>
       </span>
     </Link>
@@ -326,17 +353,68 @@ export function PackTileGrid({
             href={`/pack/${pack.id}`}
             onClick={() => trackCardClick(pack.id, i + 1)}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-              <span className="eyebrow">{cat.label}</span>
-              {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
-            </div>
-            <h4>{listHeading(heading)}</h4>
+            {/* THE SECTOR PICTURE. One image per sector, reused by every pack in it, so a pack
+                published tonight in a sector already drawn arrives with its picture and costs
+                nothing (`lib/sectorImage.ts`). `alt=""` and `aria-hidden` because it is
+                decoration: the sector is already stated in words by the eyebrow directly below,
+                and a screen reader announcing it twice is worse than not announcing it at all.
+                THE FIRST TILE LOADS EAGERLY AND THE REST DO NOT, and that split is measured
+                rather than a habit. Lighthouse against the local production build on 2026-08-30
+                named this exact element as the largest contentful paint --
+                `div.three > a.htile > img.cover`, `/pack/7ba29bd2956e7e04.jpg` -- while it wore
+                `loading="lazy"`. A lazy LCP is the browser being told to defer the one thing the
+                score is measured on: the median of three runs was 4509ms against a 4500ms
+                budget. `fetchpriority="high"` on the same element is the other half, because
+                eager only stops the deferral, it does not move the request up the queue.
+
+                Every tile after the first keeps `lazy`: on a 390px phone the second is already
+                below the fold, and eager-loading a screenful of pictures nobody has scrolled to
+                is the mistake this fix is the opposite of.
+
+                No wrapper element -- `.htile` is a flex column and the image is one of its
+                children, which is what lets the negative margin take it to the card's edge. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- a static file with a known
+                intrinsic size and no variants to serve; `next/image` would add a loader round
+                trip and a wrapper div that breaks the full-bleed margin. */}
+            <img
+              className="cover"
+              src={packImage(pack)}
+              alt=""
+              aria-hidden
+              width={800}
+              height={450}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              fetchPriority={i === 0 ? 'high' : 'auto'}
+            />
+            {/* GATED ON `tagged`, like every other sector render site (`PackRow.tsx:152`,
+                `index.tsx:322`). This tile was added with the three-up row and did not carry the
+                guard, so it printed "Not yet tagged" -- a status message about our own pipeline --
+                on the first card of "Newest survivors", above the fold, on a live product. That is
+                the exact defect `lib/category.ts` documents and forbids. `categoryScale.test.ts`
+                asserted the gate on the shared `PackCardHeader` path only, so a new render site
+                could bypass it silently; `eyebrowIsGated.test.ts` now reads the source and fails
+                on any ungated one. */}
+            {(cat.tagged || viewedIds?.has(pack.id)) && (
+              <div className="kicker">
+                {cat.tagged && <span className="eyebrow">{cat.label}</span>}
+                {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
+              </div>
+            )}
+            {/* h3, NOT h4, and the reason is type rather than semantics. The shipped bundle
+                styles `.htile h3` (mumchimp.css:306: 18px / 645 / -.016em / 1.25) and has no rule
+                for any other level inside a tile, so the h4 this shipped with matched nothing:
+                measured on the built page 2026-08-30, the three tiles at the top of "What
+                survived" rendered their titles at 16px / weight 400 -- the reset's body default --
+                while every other product title on the same shelf is 17.5px / 640. They are the
+                first three products a visitor sees and they were the only ones set as plain text.
+                It also closes a heading jump. At 390px the section label above them
+                (`index.tsx:1248`, `hidden sm:block`) is `display:none` and therefore out of the
+                accessibility tree, so a phone screen reader went h2 -> h4. Now h2 -> h3 at every
+                width, and h3 is what every other card on this shelf already uses. */}
+            <h3>{listHeading(heading)}</h3>
             <p>{cardLine(repairTruncation(pack.oneLine) || sub, Infinity)}</p>
             <span className="foot">
-              {/* The same one proof line as the row (fix prompt D4), rendered as a `span`:
-                  `.foot` is a `<span>` here, and a `<p>` inside it is invalid nesting. */}
-              <CardProof as="span" sources={pack.sourceCount} payback={paybackMultiple(pack)} />
-              <PriceText className="price num">{formatPriceForMarket(pack.price, cur)}</PriceText>
+              <CardProof as="span" sources={pack.sourceCount} payback={paybackLabel(paybackEquation(pack.price, pack.financialSnapshot), 'card')} price={formatPriceForMarket(pack.price, cur)} />
             </span>
           </Link>
         );

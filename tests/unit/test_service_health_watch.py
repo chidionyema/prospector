@@ -31,7 +31,6 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import rollback_now  # noqa: E402
 import service_health as sh  # noqa: E402
 
 from prospector.ops import console_api as api  # noqa: E402
@@ -71,7 +70,7 @@ def probes(monkeypatch, verdicts: dict):
         if isinstance(outcome, BaseException):
             raise outcome
         return outcome, [f"  {'ok' if outcome else 'FAIL'}   {name} line"]
-    monkeypatch.setattr(rollback_now, "_probe_all", fake_probe_all)
+    monkeypatch.setattr(sh, "_probe_all", fake_probe_all)
 
 
 @pytest.fixture(autouse=True)
@@ -82,13 +81,12 @@ def a_curl_exists(monkeypatch):
 
 # The real table, captured before any test narrows it, so `only()` can be called twice in one
 # test (that is what "a service left the table" looks like).
-_ALL_SERVICES = dict(rollback_now.SERVICES)
+_ALL_SERVICES = dict(sh.SERVICES)
 
 
 def only(name: str, monkeypatch):
     """Narrow SERVICES to one entry so a test states exactly what it drives."""
     svc = _ALL_SERVICES[name]
-    monkeypatch.setattr(rollback_now, "SERVICES", {name: svc})
     monkeypatch.setattr(sh, "SERVICES", {name: svc})
 
 
@@ -107,7 +105,7 @@ def test_a_healthy_service_is_up_and_the_run_exits_zero(cfg, sinks, monkeypatch)
 def test_every_service_in_the_table_is_reported_in_one_pass(cfg, sinks, monkeypatch):
     probes(monkeypatch, {})
     report = sh.run_once(cfg)
-    assert {r["service"] for r in report["results"]} == set(rollback_now.SERVICES)
+    assert {r["service"] for r in report["results"]} == set(sh.SERVICES)
 
 
 def test_one_failing_check_out_of_two_makes_the_service_down(cfg, sinks, monkeypatch):
@@ -117,9 +115,9 @@ def test_one_failing_check_out_of_two_makes_the_service_down(cfg, sinks, monkeyp
     def half(check):
         calls.append(check["url"])
         return (len(calls) == 1), f"GET {check['url']}"
-    monkeypatch.setattr(rollback_now, "_probe_one", half)
+    monkeypatch.setattr(sh, "_probe_one", half)
     only("engine", monkeypatch)
-    assert len(rollback_now.SERVICES["engine"]["probe"]) == 2
+    assert len(sh.SERVICES["engine"]["probe"]) == 2
     report = sh.run_once(cfg)
     assert report["down"] == ["engine"]
 
@@ -154,7 +152,7 @@ def test_no_curl_means_unproven_never_down(cfg, sinks, monkeypatch):
 
 def test_a_service_with_no_probe_is_unproven_not_healthy(cfg, sinks, monkeypatch):
     only("searxng", monkeypatch)
-    assert rollback_now.SERVICES["searxng"]["probe"] == []
+    assert sh.SERVICES["searxng"]["probe"] == []
     report = sh.run_once(cfg)
     assert report["results"][0]["status"] == "unproven"
     assert report["down"] == [] and report["alerted"] == []
@@ -295,7 +293,7 @@ def test_the_alert_carries_the_failing_line_and_the_way_to_undo_it(cfg, sinks, m
     sh.run_once(cfg)
     body = sinks.emitted[0]["message"]
     assert "store-web line" in body, "the alert must say which check failed"
-    assert "rollback_now.py store-web" in body
+    assert "rollout undo deployment/prospector-store-web" in body
     assert "prospector-store-web" in body
 
 
@@ -333,7 +331,7 @@ def test_the_state_file_is_valid_json_after_a_pass(cfg, sinks, monkeypatch):
     probes(monkeypatch, {})
     sh.run_once(cfg)
     state = json.loads(sh.state_path(cfg).read_text())
-    assert set(state) == set(rollback_now.SERVICES)
+    assert set(state) == set(sh.SERVICES)
 
 
 def test_a_state_file_that_cannot_be_written_still_reports_correctly(cfg, sinks, monkeypatch,
@@ -399,17 +397,28 @@ def test_json_output_parses_and_names_the_down_services(cfg, sinks, monkeypatch,
 # 6. no second definition of "healthy", and it is actually scheduled
 # --------------------------------------------------------------------------------------------
 
-def test_the_monitor_defines_no_urls_of_its_own(cfg):
-    """One probe table. A second copy drifts, and the copy nobody runs is the stale one."""
-    source = (ROOT / "scripts" / "service_health.py").read_text()
-    code = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
-    body = code.split('"""', 2)[-1]
-    assert "http://" not in body and "https://" not in body
+def test_there_is_one_probe_table(cfg):
+    """One probe table, in service_health.py. A second copy drifts, and the copy nobody runs
+    is the stale one. Before crew#203 the table lived in rollback_now.py and this file
+    imported it; now the rule is that no OTHER script under scripts/ carries a probe URL."""
+    for path in sorted((ROOT / "scripts").glob("*.py")):
+        if path.name == "service_health.py":
+            continue
+        code = "\n".join(line for line in path.read_text().splitlines()
+                         if not line.lstrip().startswith("#"))
+        assert '"probe": [' not in code, f"{path.name} carries a second probe table"
 
 
-def test_every_service_the_rollback_tool_knows_is_monitored(cfg):
-    assert sh.SERVICES is rollback_now.SERVICES
-    assert set(_ALL_SERVICES) == set(sh.SERVICES)
+def test_every_monitored_service_is_a_deployment_on_the_cluster(cfg):
+    """The table names what deploy/k8s/base/*.yaml runs, so an alert names a Deployment that
+    `kubectl rollout undo` can act on. A row for something the cluster does not run is a
+    UNPROVEN line forever, which is noise nobody reads."""
+    manifests = "\n".join(p.read_text() for p in (ROOT / "deploy" / "k8s" / "base").glob("*.yaml"))
+    assert sh.SERVICES, "empty table grades nothing"
+    for name, svc in sh.SERVICES.items():
+        if not svc["probe"]:
+            continue  # searxng: no probe, so no alert names its Deployment (tests above)
+        assert f"name: {svc['app']}" in manifests, f"{name}: no Deployment {svc['app']} in deploy/k8s/base"
 
 
 def test_the_engine_image_runs_it_on_a_schedule(cfg):
@@ -437,15 +446,15 @@ def test_the_console_has_a_button_for_it(cfg):
 
 
 def test_the_alert_key_is_unique_per_service(cfg):
-    keys = {sh.alert_key(name) for name in rollback_now.SERVICES}
-    assert len(keys) == len(rollback_now.SERVICES)
+    keys = {sh.alert_key(name) for name in sh.SERVICES}
+    assert len(keys) == len(sh.SERVICES)
 
 
 def test_the_repair_hint_names_the_right_app_for_each_service(cfg):
-    for name, svc in rollback_now.SERVICES.items():
+    for name, svc in sh.SERVICES.items():
         hint = sh.repair_hint(name)
         assert svc["app"] in hint
-        assert f"rollback_now.py {name}" in hint
+        assert f"rollout undo deployment/{svc['app']}" in hint
 
 
 # --------------------------------------------------------------------------------------------
@@ -482,7 +491,7 @@ def test_pruning_never_removes_a_service_that_is_still_watched(cfg, sinks, monke
     probes(monkeypatch, {})
     sh.run_once(cfg)
     sh.run_once(cfg)
-    assert set(json.loads(sh.state_path(cfg).read_text())) == set(rollback_now.SERVICES)
+    assert set(json.loads(sh.state_path(cfg).read_text())) == set(sh.SERVICES)
 
 
 def test_a_junk_state_entry_for_a_removed_service_does_not_crash_the_prune(cfg, sinks,
@@ -507,7 +516,7 @@ def test_the_engine_probe_still_proves_the_console_fails_closed(cfg):
     prospector-engine has an [http_service] on 8611, so the console is on the open internet.
     Deleting the 401 check would leave that claim standing with nothing measuring it.
     """
-    checks = rollback_now.SERVICES["engine"]["probe"]
+    checks = sh.SERVICES["engine"]["probe"]
     unauth = [c for c in checks if c.get("expect") == "401"]
     assert len(unauth) == 1
     assert unauth[0]["url"].endswith("/api/ops/read/status")

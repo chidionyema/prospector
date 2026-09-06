@@ -53,7 +53,7 @@ export default function NotFound() {
           </p>
           <div className="ctarow" style={{ justifyContent: 'center' }}>
             <Link className="btn" href="/">
-              Browse the catalogue <Icon name="arrowRight" size={16} />
+              Browse the packs <Icon name="arrowRight" size={16} />
             </Link>
             <Link className="btn ghost" href="/kill-log" prefetch={false}>
               Read the kill log

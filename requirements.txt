@@ -54,6 +54,12 @@ fastapi>=0.110
 uvicorn>=0.29
 starlette>=0.36
 httpx>=0.27
+
+# The estate research engine's ledger is Postgres, and it is the only durable output that
+# engine has (its pod's /state is an emptyDir). prospector/research_intake.py reads admitted
+# claims from it over a read-only role. Binary wheel deliberately: the source build needs
+# libpq headers, and the container image this runs in has none.
+psycopg[binary]>=3.2
 # Cloudflare R2 (S3-compatible) deliverable upload — bridge.py R2Uploader. Without it the R2 path
 # silently disables and packs publish unlisted (list-only-after-upload).
 boto3>=1.34

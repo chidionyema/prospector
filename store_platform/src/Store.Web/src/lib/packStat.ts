@@ -1,5 +1,5 @@
 import type { Pack } from '@/lib/api/client';
-import { paybackEquation } from '@/lib/payback';
+import { paybackEquation, paybackLabel } from '@/lib/payback';
 
 /**
  * THE ONE NUMBER A PACK CARD LEADS WITH.
@@ -114,15 +114,12 @@ export function packLeadStat(pack: Pack): PackLeadStat | null {
   // about which claims this shop will make. A rung that re-checked it here would be a second
   // ceiling to keep in step with the first.
   const payback = paybackEquation(pack.price, pack.financialSnapshot);
-  if (payback) {
+  const shown = paybackLabel(payback, 'card');
+  if (shown) {
     return {
       kind: 'price_multiple',
-      figure: `${payback.multiple}×`,
-      /* ONE WORD, and it is the proof line's word (2026-08-18). The label was "the price back in
-         month one, modelled", a sentence written for this 44px device and for nothing else, so
-         the same fact read one way here and another way ("17x payback") three rows below it. The
-         founder's fix list bans the sentence by name. */
-      label: 'payback',
+      figure: shown.replace(/\.$/, ''),
+      label: '',
     };
   }
 

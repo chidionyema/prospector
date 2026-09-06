@@ -102,11 +102,11 @@ const LABELS: Record<FacetKind, Record<string, string>> = {
    * packs.
    */
   advantage: {
-    code: 'I can build',
-    nocode: 'I don’t code',
-    sales: 'I can sell',
-    ops: 'I can run operations',
-    audience: 'I have an audience',
+    code: 'Build it',
+    nocode: 'Run it',
+    sales: 'Sell it',
+    ops: 'Run it',
+    audience: 'Grow an audience',
   },
   payer: {
     b2b: 'Sells to businesses',
@@ -175,11 +175,11 @@ const LABELS: Record<FacetKind, Record<string, string>> = {
 const SHORT_LABELS: Partial<Record<FacetKind, Record<string, string>>> = {
   payer: { b2b: 'B2B', b2c: 'B2C', b2g: 'B2G' },
   advantage: {
-    code: 'Builders',
-    nocode: 'No code',
-    sales: 'Sellers',
-    ops: 'People who run things well',
-    audience: 'Audience',
+    code: 'Build it',
+    nocode: 'Run it',
+    sales: 'Sell it',
+    ops: 'Run it',
+    audience: 'Grow an audience',
   },
 };
 
@@ -215,11 +215,11 @@ export function shortLabel(kind: FacetKind, value: string | null | undefined): s
  */
 const CLAUSE_LABELS: Partial<Record<FacetKind, Record<string, string>>> = {
   advantage: {
-    code: 'Suits builders',
-    nocode: 'No code needed',
-    sales: 'Suits sellers',
-    ops: 'Suits people who run things',
-    audience: 'Suits an audience',
+    code: 'Build it',
+    nocode: 'Run it',
+    sales: 'Sell it',
+    ops: 'Run it',
+    audience: 'Grow an audience',
   },
 };
 

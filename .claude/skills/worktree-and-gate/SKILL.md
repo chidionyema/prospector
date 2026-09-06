@@ -9,13 +9,18 @@ This was 1,742 tokens of CLAUDE.md, injected into every session. Most sessions n
 worktree. The rules that must survive without it are still in CLAUDE.md; everything below is the
 history and the traps, and it loads on demand.
 
-**As of 2026-08-17 there is NO pre-commit gate in this checkout. Nothing stops a bad commit
-locally. Run the gate yourself.** This paragraph has now been wrong in both directions, which
-is exactly why the two commands below exist — read them, never this prose.
+**The gate is ON as of 2026-08-21, so budget 7–25 minutes for every `git commit`.** This
+paragraph has now been wrong in three directions, which is exactly why the two commands below
+exist — read them, never this prose.
 
-Measured 2026-08-17: `git config --get core.hooksPath` is empty, and
-`.git/hooks/` contains only `pre-commit.DISABLED-2026-08-14` and `pre-commit.sample`. There is
-no `pre-commit` file, so `git commit` runs no gate.
+Measured 2026-08-21: `git config --get core.hooksPath` is empty, and
+`.git/hooks/pre-commit` is a symlink to `.lux/hooks/pre-commit`, dated 20 Aug 09:11. So
+`git commit` runs the full gate, in-process, holding `.git/index.lock` for the whole run.
+
+The line this replaced said "As of 2026-08-17 there is NO pre-commit gate in this checkout.
+Nothing stops a bad commit locally." That was true when written and false four days later. A
+dated measurement of a setting somebody flips by hand has a shelf life, and this one is kept
+only as history — run the commands.
 
 History, because both states have happened: the founder disabled the gate on 2026-08-14 by
 moving `.git/hooks/pre-commit` aside. On 2026-08-15 at 18:57 someone set `core.hooksPath` to

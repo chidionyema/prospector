@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import dns_zone  # noqa: E402  # isort: skip
 
 
-APEX = ("mumchimp.com", "A", "66.241.124.37")
+APEX = ("mumchimp.com", "A", "193.123.184.22")
 DMARC = ("_dmarc.mumchimp.com", "TXT",
          '"v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:support@mumchimp.com;"')
 SPF = ("mumchimp.com", "TXT", '"v=spf1 include:_spf.google.com include:spf.mailjet.com ~all"')
@@ -85,8 +85,8 @@ def test_a_ttl_change_is_not_drift():
     drill would go red on the exact day of a planned migration -- the day it is most likely to
     be dismissed as noise.
     """
-    long_ttl = ["mumchimp.com.\t3600\tIN\tA\t66.241.124.37"]
-    short_ttl = ["mumchimp.com.\t60\tIN\tA\t66.241.124.37"]
+    long_ttl = ["mumchimp.com.\t3600\tIN\tA\t193.123.184.22"]
+    short_ttl = ["mumchimp.com.\t60\tIN\tA\t193.123.184.22"]
     assert dns_zone.parse(long_ttl) == dns_zone.parse(short_ttl) == {APEX}
 
 
@@ -124,8 +124,8 @@ def test_the_committed_mumchimp_zone_is_real():
     records = dns_zone.committed("mumchimp.com")
     assert APEX in records
     names = {(n, t) for n, t, _ in records}
-    for want in (("mumchimp.com", "MX"), ("www.mumchimp.com", "CNAME"),
-                 ("api.mumchimp.com", "CNAME"), ("_dmarc.mumchimp.com", "TXT")):
+    for want in (("mumchimp.com", "MX"), ("www.mumchimp.com", "A"),
+                 ("api.mumchimp.com", "A"), ("_dmarc.mumchimp.com", "TXT")):
         assert want in names, f"{want} missing from the committed zone"
 
 

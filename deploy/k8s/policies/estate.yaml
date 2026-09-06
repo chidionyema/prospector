@@ -1,0 +1,129 @@
+# The estate's standards, as something a machine refuses rather than something an agent remembers.
+#
+# Founder, 2026-08-24: "we dont eforce stadard adbest practices, this is a new funxtion, we need to
+# be ready fron day 0 thats why ii asked for research, stop naking ecuses". This file is the answer
+# in the form he asked for: day 0, enforced, not written down.
+#
+# WHY KYVERNO AND NOT A SCRIPT. Measured 2026-08-24 against two sources that can disagree, the CNCF
+# landscape.yml and the CLOMonitor API: Kyverno is CNCF GRADUATED, graduated 2026-03-24, CLOMonitor
+# 93.75, Apache-2.0. The alternative, OPA Gatekeeper, is also graduated and also Apache-2.0, and it
+# wins on exactly one axis -- Rego also runs against Terraform and plain HTTP APIs, so a
+# cross-platform estate should prefer it. This estate's policies are all about Kubernetes objects,
+# and Kyverno policies are ordinary Kubernetes YAML with no second language to learn. If the estate
+# later needs one policy engine covering Terraform as well, Gatekeeper is the named replacement.
+#
+# EVERY RULE BELOW IS AN INCIDENT, NOT A BEST PRACTICE. A generic hardening bundle copied off a blog
+# is the thing that gets an exemption on its first Friday. These seven each name the date the estate
+# was bitten and the file that carries the scar, which is what makes them survivable when one of them
+# is inconvenient at 2am.
+#
+# ENFORCE, NOT AUDIT, AND THAT IS DELIBERATE. LAW 38 says a guard that refuses correct work is an
+# outage, so each rule states what it permits as narrowly as it states what it refuses, and every one
+# of them is proved BOTH WAYS by deploy/rehearse_cluster.sh -- a refusal and a pass, in the same run.
+# A gate with only refusal tests is a gate nobody has shown is safe to install.
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: money-rail-single-writer
+  annotations:
+    policies.kyverno.io/title: One engine, one spend ledger
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      deploy/PORTABILITY.md item 1 is "run one container, and only one", because two engines keep two
+      spend ledgers and can each spend the full $100 daily cap against config.yaml spend.daily_cap_usd.
+      deploy/targets/k8s.sh:48 already refuses to NAME a pod when it finds two, but that check runs at
+      query time and cannot stop the second pod being created. This one can.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: single-writer-workloads-run-exactly-one-replica
+      match:
+        any:
+          - resources:
+              kinds: [Deployment, StatefulSet]
+              selector:
+                matchLabels:
+                  prospector.estate/single-writer: "true"
+      validate:
+        message: >-
+          This workload is labelled prospector.estate/single-writer, which means it owns the SQLite
+          store and the spend ledger. Two replicas is two writers: SQLite permits exactly one, and two
+          spend ledgers each honour the daily cap separately, so the cap doubles silently. Set
+          replicas to 1. If you genuinely need to scale this, the store has to leave SQLite first.
+        pattern:
+          spec:
+            replicas: 1
+
+    - name: single-writer-deployments-recreate-never-rollingupdate
+      match:
+        any:
+          - resources:
+              kinds: [Deployment]
+              selector:
+                matchLabels:
+                  prospector.estate/single-writer: "true"
+      validate:
+        message: >-
+          A Deployment's DEFAULT strategy is RollingUpdate, which starts the replacement pod BEFORE
+          the old one terminates. On a single-writer workload that means two engines for the length of
+          every handover, and against a ReadWriteOnce volume it means the new pod sits Pending on
+          "Multi-Attach error for volume" until the rollout times out -- which reads like a broken
+          image rather than a wrong strategy. One setting, two failures. Set strategy.type to Recreate.
+          The same note is at deploy/targets/k8s.sh:133.
+        pattern:
+          spec:
+            strategy:
+              type: Recreate
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: no-optional-secret-references
+  annotations:
+    policies.kyverno.io/title: A missing secret stops the pod, it does not start one half-configured
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      THIS IS THE 2026-08-24 INCIDENT, WRITTEN AS A POLICY. In compose the same trap is spelled
+      `required: false`. deploy/compose/docker-compose.yml pointed env_file at ../../.env, which is
+      correct in the repository and resolves to /srv/.env on a shipped box, where nothing has ever
+      been. `required: false` swallowed that without a word, so the box came up carrying NONE of the
+      24 settings the file holds. Measured inside the running container: `printenv | grep -i stripe`
+      returned exactly one name. The API refused to start, correctly, naming Stripe:WebhookSecret --
+      and the deploy script reported success anyway. The safety valve that lets a stack parse before
+      its secrets arrive is the same thing that hid the fact that no secrets ever arrived.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: envfrom-secretref-must-not-be-optional
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      # The system's own namespaces run controllers this estate did not write and does not get to
+      # re-specify. LAW 38: a fence that stops correct work is an outage, and refusing kube-system
+      # would take the cluster's own components down rather than the shop's.
+      exclude:
+        any:
+          - resources:
+              namespaces: [kube-system, kube-public, kube-node-lease, kyverno, cert-manager]
+      validate:
+        message: >-
+          `optional: true` on a secretRef is the Kubernetes spelling of compose's `required: false`.
+          It means the pod starts whether or not it was given its credentials, so the first thing that
+          fails is something downstream and the deploy reports success. Drop the field, or set it to
+          false, and let the pod stay Pending naming the Secret it wants. A pod that will not start is
+          an operator being told the truth.
+        foreach:
+          - list: "request.object.spec.containers[]"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.envFrom[].secretRef.optional || `[]` }}"
+                    operator: AnyIn
+                    value: [true]
+

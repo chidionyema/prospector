@@ -73,7 +73,7 @@ export default function AuthCallbackPage() {
     // nothing to start again WITH. The crumb is the only way out of it.
     // Width '3xl' matches the max-w-3xl the panel below already uses, so the two line up.
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Signing in' }]}
+      breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Signing in' }]}
       breadcrumbsWidth="6xl"
     >
       <Head>

@@ -5,6 +5,7 @@ import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { plainEnglish } from '@/lib/plainEnglish';
 import { SourceChip, sourceHost } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
+import { pickPassedSampleCheck } from '@/lib/sourceGate';
 
 /**
  * ONE PAGE OF THE PRODUCT, SHOWN.
@@ -91,12 +92,13 @@ const CHECKS = report.checks as Check[];
  * the specimen degrades to an honest page rather than to a claim about a failure that isn't there.
  * Nothing here narrates the choice to the reader -- the page is the evidence, not the caption.
  */
-const FAILED_INDEX = CHECKS.findIndex((check) => check.verdict !== 'supported');
-const FAILED = FAILED_INDEX >= 0 ? CHECKS[FAILED_INDEX] : CHECKS[CHECKS.length - 1];
-const PAGE_NUMBER = (FAILED_INDEX >= 0 ? FAILED_INDEX : CHECKS.length - 1) + 1;
+const SAMPLE = pickPassedSampleCheck(CHECKS, 'UK') ?? CHECKS.find((c) => c.verdict === 'supported') ?? CHECKS[0];
+const SAMPLE_INDEX = Math.max(0, CHECKS.findIndex((c) => c === SAMPLE || (c.key && SAMPLE && c.key === SAMPLE.key)));
+const PAGE_NUMBER = SAMPLE_INDEX + 1;
+const FAILED = SAMPLE;
 
 /** The check printed immediately above this one, for the mid-sentence opening. */
-const PRECEDING = CHECKS[Math.max(0, (FAILED_INDEX >= 0 ? FAILED_INDEX : CHECKS.length - 1) - 1)];
+const PRECEDING = CHECKS[Math.max(0, SAMPLE_INDEX - 1)];
 
 /**
  * The tail of a sentence, cut at a word boundary -- the fragment a page inherits from the page
@@ -172,9 +174,7 @@ export function PackSpecimen({ className }: { className?: string }) {
     <section className={cx('sample', className)}>
       <span className="eyebrow">A page from the free sample</span>
       <h2 className="sec mt-3 max-w-[24ch]">
-        {FAILED_INDEX >= 0
-          ? 'This is what a check looks like when it fails.'
-          : 'This is what one check looks like.'}
+        {SAMPLE ? 'This is what a passed check looks like.' : 'This is what one check looks like.'}
       </h2>
       <p className="meta num">
         {CHECKS.length} checks · {report.sourceCount} sources · 5,000+ words · free, no email

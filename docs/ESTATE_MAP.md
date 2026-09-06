@@ -191,7 +191,7 @@ been `started` since 2026-08-18. That is all that is true of it. Measured 2026-0
   lines. Nothing is running on it.
 - **No committed file in this repo describes it.** Five of the six `prospector-*` apps have a
   `fly.toml`; this one has none, so it cannot be reviewed, rebuilt, or moved off Fly.
-  `scripts/fly_estate_probe.py` is the probe that says so, and it exits non-zero today.
+  `scripts/fly_estate_probe.py (deleted 2026-08-26, crew#203)` is the probe that says so, and it exits non-zero today.
 - The **laptop still runs all eleven Hermes launchd jobs** — `ai.hermes.gateway`,
   `ai.hermes.coordinator`, `ai.hermes.otto-server`, `ai.hermes.idle-engine`, `ai.hermes.rsi`,
   `ai.hermes.progress`, `ai.hermes.watchdog`, `ai.hermes.runaway-reaper`,

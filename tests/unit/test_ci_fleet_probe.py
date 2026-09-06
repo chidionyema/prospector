@@ -11,6 +11,12 @@ The class is **a deployed artifact that no screen compares against its source**.
 by stamping the image with the commit it was built from (`deploy/runners.sh`) and grading that
 stamp here. These tests pin both halves, because a stamp nobody reads and a check for a stamp
 nobody writes both pass on their own.
+
+WHAT IS NO LONGER GRADED HERE. `ci-fleet-watch.yml` was deleted on 2026-08-22. It ran the probe
+on a schedule from a hosted runner and was gated on `vars.HOSTED_RUNNERS_AVAILABLE`, a switch
+that existed because Actions billing refused every hosted job on this account. The repository is
+public now and hosted jobs start, so the gate and the workflow both went. The probe survives as
+`scripts/ci_fleet_probe.py`, wired to the ops console, and the tests below still grade it.
 """
 
 from __future__ import annotations
@@ -127,100 +133,3 @@ def test_grade_reports_that_it_could_not_work_out_what_to_compare_against():
         image_only=True,
     )
     assert any("cannot tell whether the fleet is current" in p for p in out["problems"]), out
-
-
-# ── The check must actually be ASKED, and asked somewhere that can answer ──────────────────
-#
-# A probe wired to nothing is the defect this whole exercise exists to close: the stale image
-# was findable on 2026-08-19 by anyone who thought to look, and nobody thought to look. These
-# pin the schedule the same way the test above pins the stamp.
-
-WATCH = REPO_ROOT / ".github" / "workflows" / "ci-fleet-watch.yml"
-
-
-def _watch() -> dict:
-    import yaml
-
-    assert WATCH.exists(), (
-        f"{WATCH.name} is gone. The fleet probe then grades nothing on its own: it becomes a "
-        f"console button somebody has to think to press, which is how the fleet ran a day-old "
-        f"image while every screen read healthy."
-    )
-    doc = yaml.safe_load(WATCH.read_text())
-    # `on:` is the YAML boolean True. Accept either spelling rather than depending on the loader.
-    doc["on"] = doc.get("on", doc.get(True))
-    return doc
-
-
-def test_a_schedule_actually_asks_the_question():
-    doc = _watch()
-    assert "schedule" in (doc["on"] or {}), (
-        "ci-fleet-watch must run on a schedule. On workflow_dispatch alone it is a button, and "
-        "the fault it catches is one nobody knows to look for."
-    )
-    scripts = "\n".join(
-        step.get("run", "") for job in doc["jobs"].values() for step in job.get("steps", [])
-    )
-    assert "ci_fleet_probe.py --image-only" in scripts, (
-        "the workflow must invoke `scripts/ci_fleet_probe.py --image-only`. Without --image-only "
-        "it asks for the repository's runner list, which needs the `administration` permission "
-        "GITHUB_TOKEN cannot hold — so it would be red every morning for a credential reason, "
-        "and a check that cries wolf daily is a check nobody reads."
-    )
-
-
-def test_the_watch_does_not_run_on_the_fleet_it_grades():
-    """The states worth catching are the ones where the fleet cannot run a job."""
-    for job_id, job in _watch()["jobs"].items():
-        runs_on = str(job.get("runs-on", ""))
-        assert "self-hosted" not in runs_on and "CI_RUNS_ON" not in runs_on, (
-            f"job `{job_id}` runs on the fleet it is grading ({runs_on!r}). A dead or "
-            f"mis-imaged fleet cannot report that it is dead or mis-imaged. Hardcode a hosted "
-            f"runner here even though every other workflow in this repo uses vars.CI_RUNS_ON."
-        )
-
-
-def test_the_watch_checks_out_enough_history_to_have_an_expectation():
-    """A shallow checkout has no origin/main, and then there is nothing to compare against.
-
-    grade() now reports that rather than passing, so this would go RED rather than silently
-    green — but red-for-the-wrong-reason every morning is its own way of killing a check.
-    """
-    steps = [s for job in _watch()["jobs"].values() for s in job.get("steps", [])]
-    checkout = [s for s in steps if str(s.get("uses", "")).startswith("actions/checkout")]
-    assert checkout, "no checkout step — expected_image_sha() reads this repository's git log"
-    assert any(str((s.get("with") or {}).get("fetch-depth")) == "0" for s in checkout), (
-        "actions/checkout must set fetch-depth: 0. The default is a shallow single-ref clone "
-        "with no origin/main, so `git log origin/main -- deploy/runner` resolves nothing."
-    )
-    assert any("fetch" in s.get("run", "") and "origin" in s.get("run", "") for s in steps), (
-        "fetch origin main explicitly: fetch-depth 0 deepens the checked-out ref, it does not "
-        "guarantee a refs/remotes/origin/main to compare against"
-    )
-
-
-def test_the_watch_is_skipped_and_not_failed_while_hosted_runners_cannot_start():
-    """A daily red that no code change can clear teaches the estate to ignore red.
-
-    Measured 2026-08-20 07:21, run 32343624520, job 96347602802: zero steps, the job log 404s,
-    conclusion `failure`, and the only record anywhere is the annotation, verbatim — "The job was
-    not started because recent account payments have failed or your spending limit needs to be
-    increased." This account cannot start a GitHub-hosted job at all.
-
-    The job stays on `ubuntu-latest` and waits behind a switch rather than moving to the fly pool,
-    because `test_the_watch_does_not_run_on_the_fleet_it_grades` above is right: a fleet running
-    the wrong image cannot be trusted to report that it is running the wrong image. The cost of
-    the skip is that the question goes unasked, which is why ci-fleet-keeper's `announce` job
-    states the same outage once an hour on the pool that does work.
-    """
-    watch = _watch()["jobs"]["watch"]
-    assert watch.get("if") == "vars.HOSTED_RUNNERS_AVAILABLE == 'yes'", (
-        "jobs.watch must be gated on the founder-owned repository variable, so turning it back "
-        "on after billing is fixed is `gh variable set HOSTED_RUNNERS_AVAILABLE --body yes` and "
-        "not a code change: today the job cannot start, and a job that cannot start is a FAILURE "
-        f"on main every morning. Found: {watch.get('if')!r}"
-    )
-    assert "HOSTED_RUNNERS_AVAILABLE" in (WATCH.read_text()), (
-        "name the variable in the file, so the reader who finds this workflow skipped can see "
-        "what turns it back on without going to another repository's settings page"
-    )

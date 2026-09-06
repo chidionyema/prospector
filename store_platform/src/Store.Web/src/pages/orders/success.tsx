@@ -163,8 +163,8 @@ export default function OrderSuccess() {
   // is rendered via the Breadcrumbs component directly. Same data shape as MarketingLayout's
   // `breadcrumbs` prop, named the same, so the source-level test that scans for breadcrumbs
   // does not have to special-case this route.
-  // breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Order complete' }]}
-  const breadcrumbs = [{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Order complete' }];
+  // breadcrumbs={[{ href: '/', label: 'Packs' }, { href: '#', label: 'Order complete' }]}
+  const breadcrumbs = [{ href: '/', label: 'Packs' }, { href: '#', label: 'Order complete' }];
 
   return (
     <main id="main" className="min-h-dvh bg-bg">
@@ -196,7 +196,7 @@ export default function OrderSuccess() {
         </h1>
 
         {/* 3. Pack one-liner */}
-        <p className="mt-3 max-w-[60ch] lede">
+        <p className="mt-3 lede">
           {pack?.oneLine ?? 'Your payment was received. The download is ready below.'}
         </p>
 
@@ -230,7 +230,7 @@ export default function OrderSuccess() {
                     void navigator.clipboard?.writeText(`${origin}${firstItem.orderPath}`);
                     setCopied(true);
                   }}
-                  className={textLinkClass('font-medium')}
+                  className={textLinkClass()}
                 >
                   {copied ? (
                     <span className="flex items-center gap-1">
@@ -255,7 +255,7 @@ export default function OrderSuccess() {
             <h2 className="sec">
               Other packs in this category
             </h2>
-            <p className="mt-2 max-w-[60ch] lede">
+            <p className="mt-2 lede">
               Same vetted filter, same evidence standard. Three more from the same market.
             </p>
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -284,7 +284,7 @@ export default function OrderSuccess() {
             <h2 className="sub">
               Share with a friend
             </h2>
-            <p className="mt-2 max-w-[60ch] lede">
+            <p className="mt-2 lede">
               If this helped, send it to the one person who would actually build it.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -300,7 +300,7 @@ export default function OrderSuccess() {
                 Copy link
               </button>
               <a
-                href={`https://x.com/intent/tweet?text=${encodeURIComponent(`Vetted business pack from Mumchimp: ${pack?.title ?? ''}`)}&url=${encodeURIComponent(shareUrl)}`}
+                href={`https://x.com/intent/tweet?text=${encodeURIComponent(`Researched business pack from Mumchimp: ${pack?.title ?? ''}`)}&url=${encodeURIComponent(shareUrl)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"
@@ -318,7 +318,7 @@ export default function OrderSuccess() {
             <h2 className="sub">
               Save your receipt
             </h2>
-            <p className="mt-2 max-w-[60ch] lede">
+            <p className="mt-2 lede">
               Keep a copy for your records. The receipt is your orderPath; the bookmark
               above is the same URL.
             </p>
@@ -343,7 +343,7 @@ export default function OrderSuccess() {
           <h2 className="sub">
             {`What's next`}
           </h2>
-          <p className="mt-2 max-w-[60ch] lede">
+          <p className="mt-2 lede">
             The pack is a built project, not a report. Four steps to a first customer.
           </p>
           <ol className="mt-6 space-y-3">
@@ -421,7 +421,7 @@ function ResolutionFallback({
             <h1>
               Order confirmed
             </h1>
-            <p className="max-w-md lede">
+            <p className="lede">
               {phase === 'ready'
                 ? 'Your payment was received. Your download is ready below.'
                 : phase === 'resolving'
@@ -473,7 +473,7 @@ function ResolutionFallback({
                   </p>
                   <p className="text-caption text-muted mt-0.5">
                     {phase === 'unfulfilled'
-                      ? 'Your payment went through, but this order did not release its download. That is our fault, not yours. Send us the reference below and we will get your pack to you, or refund you in full, whichever you prefer.'
+                      ? 'Your payment went through, but this order did not release its download. The fault is ours. Send us the reference below and we will get your pack to you, or refund you in full, whichever you prefer.'
                       : phase === 'revoked'
                         ? 'This order was refunded, so its download has been withdrawn. Nothing further is owed. If that is unexpected, send us the reference below.'
                         : phase === 'timed-out'

@@ -19,10 +19,10 @@ describe('the dark strip above the header', () => {
   });
 
   it('prints the date the idea was killed, never the word today', () => {
-    expect(killTagLabel('2026-08-07')).toBe('Killed 7 Aug');
-    expect(killTagLabel('2026-12-25')).toBe('Killed 25 Dec');
-    expect(killTagLabel('not-a-date')).toBe('Killed');
-    expect(killTagLabel('2026-13-01')).toBe('Killed');
+    expect(killTagLabel('2026-08-07')).toBe('Rejected 7 Aug');
+    expect(killTagLabel('2026-12-25')).toBe('Rejected 25 Dec');
+    expect(killTagLabel('not-a-date')).toBe('Rejected');
+    expect(killTagLabel('2026-13-01')).toBe('Rejected');
     expect(killTagLabel(latestKill.date).toLowerCase()).not.toContain('today');
   });
 

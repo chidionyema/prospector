@@ -130,6 +130,39 @@ def test_a_preloaded_provider_with_no_key_is_skipped_not_fatal(monkeypatch):
             model="acme-small", fast_model="", max_tokens=64, timeout_s=5, cheap=False)
 
 
+def test_llm_base_url_and_llm_api_key_route_through_the_estate_router(monkeypatch):
+    """crew#325: two env vars point any declared provider at the estate's LiteLLM router.
+
+    `LLM_BASE_URL`/`LLM_API_KEY`, when both set, outrank the endpoint and key this operator
+    was declared with in config.yaml — the same override idiom `OllamaOperator` already uses
+    for `OLLAMA_BASE_URL`. No config.yaml edit and no new provider entry required.
+    """
+    monkeypatch.setenv("LLM_BASE_URL", "https://llm.example-zone.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "estate-master-key")
+    monkeypatch.setenv("ACME_API_KEY", "laptop-only-key")
+
+    provider = op.OpenAICompatibleOperator(
+        name="acme", base_url="https://api.acme.test/v1", api_key_env="ACME_API_KEY",
+        model="acme-small", fast_model="", max_tokens=64, timeout_s=5, cheap=False)
+
+    assert provider.base_url == "https://llm.example-zone.test/v1"
+    assert provider._key == "estate-master-key"
+
+
+def test_without_the_router_env_vars_behaviour_is_unchanged(monkeypatch):
+    """The other half of the same property: unset is byte-for-byte today's behaviour."""
+    monkeypatch.delenv("LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.setenv("ACME_API_KEY", "laptop-only-key")
+
+    provider = op.OpenAICompatibleOperator(
+        name="acme", base_url="https://api.acme.test/v1", api_key_env="ACME_API_KEY",
+        model="acme-small", fast_model="", max_tokens=64, timeout_s=5, cheap=False)
+
+    assert provider.base_url == "https://api.acme.test/v1"
+    assert provider._key == "laptop-only-key"
+
+
 def test_no_declared_provider_may_rule_finally():
     """The trust fence, re-asserted against the SHIPPED catalogue rather than a fixture."""
     from prospector.config import load_config

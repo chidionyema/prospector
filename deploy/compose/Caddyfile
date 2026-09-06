@@ -1,0 +1,72 @@
+# The edge. This is the only thing Fly was still doing for us that the compose stack
+# could not do for itself.
+#
+# WHY IT EXISTS. deploy/compose/docker-compose.yml has run the API and the storefront on a
+# plain Docker host since 2026-08-18, and PORTABILITY.md calls that the escape hatch. It is
+# not one on its own: it publishes ports 3000 and 5291 over HTTP. mumchimp.com is a shop
+# that takes card details, so an escape hatch with no certificate is a hatch you cannot
+# actually use. `force_https = true` and the two issued certificates were Fly's
+# contribution, and they were the last one.
+#
+# Caddy replaces it with no vendor in the path: it requests certificates from Let's Encrypt
+# on first request and renews them itself. The same file serves the local drill over plain
+# HTTP, so the routing that runs in production is the routing the drill exercises.
+#
+# TWO MODES, ONE FILE, set by EDGE_SITE / EDGE_API in stack.env:
+#
+#   production   EDGE_SITE="mumchimp.com, www.mumchimp.com"   EDGE_API="api.mumchimp.com"
+#                A bare hostname makes Caddy manage the certificate. Ports 80 and 443.
+#
+#   local drill  EDGE_SITE="http://localhost"                 EDGE_API="http://api.localhost"
+#                An explicit http:// scheme turns TLS OFF for that site block, which is how
+#                the drill runs on a laptop with no public DNS and no ACME challenge.
+#
+# The upstreams are compose service names on the compose network, NOT published host ports.
+# The containers therefore need no published port at all in production, which is what keeps
+# an un-TLS'd storefront off the box's public interface.
+
+{
+	# Where Let's Encrypt sends expiry warnings.
+	#
+	# THE DEFAULT IS NOT DECORATION. `email` with no argument is a parse error, not an
+	# omission: Caddy exits with "wrong argument count or unexpected line ending after
+	# 'email'" and the container restart-loops. Measured 2026-08-24 with ACME_EMAIL unset,
+	# which is exactly how the local drill runs. So an empty variable has to expand to
+	# something, and `{$VAR:default}` is the only place to put one.
+	#
+	# The default is a local address on purpose. The drill never contacts an ACME server, so
+	# it is never sent anywhere; production sets ACME_EMAIL in stack.env and Let's Encrypt
+	# gets a real mailbox for expiry warnings.
+	email {$ACME_EMAIL:ops@localhost}
+
+	# An admin endpoint on a public box is a config-write API. Nothing here uses it.
+	admin off
+}
+
+# The storefront the buyer types.
+{$EDGE_SITE} {
+	encode zstd gzip
+
+	# X-Forwarded-Proto is what tells ASP.NET and Next.js they are behind TLS. Without it
+	# the API builds http:// links into verification emails while the browser is on https,
+	# and the buyer meets a mixed-content warning at the one moment they are typing a card.
+	reverse_proxy web:3000 {
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
+
+# The API the storefront and the engine call.
+{$EDGE_API} {
+	encode zstd gzip
+
+	reverse_proxy api:8080 {
+		header_up X-Forwarded-Proto {scheme}
+
+		# Stripe posts webhooks here. A webhook that times out is a payment the shop never
+		# hears about, and Stripe's own retry window is the only thing that saves it, so
+		# give the origin longer than the default before giving up on it.
+		transport http {
+			response_header_timeout 60s
+		}
+	}
+}

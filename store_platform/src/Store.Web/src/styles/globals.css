@@ -12,7 +12,7 @@
    Same declarations as `.f-col h6` in the copied stylesheet, so the look is identical. */
 @layer components {
 
-  /* FOUR DEVIATIONS FROM THE SHIPPED STYLESHEET, each one measured against a check in
+  /* FIVE DEVIATIONS FROM THE SHIPPED STYLESHEET, each one measured against a check in
      `verify.mjs`. The bundle stays byte-identical; the deviation lives here, which is what
      `src/__tests__/stylesheetIsShippedVerbatim.test.ts` asks for. */
 
@@ -52,6 +52,26 @@
     display: block;
   }
 
+  /* `mumchimp.css:417` turns on `hyphens:auto` for `.d` and `.desc` under 520px, and with no
+     lower bound it breaks ordinary short words. The first listing on /packs rendered "third-party
+     libraries and ven-dors" on a 390px phone, measured 2026-08-30 -- a paragraph carrying a real
+     hyphen and an invented one four words later, which reads as a typo on a page whose whole
+     argument is that we are careful. The measure on a phone card is about 40 characters, narrow
+     enough that SOME hyphenation beats the rivers you get without it ("Commissioner's",
+     "infrastructure" do need to break), so the rule is bounded rather than turned off: nothing
+     under 12 characters hyphenates, and never fewer than 5 characters before the break or 4
+     after. `hyphenate-limit-chars` is limited availability (MDN,
+     Properties/hyphenate-limit-chars, read 2026-08-30: "does not work in some of the most
+     widely-used browsers") -- where it is unsupported the declaration is dropped and the line
+     behaves exactly as it does today, so this improves Safari and Chrome, which is where phone
+     traffic is, and is a no-op everywhere else. It cannot regress. */
+  @media (max-width: 520px) {
+    .d,
+    .desc {
+      hyphenate-limit-chars: 12 5 4;
+    }
+  }
+
   /* C3 forbids a heading jump, and every `.checkrow` / `.klrow` row heading followed an h2 as an
      h5 / h4. mumchimp.css:68 and :116 styled only those two levels, so the heading could not be
      raised in the markup without losing its type. Same declarations, at the level the document
@@ -71,60 +91,158 @@
     margin-bottom: 6px;
     max-width: 58ch;
   }
-  /* THE ONE REAL COLLISION, AND IT SURVIVES INTO THE SHIPPED STYLESHEET. Both drawings declare `.bars`: index.html
-     draws a row of kill-gate columns, pack-detail.html draws a stack of score bars, and
-     pack-detail wins. mumchimp.css:103 ships `flex-direction:column` with mumchimp.css:356 `i{flex:1;max-width:26px}`, which is the merged pair. Scoping index's version to the band it lives
-     in restores it without touching either drawing's rules. */
+  /* THE SAME GAP ON THE FAQ, AND IT WAS THE LOUDEST ONE ON THE SITE. The drawing writes the FAQ
+     list as `<details><summary>` (mockups/faq.html:469), so the question type lives in
+     `.faq summary` (mumchimp.css:142). This page's disclosure is a button plus a hidden panel --
+     deliberately, so a crawler that never clicks still sees the answer -- and no `<summary>`
+     means the drawn rule matched nothing. The question was classed `sub` instead and measured
+     23px / weight 655 on the built page against the 16.5px / 620 the drawing gives it: every
+     question on /faq was set at the size of a section heading. Same declarations, at the markup
+     this page uses. The layout half of `.faq summary` is not repeated -- the button already
+     supplies the flex row. */
+  .faq h2 {
+    font-size: 16.5px;
+    font-weight: 620;
+    letter-spacing: -0.014em;
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  /* THE SAME GAP ON THE LEGAL PAGES, AND IT WAS SILENT FOR LONGER. The drawing writes a clause
+     heading as a bare heading inside the `.legal` column (`mockups/refund.html:464`), and the
+     only heading rule the bundle gives that column is `.legal h4{font-size:17.5px;
+     font-weight:640;letter-spacing:-.014em;margin:28px 0 9px}` (mumchimp.css:237). Our clause
+     head is an `<h2>` -- correctly, the page's h1 is the policy title and the clauses sit under
+     it -- so that rule reached nothing. It carried `text-h3` instead, a class whose token was
+     deleted when the scale was cut to six steps, and an unmapped utility in Tailwind v4 emits
+     nothing at all: every clause heading on /terms, /privacy and /refund rendered at 16px, the
+     body size, measured on the built pages 2026-08-30.
+
+     `:not(.sec)` is load-bearing. `.closing` sits inside the same column and its heading is
+     `h2.sec` (mumchimp.css:14, clamp(24px,4.6vw,32px)), which ties this selector on specificity
+     and loses on source order, so without the exclusion this rule would shrink the closing line
+     from 32px to 17.5px. The margin half of `.legal h4` is not repeated -- the article already
+     spaces its sections with `space-y-8`. */
+  .legal h2:not(.sec) {
+    font-size: 17.5px;
+    font-weight: 640;
+    letter-spacing: -0.014em;
+  }
+
+  /* The same gap, one level further down. The specimen's `.doc-body` is drawn with an h3 head
+     per section and one sub-head under the failed check ("The strongest case against this
+     idea"), but the bundle gives `.doc-body` a rule for `p` and nothing else, so that sub-head
+     rendered at 16px / weight 400 on the built page (measured 2026-08-30) next to a 19px / 650
+     sibling. These are the bundle's own sub-head numbers, lifted from `.checkrow h5`
+     (mumchimp.css:68) -- the step it draws immediately below an h3. No new design. */
+  .doc-body h4 {
+    font-size: 16.5px;
+    font-weight: 635;
+    letter-spacing: -0.014em;
+    margin-bottom: 5px;
+  }
+  /* THE BAND DRAWS RANKED `.barline` ROWS NOW, NOT THE SPARKLINE.
+     Both drawings declare `.bars`. pack-detail wins in the merged sheet
+     (`flex-direction:column` plus `i{flex:1;max-width:26px}`). An earlier
+     restore in this file put the index sparkline back — `flex-direction:row`
+     and `height:44px` — which is what the founder is looking at: six
+     truncated stubs in one 22px strip, 20px inset from the shelf. The
+     component has used `.barline` since 2026-08-30; this block now matches
+     that markup. mumchimp.css is untouched. */
+  /* 624 sat flush on the left of the band (founder 2026-09-03). mumchimp
+     .band is padding 30px 0; a little side pad keeps the figure off the corner. */
+  .band {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .band .fig {
+    margin-left: 4px;
+  }
+
   .band .bars {
     display: flex;
-    flex-direction: row;
-    gap: 3px;
-    align-items: flex-end;
-    height: 44px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    height: auto;
+    width: 100%;
     margin-top: 16px;
   }
-  .band .bars i {
-    flex: 1;
-    max-width: 26px;
-    background: var(--dead);
-    border-radius: 1px;
-  }
-  .band .bars i.hot {
+  .band .barline .bar i {
+    flex: none;
+    max-width: none;
+    display: block;
+    height: 100%;
     background: var(--kill);
-    opacity: 0.85;
+    border-radius: 2px;
+    opacity: 0.82;
+  }
+  /* 624 (and the other row counts) sat in a 48px column with no pad,
+     7px from the bar. Widen the count column past the padding so the
+     figure sits as a number, not glued to the track. */
+  .band .barline {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .band .barline .n {
+    padding: 4px 8px 4px 12px;
+    margin-left: 8px;
+    min-width: 3.25ch;
   }
 
   /* ─────────────────────────────────────────────────────────────────────────────────────────
-     NO DESCRIPTION IS EVER CUT. Deliberate deviation from the copied drawing, 2026-08-18.
+     SHOP CARDS WRAP LIKE SHOP CARDS. Founder, 2026-09-01: wrapping and images look rubbish,
+     then "the whole site", then "polished to the highest standard starting from the landing
+     page." A pass in this file unclamped `.row .d` and `.htile p`, so it fought the bundle's
+     2-line / 3-line clamps (mumchimp.css:98, :307). Stop overriding the clamp. Wrap at words.
+     Titles clamp to two lines on the list formats. `text-wrap: pretty` stays.
 
-     Founder, on the live site: "broken titles still coming thru ... with ....". Measured with
-     Playwright against https://mumchimp.com the same day, at 390px and 1280px: NO title is
-     clipped anywhere on / or /ideas. Every one of those ellipses is the DESCRIPTION. `.row .d`
-     is a 2-line box -- 44px tall -- and the text inside it measured 65px to 87px on 17 of 17
-     cards at 390px and 5 of 5 at 1280px. So `-webkit-line-clamp` was firing on 100% of the
-     shelf, and the ellipsis a clamp paints is the "...." the founder was reading.
-
-     The drawing is not wrong about the shape; it is drawn against copy that fits. Ours does not:
-     the live catalogue's `oneLine` runs 124 to 268 characters (median 169, measured from
-     /api/store/catalog, 74 packs), and two lines of 14.5px type in this column hold about 120.
-     Raising the clamp to 3 or 4 only moves the cut. Removing it is the only setting under which
-     the founder's own acceptance test -- "no rendered description ends mid-word" -- is true for
-     every pack rather than for most of them.
-
-     WHAT THIS DOES NOT FIX, stated rather than buried: the founder also asked for the
-     description to exist in "short and long form". The catalogue has no short description. It
-     has a short TITLE (`cardLine`, 34-60 chars, which `cardHeading` already consumes as the
-     heading) and one long description. A real short form is a publish-path change, tracked in
-     docs/SITE_SPEC_PROGRAM.md; until it lands, the honest render is the whole sentence.
-
-     `text-wrap: pretty` is from the founder's polish layer section 3.2 and belongs with this
-     change rather than after it: unclamped body copy is exactly where a one-word last line
-     shows. */
-  .row .d,
-  .htile p {
+     Tailwind preflight sets `img { max-width: 100% }`. The tile cover is sized
+     `calc(100% + pad*2)` so it bleeds to the card edge; max-width:100% clipped that to the
+     content box and left a pad-wide empty plate on the right. `flex:1` on `.htile p` stretched
+     the description into a tall empty box so three tiles could share a footer line. */
+  .row > .top,
+  .row > h3,
+  .row > .d,
+  .row > .proof,
+  .featured h3,
+  .featured .d,
+  .catrow h4,
+  .catrow p,
+  .pagetop h1 {
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+  .row h3,
+  .htile h3 {
+    overflow-wrap: break-word;
+    hyphens: none;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  .featured h3 {
+    overflow-wrap: break-word;
+    hyphens: none;
+    font-size: clamp(2rem, 4.8vw, 3.25rem);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    max-width: 22ch;
+    -webkit-line-clamp: unset;
     display: block;
-    -webkit-line-clamp: none;
-    overflow: visible;
+  }
+  .row .d,
+  .htile p,
+  .featured .d {
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+    font-family: var(--font-sans);
+    font-weight: 400;
+    line-height: 1.55;
+    text-align: left;
   }
   .row .d,
   .htile p,
@@ -133,16 +251,599 @@
   main li {
     text-wrap: pretty;
   }
-
-  /* THE DRAWING WRITES SUB-HEADS AS <h3>. Pages that already spent their <h3> on a level below
-     need the same look one level up, and heading order is not negotiable, so the drawing's
-     `h3.sub` declarations are repeated for the other two levels. Same numbers, no new design. */
-  h2.sub,
-  h4.sub {
-    font-size: clamp(19px, 3.4vw, 23px);
-    letter-spacing: -0.02em;
-    font-weight: 655;
+  /* The bundle's `.htile p { flex: 1 }` (mumchimp.css:307) is what stretched the description
+     box. Keep the footer at the bottom of the tile; do not grow the paragraph to get there. */
+  .htile p {
+    flex: none;
+    line-height: 1.4;
+    margin: 0;
   }
+  .htile h3 {
+    margin: 0 0 6px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  .htile .kicker {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 4px;
+  }
+  .htile .kicker .eyebrow {
+    margin: 0;
+  }
+  .htile .foot {
+    margin-top: auto;
+    padding-top: 10px;
+  }
+  /* THE SECTOR PICTURES. Not a deviation from the bundle -- the bundle has no rule for these,
+     because when it was drawn the site had no imagery at all. That is the condition the founder
+     set on 2026-08-14 when he had the near-black media blocks taken out: "Remove the black media
+     block until there is real imagery for it" (docs/SITE_SPEC_PROGRAM.md:1007). There is real
+     imagery now, one drawing per sector in this stylesheet's own tokens, so the slot comes back
+     as the picture rather than as a frame around a generated mark. `lib/sectorImage.ts` owns
+     which file a pack gets.
+
+     `.cover` is the picture inside a `.htile`. The negative margin and the matching width are
+     what take it out to the card's border: `.htile` carries `padding:var(--pad)`
+     (mumchimp.css:304), so without them the image sits inset in a white frame. Top corners take
+     the card's radius less its 1px border, bottom two stay square, because the image meets the
+     text rather than the page. `--brand-tint` is the ground while the file loads, so a slow
+     connection shows a pale teal band instead of a white hole that then jumps.
+
+     `.packcover` is the same picture on the product page, where it is inside no card and so
+     takes the full radius and no negative margin. 2:1 rather than the file's own 16:9: it sits
+     directly above the `h1` in the 1.55fr column of `.two` (mumchimp.css:73), which measures
+     about 620px on a 1280px screen, and 16:9 there is a 350px band that pushes the title and the
+     lead sentence off a laptop fold. 3:1 cropped the drawing to a letterbox. 2:1 is a shop
+     product plate that still leaves the title on a 900px window. Below 900px `.two` collapses
+     to one column (mumchimp.css:432) and there is nothing beside it to push, so it takes the
+     file's own ratio back. `object-fit:cover` crops rather than squashes at both. */
+  .htile {
+    overflow: hidden;
+    padding: 12px;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .htile .cover {
+    display: block;
+    flex: none;
+    max-width: none;
+    /* 10px to the kicker — Guardian/Mail story cards sit type on the plate, not in a well. */
+    width: calc(100% + 24px);
+    margin: -12px -12px 10px;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    object-position: center;
+    background: var(--brand-tint);
+    border-radius: calc(var(--r-card) - 1px) calc(var(--r-card) - 1px) 0 0;
+  }
+  .packcover {
+    display: block;
+    width: 100%;
+    max-width: none;
+    aspect-ratio: 2 / 1;
+    object-fit: cover;
+    object-position: center;
+    background: var(--brand-tint);
+    border-radius: var(--r-card);
+    margin-bottom: 20px;
+  }
+  @media (max-width: 900px) {
+    .packcover {
+      aspect-ratio: 16 / 9;
+    }
+  }
+
+  /* Phone stacked tiles become a newspaper list, not a tower of 16:9 posters.
+     Mail / Guardian / BBC: plate left, headline right, standfirst full measure,
+     price on the meta line. At 390 a 3:2 full-bleed plate is 232px and the title
+     sits under it; that is one card per screen. */
+  @media (max-width: 860px) {
+    .three {
+      gap: 0;
+    }
+    .htile {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      column-gap: 12px;
+      row-gap: 2px;
+      padding: 14px 4px;
+      border-radius: 0;
+      border-left: 0;
+      border-right: 0;
+      border-top: 0;
+      background: transparent;
+    }
+    .htile + .htile {
+      border-top: 1px solid var(--line);
+    }
+    .htile .cover {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      width: 112px;
+      height: auto;
+      aspect-ratio: 3 / 2;
+      margin: 0;
+      border-radius: 2px;
+      align-self: start;
+    }
+    .htile .kicker {
+      grid-column: 2;
+      grid-row: 1;
+      margin: 0;
+    }
+    .htile h3 {
+      grid-column: 2;
+      grid-row: 2;
+      font-size: 17.5px;
+      line-height: 1.22;
+      margin: 0;
+      -webkit-line-clamp: 3;
+    }
+    .htile:not(:has(.kicker)) h3 {
+      grid-row: 1 / span 2;
+    }
+    .htile p {
+      grid-column: 1 / -1;
+      margin-top: 8px;
+      -webkit-line-clamp: 2;
+    }
+    .htile .foot {
+      grid-column: 1 / -1;
+      margin-top: 8px;
+      padding-top: 0;
+      border-top: 0;
+    }
+  }
+
+  /* THE FEATURED PACK IS A PRODUCT. Named areas, not "image spans 8 rows and every other
+     child is a loose column-2 item". The picture is a 4:3 plate pinned to the top of its
+     column — stretching it with the text made a mint tower and left the 44px stat floating
+     in a void. Still `.featured`, still the drawing's article. */
+  .featured:has(> .cover) {
+    display: grid;
+    grid-template-columns: minmax(200px, 34%) minmax(0, 1fr);
+    grid-template-areas:
+      "pic eye"
+      "pic title"
+      "pic desc"
+      "pic proof"
+      "pic packstat"
+      "pic bars"
+      "pic foot";
+    align-items: start;
+    column-gap: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+  .featured:has(> .cover) > .cover {
+    grid-area: pic;
+    align-self: start;
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: none;
+    min-height: 0;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    object-position: center;
+    background: var(--brand-tint);
+  }
+  .featured:has(> .cover) > .eyebrow {
+    grid-area: eye;
+    margin: 20px var(--pad) 0 24px;
+  }
+  .featured:has(> .cover) > h3 {
+    grid-area: title;
+    margin: 8px var(--pad) 0 24px;
+  }
+  .featured:has(> .cover) > .d {
+    grid-area: desc;
+    margin: 8px var(--pad) 0 24px;
+    margin-bottom: 0;
+  }
+  .featured:has(> .cover) > .gridwrap {
+    grid-area: proof;
+    min-width: 0;
+  }
+  .featured:has(> .cover) > .stat {
+    grid-area: packstat;
+    margin: 10px var(--pad) 0 24px;
+  }
+  .featured:has(> .cover) > .spark-row {
+    grid-area: bars;
+    margin: 10px var(--pad) 0 24px;
+  }
+  .featured:has(> .cover) > .foot {
+    grid-area: foot;
+    margin: 16px var(--pad) 20px 24px;
+  }
+
+  /* Hero columns share one top edge. The bundle centres them
+     (`align-items:center`, mumchimp.css:274). At 1280 the left column
+     sat 118px lower than the product card. Start both on the hero's
+     own padding. */
+  .hero {
+    align-items: start;
+  }
+
+  /* Hero column is ~400px. A side-by-side card crushes there. Stack: picture, copy, shop
+     proof, money. The drawing's `.featured` margin is for a full-measure slab; inside `.hero`
+     it is the column, so the margin goes. */
+  .hero .featured {
+    margin: 0;
+  }
+  .hero .featured:has(> .cover) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "pic"
+      "eye"
+      "title"
+      "desc"
+      "proof"
+      "packstat"
+      "bars"
+      "foot";
+  }
+  .hero .featured:has(> .cover) > .cover {
+    aspect-ratio: 16 / 9;
+  }
+  .hero .featured:has(> .cover) > .eyebrow {
+    margin: 16px var(--pad) 0;
+  }
+  .hero .featured:has(> .cover) > h3 {
+    margin: 8px var(--pad) 0;
+    font-size: 22px;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+  .hero .featured:has(> .cover) > .d {
+    margin: 8px var(--pad) 0;
+    max-width: none;
+  }
+  .hero .featured:has(> .cover) > .stat {
+    margin: 10px var(--pad) 0;
+  }
+  .hero .featured:has(> .cover) > .spark-row {
+    margin: 8px var(--pad) 0;
+  }
+  .hero .featured:has(> .cover) > .foot {
+    margin: 14px var(--pad) 18px;
+  }
+
+  /* "6 in 100" is a proof number ON the product, not a second card. Number and a stamp-sized
+     field share one row of the card grid — the way a shop puts a rating next to stars.
+     Inner card chrome is gone so it cannot float. */
+  .featured .gridwrap {
+    display: grid;
+    grid-template-columns: auto 88px;
+    grid-template-areas:
+      "fig dots"
+      "sub dots";
+    align-items: center;
+    column-gap: 14px;
+    justify-content: start;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 14px var(--pad) 0 24px;
+    margin: 0;
+  }
+  .hero .featured .gridwrap {
+    padding: 14px var(--pad) 0;
+  }
+  .featured .ratiofig {
+    grid-area: fig;
+    font-size: 28px;
+  }
+  .featured .ratiosub {
+    grid-area: sub;
+    font-size: 13.5px;
+    margin-top: 2px;
+    max-width: none;
+  }
+  .featured .ratio {
+    grid-area: dots;
+    max-width: 88px;
+    width: 88px;
+    gap: 3px;
+    margin: 0;
+  }
+  .hero .featured .stat .big {
+    font-size: 22px;
+  }
+
+  @media (max-width: 860px) {
+    .featured:has(> .cover) {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        "pic"
+        "eye"
+        "title"
+        "desc"
+        "proof"
+        "packstat"
+        "bars"
+        "foot";
+    }
+    .featured:has(> .cover) > .cover {
+      aspect-ratio: 16 / 9;
+    }
+    .featured:has(> .cover) > .eyebrow {
+      margin: 16px var(--pad) 0;
+    }
+    .featured:has(> .cover) > h3,
+    .featured:has(> .cover) > .d,
+    .featured:has(> .cover) > .stat,
+    .featured:has(> .cover) > .spark-row {
+      margin-left: var(--pad);
+      margin-right: var(--pad);
+    }
+    .featured:has(> .cover) > .foot {
+      margin: 14px var(--pad) 18px;
+    }
+    .featured .gridwrap {
+      padding: 12px var(--pad) 0;
+    }
+  }
+
+  /* `.rowcover` is the same picture on the dense shelf. `.row` is
+     `grid-template-columns:1fr auto` with text in column 1 and `.side` in column 2
+     (mumchimp.css:94-101). A picture makes it three columns, scoped with `:has(> .rowcover)`.
+
+     A 104px 16:9 plate is 58px tall and pinned to the top of the row, so it sat as a postage
+     stamp in the corner while the text column wrapped into the leftover 1fr. Stretching it
+     with the row made a 72 by 176 tower on a phone and squeezed the title. Founder,
+     2026-09-01: images look rubbish. The thumbnail is a square crop. The text track is
+     `minmax(0, 1fr)` so it wraps as a shop card instead of overflowing into the price.
+
+     Below 640px the picture stays a thumbnail beside the text. A full-width 16:9 band
+     was about 197px tall per row and left the title nowhere useful to sit. The row is already
+     one link, so the "View" caption is dropped on a phone to give the title the column. */
+  /* Newspaper list cut (Mail, Guardian, BBC): landscape plate, kicker, headline,
+     standfirst. Square 112px thumbs read as an app list. A 3:2 plate at 152px is
+     tall enough to have weight (the 16:9 postage stamp was 58px). Headline locks
+     to the top of the plate. On a phone the dek goes full measure under both,
+     which is how those papers keep the title next to the picture without
+     squeezing the standfirst into a 72px alley. */
+  .row:has(> .rowcover) {
+    grid-template-columns: 152px minmax(0, 1fr) auto;
+    grid-template-rows: auto auto 1fr auto;
+    column-gap: 16px;
+    row-gap: 2px;
+    align-items: start;
+  }
+  .row:has(> .rowcover) > .top {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+  }
+  .row:has(> .rowcover) > h3 {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+    line-height: 1.22;
+    letter-spacing: -0.018em;
+  }
+  .row:has(> .rowcover) > .d {
+    grid-column: 2;
+    grid-row: 3;
+    margin: 4px 0 0;
+  }
+  .row:has(> .rowcover) > .proof {
+    grid-column: 2;
+    grid-row: 4;
+  }
+  .row:has(> .rowcover) > .side {
+    grid-column: 3;
+    grid-row: 1 / span 4;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  .row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background: transparent;
+    border: 0;
+    border-right: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    border-radius: 0;
+    padding: 18px 16px 20px;
+    text-align: left;
+  }
+  .row h3 {
+    font-size: clamp(1.35rem, 2.1vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    -webkit-line-clamp: 4;
+    margin: 6px 0 8px;
+  }
+  .row .d {
+    margin-bottom: 6px;
+  }
+
+  .rowcover {
+    display: block;
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    align-self: start;
+    width: 152px;
+    height: auto;
+    min-height: 0;
+    max-width: none;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    object-position: center;
+    background: var(--brand-tint);
+    border-radius: 2px;
+    margin-top: 0;
+  }
+  @media (max-width: 640px) {
+    .row:has(> .rowcover) {
+      grid-template-columns: 112px minmax(0, 1fr);
+      grid-template-rows: auto auto auto auto;
+      column-gap: 12px;
+    }
+    .row:has(> .rowcover) > .top {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .row:has(> .rowcover) > h3 {
+      grid-column: 2;
+      grid-row: 2;
+      -webkit-line-clamp: 3;
+    }
+    .row:not(:has(> .top)) > h3 {
+      grid-row: 1 / span 2;
+    }
+    .row:has(> .rowcover) > .d {
+      grid-column: 1 / -1;
+      grid-row: 3;
+      margin-top: 8px;
+    }
+    .row:has(> .rowcover) > .proof {
+      grid-column: 1;
+      grid-row: 4;
+    }
+    .row:has(> .rowcover) > .side {
+      grid-column: 2;
+      grid-row: 4;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0;
+    }
+    .rowcover {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      width: 112px;
+      height: auto;
+      min-height: 0;
+      margin: 0;
+    }
+    .row .view {
+      display: none;
+    }
+  }
+
+
+  /* Broadsheet (founder 2026-09-03T1150Z + 2026-09-03T1235Z). mumchimp.css stays
+     byte-identical; these rules sit later in the same components layer. */
+  :root {
+    --kicker: #6B1D1D;
+  }
+  h1,
+  h2.sec,
+  .featured h3,
+  .row h3,
+  .htile h3,
+  .klrow h3,
+  .klrow h4,
+  .catrow h4 {
+    font-family: var(--font-serif, Georgia, 'Times New Roman', serif);
+    text-align: left;
+  }
+  h1 {
+    font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    max-width: 18ch;
+  }
+  .featured {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding: 28px 0 32px;
+    margin: 8px 0 28px;
+  }
+
+  .featured .eyebrow,
+  .row .eyebrow,
+  .htile .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--kicker);
+    text-align: left;
+  }
+  .rows {
+    display: grid;
+    grid-template-columns: 1fr;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    border-top: 1px solid var(--ink);
+    border-left: 1px solid var(--ink);
+  }
+  @media (min-width: 700px) {
+    .rows { grid-template-columns: 1fr 1fr; }
+  }
+  @media (min-width: 1080px) {
+    .rows { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  .row .side {
+    grid-column: auto;
+    grid-row: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 12px;
+  }
+  .row .proof,
+  .htile .proof,
+  .htile .foot {
+    font-variant: small-caps;
+    letter-spacing: 0.04em;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .three {
+    gap: 0;
+  }
+  @media (min-width: 861px) {
+    .three {
+      column-gap: 0;
+    }
+    .htile {
+      border: 0;
+      border-top: 1px solid var(--ink);
+      border-left: 1px solid var(--ink);
+      border-right: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+      padding: 16px;
+    }
+    .htile h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.15;
+      -webkit-line-clamp: 4;
+    }
+    .htile .cover {
+      border-radius: 0;
+    }
+  }
+  .split-3 {
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) {
+    .split-3 { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  .err, .err h1, .err p { text-align: center; }
 
   /* `.f-col h2` WAS HERE and is deleted (2026-08-18). It restated `.f-col h6` because our footer
      used an `<h2>` to keep heading order legal. The bundle ships `.f-col .colh`
@@ -199,6 +900,7 @@ html {
   /* Repeated rather than var(--font-sans) for the same substitution reason: it must resolve
      against -pref here, not against whatever --font-sans already computed to. */
   --font-mono: var(--font-mono-pref), var(--font-fallback-mono);
+  --font-serif: var(--font-serif-pref, Georgia, 'Times New Roman', serif);
 
   /* Redeclaring the variables is not enough on its own. Body copy has no font-family rule of its
      own — it inherits, and the nearest ancestor that sets one is this element. It used to set it
@@ -495,13 +1197,26 @@ body::before {
    a Tailwind utility such as `font-semibold` still overrides it, and the three
    `:is(h1, h2, h3).text-*` rules below stay unlayered and still win where a scale token is worn. */
 @layer base {
-  h1, h2, h3 {
+  /* h4, h5 AND h6 ARE IN THIS LIST SINCE 2026-08-30, AND LEAVING THEM OUT WAS A REAL DEFECT.
+     Tailwind's preflight sets every heading to `font-size:inherit;font-weight:inherit`, so a
+     heading level that neither the bundle nor this floor names renders as body text and nothing
+     anywhere fails. Measured on the built home page with a computed-style probe: four headings
+     came back at 16px / weight 400 -- the three tiles at the top of "What survived" (fixed
+     separately, the bundle draws those as `.htile h3`), the two kill-gate band heads, and the
+     specimen's "The strongest case against this idea". The bundle styles headings per container
+     (`.band h3`, `.checkrow h5`, `.klrow h4`), so a new container or a raised level silently
+     loses its type, and the page looks slightly wrong in a way nobody can point at.
+
+     The floor cannot break a drawn heading: `mumchimp.css` is imported into `layer(components)`,
+     which beats `base`, and a Tailwind utility beats both. It applies only where nothing else
+     has an opinion, which is exactly the broken case. */
+  h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-sans);
     /* 560, not 600, to match the weights the §3.2 scale tokens now carry (display/h1 560,
        h2 520). A heading wearing no scale token used to render 600 while one wearing `text-h1`
        rendered whatever the token said, so the same heading level had two weights depending on
-       how it was classed. 560 is only reachable because Switzer is a variable face -- see
-       tokens.css. This is now a FLOOR in the truest sense: it applies only where neither the
+       how it was classed. 560 is only reachable because Inter Variable is a variable face,
+       declaring a 100-900 axis at tokens.css:65. This is now a FLOOR in the truest sense: it applies only where neither the
        shipped bundle nor a utility has an opinion. */
     font-weight: 560;
     /* The per-size --text-*--letter-spacing values in the theme block are the finer control; this
@@ -707,13 +1422,53 @@ section {
   it by accident.
 */
 .page-hero + section > div {
-  padding-top: 1.75rem;
+  padding-top: 0.75rem;
 }
 @media (min-width: 768px) {
   .page-hero + section > div {
-    padding-top: 2.5rem;
+    padding-top: 1.25rem;
   }
 }
+
+/* `.pagetop` is the drawing's 14px/8px page-top padding. Inside PageHero that padding sits on
+   top of the band's own padding and recreates the empty slab the band just lost. Zero it only
+   here; pages that still use `.pagetop` without PageHero keep the drawing. */
+.page-hero .pagetop {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* The drawing's `h1{max-width:12ch}` is sized for the landing slogan. On the pack page the
+   title is a ~90-character product name in the 1.55fr column of `.two`; 12ch wraps it into a
+   crushed strip under a 610px picture. The column decides the measure. Unlayered so it beats
+   the drawing rule in `components`. */
+.two h1 {
+  max-width: none;
+  overflow-wrap: break-word;
+}
+
+/* Signature proof on the pack page lives in the product column, not as a full-width
+   slab above the split. Keep the drawing's card; drop the extra top margin the old
+   placement needed to clear the trail. */
+.two .sigcard {
+  margin-top: 22px;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 900px) {
+  .two .sigcard {
+    padding: 16px var(--pad);
+  }
+  .two .sigcard .fig {
+    font-size: 28px;
+  }
+  .two .sigcard .cap {
+    font-size: 14px;
+    max-width: none;
+  }
+}
+
+
 
 @media print {
   header, footer { display: none; }

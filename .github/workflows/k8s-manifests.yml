@@ -1,0 +1,369 @@
+name: k8s manifests
+
+# THIS IS THE ENFORCEMENT, AND THAT DISTINCTION IS THE WHOLE POINT.
+#
+# Founder, 2026-08-24: "we dont eforce stadard adbest practices, this is a new funxtion, we need to
+# be ready fron day 0 thats why ii asked for research, stop naking ecuses".
+#
+# docs/K8S_STANDARDS_AND_WAYS_OF_WORKING.md is research and a written standard. A written standard
+# is a thing people agree with and then work around at 2am. This file is the same standard as
+# something a pull request cannot merge past.
+#
+# It grades the BUILT OUTPUT, never the source. The goal-guard note on this estate names the class:
+# four guards in one day graded a comment, an English word, a line prefix and a file extension
+# instead of the thing itself. A guard that greps deploy/k8s/**.yaml for the word "Enforce" is that
+# mistake again -- kustomize patches, remote bases and overlays all mean the file on disk is not
+# what reaches the cluster. Everything below runs `kubectl kustomize` first and reads the result.
+
+on:
+  push:
+    branches: [main]
+    paths: ['deploy/k8s/**', '.github/workflows/k8s-manifests.yml']
+  pull_request:
+    branches: [main]
+    paths: ['deploy/k8s/**', '.github/workflows/k8s-manifests.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: k8s-manifests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  manifests:
+    # Same convention as ci.yml: where CI runs is an ops setting, not a code change.
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # kubectl carries kustomize. No second tool to install, and nothing here needs a cluster.
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+
+      - name: Build both overlays
+        run: |
+          set -euo pipefail
+          mkdir -p _build
+          for env in staging production; do
+            kubectl kustomize "deploy/k8s/overlays/$env" > "_build/$env.yaml"
+            echo "$env: $(wc -c < "_build/$env.yaml") bytes"
+          done
+
+      # GATE 0. Every workload image resolves to a commit SHA, in the BUILT output.
+      #
+      # base/ pins `:set-by-an-overlay` on all three images on purpose, so a manifest applied
+      # without an overlay fails loudly instead of pulling something. The overlay is what turns
+      # that into a real tag, and until 2026-08-24 neither overlay did -- the `images:` block was
+      # commented out in both, so every environment named a tag that has never existed.
+      #
+      # Kyverno does not catch this and is not meant to: `disallow-latest-tag` refuses `:latest`
+      # and an untagged image, and `set-by-an-overlay`, `main` or `v2` all sail past it. A moving
+      # tag is worse than a missing one, because a missing one fails at pull time where you can
+      # see it, and a moving one runs code nobody reviewed while every check stays green.
+      - name: Every workload image is pinned to a commit SHA
+        run: |
+          set -euo pipefail
+          fail=0
+          for env in staging production; do
+            imgs=$(grep -oE '^\s+image:\s*ghcr\.io/\S+' "_build/$env.yaml" \
+                   | sed -E 's/^\s*image:\s*//' | sort -u)
+            if [ -z "$imgs" ]; then
+              echo "FAIL: $env built no ghcr.io image at all; this gate would pass on nothing"
+              fail=1
+              continue
+            fi
+            while IFS= read -r img; do
+              tag=${img##*:}
+              if printf '%s' "$tag" | grep -Eq '^[0-9a-f]{40}$'; then
+                echo "  OK   $env  $img"
+              else
+                echo "  FAIL $env  $img -- tag '$tag' is not a 40-character commit SHA"
+                fail=1
+              fi
+            done <<< "$imgs"
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo
+            echo "An overlay must name the commit its images were built from. container-images.yml"
+            echo "publishes exactly one immutable tag per commit; paste it into the overlay's"
+            echo "images: block. A tag that is not a commit SHA either does not exist (the pods"
+            echo "never start) or can move (the cluster runs code that was never reviewed)."
+            exit 1
+          fi
+
+      # GATE 1. Upstream ships every policy as Audit, which writes a report and admits the workload
+      # anyway. LAW 28: an instrument nobody reads is not an instrument. One Audit policy in the
+      # built output means a rule that has been quietly turned into a suggestion.
+      - name: Every policy enforces, none audits
+        run: |
+          set -euo pipefail
+          for env in staging production; do
+            total=$(grep -c '^kind: ClusterPolicy' "_build/$env.yaml")
+            enforce=$(grep -c 'validationFailureAction: Enforce' "_build/$env.yaml")
+            audit=$(grep -c 'validationFailureAction: Audit' "_build/$env.yaml" || true)
+            echo "$env: $total policies, $enforce Enforce, $audit Audit"
+            [ "$total" -eq "$enforce" ] || { echo "FAIL $env: $((total - enforce)) policies are not Enforce"; exit 1; }
+            [ "$audit" -eq 0 ] || { echo "FAIL $env: $audit policies still audit instead of refusing"; exit 1; }
+          done
+
+      # GATE 2. The one that actually earns the second cluster.
+      #
+      # A staging cluster with softer rules admits manifests production refuses, which converts a
+      # problem caught in staging into an outage in production. That is the single failure a staging
+      # environment exists to prevent, so it is the single thing worth a hard gate.
+      #
+      # This is a PROPERTY, not an example: "the two environments agree on policy". It does not
+      # name a policy, count them, or care which ones exist, so adding a policy tomorrow does not
+      # touch this file. Rung 2 of the test ladder in ~/AGENTS.md.
+      - name: Staging and production enforce identical policy
+        run: |
+          set -euo pipefail
+          for env in staging production; do
+            awk '/^kind: ClusterPolicy/{f=1} /^---$/{f=0} f' "_build/$env.yaml" \
+              | grep -v 'prospector.estate/environment' > "_build/$env.policy"
+            echo "$env: $(wc -l < "_build/$env.policy") policy lines"
+          done
+          if ! diff -u _build/staging.policy _build/production.policy > _build/policy.diff; then
+            echo "FAIL: the two environments do not enforce the same rules."
+            echo "An overlay may change an image tag, a replica count, a hostname or a secret"
+            echo "reference. It may never change a policy, because staging then stops rehearsing"
+            echo "production and starts rehearsing something easier. The difference:"
+            head -60 _build/policy.diff
+            exit 1
+          fi
+          echo "OK: identical policy in both environments"
+
+      # GATE 3. Pod Security Admission is built into Kubernetes and keeps working on a cluster where
+      # Kyverno is down or not yet installed. It is the cheapest rung that can express "no privileged
+      # pods here" -- one label, no controller. Losing the label is silent, so it is checked.
+      - name: The namespace carries Pod Security Admission at restricted
+        run: |
+          set -euo pipefail
+          for env in staging production; do
+            for key in enforce audit warn; do
+              grep -q "pod-security.kubernetes.io/$key: restricted" "_build/$env.yaml" \
+                || { echo "FAIL $env: namespace is missing pod-security.kubernetes.io/$key: restricted"; exit 1; }
+            done
+            echo "$env: PSA restricted on enforce, audit and warn"
+          done
+
+      # GATE 4. kyverno/policies publishes no releases -- measured 2026-08-24, GET
+      # /repos/kyverno/policies/releases/latest returns 404. So `?ref=main` would mean this cluster's
+      # admission rules change on a stranger's merge, with no review here and no way to say when they
+      # changed. Every remote kustomize resource carries a 40-character SHA or this fails.
+      #
+      # SCOPED TO kustomization.yaml `resources:`, AND THAT SCOPE IS THE POINT. The first version of
+      # this gate scanned every URL under deploy/k8s and failed on
+      # argocd/applicationset.yaml's own `repoURL: https://github.com/chidionyema/prospector.git`.
+      # That reference is correct unpinned: Argo CD tracks this repo at `targetRevision: main`, which
+      # is what continuous delivery IS. LAW 38 grades a guard that refuses correct work as an outage,
+      # so the gate now checks the thing it actually cares about -- somebody else's code entering our
+      # admission chain -- and nothing else.
+      - name: Remote kustomize resources are pinned to a commit
+        run: |
+          set -euo pipefail
+          unpinned=$(find deploy/k8s -name kustomization.yaml -print0 \
+            | xargs -0 grep -hoE '^\s*-\s*(https?://)?(raw\.githubusercontent\.com|github\.com)/\S+' \
+            | grep -vE '(ref=|/)[0-9a-f]{40}([/?]|$)' || true)
+          if [ -n "$unpinned" ]; then
+            echo "FAIL: these remote kustomize resources are not pinned to a commit SHA:"
+            echo "$unpinned"
+            echo
+            echo "A branch ref means this cluster's admission rules change on somebody else's merge."
+            exit 1
+          fi
+          echo "OK: every remote kustomize resource is pinned"
+          find deploy/k8s -name kustomization.yaml -print0 \
+            | xargs -0 grep -hoE '[0-9a-f]{40}' | sort -u | sed 's/^/  pinned at /'
+
+      # ---------------------------------------------------------------------------------------
+      # GATE 5. The policies actually DECIDE, and they decide both ways.
+      #
+      # Everything above proves the policy set BUILDS: 26 of them, all Enforce, both overlays
+      # identical, every remote resource pinned. None of that watches a policy refuse anything. A
+      # policy that builds is a policy nobody has seen make a decision, and the estate has spent a
+      # whole night on instruments that report a shape while the thing itself refuses to work.
+      #
+      # The Kyverno CLI runs the same admission engine offline, so no cluster is needed and the
+      # decision is made by the code that will make it in production rather than by a reading of the
+      # YAML. What this still cannot prove is that the webhook is reachable, that the policies were
+      # installed at all, or that the cluster is not quietly running them in Audit. Those need a live
+      # API server and stay open as register row F-47. This is the cheap one of LAW 15's two angles.
+      # ---------------------------------------------------------------------------------------
+      - name: Install the Kyverno CLI at the version the cluster runs
+        run: |
+          set -euo pipefail
+          # Pinned to KYVERNO_VERSION in deploy/rehearse_cluster.sh, NOT to latest. A CLI on a
+          # different engine version answers a different question than the one the cluster is asked.
+          # Take the version itself, never "everything after a delimiter". The first version of
+          # this line was `sed 's/.*://'` against `KYVERNO_VERSION:-v1.16.1`, and greedy `.*:`
+          # stops at the colon, so it yielded `-v1.16.1` — dash included — and the download 404'd
+          # on a URL that looked almost right. Measured on run 32690391183, 2026-08-24.
+          want=$(grep -oE 'KYVERNO_VERSION:-v[0-9]+\.[0-9]+\.[0-9]+' deploy/rehearse_cluster.sh \
+                 | head -1 | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          # Grade the value, not the fact that a value exists. A non-empty check passes on the
+          # malformed string that caused the 404, and the failure then surfaces one step later as
+          # a network error, which reads like GitHub being down rather than like our own sed.
+          case "$want" in
+            v[0-9]*.[0-9]*.[0-9]*) : ;;
+            *) echo "FAIL: read '$want' as the Kyverno version from deploy/rehearse_cluster.sh."
+               echo "That is not a vX.Y.Z tag, so the download below would 404 on a URL that"
+               echo "looks nearly right. Fix the extraction, not the URL."; exit 1 ;;
+          esac
+          echo "drill installs kyverno $want, so that is the CLI this gate uses"
+          curl -fsSL -o /tmp/kyverno.tgz \
+            "https://github.com/kyverno/kyverno/releases/download/${want}/kyverno-cli_${want}_linux_x86_64.tar.gz"
+          tar -xzf /tmp/kyverno.tgz -C /usr/local/bin kyverno
+          kyverno version
+
+      - name: Build the policy set the tests run against
+        run: |
+          set -euo pipefail
+          # The POLICIES kustomization, not an overlay. An overlay also emits the Namespace, and the
+          # CLI silently loads ZERO rules from a file carrying a non-policy document -- it prints
+          # "pass: 0, fail: 0, error: 0" and exits 0, which reads exactly like success. Measured
+          # 2026-08-24. Generated here rather than committed so the tests cannot drift from what ships.
+          kubectl kustomize deploy/k8s/policies > deploy/k8s/policy-tests/policies.generated.yaml
+          kinds=$(grep -c '^kind: ClusterPolicy' deploy/k8s/policy-tests/policies.generated.yaml || true)
+          other=$(grep '^kind:' deploy/k8s/policy-tests/policies.generated.yaml | grep -vc 'ClusterPolicy' || true)
+          echo "built $kinds ClusterPolicy documents, $other of anything else"
+          if [ "$other" -ne 0 ]; then
+            echo "FAIL: a non-policy document is in the policy build. The CLI would load zero rules"
+            echo "      from it and report success. See the comment above."
+            exit 1
+          fi
+          if [ "$kinds" -lt 20 ]; then
+            echo "FAIL: only $kinds policies built. The set has been 26 since 2026-08-24 and a"
+            echo "      sudden collapse means a remote base stopped resolving, not that we simplified."
+            exit 1
+          fi
+
+      - name: The reference workload is ADMITTED
+        run: |
+          set -euo pipefail
+          # LAW 38: a fence proved only in the refusing direction has never been shown safe to
+          # install. deploy/k8s/policy-tests/admitted.yaml is the shape a Prospector workload has to
+          # have, and if the policy set refuses it that is an outage, not a strict configuration.
+          # `|| true` because the CLI exits non-zero when a resource is refused, and under
+          # `set -e` that killed this step before it could print WHY -- a gate that fails for the
+          # right reason and says nothing is a gate somebody disables. The verdict is read from the
+          # output below, and a CLI that crashed instead of running is caught by the rule count.
+          kyverno apply deploy/k8s/policy-tests/policies.generated.yaml \
+            --resource deploy/k8s/policy-tests/admitted.yaml 2>&1 | tee /tmp/admit.txt || true
+          rules=$(sed -n 's/^Applying \([0-9]*\) policy rule(s).*/\1/p' /tmp/admit.txt | head -1)
+          fails=$(sed -n 's/.*fail: \([0-9]*\).*/\1/p' /tmp/admit.txt | head -1)
+          passes=$(sed -n 's/^pass: \([0-9]*\).*/\1/p' /tmp/admit.txt | head -1)
+          # The rule count is asserted because zero rules also produces "fail: 0".
+          if [ "${rules:-0}" -lt 50 ]; then
+            echo "FAIL: only ${rules:-0} rules loaded, so 'fail: 0' below proves nothing"; exit 1
+          fi
+          if [ "${fails:-1}" -ne 0 ] || [ "${passes:-0}" -eq 0 ]; then
+            echo "FAIL: the reference workload was refused by its own policy set."
+            echo "      Either the manifest stopped being compliant, or a policy now refuses correct work."
+            exit 1
+          fi
+          echo "OK: $passes rule evaluations passed, 0 failed, out of $rules rules loaded"
+
+      - name: Every standard refuses the thing it exists to refuse
+        run: |
+          set -euo pipefail
+          # NEVER TRUST `kyverno test`'s SUMMARY OR ITS EXIT CODE. Measured 2026-08-24 on v1.16.1:
+          # with one assertion deliberately violated it printed
+          #     Test Summary: 13 tests passed and 0 tests failed
+          # and exited 0, while its own REASON column on that row said "Want fail, got pass". The
+          # verdict is in REASON; RESULT and the summary report a shape. This is the same defect the
+          # estate hit five other times in one night, and here it is inside the grading tool itself.
+          kyverno test deploy/k8s/policy-tests -o json --remove-color > /tmp/kt.json 2>&1 || true
+          kyverno test deploy/k8s/policy-tests --remove-color || true
+          python3 - <<'PY'
+          import json, sys
+          raw = open('/tmp/kt.json').read()
+          a, b = raw.find('['), raw.rfind(']')
+          if a < 0 or b < a:
+              sys.exit("FAIL: the CLI produced no results array. Output was:\n" + raw[:2000])
+          rows = json.loads(raw[a:b + 1])
+          if len(rows) < 13:
+              sys.exit(f"FAIL: {len(rows)} assertions ran. The suite has had 13 since 2026-08-24, and "
+                       "a suite that shrinks silently is a gate that stops grading.")
+          bad = [r for r in rows if r.get('REASON') != 'Ok']
+          if bad:
+              for r in bad:
+                  print(f"  {r.get('POLICY')} / {r.get('RULE')} on {r.get('RESOURCE')}: {r.get('REASON')}")
+              sys.exit(f"FAIL: {len(bad)} of {len(rows)} assertions did not hold. "
+                       "'Want fail, got pass' means a standard stopped refusing what it exists to refuse.")
+          print(f"OK: all {len(rows)} policy decisions were the ones asserted")
+          PY
+
+      # GATE 6 — the workloads the cluster is handed are ADMITTED by the policies it is handed.
+      #
+      # Gates 1-5 grade the policies. None of them graded the manifests those policies would judge,
+      # and on 2026-08-24 that gap was load-bearing: the Deployment that deploy/targets/k8s.sh
+      # wrote inline was refused by TEN of the estate's own 26 policies — disallow-latest-tag,
+      # disallow-privilege-escalation, drop-all-capabilities, require-pod-probes,
+      # require-requests-limits, require-ro-rootfs, require-run-as-nonroot,
+      # restrict-seccomp-strict, secrets-not-from-env-vars (pass 19, fail 10). The only Kubernetes
+      # deploy path the estate had would not have been let into the cluster the estate is building.
+      #
+      # This grades what is actually APPLIED, which is the overlay build, not base/ and not the
+      # source. The ClusterPolicy documents are filtered out first: they are the judge, not the
+      # judged.
+      # THE TARGET LIST IS ENUMERATED FROM DISK, NOT TYPED HERE. This loop used to read
+      # `for env in staging production`, which graded exactly the two directories somebody
+      # remembered to name. deploy/k8s/estate/ was added on 2026-08-24 and would have been
+      # ungraded YAML that looks identical to graded YAML — the same silent-miss shape as an
+      # allow-list with a bare `return` on its unknown branch. Every kustomization.yaml under
+      # deploy/k8s is now a target, minus the two that are not workloads: policies/ builds the
+      # judge, and base/ is built by the overlays that layer on top of it.
+      - name: Every workload in every manifest directory is admitted by its own policies
+        run: |
+          set -euo pipefail
+          targets=$(find deploy/k8s -mindepth 2 -name kustomization.yaml \
+                    | xargs -n1 dirname | sort \
+                    | grep -vE '^deploy/k8s/(policies|base)$')
+          echo "grading: $(echo $targets | tr '\n' ' ')"
+          # A list that silently comes back empty would make every check below vacuous.
+          if [ "$(echo "$targets" | grep -c .)" -lt 3 ]; then
+            echo "FAIL: found $(echo "$targets" | grep -c .) manifest directories, expected at least 3"
+            echo "      (overlays/staging, overlays/production, estate). The enumeration is broken,"
+            echo "      so a green result below would mean nothing was graded."
+            exit 1
+          fi
+          # The label is the directory's basename, and it is also the key split_workloads.py looks
+          # its document floor up under. Two directories sharing a basename would overwrite each
+          # other's build file and grade one of them twice, which reads as two passes.
+          dupes=$(for t in $targets; do basename "$t"; done | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "FAIL: two manifest directories share the basename(s): $dupes"
+            echo "      One would overwrite the other's build and be graded twice. Rename one."
+            exit 1
+          fi
+          for target in $targets; do
+            env=$(basename "$target")
+            kubectl kustomize "$target" > "/tmp/$env.yaml"
+            # A vacuous pass is the failure mode here: handed no workloads, kyverno reports
+            # "pass: 0, fail: 0" and exits 0, which reads exactly like success. The splitter
+            # refuses that, and it is a file rather than inline python so that
+            # tests/unit/test_the_k8s_gate_cannot_pass_on_nothing.py grades THIS code instead of
+            # a copy of it.
+            python3 deploy/k8s/split_workloads.py \
+              "/tmp/$env.yaml" "/tmp/$env-workloads.yaml" "$env"
+            kyverno apply deploy/k8s/policy-tests/policies.generated.yaml \
+              --resource "/tmp/$env-workloads.yaml" 2>&1 | tee "/tmp/$env-admit.txt" || true
+            rules=$(sed -n 's/^Applying \([0-9]*\) policy rule(s).*/\1/p' "/tmp/$env-admit.txt" | head -1)
+            fails=$(sed -n 's/.*fail: \([0-9]*\).*/\1/p' "/tmp/$env-admit.txt" | head -1)
+            passes=$(sed -n 's/^pass: \([0-9]*\).*/\1/p' "/tmp/$env-admit.txt" | head -1)
+            # Assert the rule count, because the CLI silently loads ZERO rules from a file with a
+            # non-policy document in it and then reports "pass: 0, fail: 0" — measured 2026-08-24.
+            if [ "${rules:-0}" -lt 50 ]; then
+              echo "FAIL: only ${rules:-0} rules loaded for $env; the library has had 87 since 2026-08-24."
+              exit 1
+            fi
+            if [ "${fails:-1}" != "0" ]; then
+              echo "FAIL: $env has ${fails} policy violation(s) in its own workloads."
+              echo "A workload this repo cannot admit is a workload the cluster will refuse at apply time."
+              exit 1
+            fi
+            if [ "${passes:-0}" = "0" ]; then
+              echo "FAIL: $env passed 0 rules, which means nothing was graded."
+              exit 1
+            fi
+            echo "OK: $env — ${passes} rule decisions, 0 violations, across ${rules} rules"
+          done

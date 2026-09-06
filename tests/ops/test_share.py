@@ -400,7 +400,15 @@ def test_the_revision_is_empty_rather_than_invented_when_git_cannot_answer(ops, 
 # fast path again, this fails the moment the two disagree.
 # --------------------------------------------------------------------------- #
 def _reference_is_denied(rel: str) -> str:
-    """The pre-2026-08-21 implementation, verbatim. The oracle, never the shipped path."""
+    """The pre-2026-08-21 matcher, verbatim. The oracle, never the shipped path.
+
+    It calls `share._carved` at each return, exactly where the shipped `is_denied` does. That is
+    deliberate and it is not the oracle cheating: what this test grades is the COMPILATION -- that
+    precompiled regexes answer identically to a plain `fnmatch` loop -- and the generated-document
+    carve is a separate decision layered on top of both. Reproducing the carve by hand here would
+    grade it twice and, worse, would let the two copies drift. The carve has its own oracle-free
+    tests in `test_generated_docs_are_shareable.py`.
+    """
     import fnmatch as _fn
 
     low = (rel or "").lower().lstrip("/")
@@ -409,12 +417,13 @@ def _reference_is_denied(rel: str) -> str:
     base = low.rsplit("/", 1)[-1]
     for pat in share.DENY_GLOBS:
         low_pat = pat.lower()
-        if _fn.fnmatch(low, low_pat):
-            return pat
-        if "/" not in low_pat and _fn.fnmatch(base, low_pat):
-            return pat
-        if low_pat.endswith("/*") and low.startswith(low_pat[:-1]):
-            return pat
+        hit = (
+            _fn.fnmatch(low, low_pat)
+            or ("/" not in low_pat and _fn.fnmatch(base, low_pat))
+            or (low_pat.endswith("/*") and low.startswith(low_pat[:-1]))
+        )
+        if hit:
+            return "" if share._carved(low, pat) else pat
     return ""
 
 

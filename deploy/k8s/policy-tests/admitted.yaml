@@ -1,0 +1,140 @@
+# The reference workload shape. Every standard the estate enforces, satisfied at once.
+#
+# This file has a second job beyond being a test fixture: it is the answer to "what does a
+# Prospector workload have to look like", and the CI gate proves that answer is still true
+# on every change to the policy set. When the base manifests grow past the namespace
+# (register row F-39) they are written from this shape, not from memory.
+#
+# The gate requires this manifest to be ADMITTED with zero failures. LAW 38: a fence proved
+# only in the refusing direction has never been shown safe to install, and a policy set that
+# refuses correct work is an outage rather than a strict configuration.
+#
+# The secret arrives as a mounted file and NOT as envFrom. That was learned the hard way on
+# 2026-08-24: the first draft of this manifest used `envFrom.secretRef`, which is how the
+# whole estate does it today in compose, and Kyverno's `secrets-not-from-env-vars` refused
+# it. The policy forbids both spellings - `env[].valueFrom.secretKeyRef` and
+# `envFrom[].secretRef` - because an environment variable is readable from
+# /proc/<pid>/environ, appears in crash dumps, and is inherited by every child process the
+# container spawns. A mounted file is not. Adopting an upstream library means adopting rules
+# the estate had not thought of, and this is the first one that bit.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: money-rail
+  namespace: prospector
+  labels:
+    # This label is what arms the estate's own single-writer policy. It is on the reference
+    # shape deliberately, so the fixture exercises the estate rules and not only upstream's.
+    prospector.estate/single-writer: "true"
+spec:
+  # One writer. SQLite has exactly one, and two engines is two spend ledgers each honouring
+  # the daily cap separately, so a $100 cap silently becomes $200.
+  replicas: 1
+  strategy:
+    # Recreate, never RollingUpdate: a rolling update runs the old and new pod at once, which
+    # is two writers for the length of the rollout.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: money-rail
+  template:
+    metadata:
+      labels:
+        app: money-rail
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: secrets
+          secret:
+            secretName: engine-secrets
+            # Not optional. A pod that cannot find its credentials must stay Pending naming
+            # the Secret it wants, rather than starting without them and failing later
+            # somewhere that looks unrelated.
+            optional: false
+        # readOnlyRootFilesystem means anything that writes needs somewhere to write.
+        - name: tmp
+          emptyDir: {}
+      containers:
+        - name: engine
+          # A digest, not a tag. `disallow-latest-tag` refuses `:latest`, and a moving tag is
+          # the same defect with a longer fuse: the manifest stops describing what runs.
+          image: ghcr.io/chidionyema/prospector-engine:0f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+          env:
+            # A path to the secrets, which is not a secret. The value the application reads
+            # is the file's contents, and the file never appears in the pod's environment.
+            - name: PROSPECTOR_SECRETS_DIR
+              value: /var/run/secrets/prospector
+          volumeMounts:
+            - name: secrets
+              mountPath: /var/run/secrets/prospector
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+---
+# What cert-manager creates for an http-01 challenge, as the v1.19 solver ships it: no probes,
+# because the pod lives for one challenge. The label is the only thing that lets it past
+# require-pod-probes (deploy/k8s/policies/admit-acme-solver.yaml); every other standard still
+# grades it.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cm-acme-http-solver
+  namespace: prospector
+  labels:
+    acme.cert-manager.io/http01-solver: "true"
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: acmesolver
+      image: quay.io/jetstack/cert-manager-acmesolver:v1.19.1
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
