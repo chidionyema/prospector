@@ -47,3 +47,31 @@ def test_excise_drops_only_dirty_sentences():
 def test_excise_all_dirty_returns_empty():
     clean, dropped = excise("No passage shows anything. SUPPORTED.")
     assert clean == "" and len(dropped) == 2
+
+
+def test_walk_prose_finds_nested_leaves_and_skips_enums_and_urls():
+    from prospector.voice_gate.deny import walk_prose
+
+    doc = {
+        "title": "Clean title.",
+        "verdict": "SUPPORTED",  # enum: never yielded
+        "checks": [{"key": "x", "rationale": "No passage shows y. Real sentence here."}],
+        "blocks": [
+            {
+                "type": "items",
+                "items": [[{"tag": "strong", "children": ["Heading?"]}, "1 acas.org.uk"]],
+            }
+        ],
+        "chips": [{"label": "acas.org.uk", "url": "https://acas.org.uk"}],
+    }
+    leaves = {p: t for _p, _k, p, t in walk_prose(doc)}
+    assert "$.title" in leaves
+    assert "$.verdict" not in leaves  # enum excluded
+    assert "$.checks[0].key" not in leaves  # enum excluded
+    assert "$.checks[0].rationale" in leaves
+    assert "$.blocks[0].items[0][1]" in leaves  # the citation line IS graded prose
+    assert "$.blocks[0].items[0][0].children[0]" in leaves  # heading fragment is prose
+    assert "$.chips[0].url" not in leaves  # URL excluded
+    assert "$.chips[0].label" not in leaves  # bare domain: a citation, not prose
+    dirty = [p for _p, _k, p, t in walk_prose(doc) if findings_for(t)]
+    assert "$.checks[0].rationale" in dirty and "$.blocks[0].items[0][1]" in dirty

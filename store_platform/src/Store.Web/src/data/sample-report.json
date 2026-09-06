@@ -179,7 +179,7 @@
         {
           "url": "https://www.independent.co.uk/news/business/uber-deliveroo-drivers-disdmissed-jobs-b1890628.html",
           "domain": "independent.co.uk",
-          "label": "Uber and Deliveroo drivers protest over hundreds of ‘unfair’ dismissals | The Independent"
+          "label": "Uber and Deliveroo drivers protest over hundreds of 'unfair' dismissals | The Independent"
         },
         {
           "url": "https://consumerescalationservices.com/consumer-insights/rideshare-delivery-app-deactivation-help",
@@ -308,7 +308,7 @@
                   "Will this still be worth money later?"
                 ]
               },
-              " UK tribunal cases (Iqbal v Uber London, Hussein v Uber, Manjang v Uber Eats) demonstrate ongoing, contested deactivations within the UK gig economy, confirming the problem persists."
+              "UK tribunal cases (Iqbal v Uber London, Hussein v Uber, Manjang v Uber Eats) demonstrate ongoing, contested deactivations within the UK gig economy, confirming the problem persists."
             ],
             [
               {
@@ -317,7 +317,7 @@
                   "Is someone already doing this well?"
                 ]
               },
-              " No passage shows a dominant UK incumbent or funded rival productising gig-deactivation appeals."
+              "The platform's own internal review is described as barely functional and one-sided for drivers, while Acas is a broad free employment-advice service with no evidence it covers contractor-on-platform disputes, and IWGB legal help is gated behind union membership and not presented as a specialist appeal engine."
             ],
             [
               {
@@ -326,7 +326,7 @@
                   "Can you actually reach the customer?"
                 ]
               },
-              " Existing high-traffic channels where deactivated UK gig workers already gather: Facebook groups with more than 100,000 subscribers trading Deliveroo/Uber Eats accounts, and an IWGB mobilisation reaching around 200 drivers protesting unfair dismissals."
+              "Existing high-traffic channels where deactivated UK gig workers already gather: Facebook groups with more than 100,000 subscribers trading Deliveroo/Uber Eats accounts, and an IWGB mobilisation reaching around 200 drivers protesting unfair dismissals."
             ],
             [
               {
@@ -335,7 +335,7 @@
                   "Is the problem real?"
                 ]
               },
-              " Platform deactivation is a real and acute problem: Uber Eats drivers have been locked out by facial-recognition checks, drivers have sued over automated deactivation in the Netherlands, and hundreds staged a London strike explicitly demanding 'reinstatement of unfairly deactivated drivers'."
+              "Platform deactivation is a real and acute problem: Uber Eats drivers have been locked out by facial-recognition checks, drivers have sued over automated deactivation in the Netherlands, and hundreds staged a London strike explicitly demanding 'reinstatement of unfairly deactivated drivers'."
             ]
           ]
         },
@@ -361,7 +361,7 @@
                   "Can the customer afford it?"
                 ]
               },
-              " The ASHE earnings tables contain only cookie consent screens with no actual wage data, and the remaining passages either describe generic financial-hardship concepts or US-specific retirement withdrawal rules."
+              "The public earnings data we could reach did not show what UK gig workers aged 18 to 27 actually take home, so we cannot prove the £49.99 price is comfortably affordable from this evidence alone. That is why this check reads pushed back, not survived."
             ],
             [
               {
@@ -370,7 +370,7 @@
                   "Is it legal?"
                 ]
               },
-              " UK employment tribunal representation rights, lay representatives, and wasted costs orders, but none address whether third-party appeal-writing services for gig platform deactivations are lawful."
+              "UK employment tribunal representation rights, lay representatives, and wasted costs orders, but none address whether third-party appeal-writing services for gig platform deactivations are lawful."
             ]
           ]
         },
@@ -430,7 +430,7 @@
         {
           "type": "p",
           "nodes": [
-            "Transplanting the structure of successful school admission appeals into the gig economy: a solo operator collects crowdsourced deactivation case data, identifies winning patterns, and converts a worker’s raw narrative into a legally persuasive subscriber‑ready dossier, charging a flat fee only if the appeal is filed."
+            "Transplanting the structure of successful school admission appeals into the gig economy: a solo operator collects crowdsourced deactivation case data, identifies winning patterns, and converts a worker's raw narrative into a legally persuasive subscriber‑ready dossier, charging a flat fee only if the appeal is filed."
           ]
         },
         {
@@ -472,7 +472,7 @@
         {
           "type": "p",
           "nodes": [
-            "No passage shows a dominant UK incumbent or funded rival productising gig-deactivation appeals. The platform's own internal review is described as barely functional and one-sided for drivers, while Acas is a broad free employment-advice service with no evidence it covers contractor-on-platform disputes, and IWGB legal help is gated behind union membership and not presented as a specialist appeal engine. The UK gig-deactivation appeal niche therefore appears open in these passages."
+            "The platform's own internal review is described as barely functional and one-sided for drivers, while Acas is a broad free employment-advice service with no evidence it covers contractor-on-platform disputes, and IWGB legal help is gated behind union membership and not presented as a specialist appeal engine."
           ]
         },
         {
@@ -568,7 +568,7 @@
     },
     {
       "title": "Every check, in full",
-      "blurb": "The full record of every check: the queries we ran, the passages we read, the verdict, and the confidence we put on it."
+      "blurb": "The full record of every check: the queries we ran, the sources we read, the verdict, and the confidence we put on it."
     }
   ]
 }

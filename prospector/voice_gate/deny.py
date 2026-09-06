@@ -81,3 +81,58 @@ def excise(text: str) -> tuple[str, list[str]]:
     for sentence in sentences(text):
         (dropped if findings_for(sentence) else kept).append(sentence)
     return " ".join(kept).strip(), dropped
+
+
+#: Leaf keys that hold enums, identifiers or citations, never prose. Grading them would
+#: brick exports on structured data — the phase-0 boundary decision, generalised to walks.
+ENUM_LEAF_KEYS = frozenset(
+    {
+        "verdict",
+        "gate",
+        "gatelabel",
+        "key",
+        "id",
+        "url",
+        "domain",
+        "verifiedat",
+        "decisive",
+        "confidence",
+        "type",
+        "tag",
+        "supported",
+        "total",
+        "sourcecount",
+    }
+)
+
+_DOMAIN_RE = re.compile(r"^[a-z0-9.-]+\.(com|org|uk|net|gov|io)$", re.I)
+
+
+def walk_prose(node, path: str = "$", parent=None, key=None):
+    """Yield (parent, key, path, text) for every prose string leaf in a JSON-shaped tree.
+
+    Skips enum/identifier leaves (ENUM_LEAF_KEYS), URLs and bare domains. Everything else —
+    at any depth, in any block structure — is prose the gate must see. The export gate and
+    the live-file scrub both walk with this, so a new section of the report can never again
+    sneak engine text past a hand-maintained field list (the 2026-09-06 excerpt/withheld miss).
+    """
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if isinstance(v, str):
+                if (
+                    k.lower() in ENUM_LEAF_KEYS
+                    or v.startswith(("http://", "https://"))
+                    or _DOMAIN_RE.match(v)
+                ):
+                    continue
+                yield node, k, f"{path}.{k}", v
+            else:
+                yield from walk_prose(v, f"{path}.{k}", node, k)
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            if isinstance(v, str):
+                if v.startswith(("http://", "https://")) or _DOMAIN_RE.match(v):
+                    continue
+                yield node, i, f"{path}[{i}]", v
+            else:
+                yield from walk_prose(v, f"{path}[{i}]", node, i)

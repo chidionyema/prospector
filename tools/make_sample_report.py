@@ -28,66 +28,41 @@ COPY_OVERRIDES = os.path.join(os.path.dirname(__file__), "sample_report_copy_ove
 # with a receipt for each. The gate then grades every prose field and any hit exits 1 —
 # dirty output is never written. Enum fields (gate/verdict) are never graded.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from prospector.voice_gate.deny import excise, grade_fields  # noqa: E402
-
-
-def _prose_fields(report: dict) -> dict:
-    """Every verbatim-rendered prose field, named for receipts."""
-    fields = {
-        "title": report.get("title") or "",
-        "oneLiner": report.get("oneLiner") or "",
-        "whoPays": report.get("whoPays") or "",
-        "whyNow": report.get("whyNow") or "",
-        "premortem.strongestAlternative": report["premortem"].get("strongestAlternative") or "",
-        "premortem.whyDurable": report["premortem"].get("whyDurable") or "",
-        "adversarial.killCase": report["adversarial"].get("killCase") or "",
-    }
-    for i, ch in enumerate(report.get("checks", [])):
-        fields[f"checks[{i}].rationale ({ch.get('key', '?')})"] = ch.get("rationale") or ""
-    return fields
+from prospector.voice_gate.deny import excise, findings_for, walk_prose  # noqa: E402
 
 
 def _scrub(report: dict) -> list[str]:
-    """Excise engine-speak from the long prose fields; hand-written override when gutted."""
+    """Excise engine-speak from EVERY prose leaf (walker — no hand-maintained field list);
+    a hand-written override stands in where excision guts a leaf or the leaf is too short
+    to excise; anything still dirty after that is the gate's to refuse, not ours to hide."""
     receipts: list[str] = []
     overrides = {}
     if os.path.exists(COPY_OVERRIDES):
         with open(COPY_OVERRIDES, encoding="utf-8") as handle:
             overrides = json.load(handle)
-
-    def scrub_one(owner: str, text: str) -> str:
-        if not text:
-            return text
-        clean, dropped = excise(text)
+    for parent, key, path, text in walk_prose(report):
+        clean, dropped = excise(text) if len(text) >= 60 else (text, [])
         if dropped:
-            receipts.append(f"excised {len(dropped)} engine-speak sentence(s) from {owner}")
-        if not clean and owner in overrides:
-            receipts.append(f"hand-written copy stands in for gutted {owner}")
-            return overrides[owner]
-        return clean
-
-    for ch in report.get("checks", []):
-        ch["rationale"] = scrub_one(ch.get("key", "check"), ch.get("rationale", ""))
-    report["premortem"]["strongestAlternative"] = scrub_one(
-        "premortem.strongestAlternative", report["premortem"].get("strongestAlternative", ""))
-    report["premortem"]["whyDurable"] = scrub_one(
-        "premortem.whyDurable", report["premortem"].get("whyDurable", ""))
-    report["adversarial"]["killCase"] = scrub_one(
-        "adversarial.killCase", report["adversarial"].get("killCase", ""))
+            receipts.append(f"excised {len(dropped)} engine-speak sentence(s) from {path}")
+        if clean != text:
+            if not clean and path in overrides:
+                receipts.append(f"hand-written copy stands in for gutted {path}")
+                clean = overrides[path]
+            parent[key] = clean
     return receipts
 
 
 def voice_gate(report: dict) -> int:
-    """Scrub, then grade; refuse to let dirty copy cross. Returns the exit code to use."""
+    """Scrub, then grade every prose leaf; refuse to let dirty copy cross."""
     for line in _scrub(report):
         print(f"voice-gate: {line}")
-    findings = grade_fields(_prose_fields(report))
-    if findings:
-        for field, hits in findings.items():
-            for hit in hits:
-                print(f"VOICE GATE FAIL {field}: {hit.rule_id} {hit.message}", file=sys.stderr)
+    leaves = list(walk_prose(report))
+    dirty = [(path, hit) for _p, _k, path, text in leaves for hit in findings_for(text)]
+    if dirty:
+        for path, hit in dirty:
+            print(f"VOICE GATE FAIL {path}: {hit.rule_id} {hit.message}", file=sys.stderr)
         return 1
-    print(f"voice-gate: PASS ({len(_prose_fields(report))} prose fields graded clean)")
+    print(f"voice-gate: PASS ({len(leaves)} prose leaves graded clean)")
     return 0
 
 
