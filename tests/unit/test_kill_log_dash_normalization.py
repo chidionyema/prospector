@@ -96,7 +96,7 @@ class TestCleanReasonWithNodash:
             f"Gate 'incumbency' fired {EM} The passages show things."
         )
         assert not result.startswith("Gate")
-        assert result.startswith("The passages")
+        assert result.startswith("The sources")  # cadence bar moved 2026-09-06 (EE2)
 
     def test_strips_inline_hash(self):
         from tools.make_kill_log import _clean_reason

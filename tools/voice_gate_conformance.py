@@ -28,11 +28,12 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from prospector.config import store_root  # noqa: E402
 from prospector.voice_gate.deny import findings_for, walk_prose  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(REPO, "store_platform/src/Store.Web/src/data")
-RECEIPTS = os.path.join(REPO, "store", "voice_gate")
+RECEIPTS = os.path.join(store_root(), "voice_gate")
 LANE = "evidence-export"
 
 # Same strip classes as register_lint.py:248-255 and the Rust prose.rs — span-preserving.
@@ -59,8 +60,9 @@ def prose_only(text: str) -> str:
     return "".join(out)
 
 
-def oracle_findings(text: str) -> set[tuple[str, int, int]]:
-    return {(h.rule_id, h.start, h.end) for h in findings_for(prose_only(text))}
+def oracle_findings(text: str) -> set[tuple[str, str]]:
+    stripped = prose_only(text)
+    return {(h.rule_id, stripped[h.start : h.end]) for h in findings_for(stripped)}
 
 
 def corpus_leaves() -> list[tuple[str, str]]:
@@ -104,9 +106,11 @@ def rust_grade(gate: str, items: list[tuple[str, str]]) -> dict[str, set[tuple[s
         )
         with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 -- gate arg defaults to loopback
             payload = json.load(resp)
-        for (tag, _text), result in zip(chunk, payload["results"], strict=True):
+        for (tag, text), result in zip(chunk, payload["results"], strict=True):
+            raw = text.encode()
             out[tag] = {
-                (f["rule_id"], f["span"]["start"], f["span"]["end"]) for f in result["findings"]
+                (f["rule_id"], raw[f["span"]["start"] : f["span"]["end"]].decode())
+                for f in result["findings"]
             }
     return out
 
