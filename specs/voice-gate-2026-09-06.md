@@ -176,25 +176,39 @@ OTLP to the estate collector. Metrics: `voicegate_grades_total{lane,verdict,tier
 | Phase | Verify command(s) | Live proof | Rollback |
 |---|---|---|---|
 | 0 (½d) | `grep -c -iE "passage|SUPPORTED" src/data/kill-log.json src/data/sample-report.json` → 0; both export scripts exit 1 on a planted-leak fixture | rendered `/how-it-works` HTML quoted | revert two scripts + regenerate JSONs from store |
-| 1 (2–3d) | `pytest tests/voice_gate tests/invariants -q` green; policy hash logged on publish | one pack published through gate path, receipt shown | flag `VOICE_GATE_ENABLED=0` restores direct calls |
-| 2 (2–3d) | `python tools/voice_gate_benchmark.py` → agreement ≥95%, leak recall ≥90%; latency printed | 24 h of grades with fallback rate <10% | tier2.required=false ⇒ Tier-1+frontier |
-| 3 (2d) | `npm run verify` fails on planted fixture, green on main; Vale YAMLs deleted | CI run URL (LAW 22) | revert PR |
+| 1 (3–5d) | rule-semantics inventory signed off; corpus match-set diff EMPTY; differential fuzz clean; `cargo test` green; golden sample 100/100 vs Python oracle | shadow receipt: 7 days, 0 unexplained disagreements | n/a — Python keeps all authority; Rust has none until phase 3 |
+| 2 (2–3d) | `voice_gate_benchmark` → agreement ≥95%, leak recall ≥90%, P99 printed for llama-cpp-2 AND candle; winner recorded | 24 h of shadow grades, fallback rate <10% | tier2.required=false ⇒ Tier-1+frontier |
+| 3 (2d) | per-rule parity receipts all green; `npm run verify` fails on planted fixture, green on main; Vale YAMLs deleted | canary order executed: evidence-export → storefront CI → pack (2 clean shadow weeks on pack) | `VOICE_GATE_IMPL=python` per lane, seconds |
 | 4 (3–5d) | `docker run` image <2 GB; second policy grades sample corpus; receipts | image digest + audit API output | n/a (new artefact) |
 
 ## 13. Open decisions (defaults chosen; founder may override)
 
 1. **Golden-sample labelling** — default: crew labels all 100, founder spot-checks 20 (one sitting, 15 minutes, LAW 54: he is client zero, not the labeller).
-2. **Native port language for phase 4** — default: Rust (regex DFA + ARM64 maturity); Go acceptable, chosen at phase 4 kickoff.
+2. **Native port language** — settled by founder override 2026-09-06: Rust, from phase 1 (§15).
 3. **Tier-2 requiredness** — default: required for `evidence-export`/`storefront` (fail-closed), advisory for `pack` v1.
 
 ## 14. Explicitly out of scope (v1)
 
 Medusa/mumchimp-medusa CMS wiring; fine-tuning (hook only); E-SLM estate routing (own plan after phase 2); any change to pack generation prompts beyond generating `voice.md` from policy; multi-language.
 
-## 15. Architecture amendment (2026-09-06, founder's deep-research review)
+## 15. Architecture decision (founder override 2026-09-06): Tier 1 is built in Rust, from phase 1
 
-Two-track build, one policy, one corpus:
+Founder, verbatim: "lets port" (twice), "and think of ways to make it safe" — overriding the earlier Python-first consolidation. Tier 1 is written once, in Rust, as `idp/platform/voice-gate`. The existing Python linters (register_lint, house_style, copy_lint, pack_linter, prose_target) are **not** deleted in v1; they become the **reference implementation and conformance oracle** the Rust gate must reproduce before it earns any authority.
 
-- **Estate track (phases 0–3, unchanged):** existing tested Python linters consolidated behind `voice-policy.yaml`; closes the leak in days with zero regression risk on the pack money path. "Go straight to Rust" for the estate lanes is rejected: it trades days for weeks against a live revenue path for no customer-visible gain.
-- **Product track (phases 3–4):** single statically-linked Rust binary (`aarch64-unknown-linux-gnu` + `x86_64`): `axum` serving the §3 API; Tier 1 `regex-automata` + `tree-sitter` (structure-aware: prose nodes only, never URLs/code/JSON keys); Tier 2 in-process GGUF SLM — **engine decided by the phase-2 golden-sample benchmark: `llama-cpp-2` bindings (llama.cpp ARM NEON kernels) vs candle**; Tier 3 fact-lock by **GLiNER** zero-shot NER over ONNX (`ort`), replacing regex fact-pinning; **Extism WASM plugins** let enterprise clients mount proprietary Tier-1 rules without disclosing IP (the resale differentiator). Target envelope ~650 MB RAM (Rust+axum ~30, DFA/tree-sitter ~20, 0.5–1B Q4_K_M ~450, GLiNER ~150) — a target to measure on the OCI Ampere shape, not a claim; same honesty clause for "sub-10 ms".
-- **Conformance:** the §5 golden sample is the cross-implementation suite — the Rust binary ships only when it reproduces the Python gate's verdicts on all 100 strings. `voice-policy.yaml` gains a strict JSONSchema in phase 1 (machine-verifiable policy for both runtimes).
+### The safety case (mechanisms, in force order)
+
+1. **Phase 0 is untouched.** The in-flight worktree (Python EE1–EE5, 16 green tests) wires into the two export scripts and stops the bleed today. Five regexes are not the port.
+2. **Python keeps production authority until a rule earns cutover.** Nothing the Rust binary writes is enforced anywhere until that rule's parity receipt exists (mechanism 6). Zero downtime, zero regression risk on the pack money path.
+3. **Rule-semantics inventory, day 1 of phase 1.** Python `re` ≠ Rust `regex-automata` (no lookaround, no backrefs). Every pattern in the four linters is classified DFA-expressible or hand-rolled-checker; nothing is "translated by eye". The inventory is a signed-off artefact in `idp/platform/voice-gate/docs/`.
+4. **Corpus match-set diff.** Every pattern's match set is computed over the 312,886-word engine corpus + live `kill-log.json`/`sample-report.json`, Python vs Rust. Identical sets or the pattern does not move. This kills the classic port bug class — regex-engine semantic drift — with data, not hope.
+5. **Differential fuzzing.** Property tests mutate real pack/storefront strings (dash insertion, banned-token injection, entity swaps, whitespace/case noise) and assert Python verdict == Rust verdict. Every disagreement is triaged by a human before any cutover.
+6. **Per-rule parity receipts, per-rule cutover.** A rule crosses only with its receipt: golden-sample findings identical + corpus diff empty + fuzz clean. Hybrid mode is legal and expected mid-flight: the Rust service enforces paried rules and delegates the rest to the Python oracle over the same internal API.
+7. **Shadow mode on the live path.** Before any lane cutover, the Rust gate grades real production traffic with no authority for 7 days or ≥50 graded artefacts. Disagreement budget: **0 unexplained**.
+8. **Canary lane order.** evidence-export (lowest blast, already phase-0 gated) → storefront CI → pack lane (the money path) last, after two clean shadow weeks on the pack path.
+9. **Instant rollback.** `VOICE_GATE_IMPL=python|rust|hybrid` per lane; revert in seconds. The Python package stays in tree, tested, through v1.
+
+**Cutover gate (all required):** golden sample 100/100 · corpus match-set diff empty · differential fuzz clean · shadow budget met · pack-lane pytest green against the Rust service.
+
+### Product-track stack (phases 1–4, all in the Rust binary)
+
+`axum` serving the §3 API; Tier 1 `regex-automata` DFA + `tree-sitter` (prose nodes only, never URLs/code/JSON keys); Tier 2 in-process GGUF SLM — engine by the phase-2 benchmark: `llama-cpp-2` bindings (llama.cpp ARM NEON kernels) vs candle; Tier 3 fact-lock by GLiNER zero-shot NER over ONNX (`ort`), replacing regex fact-pinning; Extism WASM plugins for client-proprietary Tier-1 rules (the resale differentiator). Targets, not claims, until measured on the OCI Ampere shape: ~650 MB RAM envelope (Rust+axum ~30, DFA/tree-sitter ~20, 0.5–1B Q4_K_M ~450, GLiNER ~150), sub-10 ms Tier-1+2 grade. `voice-policy.yaml` gains a strict JSONSchema in phase 1 (machine-verifiable for both runtimes).
