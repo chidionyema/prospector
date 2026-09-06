@@ -16,14 +16,14 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz", "https-superset", "https-cyrus"}
+PLATFORM_LISTENERS = {"https-catalogue", "https-auth", "https-llm", "https-langfuse", "https-hc", "https-mcp", "https-otto", "https-signoz", "https-superset", "https-cyrus", "https-sandbox"}
 
 # A listener whose hostname is brand new has no DNS record until external-dns publishes its route,
 # and cert-manager orders ONE certificate per Secret: on 2026-08-31 two such names failed the order
 # for all thirteen listeners sharing prospector-edge-tls and otto.<zone> served Traefik's
 # placeholder. A new name therefore gets its own Secret, so a failed order costs only that name.
 # The entry leaves this map when the certificate has issued and the name resolves.
-ISOLATED_CERTS = {"https-cyrus": "prospector-edge-cyrus-tls"}
+ISOLATED_CERTS = {"https-cyrus": "prospector-edge-cyrus-tls", "https-sandbox": "prospector-edge-sandbox-tls"}
 
 
 def _listeners() -> dict[str, dict]:
