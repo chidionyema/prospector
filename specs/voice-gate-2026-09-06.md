@@ -73,7 +73,7 @@ Rule migration is a move, not a rewrite: each entry names the existing function 
 
 ## 3. Gate API
 
-Service: `prospector/voice_gate/server.py` (FastAPI, stdlib-only deps beyond fastapi/uvicorn; binds 127.0.0.1 per R20; OTLP to estate collector per LAW 50).
+Service: `idp/platform/voice-gate/server.py` (FastAPI, stdlib-only deps beyond fastapi/uvicorn; binds 127.0.0.1 per R20; OTLP to estate collector per LAW 50). During phases 0–3 it runs beside the engine as a local process; the estate deployment lands with the catalog entity in phase 1.
 
 ```
 POST /v1/grade
@@ -94,20 +94,27 @@ Batch mode: `POST /v1/grade` accepts `{items: [...]}` (max 500) for CI and expor
 
 Fail-closed rule (zero-trust-boundary.md): Tier 2 unreachable ⇒ evidence-export and storefront lanes FAIL CLOSED (a gate that cannot run its semantic check does not wave prose through); pack lane degrades to Tier-1-only with a warning receipt, preserving today's behaviour.
 
-## 4. Module layout and migration map
+## 4. Where it lives: platform in idp, voice in the product
 
-New package `prospector/voice_gate/`:
+Per the headline rule (one platform; a product never carries its own copy of a platform layer), Voice Gate splits in two:
+
+**`idp/platform/voice-gate/` — the capability (one of it, for the whole estate).**
 
 | file | responsibility | source of logic |
 |---|---|---|
-| `policy.py` | load/validate `voice_policy.yaml`, version hash | new |
-| `tier1.py` | deterministic checks over a grade target | register_lint, house_style, copy_lint, pack_linter, prose_target — imported, not copied |
-| `tier2.py` | llama.cpp client, prompt build, logit confidence | new; exemplars from `tools/corpus/` + golden sample |
+| `policy.py` | load/validate any product's `voice-policy.yaml`, version hash | new |
+| `tier1.py` | deterministic checks over a grade target | prospector's register_lint, house_style, copy_lint, pack_linter, prose_target — lifted here; prospector imports from the platform, never the reverse |
+| `tier2.py` | llama.cpp client, prompt build, logit confidence | new; exemplars ship per product policy |
 | `tier3.py` | bounded rewrite, fact-preservation re-check | shelf_copy_repair core, moved |
-| `server.py` | API, batching, telemetry | new |
+| `server.py` | API, batching, OTLP telemetry, 127.0.0.1 bind (R20) | new |
 | `quarantine.py` | jsonl queue + receipts | pattern from pack_linter receipts |
+| `catalog/` | Backstage entity + STANDARDS.md row ("Content governance") alongside the Observability and Identity rows in `crew/docs/STANDARDS.md` | new |
 
-Migration order (no big-bang delete — founder review note): phase 1 wraps, phase 3 deletes Vale YAMLs and the duplicated rule tables inside register_lint/house_style once their rules read from policy and pack-lane tests are green. `prompts/style/voice.md` stays (prompts still help) but is generated from the policy file so prose and enforcement cannot drift.
+**`prospector` — the product's voice and its wiring (nothing else).** `voice-policy.yaml` (mumchimp's brand voice is a product asset), lane definitions, Tier-2 exemplars harvested from the ombudsman corpus and kill-log history, and the boundary call sites (§7). The product onboards onto the platform service; it does not embed a second engine. hermes-v2 and any future product onboard the same way: one policy file each, zero new code.
+
+**Resale consequence:** the phase-4 product image is built from `idp/platform/voice-gate/`; a client mounts their own policy file. That is the offer — the platform capability is the product, mumchimp is tenant zero.
+
+Migration order (no big-bang delete — founder review note): phase 1 lifts the four linters into `idp/platform/voice-gate/tier1.py` with prospector importing them, phase 3 deletes Vale YAMLs and the duplicated rule tables once the pack-lane suite is green against the platform import. `prompts/style/voice.md` stays (prompts still help) but is generated from the policy file so prose and enforcement cannot drift.
 
 ## 5. Tier 2 — local SLM classifier
 
