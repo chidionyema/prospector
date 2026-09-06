@@ -212,3 +212,18 @@ Founder, verbatim: "lets port" (twice), "and think of ways to make it safe" — 
 ### Product-track stack (phases 1–4, all in the Rust binary)
 
 `axum` serving the §3 API; Tier 1 `regex-automata` DFA + `tree-sitter` (prose nodes only, never URLs/code/JSON keys); Tier 2 in-process GGUF SLM — engine by the phase-2 benchmark: `llama-cpp-2` bindings (llama.cpp ARM NEON kernels) vs candle; Tier 3 fact-lock by GLiNER zero-shot NER over ONNX (`ort`), replacing regex fact-pinning; Extism WASM plugins for client-proprietary Tier-1 rules (the resale differentiator). Targets, not claims, until measured on the OCI Ampere shape: ~650 MB RAM envelope (Rust+axum ~30, DFA/tree-sitter ~20, 0.5–1B Q4_K_M ~450, GLiNER ~150), sub-10 ms Tier-1+2 grade. `voice-policy.yaml` gains a strict JSONSchema in phase 1 (machine-verifiable for both runtimes).
+
+## 16. Where the pattern does and does not belong (founder question, 2026-09-06)
+
+The gate pattern — deterministic tier first, local SLM second, fail-closed, policy-as-data, oracle-tested — is justified only where ALL of: (a) an LLM or generator's output crosses a trust boundary (customer, money, the world, an actuator), (b) enforcement must be always-on and near-free, (c) a graded corpus exists to tune against (the golden-sample discipline is the admission fee; R38: a guard that refuses correct work is an outage).
+
+**Do NOT apply it to:** read-only surfaces (datasette, superset); one-off probes and drill wrappers in `bin/`; CI YAML and board automation; the portal frontend (its standard is the panel contract + Playwright, not Rust); generation internals where LLM judgement is the product (gate the egress, never the drafting); anything whose wrong answer costs a log line. Over-gating those is the same disease as eight linters — controls without a boundary.
+
+**Next tenants, priority order (each = one policy file + one golden sample, zero new engine code):**
+1. **E-SLM engine routing** — verdict-shaped engine tasks (classify, prescreen, admissibility, kill-filter) local-first; direct $/pack reduction against LiteLLM receipts.
+2. **Agent-action firewall** — idp's sovereign policy block already declares per-class capabilities (destructive/nondestructive); the Rust core enforces them at execution time on tool calls (pushes, deletes, sends). This is the ZeroDrift-shaped product and the bigger enterprise story than copy.
+3. **Secret/PII egress** — pre-send hook on LLM prompts and agent messages; extends static-secret-gate from CI detection to runtime refusal (LAW 21).
+4. **Outbound comms** — Telegram bot, email, support replies through the register + PII lanes before send.
+5. **Portal copy** — lane 7 of the portal plan; tenant two for voice.
+
+The Rust core is therefore built policy-agnostic from day 1: `voice-gate` is the first policy pack, not the product name. Generalisation (rename to the egress gateway, policy-pack loading) happens only after tenant 1 hits its cutover gate.
