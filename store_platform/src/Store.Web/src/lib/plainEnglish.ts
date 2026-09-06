@@ -199,6 +199,47 @@ const RULES: readonly Rule[] = [
     replace: '',
     why: 'the site renders no markdown, so a code span ships its own backticks as literal text',
   },
+
+  /**
+   * THE 2026-09-06 REGISTER BAR (Voice Gate phase 0, policy EE2/EE3). What the Python serve seam
+   * already repairs in `clean_reason` (`prospector/plain_text.py:_sources_for_passages`) is now
+   * mirrored here, because `plainEnglish` is the TS read-path seam for the same stored rows. The
+   * 2026-08 pin treated "passage" as ordinary English; measuring the live corpus on 2026-09-06
+   * showed 186 `the passages (show|describe|address)…` register hits in stored kill reasons and
+   * the same in sample-report rationale, i.e. exactly the retrieval jargon a buyer never learns.
+   * The engine unit is always a register leak; the buyer reads sources, not passages. This is the
+   * same noun-only swap as the Python seam (plural stays plural, so verb agreement holds), and
+   * it fires on engine-authored prose fields only -- never on hand-written scaffolding, which
+   * does not route through `plainEnglish`. Idempotent: "source" matches none of these patterns.
+   */
+  // Plurality-preserving noun swap (matches the Python `_sources_for_passages` exactly):
+  // “the passages show” (plural verb) must land on “the sources show”, never “the source show”.
+  { pattern: /\bpassages\b/gi, replace: 'sources', why: "EE2: the passages (show|describe|address)… is the retrieval register; plural stays plural" },
+  { pattern: /\bpassage\b/gi, replace: 'source', why: "EE2: a (single) passage (shows|…) is the same register; singular stays singular" },
+
+  {
+    // `premortem` is the estate's name for a pack's own adversarial review (spec EE3). The site
+    // already calls the artefact "the worst-case review"; translating every occurrence keeps the
+    // reference grammatical in a noun slot ("the worst-case review\'s claim"). Four explicit
+    // forms (casing × plurality) rather than a replacer function, so `Rule.replace` stays a plain
+    // string and the array type needs no widening.
+    pattern: /\bcommodity[- ]premortems\b/gi,
+    replace: 'worst-case reviews',
+    why: 'EE3: commodity premortem is engine jargon for the pack worst-case review',
+  },
+  { pattern: /\bcommodity[- ]premortem\b/gi, replace: 'worst-case review', why: 'EE3 (singular; the hyphen and space forms both appear in the corpus)' },
+  { pattern: /\bPremortems\b/g, replace: 'Worst-case reviews', why: 'EE3: sentence-initial plural' },
+  { pattern: /\bpremortems\b/gi, replace: 'worst-case reviews', why: 'EE3: the artefact plural' },
+  { pattern: /\bpremortem\b/gi, replace: 'worst-case review', why: 'EE3: the artefact as a noun the reader can open' },
+
+  {
+    // Hedge-speak -> the direct form (EE5 narrowed 2026-09-06). Two clause-level repairs whose
+    // output contains nothing their own patterns match, so the pass stays idempotent.
+    pattern: /\bcannot be determined from (?:this|the) evidence\b/gi,
+    replace: 'the evidence does not settle it',
+    why: 'EE5: the source does not settle it is a finding, not a weasel',
+  },
+  { pattern: /\bis not shown to be\b/gi, replace: 'is not', why: "EE5: 'not shown to be' claims a burden, not a state", },
 ];
 
 /** The classes deliberately left in place. Counted, never rewritten -- see the docblock. */

@@ -94,10 +94,19 @@ describe('engine vocabulary does not reach a buyer', () => {
     // occurrences of two common English nouns and broke the sentences around them. A translation
     // is only allowed to be mechanical where the token can only mean one thing.
     const sentences = [
-      'The passages show bread/bakery distribution dominated by a few large manufacturers.',
       'Regulations wholly unrelated to the legality of scraping school websites.',
     ];
     for (const sentence of sentences) expect(plainEnglish(sentence)).toBe(sentence);
+
+    // "passages" was asserted unchanged here on 2026-08. That pin protected a real English
+    // noun that turned out, measured over the LIVE corpus on 2026-09-06 (186 hits in stored
+    // kill reasons + the same in sample-report rationale), to be retrieval jargon in every one
+    // of its engine-authored occurrences -- "the passages show", "passages describe", "a
+    // passage states". The register is the Voice Gate EE2 leak; the noun swap below is
+    // load-bearing, so the over-touch test pins a word that is NOT also retrieval scaffolding.
+    expect(plainEnglish('The passages show bread/bakery distribution dominated by a few large manufacturers.')).toBe(
+      'The sources show bread/bakery distribution dominated by a few large manufacturers.',
+    );
 
     // `incumbency` is the counter-example, and the reason the rule is per-word and measured
     // rather than a blanket "leave English-looking words alone": read in context, 22 of its 24
@@ -108,7 +117,7 @@ describe('engine vocabulary does not reach a buyer', () => {
       'Existing competition checks failed to find existing competitors',
     );
     expect(plainEnglish('incumbency + payer_solvency: the single passage')).toBe(
-      'existing competition + payer solvency: the single passage',
+      'existing competition + payer solvency: the single source',
     );
     // The noun forms the engine writes in prose go too, so the ban holds on text no source scan
     // can see -- these arrive in `reason` and `oneLiner` from the model, not from our files.
@@ -141,8 +150,10 @@ describe('engine vocabulary does not reach a buyer', () => {
 
   it('changes nothing in prose that was already plain', () => {
     // The translation must be a no-op where there is nothing to translate, or it is editing
-    // evidence rather than vocabulary.
-    const clean = 'Two passages describe a live commercial service selling UK property data.';
+    // evidence rather than vocabulary. "passages" is deliberately NOT the example here: on
+    // 2026-09-06 the register bar (EE2) makes "passages" retrieval jargon in all its
+    // engine-authored uses, so a clean-sentence test that kept it would protect the leak.
+    const clean = 'Two named witnesses contradicted the buyer\'s claim about delivery times.';
     expect(plainEnglish(clean)).toBe(clean);
     expect(plainEnglish('')).toBe('');
   });
