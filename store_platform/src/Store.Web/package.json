@@ -65,7 +65,7 @@
     "stylelint-config-standard": "^40.0.0",
     "tailwindcss": "^4",
     "typescript": "^6",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "postcss": "^8.5.18",
