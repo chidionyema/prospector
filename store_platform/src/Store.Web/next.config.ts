@@ -66,6 +66,9 @@ const pitchHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // @estate/ui-kit ships TypeScript source (the shadcn pattern: components are code you own, not a
+  // prebuilt bundle), so Next compiles it with the app.
+  transpilePackages: ['@estate/ui-kit'],
   reactStrictMode: true,
   // Emit `.next/standalone` (minimal server.js + traced node_modules) for a small
   // production Docker image. The Dockerfile copies standalone + .next/static + public.

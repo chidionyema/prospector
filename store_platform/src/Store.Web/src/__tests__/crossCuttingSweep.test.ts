@@ -264,14 +264,13 @@ describe('the hero grid records where a click came from', () => {
 });
 
 describe('a sector with nothing in it is disabled, not hidden', () => {
-  it('offers every category and greys the empty ones', () => {
+  it('the home offers no category chips of its own (crew#700 CP1: they belong to the catalogue route)', () => {
+    // The home is the kit's Landing: six packs and one CTA to /packs. The sector chips, with
+    // every category offered and the empty ones greyed, return with the catalogue rebuild on the
+    // kit's Catalogue template. Until then the home must not carry a second, drifting copy.
     const page = codeOnly(read('pages/index.tsx'));
-    expect(page).toContain('const offered = allCategories();');
-    expect(page).toContain("const dead = (counts[cat.key] ?? 0) === 0 && !active;");
-    expect(page).toContain('disabled={dead}');
-    // The count still prints. `counts[cat.key]` is undefined for a sector no pack occupies, and
-    // React renders undefined as nothing, so the disabled chip would have carried no number.
-    expect(page).toContain('{counts[cat.key] ?? 0}');
+    expect(page).not.toContain('allCategories()');
+    expect(page).not.toContain('disabled={dead}');
   });
 });
 

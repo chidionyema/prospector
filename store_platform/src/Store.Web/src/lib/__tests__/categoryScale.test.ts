@@ -218,9 +218,10 @@ describe('the untagged pack renders no sector marker', () => {
      * defect being guarded against is a card with no sector AND no figure, and only one of those
      * two is visible in the source text.
      */
-    const cardStart = page.indexOf('function PackSpotlight(');
-    expect(cardStart, 'function PackSpotlight must be locatable').toBeGreaterThan(-1);
-    const cardEnd = page.indexOf('\nfunction ', cardStart + 1);
+    // crew#700 CP1: the home card is the kit's Card, built from the pack inside `featured={{ ... }}`.
+    const cardStart = page.indexOf('featured={{');
+    expect(cardStart, 'the kit shelf must be locatable').toBeGreaterThan(-1);
+    const cardEnd = page.indexOf('}}', page.indexOf('return {', cardStart));
     const card = page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd);
     const cardCode = card
       .replace(/\/\*[\s\S]*?\*\//g, '')

@@ -71,28 +71,15 @@ describe('the filter bar flag', () => {
     expect(resolveFlags({ MUMCHIMP_FILTER_BAR: '1' }, { ff: 'nonsense' }).filterBar).toBe(true);
   });
 
-  it('is read from the request environment, never from a build-time constant', () => {
-    // NEXT_PUBLIC_* is inlined at build time, so a flag defined that way cannot be flipped
-    // without a redeploy -- which is a release, not a flag. See `lib/flags.ts`.
-    expect(SRC('../lib/flags.ts').replace(/\/\*[\s\S]*?\*\//g, '')).not.toContain('NEXT_PUBLIC');
-    expect(INDEX).toContain('resolveFlags(process.env, context.query)');
+  it('is no longer read by the home at all (crew#700 CP1: the filter paths belong to the catalogue route)', () => {
+    // The home is the kit's Landing: one proposition, six packs, one CTA. The filter bar, the
+    // wizard and the flag that picks between them move to /packs with the catalogue rebuild;
+    // until then the home must not branch on `flags` so a stale path cannot resurface there.
+    const index = readFileSync(join(SRC, 'pages', 'index.tsx'), 'utf8');
+    expect(index).not.toContain('resolveFlags(');
+    expect(index).not.toContain('flags.filterBar');
   });
 });
-
-// ---------------------------------------------------------------------------
-
-/** The live ladder, measured 2026-08-05 and recorded in `priceRange.ts`. */
-function pack(id: string, price: string, extra: Partial<FacetedPack> = {}): FacetedPack {
-  return { id, title: id, price, ...extra };
-}
-
-const SHELF: FacetedPack[] = [
-  pack('a', '£29'),
-  pack('b', '£49'),
-  pack('c', '£49'),
-  pack('d', '£79'),
-  pack('e', '£199'),
-];
 
 describe('the price ceiling', () => {
   it('reads pence from the money rail field first, and the display string second', () => {

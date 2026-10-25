@@ -106,7 +106,7 @@ describe('the six-checks block claims no per-pack finding', () => {
   it('says out loud that finding nothing is not a green light', () => {
     // The block's own prose is what carries the honest reading now that the lines are neutral.
     // The heading is "The checks" since the 2026-09-02 rebuild; the disclaimer stays beside it.
-    const heading = PAGE.slice(PAGE.indexOf('<h2 className="sec">The checks</h2>'));
+    const heading = PAGE.slice(PAGE.search(/<h2[^>]*>The checks<\/h2>/));
     expect(heading.slice(0, 900)).toContain('not the same as finding a green light');
   });
 });

@@ -1,0 +1,52 @@
+/*
+  The estate UI kit, bridged into this site (crew#694 / crew#700 CP1).
+
+  tokens.css (kit) and brands/mumchimp.css set the CSS variables; this @theme exposes them to
+  Tailwind under the kit's names. It ADDS names, it does not reset the namespaces (`--color-*:
+  initial` is what a greenfield app on `@estate/ui-kit/tailwind.theme.css` does), because the
+  legacy pages still use this site's own `bg-bg`, `text-h1`, `p-5` utilities until they move.
+  Measured 2026-10-01 before this file: 0 legacy uses of text-xl/2xl/lg and 2 of text-sm, so
+  the kit's six type steps replace Tailwind's defaults here without reflowing a legacy page.
+  @source makes Tailwind read the kit's own components for the classes they use.
+*/
+@import "@estate/ui-kit/tokens.css" layer(kit);
+@import "@estate/ui-kit/brands/mumchimp.css" layer(kit);
+@source "../../node_modules/@estate/ui-kit/src";
+
+@theme {
+  --color-canvas: var(--color-canvas);
+  --color-surface-1: var(--color-surface-1);
+  --color-surface-2: var(--color-surface-2);
+  --color-surface-3: var(--color-surface-3);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-strong: var(--color-border-strong);
+  --color-text-2: var(--color-text-2);
+  --color-text-muted: var(--color-text-muted);
+  --color-accent: var(--color-accent);
+  --color-accent-pressed: var(--color-accent-pressed);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-on-accent: var(--color-on-accent);
+  --color-state-red-ink: var(--color-state-red-ink);
+  --color-state-red-bg: var(--color-state-red-bg);
+  --color-state-needs-ink: var(--color-state-needs-ink);
+  --color-state-needs-bg: var(--color-state-needs-bg);
+  --color-state-running-ink: var(--color-state-running-ink);
+  --color-state-running-bg: var(--color-state-running-bg);
+  --color-state-good-ink: var(--color-state-good-ink);
+  --color-state-good-bg: var(--color-state-good-bg);
+  --color-state-stale-ink: var(--color-state-stale-ink);
+  --color-state-stale-bg: var(--color-state-stale-bg);
+  --color-state-blind-ink: var(--color-state-blind-ink);
+  --color-state-blind-bg: var(--color-state-blind-bg);
+  --font-display: var(--font-display);
+  --font-serif: var(--font-serif);
+  --text-xs: var(--type-xs);   --text-xs--line-height: var(--type-xs-lh);
+  --text-sm: var(--type-sm);   --text-sm--line-height: var(--type-sm-lh);
+  --text-md: var(--type-md);   --text-md--line-height: var(--type-md-lh);
+  --text-lg: var(--type-lg);   --text-lg--line-height: var(--type-lg-lh);
+  --text-xl: var(--type-xl);   --text-xl--line-height: var(--type-xl-lh);
+  --text-2xl: var(--type-2xl); --text-2xl--line-height: var(--type-2xl-lh);
+  --radius-pill: var(--radius-pill);
+  --ease-estate: var(--motion-ease);
+  --breakpoint-desktop: 1024px;
+}

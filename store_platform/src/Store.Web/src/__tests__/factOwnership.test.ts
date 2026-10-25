@@ -76,15 +76,9 @@ const OWNED_FACTS: OwnedFact[] = [
   {
     fact: "What's in a pack (the 8-document manifest)",
     marker: /<PackContentsSection/,
-    owner: 'pages/index.tsx',
-    alsoAllowed: [
-      {
-        path: 'pages/pack/[id].tsx',
-        because:
-          'a pack page lists its OWN contents -- that is the product, not a restatement of the ' +
-          'marketing claim. §5.3 names Home the owner of the marketing manifest specifically.',
-      },
-    ],
+    // crew#700 CP1: the home is one proposition and six packs; the manifest is the product and
+    // lives on the pack page. The marketing copy of it belongs to /how-it-works when it returns.
+    owner: 'pages/pack/[id].tsx',
   },
   {
     fact: 'Pricing logic (the rung ladder)',
@@ -121,7 +115,8 @@ const OWNED_FACTS: OwnedFact[] = [
     // promise starts drifting into two wordings again.
     fact: 'Email-capture promise (the capture block)',
     marker: /<ShelfEndCapture/,
-    owner: 'pages/index.tsx',
+    // crew#700 CP1: the capture block sits where the list ends, which is the catalogue route.
+    owner: 'pages/packs.tsx',
   },
 ];
 

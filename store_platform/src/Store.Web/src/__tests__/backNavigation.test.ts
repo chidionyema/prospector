@@ -33,7 +33,8 @@ describe('every visual route offers a way back', () => {
   });
 
   it('pack/[id].tsx still renders its own Breadcrumbs', () => {
-    expect(read('pages/pack/[id].tsx')).toMatch(/<Breadcrumbs/);
+    // On the kit (crew#700 CP1) the page passes its crumbs to MarketingLayout, which renders <Breadcrumbs>.
+    expect(read('pages/pack/[id].tsx')).toMatch(/<Breadcrumbs|breadcrumbs=\{\[/);
   });
 
   it('the home page does NOT carry a trail', () => {

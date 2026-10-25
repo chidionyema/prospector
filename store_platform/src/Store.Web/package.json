@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.90.0",
+    "@estate/ui-kit": "file:vendor/estate-ui-kit-0.2.0.tgz",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@stripe/react-stripe-js": "^6.6.0",

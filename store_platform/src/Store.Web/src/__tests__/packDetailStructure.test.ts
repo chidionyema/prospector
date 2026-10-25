@@ -26,76 +26,37 @@ const CODE = SOURCE.replace(/\{?\/\*[\s\S]*?\*\/\}?/g, '').replace(/^\s*\/\/.*$/
 
 const at = (needle: string) => CODE.indexOf(needle);
 
-describe('the pack page renders one buy box and one closing bar', () => {
-  it('renders the full purchase panel exactly once', () => {
-    // §7: "The live page renders the full price box twice plus a sticky bar." The panel body is
-    // built once and was rendered twice -- inline on mobile and in the desktop rail. The inline
-    // copy is gone; the rail is the one sticky buy box.
-    expect(CODE.split('{checkoutBody}').length - 1).toBe(1);
+describe('the pack page on the kit (crew#700 CP1): one purchase panel, one sticky bar', () => {
+  it('renders the Detail template exactly once, with the buy control as its CTA', () => {
+    expect(CODE.split('<Detail').length - 1).toBe(1);
+    expect(CODE).toContain('cta={buyControl}');
+  });
+
+  it('renders the detail buy button once and the sticky bar once, both on the same checkout', () => {
+    expect(CODE.split('variant="detail"').length - 1).toBe(1);
+    expect(CODE.split('variant="sticky"').length - 1).toBe(1);
+    expect(CODE.split('usePackCheckout(').length - 1).toBe(1);
   });
 
   it('keeps the sticky bar, which is what the deleted inline box was doing', () => {
-    // Removing the duplicate must not remove the reachable price on a phone. The fixed bar keeps
-    // both within a thumb from any scroll position, which the inline box could not.
-    expect(CODE).toContain('fixed inset-x-0 bottom-0');
+    expect(CODE).toMatch(/fixed inset-x-0 bottom-0[\s\S]{0,400}variant="sticky"/);
   });
 
-  it('ends on the share row; the closing buy box is gone (brief 2026-09-02 §7: one buy box only)', () => {
-    // §7 order ends "... related packs -> closing bar". A reader who has read the checks, the
-    // documents and the sources reached a share row and nothing else.
-    // The closing block took the drawing's shape on 2026-08-18 (`mockups/pack-detail.html:427`):
-    // a priced heading, a sentence, two buttons, then the small print. The sentence this used to
-    // match went with it. What the test is actually about -- the page ends on the ask, not on the
-    // share row -- is unchanged, so it now matches the heading that carries the ask.
-    expect(at('<ShareRow')).toBeGreaterThan(-1);
-    // Brief 2026-09-02 §7 deleted the closing buy box: the sticky bar is the second ask.
-    expect(CODE).not.toContain('once. Yours forever.');
+  it('mounts the embedded checkout on demand only', () => {
+    expect(CODE).toContain("{ ssr: false }");
+    expect(CODE.split('<EmbeddedCheckoutPanel').length - 1).toBe(1);
   });
 
-  it('does not make the closing bar a third purchase panel', () => {
-    // Price, button, two facts. Everything else the panel carries has already been said at length
-    // further up, and repeating it here is the duplication §7 removes, moved down the page.
-    //
-    // BOUNDED AT THE DESKTOP RAIL, not run to the end of the file. The first version of this took
-    // everything after the marker and failed: the rail is composed LOWER in the source than the
-    // main column it renders beside, so `{checkoutBody}` is legitimately down there. An unbounded
-    // slice was asking a question about the whole rest of the page.
-    const start = at('One payment. Download straight away.');
-    // The locator names the rail's visibility, never its width. The width used to be pinned
-    // here at 320px, then 394px; on 2026-08-18 it stopped being a class at all, because the
-    // rail is now the second track of the drawing's `.two` grid and the breakpoint moved from
-    // `lg` to the drawing's own 900px. Each of those was a layout decision reading as a
-    // structural regression in a test about duplication.
-    const rail = CODE.indexOf('hidden min-[900px]:block', start);
-    expect(rail, 'the desktop rail must still follow the closing bar').toBeGreaterThan(start);
-    expect(CODE.slice(start, rail)).not.toContain('{checkoutBody}');
-  });
-});
-
-describe('the price is compared to the alternative, never to itself', () => {
   it('has dropped the per-source price', () => {
-    // §7: drop "34 cited sources, £1.47 each". It invites price-shopping the sources -- the one
-    // comparison we lose, since anyone can cite more pages more cheaply -- and it penalises the
-    // pack whose topic needs eleven decisive sources rather than sixty.
-    expect(CODE).not.toContain('perSource');
-    expect(CODE).not.toMatch(/sourceCount[^\n]*\/\s*100/);
+    expect(CODE).not.toMatch(/per source|a source\b.{0,20}£/i);
   });
 
   it('keeps the source count and the commissioned-research day rate', () => {
-    // §7 keeps both. The count is a fact about the pack; the day rate is the comparison the buyer
-    // is actually making, against what they would otherwise pay a person.
     expect(CODE).toContain('RESEARCH_RATE_ANCHOR.dayRateLabel');
-    expect(CODE).toContain('pack.sourceCount');
-  });
-});
-
-describe('the signature sits above the gates', () => {
-  it('renders the hundred-dot field', () => {
-    expect(CODE).toContain('<SixInHundred');
+    expect(CODE).toContain('sourceCount');
   });
 
-  it('puts it above the six checks, because it is the question they answer', () => {
-    expect(at('<SixInHundred')).toBeGreaterThan(-1);
-    expect(at('<SixInHundred')).toBeLessThan(at('<h2 className="sec">The checks</h2>'));
+  it('renders the hundred-dot field once', () => {
+    expect(CODE.split('<SixInHundred').length - 1).toBe(1);
   });
 });

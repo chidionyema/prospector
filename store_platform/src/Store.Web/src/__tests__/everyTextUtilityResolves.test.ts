@@ -29,6 +29,8 @@ import { describe, expect, it } from "vitest";
 const WEB = path.resolve(__dirname, "..", "..");
 const SRC = path.join(WEB, "src");
 const TOKENS = path.join(WEB, "src/styles/tokens.css");
+/* The estate UI kit's names, bridged into the theme by src/styles/kit.css (crew#694). */
+const KIT = path.join(WEB, "src/styles/kit.css");
 const SKIP_DIRS = new Set(["node_modules", "__tests__", "styles", ".next"]);
 
 /**
@@ -81,7 +83,7 @@ function withoutComments(source: string): string {
 }
 
 function declaredTokens(): Set<string> {
-  const css = readFileSync(TOKENS, "utf8");
+  const css = readFileSync(TOKENS, "utf8") + "\n" + readFileSync(KIT, "utf8");
   const out = new Set<string>();
   for (const m of css.matchAll(/--(?:text|color)-([a-z0-9-]+)\s*:/g)) out.add(`text-${m[1]}`);
   return out;

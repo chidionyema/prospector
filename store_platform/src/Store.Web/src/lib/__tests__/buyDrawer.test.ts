@@ -101,7 +101,7 @@ describe('the shelf keeps opening the pack as its primary action', () => {
      * primary action opens the pack page, and the drawer is reached from there -- a card that
      * checks out in place sells before the evidence has been seen.
      */
-    expect(index, 'the card must link to the pack page').toMatch(/href=\{`\/pack\/\$\{pack\.id\}`\}/);
+    expect(index, 'the card must link to the pack page').toMatch(/href=\{`\/pack\/\$\{pack\.id\}`\}|href: `\/pack\/\$\{p\.id\}`/);
     expect(index, 'the card must label that action').toContain('View pack');
     expect(index, 'the shelf card must not open checkout directly').not.toMatch(
       /<PackBuyButton|openDrawer\(/,
