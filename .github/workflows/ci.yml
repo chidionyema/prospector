@@ -576,7 +576,7 @@ jobs:
       # no re-download. On GitHub-hosted runners the fallback path is per-workspace and cold,
       # which is the same as having no cache — acceptable, because we do not run there.
       - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: false
 
@@ -662,7 +662,7 @@ jobs:
       # No `cache:`. setup-node's cache keys off a lockfile and stores node_modules; nothing in
       # this job installs a package. The download is ~30s on a cold runner and is the whole cost.
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
 
@@ -670,7 +670,7 @@ jobs:
       # renders deploy/k8s/overlays/oke with it (needs_tool("kubectl")); without this step the
       # marker ERRORs the test in CI, same contract as Node above.
       - name: Set up kubectl
-        uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
 
       - name: Test suite
         # No -x. It stops at the first failure, so a run reports one problem and hides the
@@ -850,7 +850,7 @@ jobs:
       # The actions/cache step that was here had the same defect as the python job's: it tarred
       # ~/.cache/uv, which uv was not configured to read. See the long note there.
       - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: false
 
@@ -1053,7 +1053,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # package.json declares engines.node >=22; this said 20, so CI was building on a
           # runtime the project does not claim to support.
@@ -1232,7 +1232,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
           cache: ${{ runner.environment == 'self-hosted' && '' || 'npm' }}
