@@ -150,7 +150,7 @@ describe('N1 — Persistence of trust', () => {
       expect(
         page,
         'index.tsx must pass the live `stats.listed` into <TrustGuaranteesRow>',
-      ).toMatch(/<TrustGuaranteesRow[^>]*listed=\{stats\??\.listed\}/);
+      ).toMatch(/<TrustGuaranteesRow[^>]*listed=\{[^}]*stats\??\.listed[^}]*\}/);
     });
   });
 });

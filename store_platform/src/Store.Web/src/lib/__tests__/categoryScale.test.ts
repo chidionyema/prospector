@@ -218,9 +218,10 @@ describe('the untagged pack renders no sector marker', () => {
      * defect being guarded against is a card with no sector AND no figure, and only one of those
      * two is visible in the source text.
      */
-    const cardStart = page.indexOf('function PackSpotlight(');
-    expect(cardStart, 'function PackSpotlight must be locatable').toBeGreaterThan(-1);
-    const cardEnd = page.indexOf('\nfunction ', cardStart + 1);
+    // crew#700 CP1: the home card is the kit's Card, built from the pack inside `featured={{ ... }}`.
+    const cardStart = page.indexOf('featured={{');
+    expect(cardStart, 'the kit shelf must be locatable').toBeGreaterThan(-1);
+    const cardEnd = page.indexOf('}}', page.indexOf('return {', cardStart));
     const card = page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd);
     const cardCode = card
       .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -262,17 +263,12 @@ describe('the untagged pack renders no sector marker', () => {
 
     // And the identity that does not depend on the sector at all: the pack's own figure, on
     // every variant. This is the part an untagged pack relies on.
-    // TWO variants now, in two files: the Spotlight here and the Row in `PackRow.tsx`. Was 3 --
-    // the `mid` weight was deleted with the tile-grid format (2026-08-15 brief).
-    // ONE FIGURE MOUNT SINCE 2026-08-18 (founder's live-defect fix prompt, D4). Only the
-    // featured card draws the big `.stat` figure; the row and the three-up tile print the
-    // drawing's one-line mono proof instead (`<b>41</b> sources`). The guarantee an untagged
-    // pack leans on is unchanged -- every variant states a number of its own -- so both mounts
-    // are pinned here, not just the one that kept the old component.
-    expect(
-      ((cardCode + row).match(/<PackFigure\b/g) ?? []).length,
-      'the spotlight must carry the pack figure',
-    ).toBe(1);
+    // ONE FORMAT FAMILY NOW. crew#700 CP1 deleted the home's spotlight card -- the home is one
+    // proposition and six packs, and the catalogue route renders the shelf as rows -- and with
+    // it went the big `.stat` figure that only the spotlight carried. The guarantee an untagged
+    // pack leans on is unchanged -- every format the shelf can render states a number of its
+    // own -- and it is now carried by the proof component alone, which the row and the tile
+    // each mount.
     expect(
       (row.match(/<CardProof\b/g) ?? []).length,
       'the row and the tile must each state a number through the proof component',

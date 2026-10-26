@@ -44,12 +44,13 @@ function checkLines(): string[] {
 function checksList(): string {
   const start = PAGE.indexOf('{CHECKS.map(');
   expect(start, 'CHECKS render site not found').toBeGreaterThan(-1);
-  // A <div>, not a <ul>: the drawing runs these as `.checkrow` rows inside one `.card incard`
-  // (`mockups/pack-detail.html`). The slice is the same span it always was, from the container
-  // to the end of the map. Bounding it at `</ul>` after the markup changed made this read the
-  // buy rail's own list instead, which legitimately carries a success mark.
+  // The block is an `<ol>` inside the detail section (crew#700 CP1: the pack page renders the
+  // kit's `Detail` template, and the old `.card incard` div is gone with it). The slice is the
+  // same span it always was, from the container to the end of the map; the container is now the
+  // ordered list that renders the lines. Bounding it at `</ul>` after the markup changed made
+  // this read the buy rail's own list instead, which legitimately carries a success mark.
   return PAGE.slice(
-    PAGE.lastIndexOf('<div className="card incard', start),
+    PAGE.lastIndexOf('<ol', start),
     PAGE.indexOf('))}', start),
   );
 }
@@ -106,7 +107,7 @@ describe('the six-checks block claims no per-pack finding', () => {
   it('says out loud that finding nothing is not a green light', () => {
     // The block's own prose is what carries the honest reading now that the lines are neutral.
     // The heading is "The checks" since the 2026-09-02 rebuild; the disclaimer stays beside it.
-    const heading = PAGE.slice(PAGE.indexOf('<h2 className="sec">The checks</h2>'));
+    const heading = PAGE.slice(PAGE.search(/<h2[^>]*>The checks<\/h2>/));
     expect(heading.slice(0, 900)).toContain('not the same as finding a green light');
   });
 });

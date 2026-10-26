@@ -80,14 +80,13 @@ describe('card click-through instrument is wired to real call sites', () => {
     expect(list.indexOf('useCardImpressions()')).toBeLessThan(list.indexOf('packs.length === 0'));
   });
 
-  it("the home shelf's own row list counts too", () => {
-    // The shelf renders `PackRow` directly to keep its per-row `hidden` class, so it is the one
-    // list that does not inherit the wiring from `PackRowList`.
+  it('the home renders no row list of its own (crew#700 CP1: six kit cards, the catalogue is /packs)', () => {
+    // The home no longer renders `PackRow` directly; its shelf is six kit cards whose rate is
+    // clicks over page views (`page_view` fires in _app). Every row list is `PackRowList`, wired above.
     const src = read('pages/index.tsx');
-    const shelf = src.slice(src.indexOf('function ShelfRows'), src.indexOf('function CatalogBrowser'));
-    expect(shelf).toContain('const { observe } = useCardImpressions();');
-    expect(shelf).toContain('observeRef={observe(pack.id)}');
-    expect(shelf).toContain('position={i + 1}');
+    expect(src).not.toContain('function ShelfRows');
+    expect(src).not.toContain('<PackRow ');
+    expect(src).toContain('featured={{');
   });
 
   it('no card anywhere reports a click without also counting the sighting', () => {

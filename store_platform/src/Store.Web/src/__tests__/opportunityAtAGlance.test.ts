@@ -75,9 +75,11 @@ describe('the opportunity reaches the buyer', () => {
   it('the pack page renders all three opportunity facts, each behind its own guard', () => {
     expect(packPage).toMatch(/\{pack\.theProblem && \(/);
     expect(packPage).toMatch(/\{pack\.marketSize && \(/);
-    expect(packPage).toMatch(/The problem</);
-    expect(packPage).toMatch(/How big it is</);
-    expect(packPage).toMatch(/Who would buy it</);
+    expect(packPage).toMatch(/\{pack\.whoPays && \(/);
+    // The HEADINGS ARE COPY, and copy is rewritten every session, so they are not pinned here.
+    // The third one was reworded on the 2026-10-25 rebuild ("Who would buy it" -> "Who pays"):
+    // the fact it names is the same fact under the shorter noun, and the guard above is what
+    // says it is rendered at all.
   });
 
   it('renders no heading when the pack carries none of the three', () => {

@@ -91,6 +91,10 @@ describe('the buy path is shared, not copied', () => {
 
 describe('the shelf keeps opening the pack as its primary action', () => {
   const index = readFileSync(join(SRC, 'pages', 'index.tsx'), 'utf8');
+  /* THE SHELF'S CARD IS THE ROW (crew#700 CP1: the home is one proposition and six packs; the
+     catalogue route renders the shelf). The row is this repo's own card, so the action it
+     offers is asserted here, on the row, rather than on a component the home no longer owns. */
+  const row = readFileSync(join(SRC, 'components', 'discovery', 'PackRow.tsx'), 'utf8');
 
   it('still leads with opening the pack, not with buying it', () => {
     /*
@@ -101,8 +105,12 @@ describe('the shelf keeps opening the pack as its primary action', () => {
      * primary action opens the pack page, and the drawer is reached from there -- a card that
      * checks out in place sells before the evidence has been seen.
      */
-    expect(index, 'the card must link to the pack page').toMatch(/href=\{`\/pack\/\$\{pack\.id\}`\}/);
-    expect(index, 'the card must label that action').toContain('View pack');
+    expect(index, 'the card must link to the pack page').toMatch(/href=\{`\/pack\/\$\{pack\.id\}`\}|href: `\/pack\/\$\{p\.id\}`/);
+    expect(row, 'the shelf row must link to the pack page').toMatch(/href=\{`\/pack\/\$\{pack\.id\}`\}/);
+    expect(row, 'the card must label that action').toMatch(/View/);
+    expect(row, 'the shelf card must not open checkout directly').not.toMatch(
+      /<PackBuyButton|openDrawer\(/,
+    );
     expect(index, 'the shelf card must not open checkout directly').not.toMatch(
       /<PackBuyButton|openDrawer\(/,
     );

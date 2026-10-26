@@ -76,15 +76,9 @@ const OWNED_FACTS: OwnedFact[] = [
   {
     fact: "What's in a pack (the 8-document manifest)",
     marker: /<PackContentsSection/,
-    owner: 'pages/index.tsx',
-    alsoAllowed: [
-      {
-        path: 'pages/pack/[id].tsx',
-        because:
-          'a pack page lists its OWN contents -- that is the product, not a restatement of the ' +
-          'marketing claim. §5.3 names Home the owner of the marketing manifest specifically.',
-      },
-    ],
+    // crew#700 CP1: the home is one proposition and six packs; the manifest is the product and
+    // lives on the pack page. The marketing copy of it belongs to /how-it-works when it returns.
+    owner: 'pages/pack/[id].tsx',
   },
   {
     fact: 'Pricing logic (the rung ladder)',
@@ -121,7 +115,8 @@ const OWNED_FACTS: OwnedFact[] = [
     // promise starts drifting into two wordings again.
     fact: 'Email-capture promise (the capture block)',
     marker: /<ShelfEndCapture/,
-    owner: 'pages/index.tsx',
+    // crew#700 CP1: the capture block sits where the list ends, which is the catalogue route.
+    owner: 'pages/packs.tsx',
   },
 ];
 
@@ -210,12 +205,16 @@ describe('§5.3 ownership map -- the map itself stays honest', () => {
       { path: 'pages/index.tsx', src: 'export default function Home() { return <main /> }' },
       { path: 'pages/pricing.tsx', src: 'export default function Pricing() { return <main /> }' },
     ]);
-    expect(problems).toEqual(['orphaned: renders on no page (owner pages/index.tsx)']);
+    // The owner named here is the owner's, read from the map: crew#700 CP1 moved the manifest
+    // off the home and onto the pack page, and the message must name whoever owns it NOW.
+    expect(problems).toEqual([
+      `orphaned: renders on no page (owner ${manifest.owner})`,
+    ]);
   });
 
   it('fires when a fact is restated on a second page', () => {
     const problems = auditFact(manifest, [
-      { path: 'pages/index.tsx', src: '<PackContentsSection />' },
+      { path: manifest.owner, src: '<PackContentsSection />' },
       { path: 'pages/about.tsx', src: '<PackContentsSection />' },
     ]);
     expect(problems).toEqual(['restated on pages/about.tsx']);
@@ -223,18 +222,21 @@ describe('§5.3 ownership map -- the map itself stays honest', () => {
 
   it('fires when a fact migrates off its owner', () => {
     const problems = auditFact(manifest, [
-      { path: 'pages/index.tsx', src: '<main />' },
-      { path: 'pages/pack/[id].tsx', src: '<PackContentsSection />' },
+      { path: 'pages/about.tsx', src: '<PackContentsSection />' },
     ]);
-    expect(problems).toEqual(['moved: owner pages/index.tsx does not render it']);
+    // Two messages, both true: the owner stopped rendering it, and the page that took it over
+    // is not the owner either. The first is the one this case is about.
+    expect(problems).toEqual([
+      `moved: owner ${manifest.owner} does not render it`,
+      'restated on pages/about.tsx',
+    ]);
   });
 
   it('stays silent on the correct arrangement, allowance included', () => {
     // The non-firing guard. Without it the three above are satisfied by a predicate that always
     // reports a problem, which would fail every real edit and be deleted within the week.
     const problems = auditFact(manifest, [
-      { path: 'pages/index.tsx', src: '<PackContentsSection />' },
-      { path: 'pages/pack/[id].tsx', src: '<PackContentsSection />' },
+      { path: manifest.owner, src: '<PackContentsSection />' },
       { path: 'pages/about.tsx', src: '<main />' },
     ]);
     expect(problems).toEqual([]);

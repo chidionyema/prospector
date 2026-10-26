@@ -6,6 +6,25 @@
 */
 
 /*
+  THE ESTATE UI KIT, imported HERE and not in a file of its own, because this is the file
+  the kit's own registry names. `packages/estate-ui-kit/consumers.json` (idp) records this
+  consumer's stylesheet as `src/styles/tokens.css`, and `guards/kit-import.mjs` reads that
+  record and greps THAT file for the import; a stylesheet that imports the kit anywhere
+  else is a consumer the kit's guard cannot see, and the guard is what makes the kit a
+  ratchet instead of a suggestion. The founder-surface spec names the same file
+  (docs/specs/2026-10-24-founder-surface-redesign.md §2.1: mumchimp -> `@import
+  "@estate/ui-kit/tokens.css";` in `src/styles/tokens.css`).
+
+  `layer(kit)` on both imports is deliberate and is what keeps the kit ADDITIVE. The kit's
+  tokens land in `@layer kit`, so this site's own unlayered `:root` declarations below keep
+  winning the names they already own -- the kit adds names, it does not reset a namespace.
+  The brand import comes second on purpose: a brand overrides the kit's defaults for the
+  names it declares, and the mumchimp brand is the one that knows this shop's colours.
+*/
+@import "@estate/ui-kit/tokens.css" layer(kit);
+@import "@estate/ui-kit/brands/mumchimp.css" layer(kit);
+
+/*
   Brand v3 — "clean modern product" (2026-08-06).
 
   Rebuilt from the ground up after the v2 look was rejected outright: "designed by a teenager on

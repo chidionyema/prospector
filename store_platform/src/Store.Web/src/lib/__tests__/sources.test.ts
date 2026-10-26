@@ -85,11 +85,12 @@ describe('the free sample is not gated behind the capture', () => {
   const source = readFileSync(fileURLToPath(new URL(MARKETING_PAGES[0], HERE)), 'utf8');
 
   it('keeps the promise it makes next to the sample button', () => {
-    expect(source).toContain('No payment, no email.');
+    // crew#700 CP1: the promise is the shared line, SITE_COPY.sampleLinkHero ("no email required").
+    expect(source).toContain('SITE_COPY.sampleLinkHero');
   });
 
   it('keeps /sample reachable as a plain link', () => {
-    expect(source).toMatch(/href="\/sample"/);
+    expect(source).toMatch(/href="\/sample"|href: '\/sample'/);
   });
 
   it('puts nothing between the reader and the sample link', () => {
@@ -105,7 +106,7 @@ describe('the free sample is not gated behind the capture', () => {
     // So the source test now asserts only what source can honestly show -- the link is a plain
     // href, not wrapped in a submit handler -- and the real property, that /sample opens cold
     // with no address given, is proven against the running site in e2e/discovery.spec.ts.
-    expect(source).toMatch(/href="\/sample"/);
+    expect(source).toMatch(/href="\/sample"|href: '\/sample'/);
     expect(source, 'the sample link must not be inside a form that could gate it').not.toMatch(
       /<form[\s\S]{0,2000}href="\/sample"[\s\S]{0,2000}<\/form>/,
     );
