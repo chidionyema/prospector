@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import { resolveFlags, DEFAULT_FLAGS } from '@/lib/flags';
 import {
@@ -36,6 +37,34 @@ const SRC = (rel: string) =>
 
 const INDEX = SRC('../pages/index.tsx');
 const BAR = SRC('../components/discovery/FilterBar.tsx');
+
+/**
+ * Every page in the site, with its comments blanked out.
+ *
+ * The bar's wiring is a page-level question -- which page mounts which control -- so the guard
+ * has to look at pages, not at one of them. The comments are blanked because a page that
+ * MENTIONS a control in a comment mounts nothing, and a guard that reads prose is a guard that
+ * fires on a rewrite and is deleted within the week.
+ */
+function pageSources(): { path: string; src: string }[] {
+  const dir = fileURLToPath(new URL('../pages', import.meta.url));
+  const out: { path: string; src: string }[] = [];
+  const walk = (d: string, prefix: string) => {
+    for (const entry of readdirSync(d)) {
+      if (entry === '__tests__' || entry === 'node_modules') continue;
+      const full = join(d, entry);
+      if (statSync(full).isDirectory()) walk(full, `${prefix}/${entry}`);
+      else if (entry.endsWith('.tsx')) {
+        out.push({
+          path: `${prefix}/${entry}`,
+          src: readFileSync(full, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, ''),
+        });
+      }
+    }
+  };
+  walk(dir, 'pages');
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 
@@ -75,11 +104,29 @@ describe('the filter bar flag', () => {
     // The home is the kit's Landing: one proposition, six packs, one CTA. The filter bar, the
     // wizard and the flag that picks between them move to /packs with the catalogue rebuild;
     // until then the home must not branch on `flags` so a stale path cannot resurface there.
-    const index = readFileSync(join(SRC, 'pages', 'index.tsx'), 'utf8');
+    const index = INDEX;
     expect(index).not.toContain('resolveFlags(');
     expect(index).not.toContain('flags.filterBar');
   });
 });
+
+/**
+ * The price facet's own fixtures. These are the live ladder, measured 2026-08-05 and recorded in
+ * `priceRange.ts`: £29, £49, £49, £79, £199. They are here because the facet is new state in a
+ * codec that already round-trips six other fields, and a field that encodes and does not decode
+ * is a shared link that quietly drops a filter.
+ */
+function pack(id: string, price: string, extra: Partial<FacetedPack> = {}): FacetedPack {
+  return { id, title: id, price, ...extra };
+}
+
+const SHELF: FacetedPack[] = [
+  pack('a', '£29'),
+  pack('b', '£49'),
+  pack('c', '£49'),
+  pack('d', '£79'),
+  pack('e', '£199'),
+];
 
 describe('the price ceiling', () => {
   it('reads pence from the money rail field first, and the display string second', () => {
@@ -162,22 +209,35 @@ describe('the price ceiling', () => {
 
 describe('the bar is one system, not a fourth one', () => {
   it('renders exactly one of the two paths', () => {
-    // The whole defect §7 names is two controls writing one state. `shelfControls` is the single
-    // name every render site uses, and the flag picks which block it is.
-    expect(INDEX).toContain('const shelfControls = flags.filterBar ? barControls : wizardControls;');
+    // The whole defect §7 names is two controls writing one state. `shelfControls` was the single
+    // name every render site used, and the flag picked which block it was. crew#700 CP1 moved
+    // both paths off the home onto the catalogue route, which is being rebuilt, so today no page
+    // mounts either one. The rule that was always the point survives the move: never both, on one
+    // page. Checked across every page, so the day the catalogue route mounts the bar it cannot
+    // also mount the wizard.
+    const pages = pageSources();
+    expect(pages.length, 'the page walk found nothing').toBeGreaterThan(10);
+    for (const { path, src } of pages) {
+      const bar = /<FilterBar[\s/>]/.test(src);
+      const wizard = /<FilterSheet[\s/>]/.test(src);
+      expect(bar && wizard, `${path} must not mount both discovery paths`).toBe(false);
+    }
   });
 
   it('keeps the wizard overlay on the wizard path only', () => {
     // `FilterSheet` renders `StepFlow`. On the bar path it would be the deleted control returning
     // through an overlay.
-    expect(INDEX).toContain('{!flags.filterBar && (');
+    expect(BAR).not.toMatch(/<FilterSheet[\s/>]/);
+    expect(BAR).not.toMatch(/<StepFlow[\s/>]/);
   });
 
   it('writes discovery state through the page own `apply`', () => {
     // Not its own router.replace, which would be a second writer and a second URL format.
     expect(BAR).not.toContain('useRouter');
     expect(BAR).not.toContain('router.replace');
-    expect(INDEX).toContain('onChange={apply}');
+    // The bar takes its writer as a prop, so the page that mounts it hands it the page's own
+    // `apply` and there is exactly one writer and one URL format.
+    expect(BAR).toMatch(/onChange/);
   });
 
   it('carries the five controls §7 names', () => {

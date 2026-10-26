@@ -5,6 +5,7 @@ import type { GetServerSideProps } from 'next';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackRowList } from '@/components/discovery/PackRow';
+import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
 import { Seo } from '@/components/Seo';
 import { textLinkClass } from '@/components/ui';
 import { fetchCatalog, type Pack } from '@/lib/api/client';
@@ -188,6 +189,14 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
           </Link>
           .
         </p>
+
+        {/* THE CAPTURE, WHERE THE LIST ENDS (crew#700 CP1). The home is one proposition and six
+            packs now, so the email capture that used to sit under the shelf has no shelf to sit
+            under: this route IS the list, and §5.3 of the ownership map gives this route the
+            capture block as its owner. The placement is unchanged in meaning -- after the last
+            thing a reader could look at -- and the promise and the consent mechanism are still
+            `WaitlistForm`'s, so the stored signup says exactly what it said on the home. */}
+        <ShelfEndCapture className="mt-10" />
       </Section>
 
       <CtaBand

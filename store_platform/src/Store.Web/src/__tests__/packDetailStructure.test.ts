@@ -24,7 +24,42 @@ const SOURCE = readFileSync(
 /** Comments removed, so a note ABOUT a deleted thing is not read as the thing. */
 const CODE = SOURCE.replace(/\{?\/\*[\s\S]*?\*\/\}?/g, '').replace(/^\s*\/\/.*$/gm, '');
 
-const at = (needle: string) => CODE.indexOf(needle);
+/**
+ * The JSX element whose opening tag carries `marker`, from that opening tag to its own closing
+ * tag. Braces are counted, so an inner element's close is not mistaken for the outer one's end.
+ *
+ * This replaces a proximity assertion. The old one asked for two markers to sit within 400
+ * characters of each other, which is a proxy for "the sticky buy button is inside the fixed
+ * bar" -- a proxy that broke the moment the bar grew the refund line it had always meant to
+ * show, and would have broken again on the next honest copy edit. Proximity is not the claim;
+ * containment is.
+ */
+function elementWith(code: string, marker: string): string {
+  const start = code.indexOf(marker);
+  if (start === -1) return '';
+  let i = code.indexOf('>', start) + 1;
+  let depth = 0;
+  while (i < code.length) {
+    const lt = code.indexOf('<', i);
+    if (lt === -1) break;
+    if (code.startsWith('</', lt)) {
+      if (depth === 0) return code.slice(start, lt);
+      depth--;
+      i = lt + 2;
+      continue;
+    }
+    if (code.startsWith('/>', lt)) {
+      i = lt + 2;
+      continue;
+    }
+    const gt = code.indexOf('>', lt);
+    if (gt === -1) break;
+    // An opening tag that closes itself adds no level.
+    if (!code.slice(lt, gt).endsWith('/')) depth++;
+    i = gt + 1;
+  }
+  return code.slice(start);
+}
 
 describe('the pack page on the kit (crew#700 CP1): one purchase panel, one sticky bar', () => {
   it('renders the Detail template exactly once, with the buy control as its CTA', () => {
@@ -39,7 +74,13 @@ describe('the pack page on the kit (crew#700 CP1): one purchase panel, one stick
   });
 
   it('keeps the sticky bar, which is what the deleted inline box was doing', () => {
-    expect(CODE).toMatch(/fixed inset-x-0 bottom-0[\s\S]{0,400}variant="sticky"/);
+    // The bar is the phone's way to buy: fixed to the bottom of the viewport, carrying the same
+    // checkout the detail panel uses. The claim is that the sticky buy button is INSIDE that bar,
+    // so the containment is what is asserted, not the distance between two markers.
+    const bar = elementWith(CODE, 'fixed inset-x-0 bottom-0');
+    expect(bar, 'the page must render a fixed bottom bar').not.toBe('');
+    expect(bar, 'the sticky bar must carry the sticky buy button').toContain('variant="sticky"');
+    expect(bar, 'the sticky bar must carry the pack buy button').toContain('PackBuyButton');
   });
 
   it('mounts the embedded checkout on demand only', () => {

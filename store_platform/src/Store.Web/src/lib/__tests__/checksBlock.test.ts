@@ -44,12 +44,13 @@ function checkLines(): string[] {
 function checksList(): string {
   const start = PAGE.indexOf('{CHECKS.map(');
   expect(start, 'CHECKS render site not found').toBeGreaterThan(-1);
-  // A <div>, not a <ul>: the drawing runs these as `.checkrow` rows inside one `.card incard`
-  // (`mockups/pack-detail.html`). The slice is the same span it always was, from the container
-  // to the end of the map. Bounding it at `</ul>` after the markup changed made this read the
-  // buy rail's own list instead, which legitimately carries a success mark.
+  // The block is an `<ol>` inside the detail section (crew#700 CP1: the pack page renders the
+  // kit's `Detail` template, and the old `.card incard` div is gone with it). The slice is the
+  // same span it always was, from the container to the end of the map; the container is now the
+  // ordered list that renders the lines. Bounding it at `</ul>` after the markup changed made
+  // this read the buy rail's own list instead, which legitimately carries a success mark.
   return PAGE.slice(
-    PAGE.lastIndexOf('<div className="card incard', start),
+    PAGE.lastIndexOf('<ol', start),
     PAGE.indexOf('))}', start),
   );
 }

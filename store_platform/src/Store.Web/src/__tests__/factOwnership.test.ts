@@ -205,12 +205,16 @@ describe('§5.3 ownership map -- the map itself stays honest', () => {
       { path: 'pages/index.tsx', src: 'export default function Home() { return <main /> }' },
       { path: 'pages/pricing.tsx', src: 'export default function Pricing() { return <main /> }' },
     ]);
-    expect(problems).toEqual(['orphaned: renders on no page (owner pages/index.tsx)']);
+    // The owner named here is the owner's, read from the map: crew#700 CP1 moved the manifest
+    // off the home and onto the pack page, and the message must name whoever owns it NOW.
+    expect(problems).toEqual([
+      `orphaned: renders on no page (owner ${manifest.owner})`,
+    ]);
   });
 
   it('fires when a fact is restated on a second page', () => {
     const problems = auditFact(manifest, [
-      { path: 'pages/index.tsx', src: '<PackContentsSection />' },
+      { path: manifest.owner, src: '<PackContentsSection />' },
       { path: 'pages/about.tsx', src: '<PackContentsSection />' },
     ]);
     expect(problems).toEqual(['restated on pages/about.tsx']);
@@ -218,18 +222,21 @@ describe('§5.3 ownership map -- the map itself stays honest', () => {
 
   it('fires when a fact migrates off its owner', () => {
     const problems = auditFact(manifest, [
-      { path: 'pages/index.tsx', src: '<main />' },
-      { path: 'pages/pack/[id].tsx', src: '<PackContentsSection />' },
+      { path: 'pages/about.tsx', src: '<PackContentsSection />' },
     ]);
-    expect(problems).toEqual(['moved: owner pages/index.tsx does not render it']);
+    // Two messages, both true: the owner stopped rendering it, and the page that took it over
+    // is not the owner either. The first is the one this case is about.
+    expect(problems).toEqual([
+      `moved: owner ${manifest.owner} does not render it`,
+      'restated on pages/about.tsx',
+    ]);
   });
 
   it('stays silent on the correct arrangement, allowance included', () => {
     // The non-firing guard. Without it the three above are satisfied by a predicate that always
     // reports a problem, which would fail every real edit and be deleted within the week.
     const problems = auditFact(manifest, [
-      { path: 'pages/index.tsx', src: '<PackContentsSection />' },
-      { path: 'pages/pack/[id].tsx', src: '<PackContentsSection />' },
+      { path: manifest.owner, src: '<PackContentsSection />' },
       { path: 'pages/about.tsx', src: '<main />' },
     ]);
     expect(problems).toEqual([]);

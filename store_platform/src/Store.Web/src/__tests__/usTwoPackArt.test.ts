@@ -96,74 +96,45 @@ describe('US-2 — Pack cards with pack art', () => {
      * card. Measured on the live catalogue 2026-08-14: 39 of 62 packs lead with the modelled
      * price multiple (1x to 123x) and the remaining 23 with their cited source count (17 to 51).
      */
-    expect(page, 'the card must still read the pack category for its sector label').toMatch(
+    /*
+     * THE CARD MOVED, THE CLAIM DID NOT. crew#700 CP1 deleted the home's spotlight card: the
+     * home is one proposition and six packs, and the catalogue route (`/packs`) renders the
+     * shelf as ROWS. The card this file has always guarded is therefore `PackRow.tsx` now, and
+     * the assertions below are re-anchored to it -- the claim (a card carries something that is
+     * true of THIS pack and of no other) is unchanged; only the file that renders it moved.
+     */
+    const card = readSource('../components/discovery/PackRow.tsx');
+    expect(card, 'the card must still read the pack category for its sector label').toMatch(
       /const cat = categoryFor\(pack\)/,
     );
-    expect(page, 'the card must compute one lead figure per pack').toMatch(
-      /const stat = packLeadStat\(pack\)/,
+    // The home's featured grid is the one place the home still renders a card per pack, and it
+    // renders the same facts as DATA: the sector label, the source count and the price. Six
+    // identical tiles would be the US-2 defect again in a different shape, so the grid is
+    // guarded here too.
+    expect(page, 'the home featured grid must state each pack sector').toMatch(/categoryFor\(p\)/);
+    expect(page, 'the home featured grid must state each pack evidence').toMatch(/sourceCount/);
+    // THE LEAD FIGURE WENT WITH THE SPOTLIGHT, AND THE ROW STATES THE SAME FACTS ITSELF. The
+    // spotlight's `packLeadStat` figure was welded to a sentence sized for a 44px `.stat`
+    // device; at row size it produced three different sentences for one fact ("38 sources",
+    // "16 cited sources behind it", "2x the price back in month one, modelled"). The row
+    // therefore states the pack's own evidence through `CardProof`, the one component that
+    // renders the drawing's two forms and nothing else.
+    expect(card, 'the card must state the pack evidence through the one proof component').toMatch(
+      /<CardProof\b/,
     );
 
     /*
-     * ALL THREE VARIANTS, ONE DEVICE. The row, the lead poster and the shelf card each render the
-     * SAME component at a different size. Pinning "three mounts, one per weight" is what stops
-     * the treatment drifting into three treatments, which is how the shelf got flat the first
-     * time: the row list and the grid stopped stating the same fact the same way.
+     * EVERY FORMAT THE SHELF CAN RENDER CARRIES THE SAME EVIDENCE. The row and the tile each
+     * render the SAME component at a different size. Pinning "two mounts, one per weight" is
+     * what stops the treatment drifting into two treatments, which is how the shelf got flat
+     * the first time: the row list and the grid stopped stating the same fact the same way.
      */
-    // TWO variants, was three (2026-08-15, the founder's mobile brief). `mid` is deleted and
-    // `row` moved to `components/discovery/PackRow.tsx`, so the two mounts are in two files. What
-    // this pins is unchanged: EVERY format the shelf can render carries the lead figure, because
-    // one format quietly dropping it is how the shelf went flat the first time.
-    const cardStart = page.indexOf('function PackSpotlight(');
-    expect(cardStart, 'function PackSpotlight must be locatable').toBeGreaterThan(-1);
-    const cardEnd = page.indexOf('\nfunction ', cardStart + 1);
-    const cardBody =
-      page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd)
-      + readSource('../components/discovery/PackRow.tsx');
-    const figures = cardBody.match(/<PackFigure\b[^/]*\/>/g) ?? [];
-    /* ONE MOUNT, NOT THREE (2026-08-18, the founder's live-defect fix prompt, D4).
-       The rule this pins did not soften, it moved: every card variant must state the pack's
-       own evidence, and the SHAPE of that statement is now fixed by the drawing rather than
-       by this test. `mockups/index.html`'s rows and tiles print one mono proof line --
-       `<b>41</b> sources`, or `<b>17x</b> payback . <b>28</b> sources` -- and only the
-       featured card carries the big `.stat` figure the `PackFigure` component draws. Three
-       different sentences for the same fact were live on the shelf the day this changed
-       (`38 sources`, `16 cited sources behind it`, `2x the price back in month one,
-       modelled`), which is exactly the drift the "one device" note above is about.
-       So: the spotlight keeps `PackFigure`; the row and the tile carry `CardProof`. */
-    expect(figures.length, 'only the spotlight carries the big lead figure').toBe(1);
-    expect(
-      figures.some((f) => f.includes('weight="spotlight"')),
-      'the spotlight variant must carry the lead figure',
-    ).toBe(true);
+    const cardBody = card;
     const proofMounts = cardBody.match(/<CardProof\b/g) ?? [];
     expect(
       proofMounts.length,
       'the row and the tile must each state the pack evidence through the one proof component',
     ).toBe(2);
-
-    /*
-     * NOT A SECOND PRICE. The figure is one step of the six-step scale above the price it shares
-     * a card with, which is what makes it the lead. If it ever renders at the price's size the
-     * card has two numbers of equal weight and no visual at all, which is the state this whole
-     * change was made to leave.
-     */
-    const packRow = readSource('../components/discovery/PackRow.tsx');
-    const figureComponent = packRow.slice(packRow.indexOf('export function PackFigure('));
-    /* THE SIZE IS THE DRAWING'S NOW, NOT A TAILWIND STEP. The spotlight figure renders as the
-       drawing's `.stat > .big` (mumchimp.css: 44px, weight 685) against `.price-lg` at 26px, so the
-       rule this pins -- the figure outweighs the price it shares a card with -- is carried by the
-       copied stylesheet instead of by a utility class. Matching `text-display` here would fail on
-       a card that is drawn exactly like the drawing, which is what it did on 2026-08-18. */
-    expect(figureComponent, 'the lead poster sets its figure at the drawing\'s stat size').toMatch(
-      /className="big num"/,
-    );
-    // The Row's figure is `text-body font-semibold`, not `text-h1` (2026-08-15). `text-h1` was
-    // the deleted `mid` card's size; a row is one line tall, so a figure two steps above the line
-    // it sits on cannot fit in it. What this pins is unchanged -- the figure outweighs the label
-    // beside it -- and on the row that is carried by weight and by the mono face.
-    expect(figureComponent, 'the row sets its figure above the label beside it').toMatch(
-      /text-body font-semibold/,
-    );
 
     /*
      * THE DETERMINISM RULE, KEPT AND STRENGTHENED. It was written for the cover -- "a cover that
@@ -173,7 +144,7 @@ describe('US-2 — Pack cards with pack art', () => {
      * from a database key is not a fact about the business, which is precisely why the mark was
      * removed. The figure may be derived from the pack's DATA and from nothing else.
      */
-    const withoutComments = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const withoutComments = card.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(withoutComments, 'the card must not be random').not.toMatch(/Math\.random\(/);
     const statSource = readSource('../lib/packStat.ts').replace(/\/\*[\s\S]*?\*\//g, '');
     expect(statSource, 'the lead figure must not be random').not.toMatch(/Math\.random\(/);
@@ -193,8 +164,8 @@ describe('US-2 — Pack cards with pack art', () => {
     expect(readSource('../components/discovery/PackRow.tsx'), 'the market chip must still be stated in words').toMatch(
       /\{marketLabel\(pack\.market\)\}/,
     );
-    expect(page, 'the market chip must render only when it differs from the reader\'s').toMatch(
-      /pack\.market !== viewerMarket/,
+    expect(card, 'the market chip must render only when it differs from the reader\'s').toMatch(
+      /packMarket\(pack\) !== viewerMarket/,
     );
   });
 

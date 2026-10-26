@@ -1,16 +1,32 @@
 /*
   The estate UI kit, bridged into this site (crew#694 / crew#700 CP1).
 
-  tokens.css (kit) and brands/mumchimp.css set the CSS variables; this @theme exposes them to
-  Tailwind under the kit's names. It ADDS names, it does not reset the namespaces (`--color-*:
-  initial` is what a greenfield app on `@estate/ui-kit/tailwind.theme.css` does), because the
-  legacy pages still use this site's own `bg-bg`, `text-h1`, `p-5` utilities until they move.
-  Measured 2026-10-01 before this file: 0 legacy uses of text-xl/2xl/lg and 2 of text-sm, so
-  the kit's six type steps replace Tailwind's defaults here without reflowing a legacy page.
+  THE KIT'S OWN CSS IS IMPORTED IN `tokens.css`, not here, and the reason is the kit's own
+  registry rather than taste: `packages/estate-ui-kit/consumers.json` names this consumer's
+  stylesheet as `src/styles/tokens.css`, and `guards/kit-import.mjs` greps THAT file for
+  `@estate/ui-kit`. An import anywhere else is an import the guard cannot see, and a guard
+  that cannot see the thing it guards is a comment. The founder-surface spec names the same
+  file (docs/specs/2026-10-24-founder-surface-redesign.md §2.1). Moving the two `@import`s
+  here -> there on 2026-10-26 changed no computed value, and that was MEASURED rather than
+  argued: the emitted stylesheet was diffed against the build from before the move. It is
+  not byte-identical -- the `@layer kit` block is emitted earlier now, because the import
+  sits at the top of `tokens.css` rather than in the file that follows it -- but the two
+  builds are the same length with the same multiset of bytes, a pure permutation of one
+  block and another, with the layer order unchanged (properties, theme, base, components,
+  utilities, kit). Both stylesheets were then loaded into Chromium and every custom
+  property on `:root` read back from the browser's own cascade: 308 properties, 0 declared
+  differences, 0 resolved differences, 0 computed-style differences, in light and in dark.
+
+  This file keeps the two halves that have to live with the THEME: the kit's tokens and
+  brands/mumchimp.css set the CSS variables (imported in tokens.css, in `layer(kit)`), and
+  this @theme exposes them to Tailwind under the kit's names. It ADDS names, it does not
+  reset the namespaces (`--color-*: initial` is what a greenfield app on
+  `@estate/ui-kit/tailwind.theme.css` does), because the legacy pages still use this site's
+  own `bg-bg`, `text-h1`, `p-5` utilities until they move. Measured 2026-10-01 before this
+  file: 0 legacy uses of text-xl/2xl/lg and 2 of text-sm, so the kit's six type steps
+  replace Tailwind's defaults here without reflowing a legacy page.
   @source makes Tailwind read the kit's own components for the classes they use.
 */
-@import "@estate/ui-kit/tokens.css" layer(kit);
-@import "@estate/ui-kit/brands/mumchimp.css" layer(kit);
 @source "../../node_modules/@estate/ui-kit/src";
 
 @theme {
