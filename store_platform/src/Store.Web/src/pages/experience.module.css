@@ -324,3 +324,8 @@
   .reviewDossierSection { margin-top: 50px; }
   .reviewNext { margin-top: 70px; }
 }
+
+
+.reviewArchiveHead { margin-top: 65px; padding-top: 31px; border-top: 1px solid #9eb7a7; }
+.reviewArchiveHead h2 { margin-top: 14px; font-size: clamp(35px, 4vw, 64px); line-height: 1.15; }
+.reviewArchiveHead h2 em { color: #628f7a; }
