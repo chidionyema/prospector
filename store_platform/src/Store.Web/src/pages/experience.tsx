@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import type { GetServerSideProps } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import styles from './experience.module.css';
@@ -208,3 +209,11 @@ export default function MumchimpExperienceReview() {
     </div>
   );
 }
+
+// Never expose the design-review route on the real Mumchimp production origin.
+// Deployment Protection remains the access-control boundary on the separate
+// Vercel preview project; this is an additional fail-closed publication fence.
+export const getServerSideProps: GetServerSideProps = async () => {
+  if (process.env.VERCEL_ENV !== 'preview') return { notFound: true };
+  return { props: {} };
+};
