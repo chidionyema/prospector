@@ -73,6 +73,7 @@ export default function MumchimpExperienceReview() {
           </Link>
           <nav aria-label="Experience review" className={styles.nav}>
             <a href="#ideas">The ideas</a>
+            <Link href="/experience/catalogue">Catalogue review</Link>
             <a href="#method">The method</a>
             <Link href="/sample">The sample</Link>
           </nav>
@@ -173,7 +174,7 @@ export default function MumchimpExperienceReview() {
           </div>
           <div className={styles.archiveFoot}>
             <span>NO INVENTED SALES CLAIMS. NO UNVERIFIED PRICES.</span>
-            <Link href="/sample">See what a real dossier contains <span aria-hidden="true">↗</span></Link>
+            <Link href="/experience/catalogue">Browse the API-backed catalogue <span aria-hidden="true">↗</span></Link>
           </div>
         </section>
 
