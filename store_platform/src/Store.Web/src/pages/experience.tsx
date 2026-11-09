@@ -3,6 +3,7 @@ import type { GetServerSideProps } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import styles from './experience.module.css';
+import { REVIEW_ARCHIVE } from '@/lib/reviewArchive';
 
 /**
  * Isolated, read-only art-direction canary for crew#774.
@@ -14,40 +15,7 @@ import styles from './experience.module.css';
  * Checkout, registration, analytics, API calls and payment affordances are
  * deliberately absent, including when the live API recovers.
  */
-const archive = [
-  {
-    id: '0c6c74267f7485a3',
-    label: 'Aquaculture / UK',
-    title: 'SpatWindow',
-    description: 'Forecasting shellfish harvest windows from rainfall, tide and water-quality signals.',
-    image: '/pack/0c6c74267f7485a3.jpg',
-    index: '01',
-  },
-  {
-    id: '0ce623e80658e97c',
-    label: 'Care / employment',
-    title: 'PAHireRight',
-    description: 'A fixed-fee personal-assistant employment setup service for people managing direct payments.',
-    image: '/pack/0ce623e80658e97c.jpg',
-    index: '02',
-  },
-  {
-    id: '7fc5a381ad82c1ed',
-    label: 'Trades / compliance',
-    title: 'SparkCert',
-    description: 'An electrical-work certification service concept for sole traders navigating Part P requirements.',
-    image: '/pack/7fc5a381ad82c1ed.jpg',
-    index: '03',
-  },
-  {
-    id: '7dc94c897c7d28f4',
-    label: 'Property / probate',
-    title: 'IHT Valuation Barometer',
-    description: 'A research concept about challenging inheritance-tax valuations using documented outcomes.',
-    image: '/pack/7dc94c897c7d28f4.jpg',
-    index: '04',
-  },
-] as const;
+const archive = REVIEW_ARCHIVE;
 
 export default function MumchimpExperienceReview() {
   return (
@@ -167,7 +135,7 @@ export default function MumchimpExperienceReview() {
                   <span className={styles.cardCategory}>{item.label}</span>
                   <h3>{item.title}</h3>
                   <p>{item.description}</p>
-                  <span className={styles.cardFoot}>RESEARCH CONCEPT <span aria-hidden="true">↗</span></span>
+                  <Link href={`/experience/specimen/${item.id}`} className={styles.cardFoot}>OPEN RESEARCH CONCEPT <span aria-hidden="true">↗</span></Link>
                 </div>
               </article>
             ))}
