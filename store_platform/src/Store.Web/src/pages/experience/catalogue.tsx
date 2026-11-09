@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ReviewFrame } from '@/components/experience/ReviewFrame';
 import { fetchCatalog, type Pack } from '@/lib/api/client';
 import { packImage } from '@/lib/sectorImage';
+import { REVIEW_ARCHIVE } from '@/lib/reviewArchive';
 import styles from '@/pages/experience.module.css';
 
 interface CatalogueReviewProps {
@@ -56,12 +57,37 @@ export default function CatalogueReview({ packs, sourceAvailable }: CatalogueRev
           </div>
         )}
         {!sourceAvailable ? (
-          <div className={styles.journeyEmpty} role="status">
-            <span>LIVE SOURCE UNAVAILABLE</span>
-            <h3>We cannot show the real catalogue yet.</h3>
-            <p>The original commerce API did not respond within the bounded read window. We will not substitute fabricated products or represent archived concepts as purchasable.</p>
-            <Link href="/experience">Explore the illustrative design review <span aria-hidden="true">↗</span></Link>
-          </div>
+          <>
+            <div className={styles.journeyEmpty} role="status">
+              <span>LIVE SOURCE UNAVAILABLE</span>
+              <h3>The original catalogue is offline.</h3>
+              <p>The Store.Api response is unavailable. The four archive specimens below are separately recorded design examples, not live inventory or a substitute for commerce data.</p>
+              <Link href="/experience">Return to the design overview <span aria-hidden="true">↗</span></Link>
+            </div>
+            <div className={styles.reviewArchiveHead}>
+              <span className={styles.journeyKicker}>ARCHIVE / VISUAL SPECIMENS ONLY</span>
+              <h2>Explore the <em>research concepts.</em></h2>
+            </div>
+            <div className={styles.reviewCatalogueGrid}>
+              {REVIEW_ARCHIVE.map((record) => (
+                <Link href={`/experience/specimen/${record.id}`} className={styles.reviewRecord} key={record.id}>
+                  <div className={styles.reviewRecordArt}>
+                    <Image src={record.image} alt="" fill sizes="(max-width: 690px) 100vw, (max-width: 1100px) 50vw, 33vw" />
+                    <span>{record.index}</span>
+                  </div>
+                  <div className={styles.reviewRecordBody}>
+                    <span className={styles.reviewRecordTag}>{record.label} / archive</span>
+                    <h3>{record.title}</h3>
+                    <p>{record.description}</p>
+                    <div className={styles.reviewRecordFoot}>
+                      <span>Recorded concept · Availability unverified</span>
+                      <span aria-hidden="true">Examine ↗</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
         ) : packs.length === 0 ? (
           <div className={styles.journeyEmpty} role="status">
             <span>EMPTY RESPONSE</span>
