@@ -214,3 +214,113 @@
 @media (prefers-reduced-motion: reduce) {
   .shell *, .shell *::before, .shell *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+
+/* Real-data buyer-journey preview: catalogue and dossier.
+ * These selectors live under the same scoped review module as /experience.
+ * The original public catalogue/checkout CSS is unchanged. */
+.journeyHero {
+  background: #14201e;
+  color: #f6f7f1;
+  padding: clamp(66px, 8vw, 118px) clamp(24px, 5.1vw, 90px) clamp(58px, 7vw, 100px);
+}
+.journeyInner { width: min(100%, 1390px); margin-inline: auto; }
+.journeyHero h1 {
+  margin-top: 24px;
+  max-width: 1000px;
+  font-size: clamp(51px, 6.5vw, 104px);
+  font-weight: 400;
+  letter-spacing: -.055em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+.journeyHero h1 em { color: var(--mint); }
+.journeyHero p { margin-top: 28px; max-width: 745px; color: #c3d7cd; font-size: clamp(17px, 1.8vw, 21px); line-height: 1.7; }
+.journeyMeta { margin-top: 45px; display: flex; align-items: center; flex-wrap: wrap; gap: 15px 38px; padding-top: 22px; border-top: 1px solid #40574e; color: #bed4c9; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.journeyContent { max-width: 1570px; margin-inline: auto; padding: clamp(65px, 7.5vw, 120px) clamp(24px, 5.1vw, 90px) clamp(90px, 10vw, 150px); }
+.journeyKicker { display: block; color: #477263; font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.journeySectionTitle { display: grid; grid-template-columns: 1.3fr .7fr; gap: 38px; align-items: end; }
+.journeySectionTitle h2 { margin-top: 20px; font-size: clamp(40px, 4.6vw, 77px); line-height: 1.12; }
+.journeySectionTitle h2 em { color: #638c7b; }
+.journeySectionTitle > p { max-width: 385px; color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
+.reviewSearch {
+  display: grid; grid-template-columns: 1fr auto; gap: 8px 20px;
+  align-items: end; margin: 45px 0 33px;
+}
+.reviewSearch label { grid-column: 1 / -1; color: #355a4b; font-size: 12px; font-weight: 750; }
+.reviewSearch input {
+  min-width: 0; width: 100%; height: 54px; padding: 13px 18px;
+  border: 1px solid #8aada0; border-radius: 0;
+  background: #fffefa; color: var(--ink); font: inherit; font-size: 16px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.reviewSearch input:focus-visible { border-color: #245c47; box-shadow: 0 0 0 3px #a9d9c3; outline: none; }
+.reviewSearch > span { align-self: center; padding-bottom: 5px; color: #557066; font-size: 11px; font-weight: 650; }
+.reviewCatalogueGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(18px, 2.5vw, 35px); margin-top: 46px; }
+.reviewRecord {
+  min-width: 0; display: flex; flex-direction: column;
+  background: #fffdf8; border: 1px solid #ccd8cd;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+.reviewRecord:hover, .reviewRecord:focus-visible { transform: translateY(-4px); border-color: #6b9e89; box-shadow: 0 18px 42px rgba(20,50,36,.08); }
+.reviewRecordArt { position: relative; aspect-ratio: 1.5; overflow: hidden; background: linear-gradient(140deg, #a6bdad, #36564b); }
+.reviewRecordArt img { object-fit: cover; }
+.reviewRecordArt > span { position: absolute; top: 18px; left: 18px; padding: 4px 10px; background: #13221ede; color: #f3fff4; font: 750 11px/1.4 ui-monospace, monospace; }
+.reviewRecordBody { display: flex; flex: 1; flex-direction: column; gap: 13px; padding: clamp(20px, 2.5vw, 31px); }
+.reviewRecordTag { color: #46715d; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .11em; }
+.reviewRecordBody h3 { font-family: var(--display); font-size: clamp(26px, 2.35vw, 37px); line-height: 1.16; font-weight: 400; letter-spacing: -.04em; overflow-wrap: anywhere; }
+.reviewRecordBody p { margin: 0; min-height: 68px; color: #536359; font-size: 14px; line-height: 1.65; }
+.reviewRecordFoot { display: flex; align-items: end; justify-content: space-between; gap: 16px; padding-top: 17px; margin-top: auto; border-top: 1px solid #cdd9cd; color: #38644e; font-size: 11px; font-weight: 750; }
+.reviewRecordFoot > span:first-child { color: #667f6f; font-weight: 600; }
+.journeyEmpty { margin-top: 50px; padding: clamp(26px, 4.5vw, 72px); border: 1px solid #a4bbaa; background: #e9efe6; }
+.journeyEmpty > span { color: #335f4b; font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+.journeyEmpty h3, .journeyEmpty h2 { max-width: 850px; margin-top: 18px; font-family: var(--display); font-size: clamp(29px, 3.8vw, 51px); font-weight: 400; line-height: 1.2; letter-spacing: -.045em; }
+.journeyEmpty p { max-width: 740px; margin-top: 18px; color: #4c6054; font-size: 16px; line-height: 1.75; }
+.journeyEmpty a { display: inline-block; margin-top: 24px; border-bottom: 1px solid #547861; padding-bottom: 5px; font-size: 13px; font-weight: 750; }
+.reviewBack { display: inline-block; margin-bottom: 32px; padding-bottom: 5px; border-bottom: 1px solid #85b4a1; color: #b7dfce !important; font-size: 13px; font-weight: 650; }
+.reviewDossierGrid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(290px, .75fr); gap: clamp(35px, 7vw, 125px); align-items: start; }
+.reviewDossierMain { min-width: 0; }
+.reviewDossierMain h2 { margin-top: 19px; font-size: clamp(36px, 4.2vw, 66px); letter-spacing: -.045em; line-height: 1.13; }
+.reviewDossierLead { margin-top: 31px; color: #385649; font-size: clamp(18px, 2vw, 25px); line-height: 1.65; }
+.reviewDossierSection { margin-top: 70px; padding-top: 30px; border-top: 1px solid var(--line); }
+.reviewDossierSection h3, .reviewRisk h3 { margin-top: 13px; font-family: var(--display); font-size: clamp(26px, 3vw, 42px); font-weight: 400; line-height: 1.2; letter-spacing: -.03em; }
+.reviewDossierSection p, .reviewRisk p { margin-top: 19px; color: #4c6058; font-size: 16px; line-height: 1.8; }
+.reviewDossierSection p + p { margin-top: 17px; }
+.reviewRisk { margin-top: 64px; padding: 30px 37px 36px; border-left: 4px solid #c28a54; background: #f2e8da; }
+.reviewRisk .journeyKicker { color: #83572e; }
+.reviewRisk p { color: #624f3d; }
+.reviewContents { margin: 22px 0 0; padding-left: 25px; color: #4c6058; font-size: 16px; line-height: 1.8; }
+.reviewContents li { padding-left: 4px; margin-bottom: 9px; }
+.reviewDossierAside { min-width: 0; }
+.reviewDossierArtwork { position: relative; aspect-ratio: .95; overflow: hidden; background: linear-gradient(135deg, #b1cbbb, #365f51); }
+.reviewDossierArtwork img { object-fit: cover; }
+.reviewDossierFacts { padding: 33px 27px; background: #e6ede4; border: 1px solid #c7d6c9; }
+.reviewDossierFacts dl { margin: 22px 0; }
+.reviewDossierFacts dl > div { padding: 12px 0; border-top: 1px solid #b7cdbd; }
+.reviewDossierFacts dt { color: #658074; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; }
+.reviewDossierFacts dd { margin: 5px 0 0; color: #223d30; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.reviewDossierFacts p { padding-top: 20px; border-top: 1px solid #b7cdbd; color: #53695c; font-size: 12px; line-height: 1.7; }
+.reviewNext { margin-top: 105px; padding: clamp(38px, 6vw, 90px); background: #e1e9df; text-align: center; }
+.reviewNext h2 { margin: 22px 0 33px; font-size: clamp(34px, 4vw, 59px); line-height: 1.15; }
+.reviewNext h2 em { color: #53826c; }
+.reviewNext .primaryAction { color: #f5fff7 !important; background: #244b3d; }
+.reviewNext .primaryAction:hover { background: #32614f; }
+@media (max-width: 980px) {
+  .reviewCatalogueGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reviewDossierGrid { grid-template-columns: 1fr; }
+  .reviewDossierAside { display: grid; grid-template-columns: 1fr 1fr; }
+  .reviewDossierArtwork { min-height: 360px; }
+}
+@media (max-width: 690px) {
+  .journeyHero { padding-block: 76px 63px; }
+  .journeySectionTitle, .reviewDossierAside { grid-template-columns: 1fr; }
+  .reviewCatalogueGrid { grid-template-columns: 1fr; margin-top: 32px; }
+  .reviewRecordArt { aspect-ratio: 1.7; }
+  .reviewRecordBody p { min-height: unset; }
+  .reviewSearch { grid-template-columns: 1fr; }
+  .reviewSearch label { grid-column: 1; }
+  .reviewSearch > span { justify-self: start; }
+  .reviewDossierArtwork { aspect-ratio: 1.4; min-height: 0; }
+  .reviewDossierSection { margin-top: 50px; }
+  .reviewNext { margin-top: 70px; }
+}
