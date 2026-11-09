@@ -40,7 +40,7 @@ export const OG = {
   /** The meta row under the title. Tracks `--subtle`, which moved to the mockups' `--ink-3` on
    *  2026-08-18. The card sets it at 26px, well clear of the size where the 3.03:1 measurement on
    *  the storefront ground becomes a reading problem. */
-  subtle: '#8B9096',
+  subtle: '#686D72',
   /** The cited-source run. The one colour on this site that carries meaning. */
   survive: '#14706A',
   /** Type on the ink pill. NOT A TOKEN, and correctly so: the storefront has no `--on-ink`,

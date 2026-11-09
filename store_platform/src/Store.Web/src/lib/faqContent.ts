@@ -190,7 +190,7 @@ export const FAQS: FaqItem[] = [
   { category: 'process',
     question: 'Is the store live right now?',
     answer: [
-      'The catalogue shows the packs currently offered for sale. Payment and fulfilment depend on external services; an unavailable service should report an error rather than confirm an order it cannot deliver.',
+      'The catalogue shows the packs currently offered for sale. Payment and fulfilment use external services. When either is unavailable, checkout should show an error and never claim the order succeeded.',
     ],
   },
   { category: 'payment',
