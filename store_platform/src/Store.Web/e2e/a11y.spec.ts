@@ -35,33 +35,8 @@ const BLOCKING = ['serious', 'critical'];
 type Known = { reason: string; expires: string };
 
 const KNOWN: Record<string, Known> = {
-  'color-contrast': {
-    // Measured against the live site 2026-08-19: 15 of 15 a11y tests failed, on this rule and
-    // nothing else. --subtle #8B9096 (src/styles/tokens.css:177) is 3.21:1 on #FFFFFF and 3.07:1
-    // on --bg #FAFAF7 at 12px, against the WCAG AA floor of 4.5:1. It carries the meta rows: the
-    // shelf counts ("6 survived"), eyebrows, market codes, "28 sources", "7/8 checks", "Verified
-    // 2 days ago".
-    //
-    // It is that value on a founder directive (2026-08-18, "pixel perfect ... to colours") which
-    // replaced the AA-passing #707478 with the mockups' literal value. That directive is a
-    // decision, not a defect, so this gate records it instead of overruling it -- and records it
-    // as an exception with a date rather than as silence, so the trade is visible and comes back
-    // for a second look.
-    reason:
-      '--subtle #8B9096 (tokens.css:177) is 3.21:1 on white, below the 4.5:1 AA floor. Shipped ' +
-      'on the founder directive of 2026-08-18 ("pixel perfect ... to colours") over the ' +
-      'AA-passing #707478 it replaced.',
-    expires: '2026-11-19',
-  },
+  // No active exemptions: the low-contrast tertiary token was repaired.
 
-  // `link-in-text-block` WAS HERE AND IS FIXED, 2026-08-30. It was carried as an open defect
-  // rather than an accepted trade -- 6 of 16 tests, the breadcrumb link at #2447c9 on --subtle
-  // #8B9096, 2.31:1 against a 3:1 floor with `a{text-decoration:none}` (mumchimp.css:7) leaving
-  // nothing to fall back on -- and the entry said the fix was one rule in globals.css that needed
-  // a founder decision. He gave it on 2026-08-30 ("really polish the site thoroughly as best as
-  // we possibly can, attention to details"). `.crumb a` and `.src a` now carry an underline
-  // (globals.css, `@layer components`); the colours are untouched. The entry is deleted rather
-  // than renewed, which is what an exception with an expiry is for.
 };
 
 /** An exception that has run out of time is not an exception. */

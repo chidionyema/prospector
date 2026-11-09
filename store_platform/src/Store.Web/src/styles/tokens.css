@@ -138,12 +138,9 @@
           --warn-f, AA). The token suffixes say so too -- b border, t text, f fill.
        2. --brand on --brand-soft is 4.42:1, just under AA. --brand-soft is a border and a fill,
           not a ground for brand-coloured text. On --brand-tint the same ink is 5.50:1 and legal.
-       3. --ink-3 #8B9096 is 3.08:1 on paper. The brief assigns it to captions, eyebrows and mono
-          meta -- all SMALL text -- where AA needs 4.5:1, so shipping it literally would have been
-          an accessibility regression against the outgoing --subtle (#71717A, 4.62:1). --subtle
-          below is therefore the brief's ink-3 with its hue (213) and saturation (0.073) held
-          exactly and only its lightness lowered to the first step that reaches AA: #707478,
-          4.50:1 on paper, 4.71:1 on white. It is the brief's colour, at a legal weight. */
+       3. The mockup's #8B9096 measures 3.03:1 on paper, below the 4.5:1
+          WCAG AA text minimum. The released token is #686D72, which measures
+          4.92:1 on paper and 5.23:1 on white. Buyer legibility takes priority. */
   --bg: #F9F8F6;            /* --paper. The page ground everywhere, header included. 16.84:1 under
                                 --text. Was #FAF9F7; it is now byte-identical to the `theme-color`
                                 in `pages/_document.tsx`, which is the point -- a browser bar that
@@ -175,20 +172,8 @@
                                 carries a trace of blue, which is what keeps it from going brown
                                 against the warm paper. */
   --muted: #565B62;         /* --ink-2. Body copy, descriptions, nav. 6.54:1 on --bg. AA. */
-  --subtle: #8B9096;        /* --ink-3, the mockups' exact value. Tertiary text: meta rows, counts,
-                               NOTE, and it is a real cost: this measures 3.03:1 on --bg, so it is
-                               below the 4.5:1 AA floor for body text and is only legal on the
-                               large or non-essential text the mockups use it for. It was #707478
-                               here, which passed AA and did not match the drawing. The drawing
-                               wins on a founder directive (2026-08-18, "pixel perfect ... to
-                               colours"); anything smaller than 18px that carries meaning must use
-                               --muted instead.
-                                timestamps, eyebrows, mono meta. 4.50:1 on --bg, 4.71:1 on
-                                --surface. AA -- and only just, deliberately: see finding 3 in the
-                                convergence note above. The brief's literal #8B9096 is 3.08:1 and
-                                fails AA at the 12px sizes it is specified for. This is that exact
-                                hue and saturation with lightness taken down to the first AA step.
-                                This is the smallest text that is allowed to carry information. */
+  --subtle: #686D72;        /* Small informational text. 4.92:1 on paper, 5.23:1 on white;
+                                 WCAG AA with a margin. Do not trade legibility for a mockup. */
   /* Placeholders, disabled labels, purely decorative rules. 2.56:1 -- it FAILS AA, and that is
      why its role is written down here: --faint may never carry information. Anything a buyer
      needs to read uses --subtle. v2 used #B5B5B5 for market codes and the FX disclaimer, which

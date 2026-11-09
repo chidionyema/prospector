@@ -25,7 +25,7 @@ export default function RefundPage() {
   return (
     <LegalDoc
       title="Refund Policy"
-      lede="Fourteen days, no questions. Email us and we refund in full."
+      lede="Ask for a full refund within fourteen days. No explanation needed."
     >
 
       {/* THE DRAWING'S REFUND PAGE (`mockups/refund.html`) is five plain-English sections and
@@ -35,12 +35,12 @@ export default function RefundPage() {
           consumer-law detail the page exists to carry. */}
       <LegalHeading>The short version</LegalHeading>
       <LegalText>
-        If a pack is not what the description said, email{' '}
+        For any pack you purchase, email{' '}
         <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
           {LEGAL.supportEmail}
         </a>{' '}
-        within fourteen days of purchase with your order reference. We refund in full. No forms,
-        no retention offers, no explanation required.
+        within fourteen days of purchase with your order reference. You do not need to explain
+        why. Our voluntary guarantee covers downloads too; section 1 describes the clear-abuse exception.
       </LegalText>
 
       <LegalHeading>What is covered</LegalHeading>
@@ -51,24 +51,22 @@ export default function RefundPage() {
 
       <LegalHeading>How to ask</LegalHeading>
       <LegalText>
-        One email to {LEGAL.supportEmail}. A human reads every email and replies in under one
-        business day. We do not route refund requests through a form or a chatbot.
+        One email to {LEGAL.supportEmail}. We aim to respond within three business days.
+        You do not need to fill out a form.
       </LegalText>
 
       <LegalHeading>Timing</LegalHeading>
       <LegalText>
-        Refunds are processed by Stripe, and typically appear within five working days depending
-        on your bank. We do not hold the funds; once we issue the refund the timing is between
-        Stripe and your card issuer.
+        Approved refunds return to the original payment method. The time for funds to appear
+        depends on your bank and payment provider, typically five to ten business days.
       </LegalText>
 
       <LegalHeading>What this policy does not cover</LegalHeading>
       <LegalText>
         {/* The limit is imported, never retyped: `disclaimerSaidOnce.test.ts` fails the build if
             this sentence exists in two files, because two wordings are two different limits. */}
-        {PACK_DISCLAIMER} The refund covers the pack not matching its description. It does not
-        cover the outcome of a business built from it, no analysis can promise that, and we say
-        so on every pack page.
+        {PACK_DISCLAIMER} A refund covers the pack purchase, not the outcome of a business
+        built from the research. No analysis can promise commercial success.
       </LegalText>
 
       <LegalText>
@@ -162,10 +160,9 @@ export default function RefundPage() {
         ]}
       />
       <LegalText>
-        We aim to respond within 3 business days. Approved refunds are processed to the
-        original payment method. The time for funds to appear in your account depends on your
-        bank or card provider (typically 5 to 10 business days). We are not responsible for delays
-        caused by your financial institution.
+        We aim to respond within three business days. Approved refunds return to the
+        original payment method. The time for funds to appear depends on your bank
+        or payment provider, typically five to ten business days.
       </LegalText>
 
       <LegalHeading>5. Chargebacks and payment disputes</LegalHeading>

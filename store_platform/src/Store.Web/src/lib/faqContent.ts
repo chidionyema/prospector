@@ -74,9 +74,9 @@ export const FAQS: FaqItem[] = [
     // question it sets up, because the two together are the whole argument.
     question: 'Why not ask a chatbot?',
     answer: [
-      'Because it will agree with you. Ask a chatbot about your idea and you get an encouraging answer full of numbers it invented on the spot. Every figure here links to the page it came from, and the ideas that failed are published too, in the ',
+      'A chatbot can help you brainstorm. A pack gives you a research record: the sources, the assumptions and the checks each idea faced. You can inspect the evidence yourself, including examples in the ',
       { text: 'rejected ideas', href: '/rejected' },
-      '. No chatbot will ever show you that, because it costs nothing to tell you yes.',
+      '. The difference is a traceable assessment, not a promise that an idea will succeed.',
     ],
   },
   { category: 'packs',
@@ -147,7 +147,7 @@ export const FAQS: FaqItem[] = [
     question: 'How do I get the pack after I pay?',
     answer: [
       // Per email §6: answer in the first sentence.
-      'A download link, the moment payment clears. Also emailed to you. No account needed.',
+      'Once payment clears, the order confirmation page provides the download link. Keep your order reference in case you need help. No account needed.',
     ],
   },
   { category: 'packs',
@@ -168,7 +168,7 @@ export const FAQS: FaqItem[] = [
     question: 'What happens to ideas that do not pass?',
     answer: [
       // Per email §6: short, link to the log.
-      'They are published in public. Each row names the check it failed and the cited evidence.',
+      'We publish a selection of rejected ideas, each with the check it failed and the supporting evidence. The public log is not the entire research corpus.',
     ],
   },
   { category: 'packs',
@@ -190,7 +190,7 @@ export const FAQS: FaqItem[] = [
   { category: 'process',
     question: 'Is the store live right now?',
     answer: [
-      'Yes. Everything on this site works today, and new packs are published as they clear the checks.',
+      'The catalogue shows the packs currently offered for sale. Payment and fulfilment depend on external services; an unavailable service should report an error rather than confirm an order it cannot deliver.',
     ],
   },
   { category: 'payment',
