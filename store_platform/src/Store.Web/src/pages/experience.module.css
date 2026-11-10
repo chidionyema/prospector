@@ -183,7 +183,22 @@
 @media (max-width: 760px) {
   .review { font-size: 9px; gap: 8px; }
   .headerInner { min-height: 78px; }
-  .nav { display: none; }
+  /* Keep research navigation available to touch, keyboard and screen-reader users. */
+  .headerInner { flex-wrap: wrap; row-gap: 12px; }
+  .nav {
+    display: flex;
+    order: 3;
+    flex: 0 0 100%;
+    justify-content: flex-start;
+    gap: 10px;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 3px 0 12px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav a { flex: 0 0 auto; min-height: 44px; display: inline-flex; align-items: center; padding-inline: 10px; white-space: nowrap; }
   .headerAction { padding: 10px 13px; gap: 8px; }
   .heroInner { min-height: 0; grid-template-columns: 1fr; gap: 52px; padding-top: 76px; padding-bottom: 75px; }
   .hero h1 { font-size: clamp(53px, 12vw, 82px); }
