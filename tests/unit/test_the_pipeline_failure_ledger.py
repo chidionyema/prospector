@@ -51,6 +51,16 @@ class Mode(NamedTuple):
 # capacity. Every entry was paid for by an incident unless marked otherwise.
 
 LEDGER: tuple[Mode, ...] = (
+    Mode(
+        "required-check-with-no-workflow",
+        "A branch ruleset requires a status check whose workflow is missing, so every pull "
+        "request is permanently blocked and no change can land. Prospector 2026-11-15: ruleset "
+        "no-harness-folders (24305819) required the check while the workflow was absent.",
+        (".github/workflows/no-harness-folders.yml",),
+        "tests/unit/test_the_deploy_gate_counts_only_code_verdicts.py",
+        None,
+        None,
+    ),
     # ---- at the merge
     Mode(
         "merge-over-a-red-check",

@@ -58,7 +58,7 @@ estate disagree, the disagreement is written down rather than settled by prefere
 | "Hooks are deterministic; CLAUDE.md instructions are advisory" | 12 hooks wired, all ten of the session ones self-testing and graded. Ahead of the guidance here |
 | "Give Claude a check it can run" | `scripts/popdd_verify.py`, `scripts/process_audit.py`, `ops/state_probe.sh`, `scripts/live_checkout.py`. Strong |
 | "Use subagents for investigation; scope it or it fills your context" | Standing rule, and the delegation trigger is mechanical (second exploratory read → subagent) |
-| "Custom subagents in `.claude/agents/`" | two: `estate-recon` (haiku, read-only, returns a verdict and refs, never dumps) and `receipt-auditor` (adversarial diff review against proof-of-claim discipline). Both committed, so every worktree gets them |
+| "Custom subagents" | two: `estate-recon` (read-only, returns a verdict and refs, never dumps) and `receipt-auditor` (adversarial diff review against proof-of-claim discipline). They moved to the estate's model-agnostic skill catalog when the `.claude` harness folder was deleted |
 | "`/clear` between unrelated tasks; manage context aggressively" | Enforced by measurement: `context-guard-hook.py` nudges at 140K, and 38 of the last 40 sessions still ran past it |
 | "Add an adversarial review step in a fresh context" | `receipt-auditor` exists as of today. Making it routine before a PR is the open half |
 | "Explore, plan, code, commit — plan mode for multi-file or unfamiliar work" | Partly. "Plan and claim before code" is a rule, but plan mode itself is rarely used |
@@ -85,8 +85,9 @@ Shipped:
 - all ten session hooks answer `--selftest`; the audit runs and grades them (#373, #381)
 - the hooks are tracked in git; the audit reports any hook file behind `origin/main` (#381)
 - `ops/share_memory.sh` and the audit row that grades the memory partition (#381)
-- `.claude/agents/estate-recon.md` and `.claude/agents/receipt-auditor.md` — the recon and
-  review prompts stop being retyped from memory each session (#381)
+- the recon and receipt-auditor review prompts moved out of the retired `.claude/` harness
+  folder into the estate's model-agnostic skill catalog, so they stop being retyped from
+  memory each session (#381)
 - two guards stopped refusing correct commands: `rule-guard` no longer reads a commit
   message as a command (70/70), `hang-guard` no longer reads a heredoc body as one
   (26/26). Both found by being blocked while writing down the rule itself (#381)
@@ -133,10 +134,10 @@ get lost in the noise. Two changes, both keeping the rule and moving the evidenc
 
 Measured after: **20,107 characters, about 5,027 tokens — 792 fewer per session.**
 
-**2. `.claude/agents/` reviewers become routine.** `receipt-auditor` and `estate-recon` already
-shipped. The gap was that nothing made anyone use them. `.claude/skills/ship-a-pr/SKILL.md` now
-carries the shipping sequence and puts a `receipt-auditor` pass before every PR, ahead of the
-gate. The session that wrote the code is the worst reviewer of it — it already believes the
+**2. The recon and receipt-auditor reviewers become routine.** Both agents already shipped; they
+now live in the estate's model-agnostic skill catalog because the `.claude/` harness folder was
+deleted (founder, 2026-09-30: no `.claude` anywhere). The shipping skill carries the sequence and
+puts a receipt-auditor pass before every PR, ahead of the gate. The session that wrote the code is the worst reviewer of it — it already believes the
 reasoning — so the review has to happen in a context that never saw the argument.
 
 **3. The context guard blocks instead of nudging.** It had only ever injected about 70 tokens of
