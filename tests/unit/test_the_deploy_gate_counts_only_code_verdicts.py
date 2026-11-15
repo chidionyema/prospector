@@ -200,6 +200,10 @@ GRADES_THE_CODE = {
     # filters for deploy/k8s/** and its own file, so a commit that touches neither starts no run
     # at all, and a workflow with no row cannot vote.
     "k8s manifests",
+    # `no-harness-folders` grades repository content: a tracked `.claude/` path makes the commit
+    # wrong (founder, 2026-09-30). Restored 2026-11-15 when the ruleset required it but the
+    # workflow was gone.
+    "no-harness-folders",
 }
 
 

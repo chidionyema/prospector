@@ -237,11 +237,11 @@ LISTED_BUT_NOT_SHIPPED: dict[str, str] = {
     #: either direction. Shipping `.claude/` wholesale is not an option. The two honest fixes
     #: are a negation that re-includes only these markdown files, or dropping `.claude/` from
     #: what docs_index enumerates. Both change what the founder can see, so both are his call.
-    ".claude/agents/estate-recon.md": "agent instructions; .claude/ stays out of a public image",
-    ".claude/agents/receipt-auditor.md": "agent instructions; .claude/ stays out of a public image",
-    ".claude/skills/ship-a-pr/SKILL.md": "agent instructions; .claude/ stays out of a public image",
-    ".claude/skills/where-production-runs/SKILL.md": "agent instructions; .claude/ stays out of a public image",
-    ".claude/skills/worktree-and-gate/SKILL.md": "agent instructions; .claude/ stays out of a public image",
+
+
+
+
+
 }
 
 
