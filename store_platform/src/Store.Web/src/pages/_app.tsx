@@ -39,11 +39,23 @@ export default function App({ Component, pageProps }: AppProps) {
   // One page_view per client-side view: the initial load, then every completed route change.
   // routeChangeComplete fires after the URL updates, so track() reads the new pathname.
   useEffect(() => {
+    // /experience is a private, non-transactional canary: do not emit buyer
+    // analytics or prime customer session work while reviewing art direction.
+    if (router.pathname === "/experience" || router.pathname.startsWith("/experience/")) return;
     track("page_view");
-    const onRouteChange = () => track("page_view");
+    const onRouteChange = (url: string) => {
+      if (url !== "/experience" && !url.startsWith("/experience/") && !url.startsWith("/experience?") && !url.startsWith("/experience#")) track("page_view");
+    };
     router.events.on("routeChangeComplete", onRouteChange);
     return () => router.events.off("routeChangeComplete", onRouteChange);
-  }, [router.events]);
+  }, [router.events, router.pathname]);
+
+  // Avoid the application-wide AuthProvider and CurrencyProvider for a visual
+  // canary that has no customer identity, shopping or payment capability.
+  // The real storefront retains exactly the same providers below.
+  if (router.pathname === "/experience" || router.pathname.startsWith("/experience/")) {
+    return <div className="fonts-wired"><Component {...pageProps} /></div>;
+  }
 
   return (
     // `fonts-wired` is not cosmetic: it is the globals.css rule that resolves --font-sans-pref /

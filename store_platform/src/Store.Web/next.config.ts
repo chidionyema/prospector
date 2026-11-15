@@ -74,7 +74,15 @@ const nextConfig: NextConfig = {
   // infer the wrong monorepo root and nest the output (.next/standalone/<long/path>/server.js),
   // which breaks the Docker COPY and the dev server's dynamic routes. Pinning keeps server.js
   // flat at .next/standalone/server.js and silences the workspace-root warning.
-  outputFileTracingRoot: import.meta.dirname,
+  // The Docker standalone output stays rooted at Store.Web for local/Fly builds.
+  // Vercel packages Next 16 from the checkout root; when this deeply nested app
+  // points tracing at itself, the platform's post-build validator looks for
+  // /vercel/path0/.next/routes-manifest-deterministic.json instead of this app's
+  // actual .next tree. In Vercel only, trace from the monorepo root so the
+  // relative app directory survives the adapter's path resolution.
+  outputFileTracingRoot: process.env.VERCEL
+    ? new URL('../../../', import.meta.url).pathname
+    : import.meta.dirname,
   // /og/pack/[id] renders its social card with next/og (ImageResponse). Next reaches the renderer
   // through a RUNTIME `import()` inside dist/server/og/image-response.js, which static file tracing
   // cannot see, so the standalone bundle shipped without it and the route threw

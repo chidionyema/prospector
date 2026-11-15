@@ -266,8 +266,8 @@ function inTheSiteVoice<T extends Pack>(pack: T): T {
   return out as T;
 }
 
-export async function fetchCatalog(): Promise<Pack[]> {
-  const res = await fetch(`${API_FETCH_BASE}/catalog`, { headers: correlated() });
+export async function fetchCatalog(options: { signal?: AbortSignal } = {}): Promise<Pack[]> {
+  const res = await fetch(`${API_FETCH_BASE}/catalog`, { headers: correlated(), signal: options.signal });
   if (!res.ok) throw new Error('Failed to fetch catalog');
   const packs: Pack[] = await res.json();
   return packs.map(inTheSiteVoice);
@@ -484,8 +484,8 @@ function assertStripeCheckoutUrl(url: unknown): string {
 
 /** Throws `ApiError` (declared above) rather than a bare Error, so a caller can tell "gone" from
  *  "down". Message and `instanceof Error` are unchanged, so existing catch blocks behave as before. */
-export async function fetchPackDetails(id: string): Promise<PackDetails> {
-  const res = await fetch(`${API_FETCH_BASE}/catalog/${id}`, { headers: correlated() });
+export async function fetchPackDetails(id: string, options: { signal?: AbortSignal } = {}): Promise<PackDetails> {
+  const res = await fetch(`${API_FETCH_BASE}/catalog/${id}`, { headers: correlated(), signal: options.signal });
   if (!res.ok) throw new ApiError('Failed to fetch pack details', res.status);
   return inTheSiteVoice(await res.json());
 }
